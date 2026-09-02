@@ -739,6 +739,34 @@ main{
 }
 .capLegend{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
 
+/* ---------- Rota seçimi ---------- */
+.routeList{margin-bottom:12px;}
+.routeOpt{
+  display:block;width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:13px;padding:11px 12px;margin-bottom:8px;
+  transition:background .18s ease,border-color .18s ease;
+}
+.routeOpt.active{background:var(--surface-3);border-color:rgba(76,125,255,.55);}
+.routeOpt:active{transform:scale(.985);}
+.routeTop{display:flex;align-items:center;gap:8px;}
+.routeMode{font-size:13.5px;font-weight:800;letter-spacing:.2px;}
+.routeDays{
+  margin-left:auto;padding:4px 9px;border-radius:8px;white-space:nowrap;
+  font-size:11.5px;font-weight:800;background:rgba(255,255,255,.07);color:var(--text-2);
+}
+.routeOpt.active .routeDays{background:linear-gradient(135deg,#4C7DFF,#6B5BFF);color:#fff;}
+.routeSub{font-size:11.5px;color:var(--text-3);font-weight:600;margin-top:3px;}
+.routeCost{display:flex;align-items:baseline;gap:8px;margin-top:7px;}
+.routeCost .l{font-size:15px;font-weight:800;letter-spacing:-.2px;}
+.routeCost .f{font-size:11.5px;color:var(--text-3);font-weight:700;}
+.routeCost .d{margin-left:auto;font-size:11.5px;font-weight:800;}
+.routePath{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  font-size:11.5px;font-weight:700;color:var(--text-3);margin-top:3px;
+}
+.routePath .arrow{opacity:.6;}
+
 /* ---------- İtibar kartı (Şirket) ---------- */
 .repCard{
   background:linear-gradient(150deg,var(--surface-2),var(--surface));
@@ -878,7 +906,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 3,
+  VERSION: 4,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -1049,17 +1077,76 @@ const CONFIG = {
          için yavaş tedarikçide sermaye günlerce bağlanır; indirim bu taşıma
          maliyetini karşılayacak kadar derin olmalı, aksi hâlde tedarikçiler
          spot piyasaya karşı hep zararlı kalır. Ortalama indirim teslim
-         süresiyle doğru orantılıdır: hızlı = pahalı, yavaş = ucuz. */
-      { id:"express", name:"Express Supply", desc:"Hızlı teslim",
-        products:["aluminum","copper","wheat"], minQty:2,  leadTime:1, discount:[0.00, 0.04] },
-      { id:"atlas", name:"Atlas Emtia", desc:"Metal tedarik",
-        products:["aluminum","copper"],        minQty:5,  leadTime:2, discount:[0.04, 0.09] },
-      { id:"anadolu", name:"Anadolu Hububat", desc:"Tahıl tedarik",
-        products:["wheat"],                    minQty:10, leadTime:2, discount:[0.04, 0.11] },
-      { id:"prime", name:"Prime Materials", desc:"Toplu tedarik",
-        products:["aluminum","copper","wheat"], minQty:10, leadTime:4, discount:[0.09, 0.15] },
-      { id:"bulk", name:"BulkSource", desc:"Büyük hacim",
-        products:["aluminum","copper","wheat"], minQty:25, leadTime:6, discount:[0.15, 0.22] }
+         süresiyle doğru orantılıdır: hızlı = pahalı, yavaş = ucuz.
+         V3: leadTime artık tedarikçide sabit değil. Toplam teslim süresi
+         prepDays + seçilen rotanın transitDays değeridir. */
+      { id:"express", name:"Express Supply", desc:"Hızlı teslim", hub:"istanbul", prepDays:0,
+        products:["aluminum","copper","wheat"], minQty:2,  discount:[0.00, 0.04] },
+      { id:"atlas", name:"Atlas Emtia", desc:"Metal tedarik", hub:"belgrad", prepDays:0,
+        products:["aluminum","copper"],        minQty:5,  discount:[0.04, 0.09] },
+      { id:"anadolu", name:"Anadolu Hububat", desc:"Tahıl tedarik", hub:"konya", prepDays:1,
+        products:["wheat"],                    minQty:10, discount:[0.04, 0.11] },
+      { id:"prime", name:"Prime Materials", desc:"Toplu tedarik", hub:"kostence", prepDays:1,
+        products:["aluminum","copper","wheat"], minQty:10, discount:[0.09, 0.15] },
+      { id:"bulk", name:"BulkSource", desc:"Büyük hacim", hub:"novorossiysk", prepDays:1,
+        products:["aluminum","copper","wheat"], minQty:25, discount:[0.15, 0.22] }
+    ]
+  },
+
+  /* -------------------------------------------------------------------------
+   * LOJİSTİK (V3 · Part 1)
+   * Ülke > ticaret merkezi (hub) > rota > taşıma yöntemi. Teslim süresi artık
+   * tedarikçide sabit bir sayı değil: prepDays + rota transitDays.
+   * Navlun ton başınadır, bu yüzden ucuz emtiada (buğday) rota seçimi
+   * belirleyici, pahalı emtiada (bakır) neredeyse önemsizdir.
+   * Bu partta gümrük, vergi, sigorta, döviz veya rastgele gecikme YOKTUR.
+   * -----------------------------------------------------------------------*/
+  LOGISTICS: {
+    DESTINATION: "istanbul",     // oyuncunun tek ana deposu
+
+    COUNTRIES: [
+      { id:"turkey",  name:"Türkiye" },
+      { id:"serbia",  name:"Sırbistan" },
+      { id:"romania", name:"Romanya" },
+      { id:"russia",  name:"Rusya" }
+    ],
+
+    HUBS: [
+      { id:"istanbul",     name:"İstanbul",     country:"turkey",  type:"Ana pazar ve depo" },
+      { id:"konya",        name:"Konya",        country:"turkey",  type:"Tahıl tedarik merkezi" },
+      { id:"belgrad",      name:"Belgrad",      country:"serbia",  type:"Balkan metal ticaret merkezi" },
+      { id:"kostence",     name:"Köstence",     country:"romania", type:"Karadeniz ticaret merkezi" },
+      { id:"novorossiysk", name:"Novorossiysk", country:"russia",  type:"Karadeniz toplu emtia merkezi" }
+    ],
+
+    TRANSPORT_MODES: [
+      { id:"road", name:"Karayolu", short:"KARA", desc:"Hızlı, ton başına pahalı" },
+      { id:"rail", name:"Demiryolu", short:"TREN", desc:"Orta hız, orta maliyet" },
+      { id:"sea",  name:"Deniz",     short:"DENİZ", desc:"Yavaş, büyük hacimde ucuz" }
+    ],
+
+    /* primary: V2'deki teslim süresini koruyan varsayılan rota. */
+    ROUTES: [
+      { id:"ist_road", origin:"istanbul", destination:"istanbul", mode:"road",
+        transitDays:1, freightPerTon:4,  primary:true },
+
+      { id:"kon_road", origin:"konya", destination:"istanbul", mode:"road",
+        transitDays:1, freightPerTon:12, primary:true },
+
+      { id:"bel_road", origin:"belgrad", destination:"istanbul", mode:"road",
+        transitDays:2, freightPerTon:28, primary:true },
+      { id:"bel_rail", origin:"belgrad", destination:"istanbul", mode:"rail",
+        transitDays:4, freightPerTon:14 },
+
+      { id:"kos_road", origin:"kostence", destination:"istanbul", mode:"road",
+        transitDays:2, freightPerTon:34 },
+      { id:"kos_sea",  origin:"kostence", destination:"istanbul", mode:"sea",
+        transitDays:3, freightPerTon:16, primary:true },
+
+      { id:"nov_road", origin:"novorossiysk", destination:"istanbul", mode:"road",
+        transitDays:3, freightPerTon:52 },
+      { id:"nov_sea",  origin:"novorossiysk", destination:"istanbul", mode:"sea",
+        transitDays:5, freightPerTon:18, primary:true }
     ]
   }
 };
@@ -1848,6 +1935,83 @@ const ProcurementSystem = {
     return CONFIG.PROCUREMENT.SUPPLIERS.filter((x) => x.products.indexOf(productId) !== -1);
   },
 
+  /* ---------------- lojistik: ülke, hub, rota, taşıma ---------------- */
+  hub(id) { return CONFIG.LOGISTICS.HUBS.find((h) => h.id === id) || null; },
+  country(id) { return CONFIG.LOGISTICS.COUNTRIES.find((c) => c.id === id) || null; },
+  mode(id) { return CONFIG.LOGISTICS.TRANSPORT_MODES.find((m) => m.id === id) || null; },
+  route(id) { return CONFIG.LOGISTICS.ROUTES.find((r) => r.id === id) || null; },
+  destinationHub() { return this.hub(CONFIG.LOGISTICS.DESTINATION); },
+
+  /** Tedarikçinin menşe hub'ı ve ülkesi. */
+  origin(supplierId) {
+    const sup = this.supplier(supplierId);
+    if (!sup) return null;
+    const hub = this.hub(sup.hub);
+    if (!hub) return null;
+    return { hub: hub, country: this.country(hub.country) };
+  },
+
+  /** Tedarikçinin menşeinden ana depoya giden rotalar (hızlıdan yavaşa). */
+  routesFor(supplierId) {
+    const sup = this.supplier(supplierId);
+    if (!sup) return [];
+    return CONFIG.LOGISTICS.ROUTES
+      .filter((r) => r.origin === sup.hub && r.destination === CONFIG.LOGISTICS.DESTINATION)
+      .slice()
+      .sort((a, b) => a.transitDays - b.transitDays);
+  },
+
+  /** Varsayılan rota: V2 teslim süresini koruyan "primary" rota. */
+  defaultRoute(supplierId) {
+    const list = this.routesFor(supplierId);
+    if (!list.length) return null;
+    return list.find((r) => r.primary) || list[0];
+  },
+
+  /** Toplam teslim süresi = tedarikçi hazırlığı + rota transiti. */
+  leadTime(supplierId, routeId) {
+    const sup = this.supplier(supplierId);
+    const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
+    if (!sup || !r) return null;
+    return sup.prepDays + r.transitDays;
+  },
+
+  /** Tedarikçinin sunduğu teslim süresi aralığı (kart rozeti için). */
+  leadRange(supplierId) {
+    const sup = this.supplier(supplierId);
+    const list = this.routesFor(supplierId);
+    if (!sup || !list.length) return null;
+    const days = list.map((r) => sup.prepDays + r.transitDays);
+    return { min: Math.min.apply(null, days), max: Math.max.apply(null, days) };
+  },
+
+  /** Malın ana depoya varmış hâlindeki birim maliyeti: mal + ton başına navlun. */
+  landedUnitCost(supplierId, productId, routeId) {
+    const goods = this.quote(supplierId, productId);
+    const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
+    if (goods === null || !r) return null;
+    return Utils.round2(goods + r.freightPerTon);
+  },
+
+  /** Landed maliyetin spot fiyata göre farkı (negatif = tedarik daha ucuz). */
+  landedDelta(supplierId, productId, routeId) {
+    const landed = this.landedUnitCost(supplierId, productId, routeId);
+    const market = GameState.price(productId);
+    if (landed === null || !market) return 0;
+    return (landed - market) / market;
+  },
+
+  /** Bu ürün için en düşük landed maliyetli rota. */
+  bestRoute(supplierId, productId) {
+    const list = this.routesFor(supplierId);
+    let best = null, bestCost = Infinity;
+    list.forEach((r) => {
+      const c = this.landedUnitCost(supplierId, productId, r.id);
+      if (c !== null && c < bestCost) { bestCost = c; best = r; }
+    });
+    return best;
+  },
+
   /* ---------------- günlük fiyat teklifleri ---------------- */
 
   /** O gün için tüm tedarikçi fiyatlarını üretir (piyasa fiyatından türetilir). */
@@ -1892,41 +2056,66 @@ const ProcurementSystem = {
 
   /* ---------------- sipariş verilebilirlik ---------------- */
 
-  /** Nakit ve kullanılabilir kapasiteye göre şu an alınabilecek en yüksek miktar. */
-  maxOrder(supplierId, productId) {
-    const price = this.quote(supplierId, productId);
-    if (price === null || price <= 0) return 0;
-    const byCash = Math.floor(GameState.data.cash / price);
+  /**
+   * Nakit ve kullanılabilir kapasiteye göre şu an alınabilecek en yüksek miktar.
+   * Nakit hesabı landed maliyet üzerinden yapılır: navlun da peşin ödenir.
+   */
+  maxOrder(supplierId, productId, routeId) {
+    const landed = this.landedUnitCost(supplierId, productId, routeId);
+    if (landed === null || landed <= 0) return 0;
+    const byCash = Math.floor(GameState.data.cash / landed);
     const bySpace = GameState.availableCapacity();
     return Math.max(0, Math.min(byCash, bySpace));
   },
 
-  canOrder(supplierId, productId) {
+  canOrder(supplierId, productId, routeId) {
     const sup = this.supplier(supplierId);
     if (!sup) return false;
-    return this.maxOrder(supplierId, productId) >= sup.minQty;
+    return this.maxOrder(supplierId, productId, routeId) >= sup.minQty;
   },
 
   /* ---------------- sipariş oluşturma ---------------- */
-  order(supplierId, productId, qty) {
+  /**
+   * routeId verilmezse varsayılan (primary) rota kullanılır.
+   * Fiyat, rota, navlun ve süre sipariş anında PO içine kopyalanır: sonradan
+   * CONFIG veya günlük teklif değişse bile açık sipariş etkilenmez.
+   */
+  order(supplierId, productId, qty, routeId) {
     const s = GameState.data;
     const sup = this.supplier(supplierId);
     if (!sup) return { ok: false, reason: "Tedarikçi bulunamadı" };
     if (sup.products.indexOf(productId) === -1) return { ok: false, reason: "Bu tedarikçide bu ürün yok" };
 
+    const route = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
+    if (!route) return { ok: false, reason: "Rota bulunamadı" };
+    if (route.origin !== sup.hub || route.destination !== CONFIG.LOGISTICS.DESTINATION) {
+      return { ok: false, reason: "Bu rota bu tedarikçiye uygun değil" };
+    }
+
     qty = Math.floor(qty);
     if (!(qty > 0)) return { ok: false, reason: "Geçersiz miktar" };
     if (qty < sup.minQty) return { ok: false, reason: "Minimum sipariş " + Utils.qty(sup.minQty) + " ton" };
 
-    const price = this.quote(supplierId, productId);
-    if (price === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
+    const goodsUnitPrice = this.quote(supplierId, productId);
+    if (goodsUnitPrice === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
 
-    const total = Utils.round2(price * qty);
-    if (total > s.cash + 0.001) return { ok: false, reason: "Yetersiz nakit" };
+    const freightPerTon = route.freightPerTon;
+    const goodsCost = Utils.round2(goodsUnitPrice * qty);
+    const freightCost = Utils.round2(freightPerTon * qty);
+    const totalCost = Utils.round2(goodsCost + freightCost);
+    const landedUnitCost = Utils.round2(totalCost / qty);
+
+    if (totalCost > s.cash + 0.001) return { ok: false, reason: "Yetersiz nakit" };
     if (qty > GameState.availableCapacity()) return { ok: false, reason: "Depoda yeterli boş alan yok" };
 
-    // Ödeme sipariş anında yapılır; mal henüz depoya girmez.
-    s.cash = Utils.round2(s.cash - total);
+    const originHub = this.hub(sup.hub);
+    const originCountry = originHub ? this.country(originHub.country) : null;
+    const destHub = this.destinationHub();
+    const mode = this.mode(route.mode);
+    const leadTime = sup.prepDays + route.transitDays;
+
+    // Ödeme (mal + navlun) sipariş anında yapılır; mal henüz depoya girmez.
+    s.cash = Utils.round2(s.cash - totalCost);
 
     const po = {
       id: s.purchaseSeq++,
@@ -1934,22 +2123,47 @@ const ProcurementSystem = {
       supplierName: sup.name,
       product: productId,
       qty: qty,
-      unitPrice: price,           // sipariş anında kilitlenir
-      totalCost: total,
+
+      // menşe / varış anlık görüntüsü
+      originHubId: originHub ? originHub.id : null,
+      originHubName: originHub ? originHub.name : "",
+      originCountryId: originCountry ? originCountry.id : null,
+      originCountryName: originCountry ? originCountry.name : "",
+      destinationHubId: destHub ? destHub.id : null,
+      destinationHubName: destHub ? destHub.name : "",
+
+      // rota / taşıma anlık görüntüsü
+      routeId: route.id,
+      transportMode: route.mode,
+      transportName: mode ? mode.name : route.mode,
+      supplierPrepDays: sup.prepDays,
+      transitDays: route.transitDays,
+      leadTime: leadTime,
+      daysLeft: leadTime,
+
+      // maliyet anlık görüntüsü
+      goodsUnitPrice: goodsUnitPrice,
+      goodsCost: goodsCost,
+      freightPerTon: freightPerTon,
+      freightCost: freightCost,
+      landedUnitCost: landedUnitCost,
+      totalCost: totalCost,
+
       orderedDay: s.day,
-      leadTime: sup.leadTime,
-      daysLeft: sup.leadTime,
-      status: "in_transit"
+      status: "in_transit",
+      legacyLogistics: false
     };
     s.purchaseOrders.push(po);
 
     s.stats.poCount += 1;
     s.stats.poTons += qty;
-    s.stats.poSpent = Utils.round2(s.stats.poSpent + total);
+    s.stats.poSpent = Utils.round2(s.stats.poSpent + totalCost);
 
     TradingSystem.log({
-      type: "po", product: productId, qty: qty, price: price, total: total,
-      supplier: sup.name, leadTime: sup.leadTime, day: s.day
+      type: "po", product: productId, qty: qty, price: goodsUnitPrice, total: totalCost,
+      goodsCost: goodsCost, freightCost: freightCost, landed: landedUnitCost,
+      supplier: sup.name, country: po.originCountryName, transport: po.transportName,
+      leadTime: leadTime, day: s.day
     });
     SaveSystem.save();
     return { ok: true, order: po };
@@ -1967,11 +2181,13 @@ const ProcurementSystem = {
       o.daysLeft -= 1;
       if (o.daysLeft > 0) { stillMoving.push(o); return; }
 
-      // Mal depoya girer: ağırlıklı ortalama maliyet mevcut sistemle hesaplanır.
+      // Mal depoya girer. Stok maliyeti mal bedeli değil LANDED maliyettir:
+      // navlun da ürünün gerçek maliyetinin parçasıdır, böylece rota seçimi
+      // sonraki satışın kâr/zararına doğrudan yansır.
       o.daysLeft = 0;
       o.status = "delivered";
       o.deliveredDay = s.day;
-      InventorySystem.add(o.product, o.qty, o.unitPrice);
+      InventorySystem.add(o.product, o.qty, o.landedUnitCost);
       arrived.push(o);
 
       s.purchaseHistory.unshift(o);
@@ -2163,17 +2379,109 @@ const SaveSystem = {
     out.stats.poTons = Math.max(0, Math.floor((d.stats && d.stats.poTons) || 0));
     out.stats.poSpent = Utils.round2((d.stats && d.stats.poSpent) || 0);
 
-    /* Bir siparişin kanonik maliyeti her zaman qty x unitPrice'tır. Kayıttaki
-       totalCost eksik, sayısal değil, sonsuz, sıfır/negatif ya da miktarla
-       anlamlı şekilde tutarsızsa güvenle yeniden kurulur; böylece bozuk bir
-       kayıt yüzünden yoldaki mal şirket değerinde 0 veya yanlış görünmez.
-       Tutarlı kayıtlar olduğu gibi korunur. */
-    const canonicalTotal = (raw, unitPrice, qty) => {
-      const expected = Utils.round2(unitPrice * qty);
-      if (typeof raw !== "number" || !isFinite(raw) || raw <= 0) return expected;
+    /* Bir tutar her zaman miktardan türetilebilir. Kayıttaki değer eksik,
+       sayısal değil, sonsuz, negatif ya da beklenenle anlamlı şekilde
+       tutarsızsa güvenle yeniden kurulur; böylece bozuk bir kayıt yüzünden
+       yoldaki mal şirket değerinde 0 veya yanlış görünmez. Tutarlı kayıtlar
+       olduğu gibi korunur. */
+    const consistentAmount = (raw, expected) => {
+      if (typeof raw !== "number" || !isFinite(raw) || raw < 0) return expected;
       const stored = Utils.round2(raw);
       const tolerance = Math.max(0.02, expected * 0.005);
       return Math.abs(stored - expected) > tolerance ? expected : stored;
+    };
+    const posNum = (v) => (typeof v === "number" && isFinite(v) && v > 0) ? v : null;
+
+    /** Sipariş nesnesini ProcurementSystem.order() ile aynı alan sırasında kurar. */
+    const buildPo = (base, log) => ({
+      id: base.id,
+      supplierId: base.supplierId,
+      supplierName: base.supplierName,
+      product: base.product,
+      qty: base.qty,
+      originHubId: log.originHubId,
+      originHubName: log.originHubName,
+      originCountryId: log.originCountryId,
+      originCountryName: log.originCountryName,
+      destinationHubId: log.destinationHubId,
+      destinationHubName: log.destinationHubName,
+      routeId: log.routeId,
+      transportMode: log.transportMode,
+      transportName: log.transportName,
+      supplierPrepDays: log.supplierPrepDays,
+      transitDays: log.transitDays,
+      leadTime: base.leadTime,
+      daysLeft: base.daysLeft,
+      goodsUnitPrice: log.goodsUnitPrice,
+      goodsCost: log.goodsCost,
+      freightPerTon: log.freightPerTon,
+      freightCost: log.freightCost,
+      landedUnitCost: log.landedUnitCost,
+      totalCost: log.totalCost,
+      orderedDay: base.orderedDay,
+      status: base.status,
+      legacyLogistics: log.legacyLogistics
+    });
+    const nonNegInt = (v) => (typeof v === "number" && isFinite(v) && v >= 0) ? Math.floor(v) : null;
+
+    /**
+     * V2 siparişlerinde rota/navlun/landed alanları yoktur. Bu kayıtların
+     * ekonomisi ASLA geriye dönük değiştirilmez: navlun 0 kabul edilir,
+     * landed maliyet eski birim fiyata eşitlenir, süre olduğu gibi korunur.
+     * Rota bilgisi bozuk veya eksikse kayıt legacy olarak işaretlenir; maliyet
+     * alanları yine korunur, yalnızca lojistik meta verisi boş bırakılır.
+     */
+    const normalizeLogistics = (o, qty, leadTime) => {
+      const goodsUnitPrice = posNum(o.goodsUnitPrice) || posNum(o.unitPrice);
+      if (goodsUnitPrice === null) return null;
+
+      const freightPerTon = (typeof o.freightPerTon === "number" && isFinite(o.freightPerTon) && o.freightPerTon >= 0)
+        ? Utils.round2(o.freightPerTon) : 0;
+
+      const goodsCost = consistentAmount(
+        (typeof o.goodsCost === "number") ? o.goodsCost : o.totalCost,
+        Utils.round2(goodsUnitPrice * qty));
+      const freightCost = consistentAmount(o.freightCost, Utils.round2(freightPerTon * qty));
+      const totalCost = Utils.round2(goodsCost + freightCost);
+      const landedUnitCost = Utils.round2(totalCost / qty);
+
+      // Rota anlık görüntüsü: CONFIG'de karşılığı olmalı ve tedarikçiyle uyuşmalı.
+      const sup = ProcurementSystem.supplier(o.supplierId);
+      const route = o.routeId ? ProcurementSystem.route(o.routeId) : null;
+      const routeOk = !!(route && sup && route.origin === sup.hub &&
+        route.destination === CONFIG.LOGISTICS.DESTINATION);
+
+      const prep = nonNegInt(o.supplierPrepDays);
+      const supplierPrepDays = (prep !== null && prep <= leadTime) ? prep : 0;
+      const transit = nonNegInt(o.transitDays);
+      const transitDays = (transit !== null && supplierPrepDays + transit === leadTime)
+        ? transit : Math.max(0, leadTime - supplierPrepDays);
+
+      const originHub = sup ? ProcurementSystem.hub(sup.hub) : null;
+      const originCountry = originHub ? ProcurementSystem.country(originHub.country) : null;
+      const destHub = ProcurementSystem.destinationHub();
+      const mode = routeOk ? ProcurementSystem.mode(route.mode) : null;
+
+      return {
+        originHubId: originHub ? originHub.id : null,
+        originHubName: originHub ? originHub.name : "",
+        originCountryId: originCountry ? originCountry.id : null,
+        originCountryName: originCountry ? originCountry.name : "",
+        destinationHubId: destHub ? destHub.id : null,
+        destinationHubName: destHub ? destHub.name : "",
+        routeId: routeOk ? route.id : null,
+        transportMode: routeOk ? route.mode : null,
+        transportName: mode ? mode.name : "",
+        supplierPrepDays: supplierPrepDays,
+        transitDays: transitDays,
+        goodsUnitPrice: Utils.round2(goodsUnitPrice),
+        goodsCost: goodsCost,
+        freightPerTon: freightPerTon,
+        freightCost: freightCost,
+        landedUnitCost: landedUnitCost,
+        totalCost: totalCost,
+        legacyLogistics: !routeOk
+      };
     };
 
     const seenPo = {};
@@ -2181,7 +2489,8 @@ const SaveSystem = {
       if (!o || !validProduct(o.product)) return false;
       const sup = ProcurementSystem.supplier(o.supplierId);
       if (!sup) return false;
-      if (!(o.qty > 0) || !(o.unitPrice > 0)) return false;
+      const price = posNum(o.goodsUnitPrice) || posNum(o.unitPrice);
+      if (!(o.qty > 0) || price === null) return false;
       if (!(o.leadTime >= 1) || !(o.daysLeft >= 1) || o.daysLeft > o.leadTime) return false;
       const id = Math.floor(num(o.id, 0, -1));
       if (id < 0 || seenPo[id]) return false;   // bozuk veya çift id
@@ -2189,21 +2498,23 @@ const SaveSystem = {
       return true;
     }).map((o) => {
       const qty = Math.floor(o.qty);
-      const unitPrice = Utils.round2(o.unitPrice);
-      return {
+      const leadTime = Math.floor(o.leadTime);
+      const log = normalizeLogistics(o, qty, leadTime);
+      if (!log) return null;
+      // Alan sırası ProcurementSystem.order() ile birebir aynı olmalı, aksi
+      // hâlde aynı sipariş yeniden yüklendiğinde farklı bir nesne gibi görünür.
+      return buildPo({
         id: Math.floor(o.id),
         supplierId: o.supplierId,
         supplierName: String(o.supplierName || ProcurementSystem.supplier(o.supplierId).name),
         product: o.product,
         qty: qty,
-        unitPrice: unitPrice,
-        totalCost: canonicalTotal(o.totalCost, unitPrice, qty),
+        leadTime: leadTime,
+        daysLeft: Math.floor(o.daysLeft),   // eski siparişin kalan süresi korunur
         orderedDay: Math.max(1, Math.floor(o.orderedDay || out.day)),
-        leadTime: Math.floor(o.leadTime),
-        daysLeft: Math.floor(o.daysLeft),
         status: "in_transit"
-      };
-    }) : [];
+      }, log);
+    }).filter((o) => o) : [];
 
     /* Geçmiş kayıtlar da aktif siparişlerle aynı titizlikte normalize edilir:
        ham obje taşınmaz, yeni nesne kurulur. Aynı id hem aktif hem geçmişte
@@ -2225,8 +2536,7 @@ const SaveSystem = {
         const qty = Math.floor(num(o.qty, 1, 0));
         if (!(qty > 0)) return;
 
-        const unitPrice = Utils.round2(num(o.unitPrice, 0, 0));
-        if (!(unitPrice > 0)) return;
+        if ((posNum(o.goodsUnitPrice) || posNum(o.unitPrice)) === null) return;
 
         const leadTime = Math.floor(num(o.leadTime, 1, 0));
         if (!(leadTime >= 1)) return;
@@ -2237,21 +2547,25 @@ const SaveSystem = {
         const deliveredDay = Math.floor(num(o.deliveredDay, 1, 0));
         if (!(deliveredDay >= orderedDay)) return;
 
+        const log = normalizeLogistics(o, qty, leadTime);
+        if (!log) return;
+
         seenHistory[id] = true;
-        out.purchaseHistory.push({
+        // Teslim edilmiş kayıt, tickDay'in ürettiği şekle birebir uymalı:
+        // aktif sipariş alanları + sonda deliveredDay.
+        const rec = buildPo({
           id: id,
           supplierId: sup.id,
           supplierName: String(o.supplierName || sup.name),
           product: o.product,
           qty: qty,
-          unitPrice: unitPrice,
-          totalCost: canonicalTotal(o.totalCost, unitPrice, qty),
-          orderedDay: orderedDay,
           leadTime: leadTime,
           daysLeft: 0,
-          status: "delivered",
-          deliveredDay: deliveredDay
-        });
+          orderedDay: orderedDay,
+          status: "delivered"
+        }, log);
+        rec.deliveredDay = deliveredDay;
+        out.purchaseHistory.push(rec);
       });
     }
 
@@ -2719,9 +3033,11 @@ const UI = {
     if (GameState.data.purchaseOrders.length) {
       const byProduct = {};
       GameState.data.purchaseOrders.forEach((o) => {
-        if (!byProduct[o.product]) byProduct[o.product] = { qty: 0, soon: o.daysLeft };
+        if (!byProduct[o.product]) byProduct[o.product] = { qty: 0, soon: o.daysLeft, from: {} };
         byProduct[o.product].qty += o.qty;
         byProduct[o.product].soon = Math.min(byProduct[o.product].soon, o.daysLeft);
+        const c = o.originCountryName || "";
+        if (c) byProduct[o.product].from[c] = (byProduct[o.product].from[c] || 0) + o.qty;
       });
       html += '<div class="sectionTitle"><h2>Yoldaki Mallar</h2>' +
         '<span class="hint">' + GameState.data.purchaseOrders.length + ' sipariş</span></div>';
@@ -2731,7 +3047,10 @@ const UI = {
         return '<div class="poCard" data-action="goto" data-tab="trades" data-seg="supply" role="button">' +
           '<div class="poTop">' + this.productIcon(pr) +
             '<div style="flex:1;min-width:0"><div class="poName">' + pr.name + '</div>' +
-            '<div class="poSub num">' + Utils.qty(row.qty) + ' ton yolda</div></div>' +
+            '<div class="poSub num">' + Utils.qty(row.qty) + ' ton yolda' +
+              (Object.keys(row.from).length
+                ? ' · ' + Object.keys(row.from).map((c) => Utils.escape(c) + "'dan " + Utils.qty(row.from[c]) + ' ton').join(', ')
+                : '') + '</div></div>' +
             '<span class="lead' + (row.soon <= 1 ? " fast" : "") + '">' + row.soon + ' GÜN</span>' +
           '</div>' +
         '</div>';
@@ -3054,10 +3373,17 @@ const UI = {
       html += s.purchaseOrders.slice().sort((a, b) => a.daysLeft - b.daysLeft).map((o) => {
         const op = GameState.product(o.product);
         const prog = o.leadTime > 0 ? (o.leadTime - o.daysLeft) / o.leadTime : 1;
+        const path = o.originHubName
+          ? Utils.escape(o.originHubName) + (o.originCountryName ? ', ' + Utils.escape(o.originCountryName) : '') +
+            ' <span class="arrow">→</span> ' + Utils.escape(o.destinationHubName || '')
+          : '';
         return '<div class="poCard">' +
           '<div class="poTop">' + this.productIcon(op) +
-            '<div style="flex:1;min-width:0"><div class="poName">' + Utils.escape(o.supplierName) + '</div>' +
-            '<div class="poSub num">' + Utils.qty(o.qty) + ' ton ' + op.name + ' · ' + Utils.price(o.unitPrice) + '/ton</div></div>' +
+            '<div style="flex:1;min-width:0"><div class="poName">' + Utils.escape(o.supplierName) +
+              (o.transportName ? ' <span class="muted3">· ' + Utils.escape(o.transportName) + '</span>' : '') + '</div>' +
+            (path ? '<div class="routePath">' + path + '</div>' : '') +
+            '<div class="poSub num">' + Utils.qty(o.qty) + ' ton ' + op.name +
+              ' · mal ' + Utils.price(o.goodsUnitPrice) + ' · landed ' + Utils.price(o.landedUnitCost) + '</div></div>' +
             '<div style="text-align:right"><div class="lead' + (o.daysLeft <= 1 ? " fast" : "") + '">' +
               o.daysLeft + ' GÜN</div>' +
               '<div class="poSub num" style="margin-top:4px">' + Utils.money(o.totalCost) + '</div></div>' +
@@ -3096,48 +3422,64 @@ const UI = {
     '</div>';
 
     // Tedarikçiler (ucuzdan pahalıya)
-    const list = ProcurementSystem.suppliersFor(p.id).slice().sort((a, b) => {
-      const qa = ProcurementSystem.quote(a.id, p.id), qb = ProcurementSystem.quote(b.id, p.id);
-      return (qa === null ? 1e9 : qa) - (qb === null ? 1e9 : qb);
-    });
+    const landedOf = (sup) => {
+      const r = ProcurementSystem.bestRoute(sup.id, p.id);
+      const c = r ? ProcurementSystem.landedUnitCost(sup.id, p.id, r.id) : null;
+      return c === null ? 1e9 : c;
+    };
+    const list = ProcurementSystem.suppliersFor(p.id).slice().sort((a, b) => landedOf(a) - landedOf(b));
 
     html += list.map((sup) => {
       const price = ProcurementSystem.quote(sup.id, p.id);
       if (price === null) return "";
-      const delta = ProcurementSystem.delta(sup.id, p.id);
-      const max = ProcurementSystem.maxOrder(sup.id, p.id);
+      const origin = ProcurementSystem.origin(sup.id);
+      const routes = ProcurementSystem.routesFor(sup.id);
+      const range = ProcurementSystem.leadRange(sup.id);
+      const best = ProcurementSystem.bestRoute(sup.id, p.id);
+      const bestLanded = best ? ProcurementSystem.landedUnitCost(sup.id, p.id, best.id) : null;
+      const landedDelta = best ? ProcurementSystem.landedDelta(sup.id, p.id, best.id) : 0;
+      const max = ProcurementSystem.maxOrder(sup.id, p.id, best ? best.id : null);
       const canOrder = max >= sup.minQty;
-      const fit = ProcurementSystem.contractFit(p.id, sup.leadTime);
+      const fastest = routes.length ? sup.prepDays + routes[0].transitDays : null;
+      const fit = ProcurementSystem.contractFit(p.id, fastest);
 
       let blocker = "";
-      if (!canOrder) {
+      if (!canOrder && bestLanded !== null) {
         const need = sup.minQty;
         blocker = (GameState.availableCapacity() < need)
           ? '<div class="warnLine">Minimum sipariş için ' + Utils.qty(need - GameState.availableCapacity()) +
             ' ton daha boş alan gerekiyor</div>'
           : '<div class="warnLine soft">Minimum ' + Utils.qty(need) + ' ton için ' +
-            Utils.money(need * price - GameState.data.cash) + ' daha nakit gerekiyor</div>';
+            Utils.money(need * bestLanded - GameState.data.cash) + ' daha nakit gerekiyor</div>';
       }
+
+      const leadLabel = range
+        ? (range.min === range.max ? range.min + ' GÜN' : range.min + '–' + range.max + ' GÜN')
+        : '—';
 
       return '<div class="supCard">' +
         '<div class="supHead">' +
           '<div style="flex:1;min-width:0"><div class="supName">' + Utils.escape(sup.name) + '</div>' +
-          '<div class="supDesc">' + Utils.escape(sup.desc) + ' · min ' + Utils.qty(sup.minQty) + ' ton</div></div>' +
-          '<span class="lead ' + (sup.leadTime <= 1 ? "fast" : sup.leadTime >= 4 ? "slow" : "") + '">' +
-            sup.leadTime + ' GÜN</span>' +
+          '<div class="supDesc">' +
+            (origin ? Utils.escape(origin.hub.name) + ', ' + Utils.escape(origin.country.name) + ' · ' : '') +
+            'min ' + Utils.qty(sup.minQty) + ' ton</div></div>' +
+          '<span class="lead ' + (range && range.min <= 1 ? "fast" : range && range.min >= 4 ? "slow" : "") + '">' +
+            leadLabel + '</span>' +
         '</div>' +
         '<div class="supPrice"><span class="v num">' + Utils.price(price) + '</span>' +
-          '<span class="u">/ton</span>' +
-          '<span class="dlt ' + (delta > 0.0005 ? "up" : delta < -0.0005 ? "" : "flat") + '">' +
-            Utils.pct(delta) + ' spot</span></div>' +
+          '<span class="u">/ton mal</span>' +
+          '<span class="dlt ' + (landedDelta > 0.0005 ? "up" : landedDelta < -0.0005 ? "" : "flat") + '">' +
+            Utils.pct(landedDelta) + ' landed</span></div>' +
         '<div class="ctrRows previewBox" style="margin:9px 0 0;border:0;background:transparent;padding:0">' +
-          '<div class="pRow"><span class="k">Şu an alınabilir</span><span class="v num">' + Utils.qty(max) + ' ton</span></div>' +
-          (canOrder
-            ? '<div class="pRow"><span class="k">' + Utils.qty(sup.minQty) + ' ton maliyeti</span>' +
-              '<span class="v num">' + Utils.money(sup.minQty * price) + '</span></div>'
+          (bestLanded !== null
+            ? '<div class="pRow"><span class="k">En ucuz landed (' +
+              Utils.escape(best.__modeName || (ProcurementSystem.mode(best.mode) || {}).name || best.mode) + ')</span>' +
+              '<span class="v num">' + Utils.price(bestLanded) + '/ton</span></div>'
             : "") +
+          '<div class="pRow"><span class="k">Rota seçeneği</span><span class="v num">' + routes.length + ' adet</span></div>' +
+          '<div class="pRow"><span class="k">Şu an alınabilir</span><span class="v num">' + Utils.qty(max) + ' ton</span></div>' +
         '</div>' +
-        this.fitLineHTML(fit, sup.leadTime) +
+        this.fitLineHTML(fit, fastest) +
         blocker +
         '<div class="mktBtns">' +
           '<button class="btn primary" data-action="poOpen" data-sup="' + sup.id + '" data-id="' + p.id + '"' +
@@ -3155,7 +3497,8 @@ const UI = {
           '<div class="txIcon buy">↓</div>' +
           '<div class="txMain"><div class="txTitle">' + Utils.escape(o.supplierName) + '</div>' +
           '<div class="txSub num">Gün ' + (o.deliveredDay || o.orderedDay) + ' · ' + Utils.qty(o.qty) + ' ton ' +
-            (op ? op.name : "") + ' @ ' + Utils.price(o.unitPrice) + '</div></div>' +
+            (op ? op.name : "") + ' @ ' + Utils.price(o.landedUnitCost) + ' landed' +
+            (o.transportName ? ' · ' + Utils.escape(o.transportName) : '') + '</div></div>' +
           '<div class="txAmt"><div class="a num">' + Utils.money(o.totalCost) + '</div>' +
           '<div class="b muted3">teslim</div></div>' +
         '</div>';
@@ -3197,9 +3540,11 @@ const UI = {
       if (t.type === "po") {
         return '<div class="txRow">' +
           '<div class="txIcon buy">⇥</div>' +
-          '<div class="txMain"><div class="txTitle">Tedarik Siparişi · ' + Utils.escape(t.supplier || "") + '</div>' +
+          '<div class="txMain"><div class="txTitle">Tedarik Siparişi · ' + Utils.escape(t.supplier || "") +
+            (t.country ? ' · ' + Utils.escape(t.country) : '') + '</div>' +
           '<div class="txSub num">Gün ' + t.day + ' · ' + Utils.qty(t.qty) + ' ton ' + name +
-            ' @ ' + Utils.price(t.price) + ' · ' + t.leadTime + ' gün</div></div>' +
+            (t.transport ? ' · ' + Utils.escape(t.transport) : '') + ' · ' + t.leadTime + ' gün' +
+            (t.freightCost > 0 ? ' · navlun ' + Utils.money(t.freightCost) : '') + '</div></div>' +
           '<div class="txAmt"><div class="a num">-' + Utils.money(t.total) + '</div>' +
           '<div class="b muted3">yolda</div></div>' +
         '</div>';
@@ -3340,10 +3685,14 @@ Object.assign(UI, {
   openPoSheet(supplierId, productId) {
     const sup = ProcurementSystem.supplier(supplierId);
     if (!sup) return;
-    const max = ProcurementSystem.maxOrder(supplierId, productId);
+    // Varsayılan olarak en ucuz landed maliyetli rota seçili gelir.
+    const best = ProcurementSystem.bestRoute(supplierId, productId) ||
+                 ProcurementSystem.defaultRoute(supplierId);
+    const routeId = best ? best.id : null;
+    const max = ProcurementSystem.maxOrder(supplierId, productId, routeId);
     this.sheet = {
       open: true, mode: "po", productId: productId, supplierId: supplierId,
-      qty: Math.min(sup.minQty, max), confirm: null
+      routeId: routeId, qty: Math.min(sup.minQty, max), confirm: null
     };
     this.renderSheet();
     this.showSheet();
@@ -3375,7 +3724,7 @@ Object.assign(UI, {
   sheetMax() {
     const st = this.sheet;
     if (!st.productId) return 0;
-    if (st.mode === "po") return ProcurementSystem.maxOrder(st.supplierId, st.productId);
+    if (st.mode === "po") return ProcurementSystem.maxOrder(st.supplierId, st.productId, st.routeId);
     return st.mode === "buy" ? TradingSystem.maxBuy(st.productId) : TradingSystem.maxSell(st.productId);
   },
 
@@ -3391,6 +3740,12 @@ Object.assign(UI, {
       case "dec":   Audio_.haptic(5); this.setQty(this.sheet.qty - 1); break;
       case "confirm": this.confirmTrade(); break;
       case "poConfirm": this.confirmPurchaseOrder(); break;
+      case "poRoute":
+        Audio_.tap(); Audio_.haptic(6);
+        this.sheet.routeId = ds.route;
+        this.sheet.qty = Utils.clamp(this.sheet.qty, 0, this.sheetMax());
+        this.renderSheet();
+        break;
       case "confirmYes":
         var cb = this.sheet.confirm && this.sheet.confirm.onConfirm;
         this.closeSheet();
@@ -3490,14 +3845,60 @@ Object.assign(UI, {
     const p = GameState.product(st.productId);
     if (!sup || !p) return;
 
-    const price = ProcurementSystem.quote(sup.id, p.id);
+    const goodsUnitPrice = ProcurementSystem.quote(sup.id, p.id);
     const market = GameState.price(p.id);
-    const delta = ProcurementSystem.delta(sup.id, p.id);
+    const origin = ProcurementSystem.origin(sup.id);
+    const dest = ProcurementSystem.destinationHub();
+    const routes = ProcurementSystem.routesFor(sup.id);
+    const route = ProcurementSystem.route(st.routeId) || ProcurementSystem.defaultRoute(sup.id);
+
+    if (!route || goodsUnitPrice === null) {
+      this.el.sheet.innerHTML = '<div class="grabber"></div>' +
+        '<div class="empty"><div class="t">Bu tedarikçi için rota bulunamadı</div></div>' +
+        '<div class="mktBtns"><button class="btn ghost" data-sheet="close">KAPAT</button></div>';
+      return;
+    }
+
+    const freightPerTon = route.freightPerTon;
+    const landedUnitCost = Utils.round2(goodsUnitPrice + freightPerTon);
+    const leadTime = sup.prepDays + route.transitDays;
     const max = this.sheetMax();
     const qty = Utils.clamp(st.qty, 0, max);
-    const total = Utils.round2((price || 0) * qty);
-    const fit = ProcurementSystem.contractFit(p.id, sup.leadTime);
+
+    const goodsCost = Utils.round2(goodsUnitPrice * qty);
+    const freightCost = Utils.round2(freightPerTon * qty);
+    const totalCost = Utils.round2(goodsCost + freightCost);
+    const spotCost = Utils.round2(market * qty);
+    const saving = Utils.round2(spotCost - totalCost);
+    const landedDelta = market > 0 ? (landedUnitCost - market) / market : 0;
+
+    const fit = ProcurementSystem.contractFit(p.id, leadTime);
     const avail = GameState.availableCapacity();
+
+    // Rota seçenekleri: her biri kendi süresi, navlunu ve landed maliyetiyle
+    const routeHTML = routes.map((r) => {
+      const mode = ProcurementSystem.mode(r.mode);
+      const landed = Utils.round2(goodsUnitPrice + r.freightPerTon);
+      const total = sup.prepDays + r.transitDays;
+      const rf = ProcurementSystem.contractFit(p.id, total);
+      const d = market > 0 ? (landed - market) / market : 0;
+      return '<button class="routeOpt' + (r.id === route.id ? " active" : "") +
+          '" data-sheet="poRoute" data-route="' + r.id + '">' +
+        '<div class="routeTop">' +
+          '<span class="routeMode">' + Utils.escape(mode ? mode.name : r.mode) + '</span>' +
+          '<span class="routeDays">' + total + ' GÜN</span>' +
+        '</div>' +
+        '<div class="routeSub num">' + r.transitDays + ' gün transit + ' + sup.prepDays + ' gün hazırlık' +
+          (rf.state === "ok" ? ' · sözleşmeye yetişir'
+            : rf.state === "grace" ? ' · telafi süresine yetişir'
+            : rf.state === "late" ? ' · sözleşmeye yetişmez' : '') + '</div>' +
+        '<div class="routeCost">' +
+          '<span class="l num">' + Utils.price(landed) + '</span>' +
+          '<span class="f num">landed · navlun ' + Utils.price(r.freightPerTon) + '/t</span>' +
+          '<span class="d num ' + (d < 0 ? "up" : d > 0 ? "down" : "") + '">' + Utils.pct(d) + '</span>' +
+        '</div>' +
+      '</button>';
+    }).join("");
 
     const presets = [1, 5, 10, 25];
     const chips = presets.map((n) =>
@@ -3515,10 +3916,20 @@ Object.assign(UI, {
       '<div class="grabber"></div>' +
       '<div class="shHead">' +
         this.productIcon(p) +
-        '<div><div class="shName">' + Utils.escape(sup.name) + '</div>' +
-        '<div class="shSub num">' + p.name + ' · ' + Utils.price(price || 0) + '/ton · ' + sup.leadTime + ' gün</div></div>' +
+        '<div style="flex:1;min-width:0"><div class="shName">' + Utils.escape(sup.name) + '</div>' +
+        '<div class="routePath">' +
+          '<span>' + Utils.escape(origin ? origin.hub.name : "") + ', ' +
+            Utils.escape(origin ? origin.country.name : "") + '</span>' +
+          '<span class="arrow">→</span>' +
+          '<span>' + Utils.escape(dest ? dest.name : "") + '</span>' +
+        '</div></div>' +
         '<span class="shTag buy">SİPARİŞ</span>' +
       '</div>' +
+
+      '<div class="sectionTitle" style="margin:4px 0 8px"><h2>Taşıma Yöntemi</h2>' +
+        '<span class="hint">' + p.name + ' · ' + Utils.price(goodsUnitPrice) + '/ton mal</span></div>' +
+      '<div class="routeList">' + routeHTML + '</div>' +
+
       '<div class="qtyChips">' + chips + '</div>' +
       '<div class="stepper">' +
         '<button class="stepBtn" data-sheet="dec"' + (qty <= 0 ? " disabled" : "") + '>−</button>' +
@@ -3526,20 +3937,25 @@ Object.assign(UI, {
         '<div class="u">' + p.unit + ' · min ' + Utils.qty(sup.minQty) + ' · max ' + Utils.qty(max) + '</div></div>' +
         '<button class="stepBtn" data-sheet="inc"' + (qty >= max ? " disabled" : "") + '>+</button>' +
       '</div>' +
+
       '<div class="previewBox">' +
-        '<div class="pRow"><span class="k">Tedarikçi birim fiyatı</span><span class="v num">' + Utils.price(price || 0) + '</span></div>' +
-        '<div class="pRow"><span class="k">Spot piyasa fiyatı</span><span class="v num">' + Utils.price(market) + '</span></div>' +
-        '<div class="pRow"><span class="k">Spota göre fark</span><span class="v num ' +
-          (delta < 0 ? "up" : delta > 0 ? "down" : "") + '">' + Utils.pct(delta) + '</span></div>' +
-        '<div class="pRow"><span class="k">Teslim süresi</span><span class="v">' + sup.leadTime + ' gün</span></div>' +
-        '<div class="pRow total"><span class="k">Toplam maliyet</span><span class="v num">' + Utils.money(total) + '</span></div>' +
+        '<div class="pRow"><span class="k">Mal bedeli</span><span class="v num">' + Utils.money(goodsCost) + '</span></div>' +
+        '<div class="pRow"><span class="k">Navlun (' + Utils.price(freightPerTon) + '/ton)</span>' +
+          '<span class="v num">' + Utils.money(freightCost) + '</span></div>' +
+        '<div class="pRow total"><span class="k">Toplam maliyet</span><span class="v num">' + Utils.money(totalCost) + '</span></div>' +
+        '<div class="pRow"><span class="k">Landed birim maliyet</span><span class="v num">' + Utils.price(landedUnitCost) + '</span></div>' +
+        '<div class="pRow"><span class="k">Spot birim fiyat</span><span class="v num">' + Utils.price(market) + '</span></div>' +
+        '<div class="pRow"><span class="k">Spot yerine ' + (saving >= 0 ? "tasarruf" : "ek maliyet") + '</span>' +
+          '<span class="v num ' + (saving > 0 ? "up" : saving < 0 ? "down" : "") + '">' +
+          Utils.moneySigned(saving) + ' (' + Utils.pct(-landedDelta) + ')</span></div>' +
+        '<div class="pRow"><span class="k">Toplam teslim süresi</span><span class="v">' + leadTime + ' gün</span></div>' +
         '<div class="pRow"><span class="k">Sipariş sonrası nakit</span><span class="v num ' +
-          (GameState.data.cash - total < 0 ? "down" : "") + '">' + Utils.money(GameState.data.cash - total) + '</span></div>' +
+          (GameState.data.cash - totalCost < 0 ? "down" : "") + '">' + Utils.money(GameState.data.cash - totalCost) + '</span></div>' +
         '<div class="pRow"><span class="k">Rezerve edilecek alan</span><span class="v num">' + Utils.qty(qty) + ' ton</span></div>' +
         '<div class="pRow"><span class="k">Kalan kullanılabilir kapasite</span><span class="v num">' +
           Utils.qty(Math.max(0, avail - qty)) + ' ton</span></div>' +
       '</div>' +
-      this.fitLineHTML(fit, sup.leadTime) +
+      this.fitLineHTML(fit, leadTime) +
       '<div class="shErr">' + err + '</div>' +
       '<div class="mktBtns" style="margin-top:10px">' +
         '<button class="btn ghost" data-sheet="close">VAZGEÇ</button>' +
@@ -3554,7 +3970,7 @@ Object.assign(UI, {
     const p = GameState.product(st.productId);
     if (!sup || !p) return;
 
-    const res = ProcurementSystem.order(sup.id, p.id, st.qty);
+    const res = ProcurementSystem.order(sup.id, p.id, st.qty, st.routeId);
     if (!res.ok) {
       Audio_.error(); Audio_.haptic(30);
       this.toast(res.reason, "err");
@@ -3565,8 +3981,8 @@ Object.assign(UI, {
     Audio_.buy(); Audio_.haptic(14);
     this.fx("neutral", "-" + Utils.money(res.order.totalCost),
       Utils.qty(res.order.qty) + " TON · " + res.order.leadTime + " GÜN");
-    this.toast(Utils.qty(res.order.qty) + " ton " + p.name + " sipariş edildi · " +
-      sup.name + " · " + res.order.leadTime + " gün", "ok");
+    this.toast(Utils.qty(res.order.qty) + " ton " + p.name + " · " + res.order.transportName +
+      " · " + res.order.leadTime + " gün", "ok");
     this.render();
   },
 

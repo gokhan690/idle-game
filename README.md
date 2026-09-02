@@ -1,4 +1,4 @@
-# Trade Empire — V2 (Part 2)
+# Trade Empire — V3 (Part 1)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -18,7 +18,10 @@ hareket etmeye devam eder. Malı zamanında bulup teslim etmek sizin işiniz.
 
 Malı nereden alacağınız da bir karardır: spot piyasa anında teslim eder ama
 pahalıdır; tedarikçiler daha ucuzdur fakat mal yolda gün harcar ve parayı
-sipariş anında ödersiniz.
+sipariş anında ödersiniz. V3 ile teslim süresi sabit bir sayı olmaktan çıktı —
+tedarikçinin menşe ülkesi, seçtiğiniz taşıma yöntemi ve ton başına navlun
+birlikte hem süreyi hem de malın depoya varmış hâlindeki gerçek maliyetini
+(landed cost) belirliyor.
 
 - **Piyasa** — fiyatlar, günlük değişim, trend grafiği, alış/satış, süresi
   daralan sözleşme uyarıları
@@ -105,16 +108,47 @@ günlük tedarikçi teklifi (fiyat piyasadan türetilir, gün boyunca sabit)
   karşılaştırılır ve "yetişir / telafi süresine yetişir / yetişmez" olarak
   gösterilir. Bu yalnızca karar desteğidir; sipariş engellenmez.
 
-### Tedarikçiler
+### Tedarikçiler ve menşe
 
-| Tedarikçi | Ürünler | Min | Teslim | Spot altı indirim |
-| --- | --- | --- | --- | --- |
-| Spot Piyasa | hepsi | 1 ton | anında | — |
-| Express Supply | hepsi | 2 ton | 1 gün | %0–4 |
-| Atlas Emtia | alüminyum, bakır | 5 ton | 2 gün | %4–9 |
-| Anadolu Hububat | buğday | 10 ton | 2 gün | %4–11 |
-| Prime Materials | hepsi | 10 ton | 4 gün | %9–15 |
-| BulkSource | hepsi | 25 ton | 6 gün | %15–22 |
+| Tedarikçi | Menşe | Ürünler | Min | Hazırlık | Spot altı indirim |
+| --- | --- | --- | --- | --- | --- |
+| Spot Piyasa | İstanbul, Türkiye | hepsi | 1 ton | anında | — |
+| Express Supply | İstanbul, Türkiye | hepsi | 2 ton | 0 gün | %0–4 |
+| Atlas Emtia | Belgrad, Sırbistan | alüminyum, bakır | 5 ton | 0 gün | %4–9 |
+| Anadolu Hububat | Konya, Türkiye | buğday | 10 ton | 1 gün | %4–11 |
+| Prime Materials | Köstence, Romanya | hepsi | 10 ton | 1 gün | %9–15 |
+| BulkSource | Novorossiysk, Rusya | hepsi | 25 ton | 1 gün | %15–22 |
+
+### Rotalar ve taşıma
+
+Toplam teslim süresi = **tedarikçi hazırlığı + rota transiti**. Navlun ton
+başınadır; bu yüzden ucuz emtiada (buğday) rota seçimi belirleyici, pahalı
+emtiada (bakır) neredeyse önemsizdir.
+
+| Rota | Taşıma | Transit | Navlun/ton |
+| --- | --- | --- | --- |
+| İstanbul → İstanbul | Karayolu | 1 gün | $4 |
+| Konya → İstanbul | Karayolu | 1 gün | $12 |
+| Belgrad → İstanbul | Karayolu | 2 gün | $28 |
+| Belgrad → İstanbul | Demiryolu | 4 gün | $14 |
+| Köstence → İstanbul | Karayolu | 2 gün | $34 |
+| Köstence → İstanbul | Deniz | 3 gün | $16 |
+| Novorossiysk → İstanbul | Karayolu | 3 gün | $52 |
+| Novorossiysk → İstanbul | Deniz | 5 gün | $18 |
+
+### Landed cost
+
+```
+goodsCost      = goodsUnitPrice x qty
+freightCost    = freightPerTon  x qty
+totalCost      = goodsCost + freightCost        (sipariş anında peşin ödenir)
+landedUnitCost = totalCost / qty                (stok maliyeti budur)
+```
+
+Mal depoya ulaştığında ağırlıklı ortalama maliyete **landed** birim maliyetle
+girer, yani rota seçimi sonraki satışın kâr/zararına doğrudan yansır. Fiyat,
+rota, navlun ve süre sipariş anında PO içine kopyalanır; sonradan CONFIG veya
+günlük teklif değişse bile açık sipariş etkilenmez.
 
 İndirimler simülasyonla kalibre edildi. Sipariş bedeli peşin ödendiği için
 yavaş tedarikçide sermaye günlerce bağlanır; indirim bu taşıma maliyetini
@@ -154,7 +188,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `CompanySystem` | Ünvan/seviye ve depo yükseltmeleri |
 | `ReputationSystem` | 0-100 itibar, kademeler ve etkileri |
 | `ContractSystem` | Müşteri talepleri, sözleşme yaşam döngüsü, ceza ve teslimat |
-| `ProcurementSystem` | Tedarikçiler, günlük fiyat teklifleri, satın alma siparişleri, yoldaki mallar |
+| `ProcurementSystem` | Tedarikçiler, ülke/hub/rota/taşıma, günlük teklifler, landed cost, satın alma siparişleri, yoldaki mallar |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -172,19 +206,23 @@ erişilebilirdir.
 
 - **V1** — spot ticaret, depo, piyasa modeli, haberler ✅
 - **V2 Part 1** — müşteriler, sözleşmeler, itibar ✅ *(bu sürüm)*
-- **V2 Part 2** — tedarikçiler, satın alma siparişleri, teslim süresi ✅ *(bu sürüm)*
-- **V3+** — ülkeler/şehirler, lojistik, çalışanlar, banka/kredi, fabrikalar,
-  rakip şirketler, ihaleler
+- **V2 Part 2** — tedarikçiler, satın alma siparişleri, teslim süresi ✅
+- **V3 Part 1** — ülkeler, ticaret merkezleri, rotalar, taşıma yöntemleri,
+  navlun ve landed cost ✅ *(bu sürüm)*
+- **V3 Part 2+** — navlun piyasası, gümrük/vergi, sigorta, kendi araç filosu,
+  birden fazla depo, çalışanlar, banka/kredi, fabrikalar, rakip şirketler
 
-Ülkeler, şehirler, rotalar, limanlar, kamyon/gemi, navlun, gümrük, vergi,
-fabrikalar, bankalar, çalışanlar, rakip şirketler ve multiplayer bu sürümde
-**bilinçli olarak yoktur**. Sözleşme sistemi, sonradan
+Rastgele taşıma gecikmesi, liman yoğunluğu, hava/savaş olayları, rota
+kapanması, navlun piyasası, gümrük, vergi, sigorta, Incoterms, kendi kamyon/
+gemi filosu, birden fazla depo, çalışanlar, bankalar, kredi, döviz, fabrikalar
+ve rakip şirketler bu sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
+çalışır. Sözleşme sistemi, sonradan
 eklenecek geminin/fabrikanın/çalışanın oyunda gerçek bir sebebi olsun diye önce
 kuruldu.
 
 ## Test
 
-Playwright ile altı ayrı takım çalışır (toplam 466 kontrol):
+Playwright ile yedi ayrı takım çalışır (toplam 594 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -202,3 +240,7 @@ Playwright ile altı ayrı takım çalışır (toplam 466 kontrol):
 - `test-v5.js` — kayıt sağlamlığı: bozuk `totalCost` varyantlarının kanonik
   maliyete kurulması, geçmiş kayıtlarının normalize edilmesi, çift ve çakışan
   id temizliği, `purchaseSeq` güvenliği
+- `test-v6.js` — uluslararası tedarik: ülke/hub/rota modeli, hazırlık + transit
+  toplamı, navlun ve landed cost zinciri, sipariş anında rota/fiyat kilidi,
+  landed maliyetle stok girişi, sözleşme-rota zamanlaması, eski V2 siparişlerin
+  ekonomik olarak korunması, bozuk rota verisi ve 320–390 px yerleşim
