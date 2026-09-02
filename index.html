@@ -731,6 +731,7 @@ main{
 .poSub{font-size:11.5px;color:var(--text-3);font-weight:700;margin-top:2px;}
 .poBar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px;}
 .poFill{height:100%;border-radius:999px;background:linear-gradient(90deg,#4C7DFF,#7A5CFF);transition:width .5s ease;}
+.poFill.late{background:linear-gradient(90deg,#E9C46A,#F0876A);}
 
 /* depo kapasite çubuğu: kullanılan + rezerve */
 .capBar.split{display:flex;}
@@ -766,6 +767,63 @@ main{
   font-size:11.5px;font-weight:700;color:var(--text-3);margin-top:3px;
 }
 .routePath .arrow{opacity:.6;}
+
+/* ---------- Lojistik risk ---------- */
+.buf{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 8px;border-radius:8px;white-space:nowrap;
+  font-size:11px;font-weight:800;letter-spacing:.2px;
+}
+.buf.ok{background:var(--up-dim);color:var(--up);}
+.buf.tight{background:rgba(233,196,106,.16);color:var(--gold);}
+.buf.none{background:rgba(255,122,92,.16);color:#FFA98F;}
+.buf.miss{background:var(--down-dim);color:var(--down);}
+.rel{font-size:11.5px;font-weight:700;color:var(--text-3);}
+.rel b{color:var(--text-2);}
+
+.condCard{
+  display:flex;align-items:flex-start;gap:10px;
+  background:linear-gradient(160deg,rgba(233,196,106,.10),var(--surface));
+  border:1px solid rgba(233,196,106,.28);
+  border-radius:14px;padding:11px 12px;margin-bottom:9px;
+}
+.condCard.high{background:linear-gradient(160deg,rgba(255,92,124,.10),var(--surface));border-color:rgba(255,92,124,.30);}
+.condIcon{
+  width:32px;height:32px;flex:0 0 auto;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  background:rgba(233,196,106,.16);color:var(--gold);
+}
+.condCard.high .condIcon{background:rgba(255,92,124,.16);color:var(--down);}
+.condName{font-size:13.5px;font-weight:800;}
+.condSub{font-size:11.5px;color:var(--text-3);font-weight:600;margin-top:2px;line-height:1.35;}
+.condTag{
+  margin-left:auto;flex:0 0 auto;padding:4px 8px;border-radius:8px;white-space:nowrap;
+  font-size:10.5px;font-weight:800;background:rgba(233,196,106,.16);color:var(--gold);
+}
+.condCard.high .condTag{background:var(--down-dim);color:var(--down);}
+.allClear{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 12px;border-radius:14px;margin-bottom:9px;
+  background:rgba(34,208,126,.08);border:1px solid rgba(34,208,126,.22);
+  font-size:12.5px;font-weight:700;color:#7FE7B4;
+}
+
+.etaRow{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+  font-size:11.5px;font-weight:700;color:var(--text-3);
+}
+.etaTag{padding:3px 8px;border-radius:7px;background:rgba(255,255,255,.06);}
+.etaTag.late{background:var(--down-dim);color:var(--down);}
+.etaTag.onTime{background:var(--up-dim);color:var(--up);}
+.evtRow{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;
+}
+.evtRow:last-child{border-bottom:0;}
+.evtRow .d{color:var(--text-3);font-weight:700;min-width:52px;}
+.evtRow .t{flex:1;font-weight:700;}
+.evtRow .n{font-weight:800;color:var(--down);}
 
 /* ---------- İtibar kartı (Şirket) ---------- */
 .repCard{
@@ -906,7 +964,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 4,
+  VERSION: 5,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -1112,11 +1170,16 @@ const CONFIG = {
     ],
 
     HUBS: [
-      { id:"istanbul",     name:"İstanbul",     country:"turkey",  type:"Ana pazar ve depo" },
-      { id:"konya",        name:"Konya",        country:"turkey",  type:"Tahıl tedarik merkezi" },
-      { id:"belgrad",      name:"Belgrad",      country:"serbia",  type:"Balkan metal ticaret merkezi" },
-      { id:"kostence",     name:"Köstence",     country:"romania", type:"Karadeniz ticaret merkezi" },
-      { id:"novorossiysk", name:"Novorossiysk", country:"russia",  type:"Karadeniz toplu emtia merkezi" }
+      { id:"istanbul",     name:"İstanbul",     country:"turkey",  type:"Ana pazar ve depo",
+        nodeType:"port_hub" },
+      { id:"konya",        name:"Konya",        country:"turkey",  type:"Tahıl tedarik merkezi",
+        nodeType:"inland_terminal" },
+      { id:"belgrad",      name:"Belgrad",      country:"serbia",  type:"Balkan metal ticaret merkezi",
+        nodeType:"rail_terminal" },
+      { id:"kostence",     name:"Köstence",     country:"romania", type:"Karadeniz ticaret merkezi",
+        nodeType:"port" },
+      { id:"novorossiysk", name:"Novorossiysk", country:"russia",  type:"Karadeniz toplu emtia merkezi",
+        nodeType:"port" }
     ],
 
     TRANSPORT_MODES: [
@@ -1125,28 +1188,73 @@ const CONFIG = {
       { id:"sea",  name:"Deniz",     short:"DENİZ", desc:"Yavaş, büyük hacimde ucuz" }
     ],
 
-    /* primary: V2'deki teslim süresini koruyan varsayılan rota. */
+    /* primary: V2'deki teslim süresini koruyan varsayılan rota.
+       dailyRisk: rotada bir günde lojistik aksama çıkma olasılığı. Gösterilen
+       güvenilirlik bundan türetilir: (1 - dailyRisk) ^ toplamTeslimSüresi.
+       Yani ekrandaki yüzde dekoratif değil, modelin kendi tahminidir. */
     ROUTES: [
       { id:"ist_road", origin:"istanbul", destination:"istanbul", mode:"road",
-        transitDays:1, freightPerTon:4,  primary:true },
+        transitDays:1, freightPerTon:4,  dailyRisk:0.0100, primary:true },
 
       { id:"kon_road", origin:"konya", destination:"istanbul", mode:"road",
-        transitDays:1, freightPerTon:12, primary:true },
+        transitDays:1, freightPerTon:12, dailyRisk:0.0151, primary:true },
 
       { id:"bel_road", origin:"belgrad", destination:"istanbul", mode:"road",
-        transitDays:2, freightPerTon:28, primary:true },
+        transitDays:2, freightPerTon:28, dailyRisk:0.0305, primary:true },
       { id:"bel_rail", origin:"belgrad", destination:"istanbul", mode:"rail",
-        transitDays:4, freightPerTon:14 },
+        transitDays:4, freightPerTon:14, dailyRisk:0.0127 },
 
       { id:"kos_road", origin:"kostence", destination:"istanbul", mode:"road",
-        transitDays:2, freightPerTon:34 },
+        transitDays:2, freightPerTon:34, dailyRisk:0.0205 },
       { id:"kos_sea",  origin:"kostence", destination:"istanbul", mode:"sea",
-        transitDays:3, freightPerTon:16, primary:true },
+        transitDays:3, freightPerTon:16, dailyRisk:0.0207, primary:true },
 
       { id:"nov_road", origin:"novorossiysk", destination:"istanbul", mode:"road",
-        transitDays:3, freightPerTon:52 },
+        transitDays:3, freightPerTon:52, dailyRisk:0.0233 },
       { id:"nov_sea",  origin:"novorossiysk", destination:"istanbul", mode:"sea",
-        transitDays:5, freightPerTon:18, primary:true }
+        transitDays:5, freightPerTon:18, dailyRisk:0.0191, primary:true }
+    ]
+  },
+
+  /* -------------------------------------------------------------------------
+   * LOJİSTİK RİSKİ (V3 · Part 2)
+   * Planlanan süre artık kesin varış değil. Olaylar PO başına ayrı zar değil,
+   * ROTA BAZLI GÜNLÜK DÜNYA DURUMU olarak üretilir: aynı hattaki bütün
+   * sevkiyatlar aynı gerçek koşuldan etkilenir.
+   * Bu partta gümrük, vergi, sigorta, navlun piyasası veya siyasi risk YOKTUR.
+   * -----------------------------------------------------------------------*/
+  LOGISTICS_RISK: {
+    MAX_DELAY_PER_PO: 3,     // bir sevkiyatın toplam gecikme tavanı
+    HISTORY_LEN: 20,         // lojistik olay geçmişi
+    PO_EVENT_LOG_LEN: 6,     // sipariş başına saklanan olay sayısı
+
+    /* Olay havuzu. weight, aynı mod içindeki göreli sıklıktır;
+       delayDays 2 olanlar bilinçli olarak nadirdir.
+       duration: koşulun ekranda görünür kaldığı ve yeni siparişlerin planına
+       dahil edildiği gün sayısı. */
+    EVENTS: [
+      { id:"sea_congestion", mode:"sea", weight:34, delayDays:1, duration:2, severity:"orta",
+        title:"Liman yoğunluğu", body:"Limanda bekleyen gemi sayısı arttı, tahliye sırası uzadı." },
+      { id:"sea_weather", mode:"sea", weight:30, delayDays:1, duration:1, severity:"orta",
+        title:"Kötü hava", body:"Fırtına nedeniyle sefer programı kaydı." },
+      { id:"sea_schedule", mode:"sea", weight:24, delayDays:1, duration:1, severity:"düşük",
+        title:"Gemi programı aksadı", body:"Hat programındaki değişiklik yüklemeyi geciktirdi." },
+      { id:"sea_jam", mode:"sea", weight:12, delayDays:2, duration:2, severity:"yüksek",
+        title:"Ciddi liman sıkışıklığı", body:"Terminal kapasitesi doldu, tahliye ciddi biçimde yavaşladı." },
+
+      { id:"road_border", mode:"road", weight:38, delayDays:1, duration:2, severity:"orta",
+        title:"Sınır kapısında yoğunluk", body:"Gümrük hattında araç kuyruğu uzadı." },
+      { id:"road_closure", mode:"road", weight:34, delayDays:1, duration:1, severity:"orta",
+        title:"Yol kapanması", body:"Güzergâhta trafik aksaması yaşanıyor." },
+      { id:"road_heavy", mode:"road", weight:12, delayDays:2, duration:2, severity:"yüksek",
+        title:"Ağır gecikme", body:"Güzergâhtaki aksama beklenenden uzun sürüyor." },
+
+      { id:"rail_terminal", mode:"rail", weight:38, delayDays:1, duration:2, severity:"orta",
+        title:"Terminal yoğunluğu", body:"Aktarma terminalinde vagon sırası oluştu." },
+      { id:"rail_capacity", mode:"rail", weight:34, delayDays:1, duration:1, severity:"orta",
+        title:"Hat kapasitesi sorunu", body:"Hat üzerindeki kapasite kısıtı seferleri yavaşlattı." },
+      { id:"rail_transfer", mode:"rail", weight:12, delayDays:2, duration:2, severity:"yüksek",
+        title:"Aktarma gecikmesi", body:"Aktarma noktasındaki arıza sevkiyatı geciktirdi." }
     ]
   }
 };
@@ -1239,6 +1347,11 @@ const GameState = {
       supplierQuotes: null, // { day, prices: { supplierId: { productId: fiyat } } }
       purchaseOrders: [],   // yoldaki satın alma siparişleri
       purchaseHistory: [],  // teslim alınmış siparişler
+
+      /* V3 Part 2 · Lojistik riski */
+      logisticsSeq: 1,
+      logisticsConditions: [],  // aktif hat durumları
+      logisticsHistory: [],     // lojistik olay geçmişi
 
       stats: {
         realizedProfit: 0,
@@ -1976,6 +2089,33 @@ const ProcurementSystem = {
     return sup.prepDays + r.transitDays;
   },
 
+  /**
+   * Bugün sipariş verilirse söz verilen süre. Hatta BİLİNEN aktif bir aksama
+   * varsa bu süreye dahildir: oyuncunun sipariş anında gördüğü sorun sürpriz
+   * gecikme sayılmaz, plana yazılır. Siparişten sonra çıkan olay ise gerçek
+   * (beklenmeyen) gecikmedir.
+   */
+  quotedLeadTime(supplierId, routeId) {
+    const base = this.leadTime(supplierId, routeId);
+    if (base === null) return null;
+    const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
+    return base + (r ? LogisticsSystem.plannedPenalty(r.id) : 0);
+  },
+
+  /**
+   * Sözleşme zaman tamponu: teslim süresi ile en yakın sözleşmenin son günü
+   * arasındaki gün farkı. Sözleşme yoksa null.
+   *   buffer >= 1 : rahat
+   *   buffer === 0: son güne yetişir, tampon yok
+   *   buffer < 0  : planlanan sürede yetişmez
+   */
+  contractBuffer(productId, leadTime) {
+    const c = this.nearestContract(productId);
+    if (!c || leadTime === null) return null;
+    const limit = c.status === "overdue" ? c.graceLeft - 1 : c.daysLeft;
+    return limit - leadTime;
+  },
+
   /** Tedarikçinin sunduğu teslim süresi aralığı (kart rozeti için). */
   leadRange(supplierId) {
     const sup = this.supplier(supplierId);
@@ -2112,7 +2252,10 @@ const ProcurementSystem = {
     const originCountry = originHub ? this.country(originHub.country) : null;
     const destHub = this.destinationHub();
     const mode = this.mode(route.mode);
-    const leadTime = sup.prepDays + route.transitDays;
+    // Hatta bilinen aksama varsa plana dahil edilir (sürpriz değil, bilgi).
+    const knownDelay = LogisticsSystem.plannedPenalty(route.id);
+    const transitDays = route.transitDays + knownDelay;
+    const leadTime = sup.prepDays + transitDays;
 
     // Ödeme (mal + navlun) sipariş anında yapılır; mal henüz depoya girmez.
     s.cash = Utils.round2(s.cash - totalCost);
@@ -2137,7 +2280,7 @@ const ProcurementSystem = {
       transportMode: route.mode,
       transportName: mode ? mode.name : route.mode,
       supplierPrepDays: sup.prepDays,
-      transitDays: route.transitDays,
+      transitDays: transitDays,
       leadTime: leadTime,
       daysLeft: leadTime,
 
@@ -2151,7 +2294,15 @@ const ProcurementSystem = {
 
       orderedDay: s.day,
       status: "in_transit",
-      legacyLogistics: false
+      legacyLogistics: false,
+      orphanedRouteSnapshot: false,
+
+      // Planlanan süre sabittir; gerçekleşen ETA olaylarla kayabilir.
+      plannedLeadTime: leadTime,
+      plannedArrivalDay: s.day + leadTime,
+      currentEtaDay: s.day + leadTime,
+      totalDelayDays: 0,
+      logisticsEvents: []
     };
     s.purchaseOrders.push(po);
 
@@ -2227,6 +2378,185 @@ const ProcurementSystem = {
       return { state: leadTime <= c.graceLeft - 1 ? "grace" : "late", contract: c };
     }
     return { state: leadTime <= c.daysLeft ? "ok" : "late", contract: c };
+  }
+};
+
+/* ===========================================================================
+ * LogisticsSystem — rota güvenilirliği, hat durumları ve gerçek gecikmeler
+ * ---------------------------------------------------------------------------
+ * Piyasa haberleri (EventSystem) emtia FİYATINI etkiler.
+ * Lojistik olayları (bu modül) sevkiyat SÜRESİNİ etkiler. İkisi ayrı state,
+ * ayrı havuz, ayrı akış.
+ *
+ * Model: olay PO başına zar değil, ROTA BAZLI GÜNLÜK DÜNYA DURUMUDUR.
+ *   her gün her rota için tek zar  ->  koşul oluşur
+ *   koşul o gün hattaki UYGUN tüm aktif siparişlere bir kez gecikme uygular
+ *   koşul birkaç gün görünür kalır; bu sürede verilen YENİ siparişler
+ *   gecikmeyi baştan planına yazar (bilinen sorun sürprize dönüşmez)
+ *
+ * Gösterilen güvenilirlik modelin kendi tahminidir:
+ *   reliability = (1 - dailyRisk) ^ toplamTeslimSüresi
+ * çünkü bir sevkiyat yolda kaldığı her gün tam olarak bir zara maruz kalır.
+ * =========================================================================*/
+const LogisticsSystem = {
+  /* ---------------- güvenilirlik ---------------- */
+
+  /** Rotanın günlük aksama olasılığı. */
+  dailyRisk(routeId) {
+    const r = ProcurementSystem.route(routeId);
+    if (!r) return 0;
+    return (typeof r.dailyRisk === "number" && isFinite(r.dailyRisk)) ? Utils.clamp(r.dailyRisk, 0, 1) : 0;
+  },
+
+  /** Belirli tedarikçi + rota için sevkiyatın zamanında varma olasılığı. */
+  reliability(supplierId, routeId) {
+    const lead = ProcurementSystem.leadTime(supplierId, routeId);
+    if (lead === null) return null;
+    return Math.pow(1 - this.dailyRisk(routeId), Math.max(0, lead));
+  },
+
+  /* ---------------- aktif hat durumları ---------------- */
+  conditions() { return GameState.data.logisticsConditions; },
+  conditionFor(routeId) {
+    return GameState.data.logisticsConditions.find((c) => c.routeId === routeId) || null;
+  },
+  /** Bilinen aktif koşulun yeni siparişlerin planına ekleyeceği gün. */
+  plannedPenalty(routeId) {
+    const c = this.conditionFor(routeId);
+    return c ? c.delayDays : 0;
+  },
+  hasAny() { return GameState.data.logisticsConditions.length > 0; },
+
+  /* ---------------- olay seçimi ---------------- */
+  pickEvent(mode) {
+    const pool = CONFIG.LOGISTICS_RISK.EVENTS.filter((e) => e.mode === mode);
+    if (!pool.length) return null;
+    const total = pool.reduce((s, e) => s + e.weight, 0);
+    let roll = GameState.rand() * total;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= pool[i].weight;
+      if (roll <= 0) return pool[i];
+    }
+    return pool[pool.length - 1];
+  },
+
+  /** Bu sipariş lojistik olaylarına konu olabilir mi? */
+  eligible(po, routeId) {
+    return po.status === "in_transit" &&
+      !po.legacyLogistics && !po.orphanedRouteSnapshot &&
+      po.routeId === routeId && po.daysLeft > 0 &&
+      po.totalDelayDays < CONFIG.LOGISTICS_RISK.MAX_DELAY_PER_PO;
+  },
+
+  /** Koşulu hattaki uygun siparişlere bir kez uygular. */
+  applyCondition(cond) {
+    const s = GameState.data;
+    const cap = CONFIG.LOGISTICS_RISK.MAX_DELAY_PER_PO;
+    const affected = [];
+
+    s.purchaseOrders.forEach((po) => {
+      if (!this.eligible(po, cond.routeId)) return;
+      // Aynı sipariş aynı gün ikinci kez gecikmesin.
+      if (po.__lastDelayDay === s.day) return;
+
+      const room = cap - po.totalDelayDays;
+      const add = Math.min(cond.delayDays, room);
+      if (add <= 0) return;
+
+      po.daysLeft += add;
+      po.totalDelayDays += add;
+      po.currentEtaDay += add;
+      po.__lastDelayDay = s.day;
+
+      po.logisticsEvents.push({
+        day: s.day, eventId: cond.eventId, title: cond.title, delayDays: add
+      });
+      if (po.logisticsEvents.length > CONFIG.LOGISTICS_RISK.PO_EVENT_LOG_LEN) po.logisticsEvents.shift();
+      affected.push(po);
+    });
+    return affected;
+  },
+
+  /* ---------------- gün ilerlemesi ---------------- */
+
+  /**
+   * Süresi dolan koşulları düşürür, her rota için tek zar atar, oluşan
+   * koşulları uygular. Yalnız nextDay akışında çağrılır: reload olay üretmez.
+   */
+  tickDay() {
+    const s = GameState.data;
+
+    // süresi biten koşullar
+    s.logisticsConditions.forEach((c) => { c.daysLeft -= 1; });
+    s.logisticsConditions = s.logisticsConditions.filter((c) => c.daysLeft > 0);
+
+    const results = [];
+    CONFIG.LOGISTICS.ROUTES.forEach((route) => {
+      const risk = this.dailyRisk(route.id);
+      if (risk <= 0) return;
+      if (GameState.rand() >= risk) return;
+
+      const def = this.pickEvent(route.mode);
+      if (!def) return;
+
+      const hub = ProcurementSystem.hub(route.origin);
+      const mode = ProcurementSystem.mode(route.mode);
+      const cond = {
+        id: s.logisticsSeq++,
+        eventId: def.id,
+        title: def.title,
+        body: def.body,
+        routeId: route.id,
+        hubId: route.origin,
+        hubName: hub ? hub.name : "",
+        transportMode: route.mode,
+        transportName: mode ? mode.name : route.mode,
+        delayDays: def.delayDays,
+        severity: def.severity,
+        createdDay: s.day,
+        duration: def.duration,
+        daysLeft: def.duration
+      };
+
+      // Aynı rotada aynı gün ikinci koşul oluşmaz.
+      const existing = s.logisticsConditions.findIndex((c) => c.routeId === route.id);
+      if (existing >= 0) s.logisticsConditions.splice(existing, 1);
+      s.logisticsConditions.push(cond);
+
+      const affected = this.applyCondition(cond);
+      this.log({
+        day: s.day, eventId: cond.eventId, title: cond.title, hubName: cond.hubName,
+        transportName: cond.transportName, delayDays: cond.delayDays, shipments: affected.length
+      });
+      results.push({ condition: cond, affected: affected.length });
+    });
+
+    // geçici işaret kaydedilmesin
+    s.purchaseOrders.forEach((po) => { delete po.__lastDelayDay; });
+    return results;
+  },
+
+  log(entry) {
+    const s = GameState.data;
+    s.logisticsHistory.unshift(entry);
+    if (s.logisticsHistory.length > CONFIG.LOGISTICS_RISK.HISTORY_LEN) s.logisticsHistory.pop();
+  },
+
+  /* ---------------- sözleşme riski ---------------- */
+
+  /**
+   * Yoldaki siparişin GÜNCEL kalan süresi, aynı üründeki en yakın sözleşmeye
+   * hâlâ yetişiyor mu? (Sipariş öncesi karar için ProcurementSystem.contractFit
+   * kullanılır; bu, sipariş verildikten sonraki canlı durumdur.)
+   */
+  shipmentRisk(po) {
+    if (po.status !== "in_transit") return { state: "none", contract: null };
+    const c = ProcurementSystem.nearestContract(po.product);
+    if (!c) return { state: "none", contract: null };
+    if (c.status === "overdue") {
+      return { state: po.daysLeft <= c.graceLeft - 1 ? "grace" : "late", contract: c };
+    }
+    return { state: po.daysLeft <= c.daysLeft ? "ok" : "late", contract: c };
   }
 };
 
@@ -2392,6 +2722,35 @@ const SaveSystem = {
     };
     const posNum = (v) => (typeof v === "number" && isFinite(v) && v > 0) ? v : null;
 
+    /**
+     * Planlanan süre / ETA alanları. Eski kayıtlarda yoksa güvenle kurulur ve
+     * mevcut daysLeft ASLA değiştirilmez. currentEtaDay her zaman
+     * "bugün + kalan gün" ile tutarlı tutulur.
+     */
+    const plannedFields = (o, leadTime, daysLeft, orderedDay, refDay, delivered) => {
+      const planned = nonNegInt(o.plannedLeadTime);
+      const plannedLeadTime = (planned !== null && planned >= 1) ? planned : leadTime;
+      const arrival = nonNegInt(o.plannedArrivalDay);
+      const plannedArrivalDay = (arrival !== null && arrival >= orderedDay)
+        ? arrival : orderedDay + plannedLeadTime;
+      // Kayıtta geçerli bir ETA varsa korunur (spec: mevcut ETA değiştirilmez);
+      // yoksa "bugün + kalan gün" ile güvenle kurulur.
+      const eta = nonNegInt(o.currentEtaDay);
+      const currentEtaDay = (eta !== null && eta >= orderedDay)
+        ? eta : (delivered ? refDay : refDay + daysLeft);
+      const delay = nonNegInt(o.totalDelayDays);
+      const totalDelayDays = (delay !== null)
+        ? Math.min(delay, CONFIG.LOGISTICS_RISK.MAX_DELAY_PER_PO)
+        : Math.max(0, currentEtaDay - plannedArrivalDay);
+      const events = Array.isArray(o.logisticsEvents)
+        ? o.logisticsEvents.filter((e) => e && typeof e.day === "number" && e.delayDays > 0)
+          .slice(-CONFIG.LOGISTICS_RISK.PO_EVENT_LOG_LEN)
+          .map((e) => ({ day: Math.floor(e.day), eventId: String(e.eventId || ""),
+                         title: String(e.title || ""), delayDays: Math.floor(e.delayDays) }))
+        : [];
+      return { plannedLeadTime, plannedArrivalDay, currentEtaDay, totalDelayDays, logisticsEvents: events };
+    };
+
     /** Sipariş nesnesini ProcurementSystem.order() ile aynı alan sırasında kurar. */
     const buildPo = (base, log) => ({
       id: base.id,
@@ -2420,7 +2779,13 @@ const SaveSystem = {
       totalCost: log.totalCost,
       orderedDay: base.orderedDay,
       status: base.status,
-      legacyLogistics: log.legacyLogistics
+      legacyLogistics: log.legacyLogistics,
+      orphanedRouteSnapshot: log.orphanedRouteSnapshot,
+      plannedLeadTime: base.plannedLeadTime,
+      plannedArrivalDay: base.plannedArrivalDay,
+      currentEtaDay: base.currentEtaDay,
+      totalDelayDays: base.totalDelayDays,
+      logisticsEvents: base.logisticsEvents
     });
     const nonNegInt = (v) => (typeof v === "number" && isFinite(v) && v >= 0) ? Math.floor(v) : null;
 
@@ -2430,6 +2795,22 @@ const SaveSystem = {
      * landed maliyet eski birim fiyata eşitlenir, süre olduğu gibi korunur.
      * Rota bilgisi bozuk veya eksikse kayıt legacy olarak işaretlenir; maliyet
      * alanları yine korunur, yalnızca lojistik meta verisi boş bırakılır.
+     */
+    const str = (v) => (typeof v === "string" && v.length) ? v : null;
+
+    /**
+     * Sipariş anlık görüntüsünü normalize eder.
+     *
+     * Kural: GEÇERLİ bir V3 snapshot'ı güncel CONFIG'den yeniden türetilmez.
+     * Menşe, varış, rota, taşıma, süre ve maliyet alanları kayıtta ne yazıyorsa
+     * o korunur; CONFIG yalnızca eksik/bozuk alanı doğrulamak ve güvenli
+     * fallback üretmek için kullanılır. Böylece tedarikçinin menşei sonradan
+     * değişse bile yola çıkmış sipariş "Novorossiysk → İstanbul" kalır.
+     *
+     * legacyLogistics        : rota anlık görüntüsü hiç yok (V2 kaydı) veya kullanılamaz
+     * orphanedRouteSnapshot  : rota anlık görüntüsü sağlam ama CONFIG'de artık yok
+     * Her iki durumda da sipariş silinmez, ekonomisi ve süresi aynen sürer;
+     * yalnızca yeni lojistik olaylarına konu olmaz.
      */
     const normalizeLogistics = (o, qty, leadTime) => {
       const goodsUnitPrice = posNum(o.goodsUnitPrice) || posNum(o.unitPrice);
@@ -2445,11 +2826,41 @@ const SaveSystem = {
       const totalCost = Utils.round2(goodsCost + freightCost);
       const landedUnitCost = Utils.round2(totalCost / qty);
 
-      // Rota anlık görüntüsü: CONFIG'de karşılığı olmalı ve tedarikçiyle uyuşmalı.
       const sup = ProcurementSystem.supplier(o.supplierId);
-      const route = o.routeId ? ProcurementSystem.route(o.routeId) : null;
-      const routeOk = !!(route && sup && route.origin === sup.hub &&
+
+      // --- menşe: önce snapshot, yoksa tedarikçiden türet ---
+      const snapHub = ProcurementSystem.hub(str(o.originHubId));
+      const fallbackHub = sup ? ProcurementSystem.hub(sup.hub) : null;
+      const originHubId = str(o.originHubId) || (fallbackHub ? fallbackHub.id : null);
+      const originHubName = str(o.originHubName) ||
+        (snapHub ? snapHub.name : fallbackHub ? fallbackHub.name : "");
+      const snapCountry = ProcurementSystem.country(str(o.originCountryId));
+      const fallbackCountry = (snapHub || fallbackHub)
+        ? ProcurementSystem.country((snapHub || fallbackHub).country) : null;
+      const originCountryId = str(o.originCountryId) || (fallbackCountry ? fallbackCountry.id : null);
+      const originCountryName = str(o.originCountryName) ||
+        (snapCountry ? snapCountry.name : fallbackCountry ? fallbackCountry.name : "");
+
+      const destHub = ProcurementSystem.destinationHub();
+      const destinationHubId = str(o.destinationHubId) || (destHub ? destHub.id : null);
+      const destinationHubName = str(o.destinationHubName) ||
+        (ProcurementSystem.hub(destinationHubId) ? ProcurementSystem.hub(destinationHubId).name
+          : destHub ? destHub.name : "");
+
+      // --- rota: snapshot korunur, CONFIG yalnızca doğrulama için ---
+      const routeId = str(o.routeId);
+      const route = routeId ? ProcurementSystem.route(routeId) : null;
+      // Rota CONFIG'de varsa menşe ile tutarlı olmalı; yoksa snapshot yetim kalmıştır.
+      const routeMatches = !!(route && route.origin === originHubId &&
         route.destination === CONFIG.LOGISTICS.DESTINATION);
+      const orphaned = !!(routeId && !route);
+      const usable = routeMatches || orphaned;
+
+      const snapMode = str(o.transportMode);
+      const transportMode = usable ? (snapMode || (route ? route.mode : null)) : null;
+      const modeCfg = ProcurementSystem.mode(transportMode);
+      const transportName = usable
+        ? (str(o.transportName) || (modeCfg ? modeCfg.name : transportMode || "")) : "";
 
       const prep = nonNegInt(o.supplierPrepDays);
       const supplierPrepDays = (prep !== null && prep <= leadTime) ? prep : 0;
@@ -2457,21 +2868,16 @@ const SaveSystem = {
       const transitDays = (transit !== null && supplierPrepDays + transit === leadTime)
         ? transit : Math.max(0, leadTime - supplierPrepDays);
 
-      const originHub = sup ? ProcurementSystem.hub(sup.hub) : null;
-      const originCountry = originHub ? ProcurementSystem.country(originHub.country) : null;
-      const destHub = ProcurementSystem.destinationHub();
-      const mode = routeOk ? ProcurementSystem.mode(route.mode) : null;
-
       return {
-        originHubId: originHub ? originHub.id : null,
-        originHubName: originHub ? originHub.name : "",
-        originCountryId: originCountry ? originCountry.id : null,
-        originCountryName: originCountry ? originCountry.name : "",
-        destinationHubId: destHub ? destHub.id : null,
-        destinationHubName: destHub ? destHub.name : "",
-        routeId: routeOk ? route.id : null,
-        transportMode: routeOk ? route.mode : null,
-        transportName: mode ? mode.name : "",
+        originHubId: originHubId,
+        originHubName: originHubName,
+        originCountryId: originCountryId,
+        originCountryName: originCountryName,
+        destinationHubId: destinationHubId,
+        destinationHubName: destinationHubName,
+        routeId: usable ? routeId : null,
+        transportMode: transportMode,
+        transportName: transportName,
         supplierPrepDays: supplierPrepDays,
         transitDays: transitDays,
         goodsUnitPrice: Utils.round2(goodsUnitPrice),
@@ -2480,7 +2886,8 @@ const SaveSystem = {
         freightCost: freightCost,
         landedUnitCost: landedUnitCost,
         totalCost: totalCost,
-        legacyLogistics: !routeOk
+        legacyLogistics: !usable,
+        orphanedRouteSnapshot: orphaned
       };
     };
 
@@ -2503,17 +2910,19 @@ const SaveSystem = {
       if (!log) return null;
       // Alan sırası ProcurementSystem.order() ile birebir aynı olmalı, aksi
       // hâlde aynı sipariş yeniden yüklendiğinde farklı bir nesne gibi görünür.
-      return buildPo({
+      const daysLeft = Math.floor(o.daysLeft);   // eski siparişin kalan süresi korunur
+      const orderedDay = Math.max(1, Math.floor(o.orderedDay || out.day));
+      return buildPo(Object.assign({
         id: Math.floor(o.id),
         supplierId: o.supplierId,
         supplierName: String(o.supplierName || ProcurementSystem.supplier(o.supplierId).name),
         product: o.product,
         qty: qty,
         leadTime: leadTime,
-        daysLeft: Math.floor(o.daysLeft),   // eski siparişin kalan süresi korunur
-        orderedDay: Math.max(1, Math.floor(o.orderedDay || out.day)),
+        daysLeft: daysLeft,
+        orderedDay: orderedDay,
         status: "in_transit"
-      }, log);
+      }, plannedFields(o, leadTime, daysLeft, orderedDay, out.day, false)), log);
     }).filter((o) => o) : [];
 
     /* Geçmiş kayıtlar da aktif siparişlerle aynı titizlikte normalize edilir:
@@ -2553,7 +2962,7 @@ const SaveSystem = {
         seenHistory[id] = true;
         // Teslim edilmiş kayıt, tickDay'in ürettiği şekle birebir uymalı:
         // aktif sipariş alanları + sonda deliveredDay.
-        const rec = buildPo({
+        const rec = buildPo(Object.assign({
           id: id,
           supplierId: sup.id,
           supplierName: String(o.supplierName || sup.name),
@@ -2563,7 +2972,7 @@ const SaveSystem = {
           daysLeft: 0,
           orderedDay: orderedDay,
           status: "delivered"
-        }, log);
+        }, plannedFields(o, leadTime, 0, orderedDay, deliveredDay, true)), log);
         rec.deliveredDay = deliveredDay;
         out.purchaseHistory.push(rec);
       });
@@ -2572,6 +2981,37 @@ const SaveSystem = {
     let maxPo = 0;
     out.purchaseOrders.concat(out.purchaseHistory).forEach((o) => { if (o.id > maxPo) maxPo = o.id; });
     out.purchaseSeq = Math.max(Math.floor(num(d.purchaseSeq, 1, 1)), maxPo + 1);
+
+    /* --- V3 Part 2: lojistik durumları (eski kayıtlarda yok) --- */
+    const validRoute = (id) => !!ProcurementSystem.route(id);
+    out.logisticsConditions = Array.isArray(d.logisticsConditions)
+      ? d.logisticsConditions.filter((c) => c && validRoute(c.routeId) &&
+          c.daysLeft > 0 && c.delayDays > 0).map((c) => {
+          const hub = ProcurementSystem.hub(c.hubId);
+          const mode = ProcurementSystem.mode(c.transportMode);
+          return {
+            id: Math.floor(num(c.id, 0, 0)),
+            eventId: String(c.eventId || ""),
+            title: String(c.title || ""),
+            body: String(c.body || ""),
+            routeId: c.routeId,
+            hubId: c.hubId,
+            hubName: String(c.hubName || (hub ? hub.name : "")),
+            transportMode: c.transportMode,
+            transportName: String(c.transportName || (mode ? mode.name : "")),
+            delayDays: Math.min(Math.floor(c.delayDays), CONFIG.LOGISTICS_RISK.MAX_DELAY_PER_PO),
+            severity: String(c.severity || "orta"),
+            createdDay: Math.max(1, Math.floor(num(c.createdDay, 1, out.day))),
+            duration: Math.max(1, Math.floor(num(c.duration, 1, 1))),
+            daysLeft: Math.max(1, Math.floor(c.daysLeft))
+          };
+        })
+      : [];
+    out.logisticsHistory = Array.isArray(d.logisticsHistory)
+      ? d.logisticsHistory.slice(0, CONFIG.LOGISTICS_RISK.HISTORY_LEN) : [];
+    let maxCond = 0;
+    out.logisticsConditions.forEach((c) => { if (c.id > maxCond) maxCond = c.id; });
+    out.logisticsSeq = Math.max(Math.floor(num(d.logisticsSeq, 1, 1)), maxCond + 1);
 
     // Günlük teklifler: yalnızca aynı güne ait ve geçerli olanlar korunur;
     // aksi hâlde açılışta yeniden üretilir (aynı gün reload fiyatı değiştirmez).
@@ -2725,6 +3165,7 @@ const UI = {
       case "seg":     Audio_.tap(); this.tradeSegment = ds.seg; this.el.main.scrollTop = 0; this.render(); break;
       case "procProduct": Audio_.tap(); this.procProduct = ds.id; this.render(); break;
       case "poOpen":      Audio_.tap(); this.openPoSheet(ds.sup, ds.id); break;
+      case "poDetail":    Audio_.tap(); this.openPoDetail(parseInt(ds.id, 10)); break;
       case "offerAccept":    this.acceptOffer(parseInt(ds.id, 10)); break;
       case "offerReject":    this.rejectOffer(parseInt(ds.id, 10)); break;
       case "contractDeliver":this.deliverContract(parseInt(ds.id, 10)); break;
@@ -3359,6 +3800,30 @@ const UI = {
     return '<div class="fitLine late">⚠ En yakın sözleşmeye yetişmez · ' + head + '</div>';
   },
 
+  /** Sözleşme zaman tamponu rozeti. */
+  bufferChip(productId, leadTime) {
+    const b = ProcurementSystem.contractBuffer(productId, leadTime);
+    if (b === null) return "";
+    if (b >= 2) return '<span class="buf ok">✓ ' + b + ' GÜN TAMPON</span>';
+    if (b === 1) return '<span class="buf tight">1 GÜN TAMPON</span>';
+    if (b === 0) return '<span class="buf none">⚠ SON GÜNE YETİŞİR · TAMPON YOK</span>';
+    return '<span class="buf miss">✕ PLANLANAN SÜREDE YETİŞMEZ</span>';
+  },
+
+  /** Aktif hat durumu kartı. */
+  conditionCardHTML(c) {
+    const high = c.severity === "yüksek";
+    return '<div class="condCard' + (high ? " high" : "") + '">' +
+      '<div class="condIcon">!</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="condName">' + Utils.escape(c.hubName) + ' · ' + Utils.escape(c.transportName) + '</div>' +
+        '<div class="condSub">' + Utils.escape(c.title) + ' · yeni siparişlere +' + c.delayDays +
+          ' gün planlanıyor</div>' +
+      '</div>' +
+      '<span class="condTag">RİSK ' + c.severity.toUpperCase() + '</span>' +
+    '</div>';
+  },
+
   procurementHTML() {
     const s = GameState.data;
     const pid = this.procProduct;
@@ -3366,18 +3831,36 @@ const UI = {
     const market = GameState.price(p.id);
     let html = "";
 
+    // Lojistik durum: yalnızca aktif sorun varsa kart listesi, yoksa tek satır
+    html += '<div class="sectionTitle"><h2>Lojistik Durum</h2>' +
+      '<span class="hint">' + (s.logisticsConditions.length ? s.logisticsConditions.length + ' aktif' : 'normal') + '</span></div>';
+    html += s.logisticsConditions.length
+      ? s.logisticsConditions.slice().sort((a, b) => b.delayDays - a.delayDays)
+          .map((c) => this.conditionCardHTML(c)).join("")
+      : '<div class="allClear">✓ Tüm rotalar normal çalışıyor</div>';
+
     // Yoldaki siparişler
     if (s.purchaseOrders.length) {
       html += '<div class="sectionTitle"><h2>Yoldaki Siparişler</h2>' +
         '<span class="hint">' + Utils.money(GameState.inTransitValue()) + '</span></div>';
       html += s.purchaseOrders.slice().sort((a, b) => a.daysLeft - b.daysLeft).map((o) => {
         const op = GameState.product(o.product);
-        const prog = o.leadTime > 0 ? (o.leadTime - o.daysLeft) / o.leadTime : 1;
+        const span = o.plannedLeadTime + o.totalDelayDays;
+        const prog = span > 0 ? (span - o.daysLeft) / span : 1;
         const path = o.originHubName
           ? Utils.escape(o.originHubName) + (o.originCountryName ? ', ' + Utils.escape(o.originCountryName) : '') +
             ' <span class="arrow">→</span> ' + Utils.escape(o.destinationHubName || '')
           : '';
-        return '<div class="poCard">' +
+        const delayed = o.totalDelayDays > 0;
+        const risk = LogisticsSystem.shipmentRisk(o);
+        const etaBits = [];
+        etaBits.push('<span class="etaTag">Planlanan: Gün ' + o.plannedArrivalDay + '</span>');
+        etaBits.push('<span class="etaTag' + (delayed ? " late" : " onTime") + '">' +
+          (delayed ? 'ETA: Gün ' + o.currentEtaDay + ' · +' + o.totalDelayDays + ' gün'
+                   : 'Planlandığı gibi') + '</span>');
+        if (risk.state === "late") etaBits.push('<span class="etaTag late">Sözleşmeye yetişmiyor</span>');
+        else if (risk.state === "grace") etaBits.push('<span class="etaTag late">Telafi süresinde</span>');
+        return '<div class="poCard" role="button" data-action="poDetail" data-id="' + o.id + '">' +
           '<div class="poTop">' + this.productIcon(op) +
             '<div style="flex:1;min-width:0"><div class="poName">' + Utils.escape(o.supplierName) +
               (o.transportName ? ' <span class="muted3">· ' + Utils.escape(o.transportName) + '</span>' : '') + '</div>' +
@@ -3388,7 +3871,9 @@ const UI = {
               o.daysLeft + ' GÜN</div>' +
               '<div class="poSub num" style="margin-top:4px">' + Utils.money(o.totalCost) + '</div></div>' +
           '</div>' +
-          '<div class="poBar"><div class="poFill" style="width:' + (prog * 100).toFixed(1) + '%"></div></div>' +
+          '<div class="poBar"><div class="poFill' + (delayed ? " late" : "") +
+            '" style="width:' + (prog * 100).toFixed(1) + '%"></div></div>' +
+          '<div class="etaRow">' + etaBits.join("") + '</div>' +
         '</div>';
       }).join("");
     }
@@ -3758,6 +4243,7 @@ Object.assign(UI, {
     const st = this.sheet;
     if (st.mode === "confirm") { this.renderConfirmSheet(); return; }
     if (st.mode === "po") { this.renderPoSheet(); return; }
+    if (st.mode === "poDetail") { this.renderPoDetailSheet(); return; }
 
     const p = GameState.product(st.productId);
     if (!p) return;
@@ -3861,7 +4347,10 @@ Object.assign(UI, {
 
     const freightPerTon = route.freightPerTon;
     const landedUnitCost = Utils.round2(goodsUnitPrice + freightPerTon);
-    const leadTime = sup.prepDays + route.transitDays;
+    const knownDelay = LogisticsSystem.plannedPenalty(route.id);
+    const leadTime = sup.prepDays + route.transitDays + knownDelay;
+    const reliability = LogisticsSystem.reliability(sup.id, route.id);
+    const activeCond = LogisticsSystem.conditionFor(route.id);
     const max = this.sheetMax();
     const qty = Utils.clamp(st.qty, 0, max);
 
@@ -3879,8 +4368,9 @@ Object.assign(UI, {
     const routeHTML = routes.map((r) => {
       const mode = ProcurementSystem.mode(r.mode);
       const landed = Utils.round2(goodsUnitPrice + r.freightPerTon);
-      const total = sup.prepDays + r.transitDays;
-      const rf = ProcurementSystem.contractFit(p.id, total);
+      const known = LogisticsSystem.plannedPenalty(r.id);
+      const total = sup.prepDays + r.transitDays + known;
+      const rel = LogisticsSystem.reliability(sup.id, r.id);
       const d = market > 0 ? (landed - market) / market : 0;
       return '<button class="routeOpt' + (r.id === route.id ? " active" : "") +
           '" data-sheet="poRoute" data-route="' + r.id + '">' +
@@ -3888,14 +4378,17 @@ Object.assign(UI, {
           '<span class="routeMode">' + Utils.escape(mode ? mode.name : r.mode) + '</span>' +
           '<span class="routeDays">' + total + ' GÜN</span>' +
         '</div>' +
-        '<div class="routeSub num">' + r.transitDays + ' gün transit + ' + sup.prepDays + ' gün hazırlık' +
-          (rf.state === "ok" ? ' · sözleşmeye yetişir'
-            : rf.state === "grace" ? ' · telafi süresine yetişir'
-            : rf.state === "late" ? ' · sözleşmeye yetişmez' : '') + '</div>' +
+        '<div class="routeSub num">' + (r.transitDays + known) + ' gün transit + ' + sup.prepDays + ' gün hazırlık' +
+          (known > 0 ? ' · aktif aksama +' + known + ' gün dahil' : '') + '</div>' +
         '<div class="routeCost">' +
           '<span class="l num">' + Utils.price(landed) + '</span>' +
           '<span class="f num">landed · navlun ' + Utils.price(r.freightPerTon) + '/t</span>' +
           '<span class="d num ' + (d < 0 ? "up" : d > 0 ? "down" : "") + '">' + Utils.pct(d) + '</span>' +
+        '</div>' +
+        '<div class="routeCost" style="margin-top:6px">' +
+          '<span class="rel num">Güvenilirlik <b>' +
+            (rel === null ? '—' : '%' + Math.round(rel * 100)) + '</b></span>' +
+          '<span style="margin-left:auto">' + this.bufferChip(p.id, total) + '</span>' +
         '</div>' +
       '</button>';
     }).join("");
@@ -3948,19 +4441,120 @@ Object.assign(UI, {
         '<div class="pRow"><span class="k">Spot yerine ' + (saving >= 0 ? "tasarruf" : "ek maliyet") + '</span>' +
           '<span class="v num ' + (saving > 0 ? "up" : saving < 0 ? "down" : "") + '">' +
           Utils.moneySigned(saving) + ' (' + Utils.pct(-landedDelta) + ')</span></div>' +
-        '<div class="pRow"><span class="k">Toplam teslim süresi</span><span class="v">' + leadTime + ' gün</span></div>' +
+        '<div class="pRow"><span class="k">Toplam teslim süresi</span><span class="v">' + leadTime + ' gün' +
+          (knownDelay > 0 ? ' <span class="muted3">(+' + knownDelay + ' aksama)</span>' : '') + '</span></div>' +
+        '<div class="pRow"><span class="k">Rota güvenilirliği</span><span class="v num">' +
+          (reliability === null ? '—' : '%' + Math.round(reliability * 100)) + '</span></div>' +
         '<div class="pRow"><span class="k">Sipariş sonrası nakit</span><span class="v num ' +
           (GameState.data.cash - totalCost < 0 ? "down" : "") + '">' + Utils.money(GameState.data.cash - totalCost) + '</span></div>' +
         '<div class="pRow"><span class="k">Rezerve edilecek alan</span><span class="v num">' + Utils.qty(qty) + ' ton</span></div>' +
         '<div class="pRow"><span class="k">Kalan kullanılabilir kapasite</span><span class="v num">' +
           Utils.qty(Math.max(0, avail - qty)) + ' ton</span></div>' +
       '</div>' +
+      (activeCond ? this.conditionCardHTML(activeCond) : "") +
       this.fitLineHTML(fit, leadTime) +
+      this.bufferWarningHTML(p.id, leadTime) +
       '<div class="shErr">' + err + '</div>' +
       '<div class="mktBtns" style="margin-top:10px">' +
         '<button class="btn ghost" data-sheet="close">VAZGEÇ</button>' +
         '<button class="btn primary" data-sheet="poConfirm"' + (belowMin || qty <= 0 ? " disabled" : "") + '>' +
           'SİPARİŞ VER</button>' +
+      '</div>';
+  },
+
+  /** Sıfır veya negatif tamponda açık uyarı. */
+  bufferWarningHTML(productId, leadTime) {
+    const b = ProcurementSystem.contractBuffer(productId, leadTime);
+    if (b === null || b >= 1) return "";
+    if (b === 0) {
+      return '<div class="warnLine soft">⚠ Planlanan teslim son güne denk geliyor. ' +
+        'Küçük bir lojistik gecikme bile sözleşmeyi geciktirebilir.</div>';
+    }
+    return '<div class="warnLine">✕ Bu rota planlanan süresinde sözleşmeye yetişmiyor · ' +
+      Math.abs(b) + ' gün geç kalır. Yine de sipariş verebilirsin.</div>';
+  },
+
+  /** Yoldaki sipariş detayı (salt okunur). */
+  openPoDetail(id) {
+    const po = GameState.data.purchaseOrders.find((o) => o.id === id);
+    if (!po) return;
+    this.sheet = { open: true, mode: "poDetail", poId: id, confirm: null };
+    this.renderSheet();
+    this.showSheet();
+  },
+
+  renderPoDetailSheet() {
+    const po = GameState.data.purchaseOrders.find((o) => o.id === this.sheet.poId);
+    if (!po) { this.closeSheet(); return; }
+    const p = GameState.product(po.product);
+    const delayed = po.totalDelayDays > 0;
+    const risk = LogisticsSystem.shipmentRisk(po);
+    const rel = po.routeId ? LogisticsSystem.reliability(po.supplierId, po.routeId) : null;
+
+    const events = po.logisticsEvents.length
+      ? po.logisticsEvents.slice().reverse().map((e) =>
+          '<div class="evtRow"><span class="d num">Gün ' + e.day + '</span>' +
+          '<span class="t">' + Utils.escape(e.title) + '</span>' +
+          '<span class="n num">+' + e.delayDays + ' gün</span></div>').join("")
+      : '<div class="muted3" style="padding:10px 0">Bu sevkiyatta lojistik aksama yaşanmadı.</div>';
+
+    this.el.sheet.innerHTML =
+      '<div class="grabber"></div>' +
+      '<div class="shHead">' +
+        this.productIcon(p) +
+        '<div style="flex:1;min-width:0"><div class="shName">' + Utils.escape(po.supplierName) + '</div>' +
+        '<div class="routePath">' +
+          '<span>' + Utils.escape(po.originHubName || "—") +
+            (po.originCountryName ? ', ' + Utils.escape(po.originCountryName) : '') + '</span>' +
+          '<span class="arrow">→</span>' +
+          '<span>' + Utils.escape(po.destinationHubName || "—") + '</span>' +
+        '</div></div>' +
+        '<span class="shTag ' + (delayed ? "sell" : "buy") + '">' +
+          (delayed ? '+' + po.totalDelayDays + ' GÜN' : 'YOLDA') + '</span>' +
+      '</div>' +
+
+      '<div class="previewBox">' +
+        '<div class="pRow"><span class="k">Ürün</span><span class="v num">' +
+          Utils.qty(po.qty) + ' ton ' + (p ? p.name : "") + '</span></div>' +
+        '<div class="pRow"><span class="k">Taşıma</span><span class="v">' +
+          (po.transportName || (po.legacyLogistics ? "Eski kayıt" : "—")) +
+          (po.orphanedRouteSnapshot ? ' <span class="muted3">(eski rota)</span>' : '') + '</span></div>' +
+        (rel !== null
+          ? '<div class="pRow"><span class="k">Rota güvenilirliği</span><span class="v num">%' +
+            Math.round(rel * 100) + '</span></div>' : "") +
+        '<div class="pRow"><span class="k">Sipariş günü</span><span class="v num">Gün ' + po.orderedDay + '</span></div>' +
+        '<div class="pRow"><span class="k">Planlanan varış</span><span class="v num">Gün ' + po.plannedArrivalDay +
+          ' <span class="muted3">(' + po.plannedLeadTime + ' gün)</span></span></div>' +
+        '<div class="pRow"><span class="k">Güncel ETA</span><span class="v num ' + (delayed ? "down" : "up") + '">Gün ' +
+          po.currentEtaDay + '</span></div>' +
+        '<div class="pRow"><span class="k">Toplam gecikme</span><span class="v num ' + (delayed ? "down" : "") + '">' +
+          (delayed ? '+' + po.totalDelayDays + ' gün' : 'yok') + '</span></div>' +
+        '<div class="pRow"><span class="k">Kalan</span><span class="v num">' + po.daysLeft + ' gün</span></div>' +
+      '</div>' +
+
+      (risk.state === "late"
+        ? '<div class="warnLine">✕ Bu sevkiyat ' + Utils.escape(risk.contract.customer) +
+          ' sözleşmesine artık yetişmiyor</div>'
+        : risk.state === "grace"
+          ? '<div class="warnLine soft">Telafi süresine yetişiyor · geç teslim olur</div>'
+          : risk.state === "ok"
+            ? '<div class="warnLine soft" style="background:rgba(34,208,126,.1);border-color:rgba(34,208,126,.28);color:#7FE7B4">' +
+              '✓ ' + Utils.escape(risk.contract.customer) + ' sözleşmesine yetişiyor</div>'
+            : "") +
+
+      '<div class="previewBox" style="margin-top:11px">' +
+        '<div class="pRow"><span class="k">Mal bedeli</span><span class="v num">' + Utils.money(po.goodsCost) + '</span></div>' +
+        '<div class="pRow"><span class="k">Navlun</span><span class="v num">' + Utils.money(po.freightCost) + '</span></div>' +
+        '<div class="pRow total"><span class="k">Toplam</span><span class="v num">' + Utils.money(po.totalCost) + '</span></div>' +
+        '<div class="pRow"><span class="k">Landed birim maliyet</span><span class="v num">' +
+          Utils.price(po.landedUnitCost) + '</span></div>' +
+      '</div>' +
+
+      '<div class="sectionTitle" style="margin:14px 0 4px"><h2>Lojistik Geçmişi</h2></div>' +
+      '<div class="previewBox">' + events + '</div>' +
+
+      '<div class="mktBtns" style="margin-top:12px">' +
+        '<button class="btn ghost" data-sheet="close">KAPAT</button>' +
       '</div>';
   },
 
@@ -4287,15 +4881,19 @@ const Game = {
     MarketSystem.advanceDay();
     // 3) Aktif olayların süresi azalır
     EventSystem.tick();
-    // 4) Yoldaki tedarik siparişleri ilerler; o gün ulaşanlar depoya girer.
+    // 4) Lojistik hat durumları: gecikmeler siparişler ilerlemeden ÖNCE
+    //    uygulanır, böylece bugün gelmesi beklenen sevkiyat o sabah oluşan
+    //    aksama yüzünden gelmeyebilir.
+    const logisticsEvents = LogisticsSystem.tickDay();
+    // 5) Yoldaki tedarik siparişleri ilerler; o gün ulaşanlar depoya girer.
     //    Sözleşme süresi işlemeden ÖNCE gelmeli ki son gün ulaşan mal
     //    sözleşmeyi zamanında kapatabilsin.
     const arrivals = ProcurementSystem.tickDay();
-    // 5) Sözleşme süreleri işler (son gün geçerse ceza, telafi dolarsa iflas)
+    // 6) Sözleşme süreleri işler (son gün geçerse ceza, telafi dolarsa iflas)
     const contractEvents = ContractSystem.tickDay();
-    // 6) Yeni teklifler gelir, eskiler düşer
+    // 7) Yeni teklifler gelir, eskiler düşer
     const offerRoll = ContractSystem.rollOffers();
-    // 7) Güncellenmiş piyasa fiyatlarından yeni tedarikçi teklifleri üretilir
+    // 8) Güncellenmiş piyasa fiyatlarından yeni tedarikçi teklifleri üretilir
     ProcurementSystem.ensureQuotes();
 
     const value = GameState.companyValue();
@@ -4308,15 +4906,29 @@ const Game = {
     UI.flashPrices = true;
     UI.render();
 
+    // Lojistik bildirimleri toplu gösterilir: 5 sevkiyat etkilendiyse 5 ayrı
+    // toast değil, hat başına tek satır.
+    logisticsEvents.forEach((ev, i) => {
+      const c = ev.condition;
+      setTimeout(() => {
+        Audio_.error();
+        UI.toast(c.hubName + " · " + c.transportName + " · " + c.title +
+          (ev.affected > 0
+            ? " · " + ev.affected + " sevkiyat +" + c.delayDays + " gün"
+            : " · sevkiyat etkilenmedi"), ev.affected > 0 ? "err" : "");
+      }, 120 + i * 420);
+    });
+    const logBase = logisticsEvents.length ? 120 + logisticsEvents.length * 420 : 0;
+
     // Bildirimler: önce depoya ulaşan mal, sonra kötü haber, sonra fırsat
     arrivals.forEach((o, i) => {
       const p = GameState.product(o.product);
       setTimeout(() => {
         Audio_.arrival();
         UI.toast(Utils.qty(o.qty) + " ton " + (p ? p.name : "") + " depoya ulaştı · " + o.supplierName, "ok");
-      }, 150 + i * 450);
+      }, logBase + 150 + i * 450);
     });
-    const notifyBase = arrivals.length ? 150 + arrivals.length * 450 : 250;
+    const notifyBase = logBase + (arrivals.length ? 150 + arrivals.length * 450 : 250);
 
     contractEvents.forEach((ev, i) => {
       setTimeout(() => {
@@ -4360,7 +4972,7 @@ window.TradeEmpire = {
   InventorySystem: InventorySystem, TradingSystem: TradingSystem,
   EventSystem: EventSystem, CompanySystem: CompanySystem,
   ReputationSystem: ReputationSystem, ContractSystem: ContractSystem,
-  ProcurementSystem: ProcurementSystem,
+  ProcurementSystem: ProcurementSystem, LogisticsSystem: LogisticsSystem,
   SaveSystem: SaveSystem, UI: UI, Game: Game
 };
 </script>

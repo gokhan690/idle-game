@@ -1,4 +1,4 @@
-# Trade Empire — V3 (Part 1)
+# Trade Empire — V3 (Part 2)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -136,6 +136,48 @@ emtiada (bakır) neredeyse önemsizdir.
 | Novorossiysk → İstanbul | Karayolu | 3 gün | $52 |
 | Novorossiysk → İstanbul | Deniz | 5 gün | $18 |
 
+### Lojistik riski ve gecikmeler
+
+Planlanan süre kesin varış değildir. Her rotanın günlük bir aksama olasılığı
+vardır; olaylar sipariş başına ayrı zar değil **rota bazlı günlük dünya
+durumu** olarak üretilir, yani aynı hattaki bütün sevkiyatlar aynı gerçek
+koşuldan etkilenir.
+
+Ekranda gösterilen güvenilirlik modelin kendi tahminidir, dekorasyon değil:
+
+```
+güvenilirlik = (1 - dailyRisk) ^ toplamTeslimSüresi
+```
+
+| Rota | Taşıma | Süre | Güvenilirlik | Ölçülen (400 sevkiyat) |
+| --- | --- | --- | --- | --- |
+| İstanbul → İstanbul | Karayolu | 1 | %99 | %98,5 |
+| Konya → İstanbul | Karayolu | 2 | %97 | %97,5 |
+| Belgrad → İstanbul | Karayolu | 2 | %94 | %95,3 |
+| Belgrad → İstanbul | Demiryolu | 4 | %95 | %95,0 |
+| Köstence → İstanbul | Karayolu | 3 | %94 | %92,8 |
+| Köstence → İstanbul | Deniz | 4 | %92 | %90,5 |
+| Novorossiysk → İstanbul | Karayolu | 4 | %91 | %88,8 |
+| Novorossiysk → İstanbul | Deniz | 6 | %89 | %87,8 |
+
+**Bilinen sorun plana girer, sonradan çıkan olay gecikmedir.** Sipariş anında
+hatta aktif bir aksama varsa süre baştan artırılır (sürpriz değil, bilgi);
+siparişten sonra çıkan olay `totalDelayDays` olarak yazılır.
+
+```
+plannedLeadTime / plannedArrivalDay   : sipariş anında sabitlenir, değişmez
+daysLeft / currentEtaDay              : olaylarla uzar
+totalDelayDays                        : toplam gecikme (tavan 3 gün)
+```
+
+Sözleşme zaman tamponu her rota için gösterilir:
+`tampon = sözleşmenin kalan günü − rotanın planlanan süresi`. Tampon 0 ise
+açık uyarı çıkar, negatifse "planlanan sürede yetişmez" denir — ama sipariş
+hiçbir zaman engellenmez.
+
+Lojistik gecikme müşteri cezası kesmez; sözleşme gecikirse cezayı her zamanki
+gibi ContractSystem bir kez keser.
+
 ### Landed cost
 
 ```
@@ -189,6 +231,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `ReputationSystem` | 0-100 itibar, kademeler ve etkileri |
 | `ContractSystem` | Müşteri talepleri, sözleşme yaşam döngüsü, ceza ve teslimat |
 | `ProcurementSystem` | Tedarikçiler, ülke/hub/rota/taşıma, günlük teklifler, landed cost, satın alma siparişleri, yoldaki mallar |
+| `LogisticsSystem` | Rota güvenilirliği, hat durumları, gecikme olayları, ETA yönetimi |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -208,21 +251,23 @@ erişilebilirdir.
 - **V2 Part 1** — müşteriler, sözleşmeler, itibar ✅ *(bu sürüm)*
 - **V2 Part 2** — tedarikçiler, satın alma siparişleri, teslim süresi ✅
 - **V3 Part 1** — ülkeler, ticaret merkezleri, rotalar, taşıma yöntemleri,
-  navlun ve landed cost ✅ *(bu sürüm)*
-- **V3 Part 2+** — navlun piyasası, gümrük/vergi, sigorta, kendi araç filosu,
+  navlun ve landed cost ✅
+- **V3 Part 2** — rota güvenilirliği, hat durumları, gerçek gecikmeler ve
+  ETA yönetimi ✅ *(bu sürüm)*
+- **Sonrası** — navlun piyasası, gümrük/vergi, sigorta, kendi araç filosu,
   birden fazla depo, çalışanlar, banka/kredi, fabrikalar, rakip şirketler
 
-Rastgele taşıma gecikmesi, liman yoğunluğu, hava/savaş olayları, rota
-kapanması, navlun piyasası, gümrük, vergi, sigorta, Incoterms, kendi kamyon/
-gemi filosu, birden fazla depo, çalışanlar, bankalar, kredi, döviz, fabrikalar
-ve rakip şirketler bu sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
+Savaş, yaptırım, siyasi risk, rota kapanması, navlun piyasası, dinamik petrol
+fiyatı, gümrük, vergi, sigorta, Incoterms, döviz, kendi kamyon/gemi filosu,
+birden fazla depo, liman sahipliği, çalışanlar, bankalar, kredi, fabrikalar ve
+rakip şirketler bu sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
 çalışır. Sözleşme sistemi, sonradan
 eklenecek geminin/fabrikanın/çalışanın oyunda gerçek bir sebebi olsun diye önce
 kuruldu.
 
 ## Test
 
-Playwright ile yedi ayrı takım çalışır (toplam 594 kontrol):
+Playwright ile sekiz ayrı takım çalışır (toplam 703 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -244,3 +289,7 @@ Playwright ile yedi ayrı takım çalışır (toplam 594 kontrol):
   toplamı, navlun ve landed cost zinciri, sipariş anında rota/fiyat kilidi,
   landed maliyetle stok girişi, sözleşme-rota zamanlaması, eski V2 siparişlerin
   ekonomik olarak korunması, bozuk rota verisi ve 320–390 px yerleşim
+- `test-v7.js` — lojistik riski: gecikme mekaniği ve ETA, olay kapsamı
+  (mod/hub), gecikme tavanı, rezervasyon ve şirket değerinin korunması,
+  sözleşme sonuçları, zaman tamponu, bilinen koşulun plana dahil edilmesi,
+  determinizm, legacy/snapshot/orphan davranışı ve yerleşim
