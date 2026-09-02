@@ -184,7 +184,7 @@ kuruldu.
 
 ## Test
 
-Playwright ile beş ayrı takım çalışır (toplam 412 kontrol):
+Playwright ile altı ayrı takım çalışır (toplam 466 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -199,3 +199,6 @@ Playwright ile beş ayrı takım çalışır (toplam 412 kontrol):
   dahil olması, kapasite rezervasyonu, teslim süresi akışı, fiyat kilidi,
   günlük teklif determinizmi, ağırlıklı ortalama, sözleşme-tedarik zamanlaması,
   V1/V2 göçü, bozuk sipariş verisi ve 320–430 px yerleşim
+- `test-v5.js` — kayıt sağlamlığı: bozuk `totalCost` varyantlarının kanonik
+  maliyete kurulması, geçmiş kayıtlarının normalize edilmesi, çift ve çakışan
+  id temizliği, `purchaseSeq` güvenliği

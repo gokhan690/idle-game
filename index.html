@@ -2163,6 +2163,19 @@ const SaveSystem = {
     out.stats.poTons = Math.max(0, Math.floor((d.stats && d.stats.poTons) || 0));
     out.stats.poSpent = Utils.round2((d.stats && d.stats.poSpent) || 0);
 
+    /* Bir siparişin kanonik maliyeti her zaman qty x unitPrice'tır. Kayıttaki
+       totalCost eksik, sayısal değil, sonsuz, sıfır/negatif ya da miktarla
+       anlamlı şekilde tutarsızsa güvenle yeniden kurulur; böylece bozuk bir
+       kayıt yüzünden yoldaki mal şirket değerinde 0 veya yanlış görünmez.
+       Tutarlı kayıtlar olduğu gibi korunur. */
+    const canonicalTotal = (raw, unitPrice, qty) => {
+      const expected = Utils.round2(unitPrice * qty);
+      if (typeof raw !== "number" || !isFinite(raw) || raw <= 0) return expected;
+      const stored = Utils.round2(raw);
+      const tolerance = Math.max(0.02, expected * 0.005);
+      return Math.abs(stored - expected) > tolerance ? expected : stored;
+    };
+
     const seenPo = {};
     out.purchaseOrders = Array.isArray(d.purchaseOrders) ? d.purchaseOrders.filter((o) => {
       if (!o || !validProduct(o.product)) return false;
@@ -2174,23 +2187,73 @@ const SaveSystem = {
       if (id < 0 || seenPo[id]) return false;   // bozuk veya çift id
       seenPo[id] = true;
       return true;
-    }).map((o) => ({
-      id: Math.floor(o.id),
-      supplierId: o.supplierId,
-      supplierName: String(o.supplierName || ProcurementSystem.supplier(o.supplierId).name),
-      product: o.product,
-      qty: Math.floor(o.qty),
-      unitPrice: Utils.round2(o.unitPrice),
-      totalCost: Utils.round2(num(o.totalCost, 0, o.unitPrice * o.qty)),
-      orderedDay: Math.max(1, Math.floor(o.orderedDay || out.day)),
-      leadTime: Math.floor(o.leadTime),
-      daysLeft: Math.floor(o.daysLeft),
-      status: "in_transit"
-    })) : [];
+    }).map((o) => {
+      const qty = Math.floor(o.qty);
+      const unitPrice = Utils.round2(o.unitPrice);
+      return {
+        id: Math.floor(o.id),
+        supplierId: o.supplierId,
+        supplierName: String(o.supplierName || ProcurementSystem.supplier(o.supplierId).name),
+        product: o.product,
+        qty: qty,
+        unitPrice: unitPrice,
+        totalCost: canonicalTotal(o.totalCost, unitPrice, qty),
+        orderedDay: Math.max(1, Math.floor(o.orderedDay || out.day)),
+        leadTime: Math.floor(o.leadTime),
+        daysLeft: Math.floor(o.daysLeft),
+        status: "in_transit"
+      };
+    }) : [];
 
-    out.purchaseHistory = Array.isArray(d.purchaseHistory)
-      ? d.purchaseHistory.filter((o) => o && validProduct(o.product) && o.qty > 0)
-        .slice(0, CONFIG.PROCUREMENT.HISTORY_LEN) : [];
+    /* Geçmiş kayıtlar da aktif siparişlerle aynı titizlikte normalize edilir:
+       ham obje taşınmaz, yeni nesne kurulur. Aynı id hem aktif hem geçmişte
+       varsa aktif sipariş gerçek devam eden oyun state'idir; geçmiş kopya atılır. */
+    out.purchaseHistory = [];
+    if (Array.isArray(d.purchaseHistory)) {
+      const seenHistory = {};
+      d.purchaseHistory.forEach((o) => {
+        if (out.purchaseHistory.length >= CONFIG.PROCUREMENT.HISTORY_LEN) return;
+        if (!o || typeof o !== "object") return;
+        if (!validProduct(o.product)) return;
+
+        const sup = ProcurementSystem.supplier(o.supplierId);
+        if (!sup) return;
+
+        const id = Math.floor(num(o.id, 0, -1));
+        if (id < 0 || seenHistory[id] || seenPo[id]) return;
+
+        const qty = Math.floor(num(o.qty, 1, 0));
+        if (!(qty > 0)) return;
+
+        const unitPrice = Utils.round2(num(o.unitPrice, 0, 0));
+        if (!(unitPrice > 0)) return;
+
+        const leadTime = Math.floor(num(o.leadTime, 1, 0));
+        if (!(leadTime >= 1)) return;
+
+        const orderedDay = Math.floor(num(o.orderedDay, 1, 0));
+        if (!(orderedDay >= 1)) return;
+
+        const deliveredDay = Math.floor(num(o.deliveredDay, 1, 0));
+        if (!(deliveredDay >= orderedDay)) return;
+
+        seenHistory[id] = true;
+        out.purchaseHistory.push({
+          id: id,
+          supplierId: sup.id,
+          supplierName: String(o.supplierName || sup.name),
+          product: o.product,
+          qty: qty,
+          unitPrice: unitPrice,
+          totalCost: canonicalTotal(o.totalCost, unitPrice, qty),
+          orderedDay: orderedDay,
+          leadTime: leadTime,
+          daysLeft: 0,
+          status: "delivered",
+          deliveredDay: deliveredDay
+        });
+      });
+    }
 
     let maxPo = 0;
     out.purchaseOrders.concat(out.purchaseHistory).forEach((o) => { if (o.id > maxPo) maxPo = o.id; });
