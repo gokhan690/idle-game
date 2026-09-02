@@ -1648,8 +1648,11 @@ const ContractSystem = {
 
     s.contracts.forEach((c) => {
       if (c.status === "active") {
+        // daysLeft === 0 "son teslim günü"dür ve hâlâ aktiftir: oyuncu o günün
+        // tamamını kullanıp zamanında teslim edebilir. Gecikme ancak son gün de
+        // geçtikten sonra, yani daysLeft sıfırın altına düştüğünde başlar.
         c.daysLeft -= 1;
-        if (c.daysLeft <= 0) {
+        if (c.daysLeft < 0) {
           c.daysLeft = 0;
           c.status = "overdue";
           c.graceLeft = CONFIG.CONTRACTS.GRACE_DAYS;
@@ -2307,9 +2310,16 @@ const UI = {
     if (c.status === "overdue") {
       return '<span class="dl danger">GECİKTİ · ' + c.graceLeft + ' gün</span>';
     }
-    const d = c.daysLeft;
-    const cls = d <= 1 ? "danger" : d <= 2 ? "warn" : "";
-    return '<span class="dl ' + cls + '">' + d + ' GÜN</span>';
+    // daysLeft 0 => son teslim günü; hâlâ zamanında teslim edilebilir.
+    if (c.daysLeft <= 0) return '<span class="dl danger">SON GÜN</span>';
+    const cls = c.daysLeft === 1 ? "danger" : c.daysLeft === 2 ? "warn" : "";
+    return '<span class="dl ' + cls + '">' + c.daysLeft + ' GÜN</span>';
+  },
+
+  /** Sözleşme süresinin cümle içinde okunabilir hâli. */
+  deadlineText(c) {
+    if (c.status === "overdue") return "Gecikmiş · telafi " + c.graceLeft + " gün";
+    return c.daysLeft <= 0 ? "Son gün" : c.daysLeft + " gün";
   },
 
   /* ---------------- bileşen: teklif kartı ---------------- */
@@ -2372,7 +2382,9 @@ const UI = {
         '<button class="btn primary" data-action="offerAccept" data-id="' + o.id + '"' +
           (ContractSystem.hasSlot() ? "" : " disabled") + '>KABUL ET</button>' +
       '</div>' +
-      '<div class="ctrFoot">Teklif ' + o.expiresIn + ' gün daha geçerli</div>' +
+      '<div class="ctrFoot">' + (o.expiresIn <= 1
+        ? "Son gün · bugün kabul edilebilir"
+        : "Teklif " + o.expiresIn + " gün daha geçerli") + '</div>' +
     '</div>';
   },
 
@@ -2712,7 +2724,11 @@ Object.assign(UI, {
 
   handleSheetAction(action, ds) {
     switch (action) {
-      case "close": Audio_.tap(); this.closeSheet(); break;
+      case "close":
+        Audio_.tap();
+        var back = this.sheet.mode === "confirm" && this.sheet.confirm && this.sheet.confirm.onCancel;
+        if (back) back(); else this.closeSheet();
+        break;
       case "qty":   Audio_.tap(); Audio_.haptic(6); this.setQty(ds.q === "max" ? this.sheetMax() : parseInt(ds.q, 10)); break;
       case "inc":   Audio_.haptic(5); this.setQty(this.sheet.qty + 1); break;
       case "dec":   Audio_.haptic(5); this.setQty(this.sheet.qty - 1); break;
@@ -2813,10 +2829,13 @@ Object.assign(UI, {
     const c = this.sheet.confirm || {};
     this.el.sheet.innerHTML =
       '<div class="grabber"></div>' +
-      '<div style="text-align:center;padding:4px 4px 16px">' +
+      '<div style="text-align:center;padding:4px 4px ' + (c.rows ? "12px" : "16px") + '">' +
+        (c.tag ? '<div class="shTag sell" style="display:inline-block;margin-bottom:9px">' +
+          Utils.escape(c.tag) + '</div>' : "") +
         '<div style="font-size:19px;font-weight:800;letter-spacing:-.2px">' + Utils.escape(c.title || "") + '</div>' +
         '<div class="muted" style="margin-top:8px;line-height:1.5">' + Utils.escape(c.body || "") + '</div>' +
       '</div>' +
+      (c.rows ? '<div class="previewBox">' + c.rows + '</div>' : "") +
       '<div class="mktBtns" style="margin-top:0">' +
         '<button class="btn ghost" data-sheet="close">VAZGEÇ</button>' +
         '<button class="btn ' + (c.danger ? "danger" : "primary") + '" data-sheet="confirmYes">' +
@@ -2830,17 +2849,74 @@ Object.assign(UI, {
     const qty = st.qty;
     if (!p || qty <= 0) return;
 
-    const res = st.mode === "buy" ? TradingSystem.buy(p.id, qty) : TradingSystem.sell(p.id, qty);
+    // Taahhütlü stok satışı engellenmez, ancak bilinçli bir karar olmalıdır:
+    // sözleşme açığı doğuracak satış ikinci bir risk onayı ister.
+    if (st.mode === "sell" && qty > GameState.freeStock(p.id)) {
+      this.confirmRiskySell(p.id, qty);
+      return;
+    }
+    this.executeTrade(st.mode, p.id, qty);
+  },
+
+  /** Sözleşme açığı doğuracak satış için risk onayı. */
+  confirmRiskySell(productId, qty) {
+    const p = GameState.product(productId);
+    const h = GameState.holding(productId);
+    const committed = GameState.committed(productId);
+    const gap = Math.max(0, committed - (h.qty - qty));
+    const related = GameState.data.contracts.filter((c) => c.product === productId);
+
+    // En yakın teslim: önce gecikmişler, sonra en az günü kalan
+    const rank = (c) => (c.status === "overdue" ? -1 : c.daysLeft);
+    let soonest = null;
+    related.forEach((c) => { if (!soonest || rank(c) < rank(soonest)) soonest = c; });
+
+    // Nakit olarak risk altındaki tutar: henüz kesilmemiş cezalar
+    const unpaid = related.filter((c) => !c.penaltyPaid);
+    const penalty = Utils.round2(unpaid.reduce((sum, c) => sum + c.penalty, 0));
+
+    const rows =
+      '<div class="pRow"><span class="k">Oluşacak ürün açığı</span>' +
+        '<span class="v num down">' + Utils.qty(gap) + ' ton</span></div>' +
+      '<div class="pRow"><span class="k">En yakın teslim süresi</span>' +
+        '<span class="v">' + (soonest ? this.deadlineText(soonest) : "—") + '</span></div>' +
+      '<div class="pRow"><span class="k">Taahhüt altında kalacak miktar</span>' +
+        '<span class="v num">' + Utils.qty(committed) + ' ton</span></div>' +
+      '<div class="pRow"><span class="k">İlgili sözleşmeler</span>' +
+        '<span class="v num">' + related.length + ' adet</span></div>' +
+      '<div class="pRow"><span class="k">Toplam potansiyel ceza</span>' +
+        '<span class="v num ' + (penalty > 0 ? "down" : "") + '">' +
+        (penalty > 0 ? "-" + Utils.money(penalty) : "ceza zaten kesildi") + '</span></div>';
+
+    Audio_.error();
+    this.openConfirm({
+      tag: "SÖZLEŞME RİSKİ",
+      title: "Taahhütlü stoğu satıyorsun",
+      body: "Bu satıştan sonra aktif sözleşmelerin için " + Utils.qty(gap) + " ton " +
+        p.name.toLowerCase() + " açığı oluşacak. Teslime kadar malı yeniden bulman gerekir.",
+      rows: rows,
+      confirmLabel: "RİSKİ AL VE SAT",
+      danger: true,
+      onConfirm: () => this.executeTrade("sell", productId, qty),
+      // VAZGEÇ satışı yapmaz, satış ekranına geri döner
+      onCancel: () => { this.openSheet("sell", productId); this.setQty(qty); }
+    });
+  },
+
+  executeTrade(mode, productId, qty) {
+    const p = GameState.product(productId);
+    const res = mode === "buy" ? TradingSystem.buy(productId, qty) : TradingSystem.sell(productId, qty);
     if (!res.ok) {
       Audio_.error(); Audio_.haptic(30);
       this.toast(res.reason, "err");
-      this.renderSheet();
+      if (this.sheet.mode === "confirm") this.closeSheet(); else this.renderSheet();
+      this.render();
       return;
     }
 
     this.closeSheet();
 
-    if (st.mode === "buy") {
+    if (mode === "buy") {
       Audio_.buy(); Audio_.haptic(14);
       this.fx("neutral", "-" + Utils.money(res.total), Utils.qty(res.qty) + " " + p.unit.toUpperCase() + " ALINDI");
       this.toast(Utils.qty(res.qty) + " " + p.unit + " " + p.name + " alındı", "ok");
@@ -2853,6 +2929,7 @@ Object.assign(UI, {
     }
     this.render();
   },
+
 
   /* ---------------- sözleşme aksiyonları ---------------- */
   acceptOffer(id) {

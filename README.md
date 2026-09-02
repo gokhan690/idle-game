@@ -32,11 +32,23 @@ kaldığı yerden devam eder.
 ```
 teklif (Fırsatlar)  --kabul-->  aktif sözleşme  --teslim-->  tamamlandı  (+3 itibar)
        |                              |
-  süresi dolar               son gün geçer -> gecikmiş (ceza kesilir)
+  süresi dolar               son gün de geçer -> gecikmiş (ceza kesilir)
                                       |
                             +-- telafi süresinde teslim -> ödeme alınır (-5 itibar)
                             +-- telafi süresi dolar ------> kaçırıldı     (-8 itibar)
 ```
+
+Süre sayacı son teslim gününü tam olarak kullandırır:
+
+```
+3 GÜN -> 2 GÜN -> 1 GÜN -> SON GÜN -> (bir sonraki gün) GECİKTİ
+```
+
+`daysLeft === 0` **SON GÜN** demektir; sözleşme hâlâ aktiftir ve o gün yapılan
+teslimat zamanında sayılır (+3 itibar). Gecikme ancak son gün de geçtikten
+sonra başlar ve ceza tam o anda, yalnızca bir kez kesilir. Aynı mantık
+tekliflerde de geçerlidir: "1 gün daha geçerli" yerine son gün "Son gün ·
+bugün kabul edilebilir" yazar ve teklif o gün boyunca kabul edilebilir.
 
 - Teslimat **depodan** yapılır: sözleşme miktarının tamamı depoda olmalıdır.
 - Fiyat kabul anında sabitlenir. Piyasa yükselirse malı pahalıya tamamlarsınız,
@@ -44,6 +56,10 @@ teklif (Fırsatlar)  --kabul-->  aktif sözleşme  --teslim-->  tamamlandı  (+3
 - Son gün geçtiğinde ceza **bir kez** kesilir ve sözleşme telafi süresine girer;
   bu sürede teslim ederseniz ödemeyi yine alırsınız.
 - İptal etmek hem cezayı hem de en büyük itibar kaybını getirir.
+- Taahhüt altındaki stoğu spot piyasada satmak **engellenmez** — bilinçli bir
+  risktir. Satış sözleşme açığı doğuracaksa, işlem öncesinde açığı, en yakın
+  teslim süresini ve risk altındaki toplam cezayı gösteren bir onay ekranı
+  çıkar; oyuncu "Riski al ve sat" demeden satış gerçekleşmez.
 
 ### İtibar (0-100)
 
@@ -124,7 +140,7 @@ kuruldu.
 
 ## Test
 
-Playwright ile üç ayrı takım çalışır (toplam 220 kontrol):
+Playwright ile dört ayrı takım çalışır (toplam 283 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -132,3 +148,6 @@ Playwright ile üç ayrı takım çalışır (toplam 220 kontrol):
   gecikme, iptal, itibar sınırları, kayıt göçü (V1 kaydı dahil), bozuk veri
 - `test-ui-v2.js` — dokunmatik akış: kabul/teslim/iptal, uyarılar, rozetler,
   4 ekran boyutunda taşma kontrolü
+- `test-v3.js` — sınır durumları: son gün semantiği (1 GÜN → SON GÜN → GECİKTİ),
+  son günde zamanında teslim, cezanın tek kez kesilmesi, riskli satış onay
+  akışı (vazgeç/riski al), yeniden yükleme ve eski kayıtların açılması
