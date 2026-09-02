@@ -666,6 +666,79 @@ main{
 }
 .warnLine.soft{background:rgba(233,196,106,.1);border-color:rgba(233,196,106,.25);color:#EBD08A;}
 
+/* ---------- Tedarik ---------- */
+.seg.four{grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;}
+.seg.four .segBtn{font-size:11.5px;letter-spacing:0;gap:4px;padding:0 2px;}
+.seg.four .segBtn .n{min-width:16px;height:16px;padding:0 4px;font-size:9.5px;line-height:16px;}
+
+.pSel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:13px;}
+.pBtn{
+  height:46px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  transition:background .18s ease,border-color .18s ease;
+}
+.pBtn .t{font-size:12px;font-weight:800;color:var(--text-2);letter-spacing:.2px;}
+.pBtn .p{font-size:10.5px;font-weight:700;color:var(--text-3);}
+.pBtn.active{background:var(--surface-3);border-color:var(--line-2);}
+.pBtn.active .t{color:var(--text);}
+.pBtn:active{transform:scale(.96);}
+
+.supCard{
+  position:relative;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:13px;margin-bottom:11px;
+}
+.supCard.spot{background:linear-gradient(150deg,rgba(76,125,255,.10),var(--surface));border-color:rgba(76,125,255,.28);}
+.supHead{display:flex;align-items:flex-start;gap:10px;}
+.supName{font-size:14.5px;font-weight:800;letter-spacing:-.1px;line-height:1.25;}
+.supDesc{font-size:11.5px;color:var(--text-3);font-weight:600;margin-top:2px;}
+.lead{
+  flex:0 0 auto;padding:5px 9px;border-radius:9px;white-space:nowrap;
+  font-size:11.5px;font-weight:800;background:rgba(255,255,255,.07);color:var(--text-2);
+}
+.lead.fast{background:rgba(76,125,255,.16);color:#8FAEFF;}
+.lead.slow{background:rgba(233,196,106,.14);color:var(--gold);}
+
+.supPrice{
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--line);
+}
+.supPrice .v{font-size:21px;font-weight:800;letter-spacing:-.5px;}
+.supPrice .u{font-size:12px;font-weight:700;color:var(--text-3);}
+.dlt{
+  margin-left:auto;padding:4px 8px;border-radius:8px;
+  font-size:11.5px;font-weight:800;background:var(--up-dim);color:var(--up);
+}
+.dlt.up{background:var(--down-dim);color:var(--down);}
+.dlt.flat{background:rgba(255,255,255,.06);color:var(--text-2);}
+
+.fitLine{
+  display:flex;align-items:center;gap:7px;
+  margin-top:10px;padding:9px 11px;border-radius:11px;
+  font-size:12.5px;font-weight:700;line-height:1.35;
+}
+.fitLine.ok{background:rgba(34,208,126,.1);border:1px solid rgba(34,208,126,.28);color:#7FE7B4;}
+.fitLine.grace{background:rgba(233,196,106,.1);border:1px solid rgba(233,196,106,.28);color:#EBD08A;}
+.fitLine.late{background:rgba(255,92,124,.1);border:1px solid rgba(255,92,124,.28);color:#FF9AAF;}
+
+.poCard{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:15px;padding:12px;margin-bottom:10px;
+}
+.poTop{display:flex;align-items:center;gap:10px;}
+.poName{font-size:13.5px;font-weight:800;}
+.poSub{font-size:11.5px;color:var(--text-3);font-weight:700;margin-top:2px;}
+.poBar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px;}
+.poFill{height:100%;border-radius:999px;background:linear-gradient(90deg,#4C7DFF,#7A5CFF);transition:width .5s ease;}
+
+/* depo kapasite çubuğu: kullanılan + rezerve */
+.capBar.split{display:flex;}
+.capFill.reserved{
+  background:repeating-linear-gradient(45deg,rgba(233,196,106,.75) 0 5px,rgba(233,196,106,.35) 5px 10px);
+}
+.capLegend{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
+
 /* ---------- İtibar kartı (Şirket) ---------- */
 .repCard{
   background:linear-gradient(150deg,var(--surface-2),var(--surface));
@@ -805,7 +878,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 2,
+  VERSION: 3,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -960,6 +1033,34 @@ const CONFIG = {
       { name:"Adriyatik Gıda Lojistik",sector:"Gıda lojistiği",     products:["wheat"],             minRep:75, scale:1.5 },
       { name:"Pan Avrupa Metal Grup",  sector:"Metal tedarik zinciri",products:["copper","aluminum"],minRep:85, scale:1.6 }
     ]
+  },
+
+  /* -------------------------------------------------------------------------
+   * TEDARİK (V2 · Part 2)
+   * Spot piyasa anında teslim eder ama pahalıdır. Tedarikçiler daha ucuzdur
+   * fakat mal yolda gün harcar: hızlı = pahalı, yavaş = ucuz.
+   * Fiyatlar her gün piyasa fiyatından türetilir ve o gün boyunca sabit kalır;
+   * sipariş anında birim fiyat kilitlenir.
+   * -----------------------------------------------------------------------*/
+  PROCUREMENT: {
+    HISTORY_LEN: 30,
+    SUPPLIERS: [
+      /* İndirimler simülasyonla kalibre edildi. Sipariş bedeli peşin ödendiği
+         için yavaş tedarikçide sermaye günlerce bağlanır; indirim bu taşıma
+         maliyetini karşılayacak kadar derin olmalı, aksi hâlde tedarikçiler
+         spot piyasaya karşı hep zararlı kalır. Ortalama indirim teslim
+         süresiyle doğru orantılıdır: hızlı = pahalı, yavaş = ucuz. */
+      { id:"express", name:"Express Supply", desc:"Hızlı teslim",
+        products:["aluminum","copper","wheat"], minQty:2,  leadTime:1, discount:[0.00, 0.04] },
+      { id:"atlas", name:"Atlas Emtia", desc:"Metal tedarik",
+        products:["aluminum","copper"],        minQty:5,  leadTime:2, discount:[0.04, 0.09] },
+      { id:"anadolu", name:"Anadolu Hububat", desc:"Tahıl tedarik",
+        products:["wheat"],                    minQty:10, leadTime:2, discount:[0.04, 0.11] },
+      { id:"prime", name:"Prime Materials", desc:"Toplu tedarik",
+        products:["aluminum","copper","wheat"], minQty:10, leadTime:4, discount:[0.09, 0.15] },
+      { id:"bulk", name:"BulkSource", desc:"Büyük hacim",
+        products:["aluminum","copper","wheat"], minQty:25, leadTime:6, discount:[0.15, 0.22] }
+    ]
   }
 };
 
@@ -1046,6 +1147,12 @@ const GameState = {
       contracts: [],        // kabul edilmiş aktif sözleşmeler
       contractLog: [],      // tamamlanan / başarısız sözleşme geçmişi
 
+      /* V2 Part 2 · Tedarik */
+      purchaseSeq: 1,
+      supplierQuotes: null, // { day, prices: { supplierId: { productId: fiyat } } }
+      purchaseOrders: [],   // yoldaki satın alma siparişleri
+      purchaseHistory: [],  // teslim alınmış siparişler
+
       stats: {
         realizedProfit: 0,
         totalTrades: 0,
@@ -1056,7 +1163,10 @@ const GameState = {
         contractsLate: 0,
         contractsFailed: 0,
         contractRevenue: 0,
-        penaltiesPaid: 0
+        penaltiesPaid: 0,
+        poCount: 0,          // verilen tedarikçi siparişi
+        poTons: 0,           // tedarikçiden alınan toplam ton
+        poSpent: 0           // tedarikçiye harcanan toplam tutar
       },
       settings: keepSettings || { sound: true }
     };
@@ -1068,10 +1178,31 @@ const GameState = {
   holding(id) { return this.data.inventory[id]; },
 
   capacity() { return CONFIG.WAREHOUSE[this.data.warehouseLevel - 1].capacity; },
+  /** Depoda fiilen duran mal. */
   usedCapacity() {
     return CONFIG.PRODUCTS.reduce((s, p) => s + this.data.inventory[p.id].qty, 0);
   },
-  freeCapacity() { return this.capacity() - this.usedCapacity(); },
+  /** Yoldaki siparişler için rezerve edilen alan (mal geldiğinde yer olsun). */
+  reservedCapacity() {
+    return this.data.purchaseOrders.reduce((s, o) => s + o.qty, 0);
+  },
+  /** Yeni alım/sipariş için gerçekten kullanılabilir alan. */
+  availableCapacity() {
+    return Math.max(0, this.capacity() - this.usedCapacity() - this.reservedCapacity());
+  },
+  /** Geriye dönük ad: spot alım da rezervasyonu dikkate alır. */
+  freeCapacity() { return this.availableCapacity(); },
+
+  /** Belirli üründen yolda olan miktar. */
+  inTransitQty(productId) {
+    return this.data.purchaseOrders
+      .filter((o) => o.product === productId)
+      .reduce((s, o) => s + o.qty, 0);
+  },
+  /** Yoldaki malın maliyet değeri (henüz kâr/zarara girmez). */
+  inTransitValue() {
+    return Utils.round2(this.data.purchaseOrders.reduce((s, o) => s + o.totalCost, 0));
+  },
 
   inventoryValue() {
     return CONFIG.PRODUCTS.reduce(
@@ -1081,7 +1212,8 @@ const GameState = {
     return CONFIG.PRODUCTS.reduce(
       (s, p) => s + this.data.inventory[p.id].qty * this.data.inventory[p.id].avgCost, 0);
   },
-  companyValue() { return this.data.cash + this.inventoryValue(); },
+  /** Nakit + depodaki malın güncel değeri + yoldaki malın maliyet değeri. */
+  companyValue() { return this.data.cash + this.inventoryValue() + this.inTransitValue(); },
 
   /** Aktif sözleşmeler için bu üründen toplam kaç ton taahhüt edildi. */
   committed(productId) {
@@ -1441,7 +1573,7 @@ const ContractSystem = {
     // Karşılanabilirlik: sipariş, oyuncunun bugün finanse edebileceği hacimle
     // ve depo kapasitesiyle sınırlıdır. Pahalı ürünler böylece doğal olarak
     // oyuncu büyüdükçe devreye girer.
-    const budget = Math.max(C.MIN_BUDGET, s.cash + GameState.inventoryValue());
+    const budget = Math.max(C.MIN_BUDGET, GameState.companyValue());
     const affordable = {};
     CONFIG.PRODUCTS.forEach((pr) => {
       const px = GameState.price(pr.id);
@@ -1696,6 +1828,193 @@ const ContractSystem = {
 };
 
 /* ===========================================================================
+ * ProcurementSystem — tedarikçiler, günlük teklifler ve satın alma siparişleri
+ * ---------------------------------------------------------------------------
+ * Akış:
+ *   günlük teklif (fiyat piyasadan türetilir, gün boyunca sabit)
+ *        |
+ *     sipariş ver  -> nakit ANINDA düşer, mal YOLA çıkar (in_transit)
+ *        |            depo kapasitesi sipariş anında rezerve edilir
+ *   her gün daysLeft azalır
+ *        |
+ *   daysLeft 0 -> mal depoya girer (InventorySystem.add ile ağırlıklı ortalama)
+ *
+ * Teslimatta ikinci kez nakit hareketi olmaz; ödeme sipariş anında yapılmıştır.
+ * =========================================================================*/
+const ProcurementSystem = {
+  suppliers() { return CONFIG.PROCUREMENT.SUPPLIERS; },
+  supplier(id) { return CONFIG.PROCUREMENT.SUPPLIERS.find((x) => x.id === id) || null; },
+  suppliersFor(productId) {
+    return CONFIG.PROCUREMENT.SUPPLIERS.filter((x) => x.products.indexOf(productId) !== -1);
+  },
+
+  /* ---------------- günlük fiyat teklifleri ---------------- */
+
+  /** O gün için tüm tedarikçi fiyatlarını üretir (piyasa fiyatından türetilir). */
+  buildQuotes() {
+    const prices = {};
+    CONFIG.PROCUREMENT.SUPPLIERS.forEach((sup) => {
+      const row = {};
+      sup.products.forEach((pid) => {
+        const market = GameState.price(pid);
+        const disc = GameState.randRange(sup.discount[0], sup.discount[1]);
+        row[pid] = Math.max(0.01, Utils.round2(market * (1 - disc)));
+      });
+      prices[sup.id] = row;
+    });
+    return { day: GameState.data.day, prices: prices };
+  },
+
+  /** Teklifler yoksa veya gün değiştiyse yeniden üretir. Aynı gün içinde sabit. */
+  ensureQuotes() {
+    const s = GameState.data;
+    if (!s.supplierQuotes || s.supplierQuotes.day !== s.day) {
+      s.supplierQuotes = this.buildQuotes();
+      return true;
+    }
+    return false;
+  },
+
+  quote(supplierId, productId) {
+    const q = GameState.data.supplierQuotes;
+    if (!q || !q.prices[supplierId]) return null;
+    const v = q.prices[supplierId][productId];
+    return (typeof v === "number" && isFinite(v) && v > 0) ? v : null;
+  },
+
+  /** Spot fiyata göre fark (negatif = tedarikçi daha ucuz). */
+  delta(supplierId, productId) {
+    const price = this.quote(supplierId, productId);
+    const market = GameState.price(productId);
+    if (price === null || !market) return 0;
+    return (price - market) / market;
+  },
+
+  /* ---------------- sipariş verilebilirlik ---------------- */
+
+  /** Nakit ve kullanılabilir kapasiteye göre şu an alınabilecek en yüksek miktar. */
+  maxOrder(supplierId, productId) {
+    const price = this.quote(supplierId, productId);
+    if (price === null || price <= 0) return 0;
+    const byCash = Math.floor(GameState.data.cash / price);
+    const bySpace = GameState.availableCapacity();
+    return Math.max(0, Math.min(byCash, bySpace));
+  },
+
+  canOrder(supplierId, productId) {
+    const sup = this.supplier(supplierId);
+    if (!sup) return false;
+    return this.maxOrder(supplierId, productId) >= sup.minQty;
+  },
+
+  /* ---------------- sipariş oluşturma ---------------- */
+  order(supplierId, productId, qty) {
+    const s = GameState.data;
+    const sup = this.supplier(supplierId);
+    if (!sup) return { ok: false, reason: "Tedarikçi bulunamadı" };
+    if (sup.products.indexOf(productId) === -1) return { ok: false, reason: "Bu tedarikçide bu ürün yok" };
+
+    qty = Math.floor(qty);
+    if (!(qty > 0)) return { ok: false, reason: "Geçersiz miktar" };
+    if (qty < sup.minQty) return { ok: false, reason: "Minimum sipariş " + Utils.qty(sup.minQty) + " ton" };
+
+    const price = this.quote(supplierId, productId);
+    if (price === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
+
+    const total = Utils.round2(price * qty);
+    if (total > s.cash + 0.001) return { ok: false, reason: "Yetersiz nakit" };
+    if (qty > GameState.availableCapacity()) return { ok: false, reason: "Depoda yeterli boş alan yok" };
+
+    // Ödeme sipariş anında yapılır; mal henüz depoya girmez.
+    s.cash = Utils.round2(s.cash - total);
+
+    const po = {
+      id: s.purchaseSeq++,
+      supplierId: sup.id,
+      supplierName: sup.name,
+      product: productId,
+      qty: qty,
+      unitPrice: price,           // sipariş anında kilitlenir
+      totalCost: total,
+      orderedDay: s.day,
+      leadTime: sup.leadTime,
+      daysLeft: sup.leadTime,
+      status: "in_transit"
+    };
+    s.purchaseOrders.push(po);
+
+    s.stats.poCount += 1;
+    s.stats.poTons += qty;
+    s.stats.poSpent = Utils.round2(s.stats.poSpent + total);
+
+    TradingSystem.log({
+      type: "po", product: productId, qty: qty, price: price, total: total,
+      supplier: sup.name, leadTime: sup.leadTime, day: s.day
+    });
+    SaveSystem.save();
+    return { ok: true, order: po };
+  },
+
+  /* ---------------- gün ilerlemesi ---------------- */
+
+  /** Süreleri azaltır; o gün ulaşan malları depoya alır. Ulaşanları döndürür. */
+  tickDay() {
+    const s = GameState.data;
+    const arrived = [];
+    const stillMoving = [];
+
+    s.purchaseOrders.forEach((o) => {
+      o.daysLeft -= 1;
+      if (o.daysLeft > 0) { stillMoving.push(o); return; }
+
+      // Mal depoya girer: ağırlıklı ortalama maliyet mevcut sistemle hesaplanır.
+      o.daysLeft = 0;
+      o.status = "delivered";
+      o.deliveredDay = s.day;
+      InventorySystem.add(o.product, o.qty, o.unitPrice);
+      arrived.push(o);
+
+      s.purchaseHistory.unshift(o);
+      if (s.purchaseHistory.length > CONFIG.PROCUREMENT.HISTORY_LEN) s.purchaseHistory.pop();
+    });
+
+    s.purchaseOrders = stillMoving;
+    return arrived;
+  },
+
+  /* ---------------- sözleşme entegrasyonu ---------------- */
+
+  /** Bu üründe teslim baskısı en yüksek aktif sözleşme. */
+  nearestContract(productId) {
+    const rank = (c) => (c.status === "overdue" ? -1000 + c.graceLeft : c.daysLeft);
+    let best = null;
+    GameState.data.contracts.forEach((c) => {
+      if (c.product !== productId) return;
+      if (!best || rank(c) < rank(best)) best = c;
+    });
+    return best;
+  },
+
+  /**
+   * Verilen teslim süresi, sözleşmeye yetişir mi?
+   *   none  — o üründe sözleşme yok
+   *   ok    — zamanında teslime yetişir
+   *   grace — telafi süresine yetişir (geç teslim olur)
+   *   late  — hiçbirine yetişmez
+   * Bu yalnızca karar desteğidir; sipariş vermeyi engellemez.
+   */
+  contractFit(productId, leadTime) {
+    const c = this.nearestContract(productId);
+    if (!c) return { state: "none", contract: null };
+    if (c.status === "overdue") {
+      // Sözleşme graceLeft gün daha ayakta kalır; mal leadTime gün sonra gelir.
+      return { state: leadTime <= c.graceLeft - 1 ? "grace" : "late", contract: c };
+    }
+    return { state: leadTime <= c.daysLeft ? "ok" : "late", contract: c };
+  }
+};
+
+/* ===========================================================================
  * SaveSystem — localStorage kalıcılığı
  * =========================================================================*/
 const SaveSystem = {
@@ -1838,6 +2157,65 @@ const SaveSystem = {
     let maxId = 0;
     out.offers.concat(out.contracts).forEach((x) => { if (x.id > maxId) maxId = x.id; });
     out.contractSeq = Math.max(Math.floor(num(d.contractSeq, 1, 1)), maxId + 1);
+
+    /* --- V2 Part 2: tedarik (eski kayıtlarda yok, güvenli varsayılana düşer) --- */
+    out.stats.poCount = Math.max(0, Math.floor((d.stats && d.stats.poCount) || 0));
+    out.stats.poTons = Math.max(0, Math.floor((d.stats && d.stats.poTons) || 0));
+    out.stats.poSpent = Utils.round2((d.stats && d.stats.poSpent) || 0);
+
+    const seenPo = {};
+    out.purchaseOrders = Array.isArray(d.purchaseOrders) ? d.purchaseOrders.filter((o) => {
+      if (!o || !validProduct(o.product)) return false;
+      const sup = ProcurementSystem.supplier(o.supplierId);
+      if (!sup) return false;
+      if (!(o.qty > 0) || !(o.unitPrice > 0)) return false;
+      if (!(o.leadTime >= 1) || !(o.daysLeft >= 1) || o.daysLeft > o.leadTime) return false;
+      const id = Math.floor(num(o.id, 0, -1));
+      if (id < 0 || seenPo[id]) return false;   // bozuk veya çift id
+      seenPo[id] = true;
+      return true;
+    }).map((o) => ({
+      id: Math.floor(o.id),
+      supplierId: o.supplierId,
+      supplierName: String(o.supplierName || ProcurementSystem.supplier(o.supplierId).name),
+      product: o.product,
+      qty: Math.floor(o.qty),
+      unitPrice: Utils.round2(o.unitPrice),
+      totalCost: Utils.round2(num(o.totalCost, 0, o.unitPrice * o.qty)),
+      orderedDay: Math.max(1, Math.floor(o.orderedDay || out.day)),
+      leadTime: Math.floor(o.leadTime),
+      daysLeft: Math.floor(o.daysLeft),
+      status: "in_transit"
+    })) : [];
+
+    out.purchaseHistory = Array.isArray(d.purchaseHistory)
+      ? d.purchaseHistory.filter((o) => o && validProduct(o.product) && o.qty > 0)
+        .slice(0, CONFIG.PROCUREMENT.HISTORY_LEN) : [];
+
+    let maxPo = 0;
+    out.purchaseOrders.concat(out.purchaseHistory).forEach((o) => { if (o.id > maxPo) maxPo = o.id; });
+    out.purchaseSeq = Math.max(Math.floor(num(d.purchaseSeq, 1, 1)), maxPo + 1);
+
+    // Günlük teklifler: yalnızca aynı güne ait ve geçerli olanlar korunur;
+    // aksi hâlde açılışta yeniden üretilir (aynı gün reload fiyatı değiştirmez).
+    out.supplierQuotes = null;
+    const q = d.supplierQuotes;
+    if (q && typeof q === "object" && q.day === out.day && q.prices && typeof q.prices === "object") {
+      const prices = {};
+      let sane = true;
+      CONFIG.PROCUREMENT.SUPPLIERS.forEach((sup) => {
+        const row = q.prices[sup.id];
+        if (!row || typeof row !== "object") { sane = false; return; }
+        const clean = {};
+        sup.products.forEach((pid) => {
+          const v = row[pid];
+          if (typeof v !== "number" || !isFinite(v) || v <= 0) { sane = false; return; }
+          clean[pid] = Utils.round2(v);
+        });
+        prices[sup.id] = clean;
+      });
+      if (sane) out.supplierQuotes = { day: out.day, prices: prices };
+    }
     if (d.settings && typeof d.settings === "object") {
       out.settings.sound = d.settings.sound !== false;
     }
@@ -1888,6 +2266,7 @@ const Audio_ = {
   error()  { this.tone(180, 0.14, "square", 0.03); },
   upgrade(){ [520, 660, 830].forEach((f, i) => setTimeout(() => this.tone(f, 0.14, "triangle", 0.05), i * 90)); },
   offer()  { this.tone(660, 0.08, "sine", 0.045); setTimeout(() => this.tone(880, 0.13, "sine", 0.04), 90); },
+  arrival(){ this.tone(440, 0.09, "triangle", 0.05); setTimeout(() => this.tone(620, 0.14, "triangle", 0.045), 85); },
   contract(){ [620, 780, 990, 1240].forEach((f, i) => setTimeout(() => this.tone(f, 0.16, "sine", 0.05), i * 85)); },
   haptic(ms) { if (navigator.vibrate) { try { navigator.vibrate(ms || 10); } catch (e) {} } }
 };
@@ -1898,6 +2277,7 @@ const Audio_ = {
 const UI = {
   currentTab: "market",
   tradeSegment: "offers",
+  procProduct: "aluminum",
   sheet: { open: false, mode: "buy", productId: null, qty: 0 },
   flashPrices: false,
 
@@ -1966,6 +2346,8 @@ const UI = {
       case "newgame": this.confirmNewGame(); break;
       case "reset":   this.confirmReset(); break;
       case "seg":     Audio_.tap(); this.tradeSegment = ds.seg; this.el.main.scrollTop = 0; this.render(); break;
+      case "procProduct": Audio_.tap(); this.procProduct = ds.id; this.render(); break;
+      case "poOpen":      Audio_.tap(); this.openPoSheet(ds.sup, ds.id); break;
       case "offerAccept":    this.acceptOffer(parseInt(ds.id, 10)); break;
       case "offerReject":    this.rejectOffer(parseInt(ds.id, 10)); break;
       case "contractDeliver":this.deliverContract(parseInt(ds.id, 10)); break;
@@ -2191,6 +2573,8 @@ const UI = {
         bits.push('<span class="pill">Ort. <b>' + Utils.price(h.avgCost) + '</b></span>');
         bits.push('<span class="pill ' + (pl >= 0 ? "up" : "down") + '">' + Utils.moneySigned(pl) + '</span>');
       }
+      const onWay = GameState.inTransitQty(p.id);
+      if (onWay > 0) bits.push('<span class="pill">Yolda <b>' + Utils.qty(onWay) + ' ton</b></span>');
       const committed = GameState.committed(p.id);
       if (committed > 0) {
         const missing = ContractSystem.shortfall(p.id);
@@ -2237,25 +2621,59 @@ const UI = {
   renderWarehouse() {
     const s = GameState.data;
     const cap = GameState.capacity(), used = GameState.usedCapacity();
+    const reserved = GameState.reservedCapacity();
+    const avail = GameState.availableCapacity();
     const ratio = cap > 0 ? used / cap : 0;
-    const fillCls = ratio >= 1 ? "full" : ratio >= 0.8 ? "warn" : "";
+    const resRatio = cap > 0 ? reserved / cap : 0;
+    const fillCls = (ratio + resRatio) >= 1 ? "full" : (ratio + resRatio) >= 0.8 ? "warn" : "";
     const invVal = GameState.inventoryValue();
     const invCost = GameState.inventoryCost();
     const pl = Utils.round2(invVal - invCost);
 
     let html = '<div class="card">' +
       '<div class="rowBetween">' +
-        '<div><div class="muted3">DEPO KULLANIMI</div>' +
+        '<div><div class="muted3">DEPODA</div>' +
         '<div class="big num">' + Utils.qty(used) + ' <span class="muted">/ ' + Utils.qty(cap) + ' ton</span></div></div>' +
         '<div style="text-align:right"><div class="muted3">DOLULUK</div>' +
-        '<div class="big num">' + Math.round(ratio * 100) + '%</div></div>' +
+        '<div class="big num">' + Math.round((ratio + resRatio) * 100) + '%</div></div>' +
       '</div>' +
-      '<div class="capBar"><div class="capFill ' + fillCls + '" style="width:' + Utils.clamp(ratio * 100, 0, 100) + '%"></div></div>' +
-      '<div class="holdGrid">' +
+      '<div class="capBar split">' +
+        '<div class="capFill ' + fillCls + '" style="width:' + Utils.clamp(ratio * 100, 0, 100) + '%"></div>' +
+        '<div class="capFill reserved" style="width:' + Utils.clamp(resRatio * 100, 0, 100 - ratio * 100) + '%"></div>' +
+      '</div>' +
+      '<div class="capLegend">' +
+        '<div class="kv"><div class="k">Yolda</div><div class="v num">' + Utils.qty(reserved) + ' ton</div></div>' +
+        '<div class="kv"><div class="k">Rezerve</div><div class="v num">' + Utils.qty(reserved) + ' ton</div></div>' +
+        '<div class="kv"><div class="k">Kullanılabilir</div><div class="v num ' + (avail <= 0 ? "down" : "") + '">' +
+          Utils.qty(avail) + ' ton</div></div>' +
         '<div class="kv"><div class="k">Stok Değeri</div><div class="v num">' + Utils.money(invVal) + '</div></div>' +
         '<div class="kv"><div class="k">Açık K/Z</div><div class="v num ' + (pl > 0 ? "up" : pl < 0 ? "down" : "") + '">' + Utils.moneySigned(pl) + '</div></div>' +
+        '<div class="kv"><div class="k">Yoldaki Değer</div><div class="v num">' + Utils.money(GameState.inTransitValue()) + '</div></div>' +
       '</div>' +
     '</div>';
+
+    // Yoldaki mallar (özet; detay Tedarik ekranında)
+    if (GameState.data.purchaseOrders.length) {
+      const byProduct = {};
+      GameState.data.purchaseOrders.forEach((o) => {
+        if (!byProduct[o.product]) byProduct[o.product] = { qty: 0, soon: o.daysLeft };
+        byProduct[o.product].qty += o.qty;
+        byProduct[o.product].soon = Math.min(byProduct[o.product].soon, o.daysLeft);
+      });
+      html += '<div class="sectionTitle"><h2>Yoldaki Mallar</h2>' +
+        '<span class="hint">' + GameState.data.purchaseOrders.length + ' sipariş</span></div>';
+      html += Object.keys(byProduct).map((id) => {
+        const pr = GameState.product(id);
+        const row = byProduct[id];
+        return '<div class="poCard" data-action="goto" data-tab="trades" data-seg="supply" role="button">' +
+          '<div class="poTop">' + this.productIcon(pr) +
+            '<div style="flex:1;min-width:0"><div class="poName">' + pr.name + '</div>' +
+            '<div class="poSub num">' + Utils.qty(row.qty) + ' ton yolda</div></div>' +
+            '<span class="lead' + (row.soon <= 1 ? " fast" : "") + '">' + row.soon + ' GÜN</span>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+    }
 
     const held = CONFIG.PRODUCTS.filter((p) => s.inventory[p.id].qty > 0);
     html += '<div class="sectionTitle"><h2>Stoklar</h2><span class="hint">' + held.length + ' ürün</span></div>';
@@ -2400,6 +2818,7 @@ const UI = {
 
     const cls = c.status === "overdue" ? "overdue" : ready ? "ready" : (c.daysLeft <= 2 ? "warn" : "");
     const buyCost = Utils.round2(need * market);
+    const incoming = GameState.inTransitQty(c.product);
 
     let note = "";
     if (c.status === "overdue") {
@@ -2438,6 +2857,9 @@ const UI = {
           ? '<div class="pRow"><span class="k">Eksik</span><span class="v num down">' + Utils.qty(need) +
             ' ton · ~' + Utils.money(buyCost) + '</span></div>'
           : "") +
+        (incoming > 0
+          ? '<div class="pRow"><span class="k">Yolda</span><span class="v num">' + Utils.qty(incoming) + ' ton</span></div>'
+          : "") +
         '<div class="pRow"><span class="k">Teslimde ödeme</span><span class="v num up">' + Utils.money(c.value) + '</span></div>' +
         '<div class="pRow"><span class="k">Ceza</span><span class="v num ' + (c.penaltyPaid ? "" : "down") + '">' +
           (c.penaltyPaid ? "ödendi" : "-" + Utils.money(c.penalty)) + '</span></div>' +
@@ -2459,12 +2881,15 @@ const UI = {
     const seg = this.tradeSegment;
     const urgent = ContractSystem.urgentCount();
 
-    let html = '<div class="seg">' +
+    const inTransit = s.purchaseOrders.length;
+    let html = '<div class="seg four">' +
       '<button class="segBtn' + (seg === "offers" ? " active" : "") + '" data-action="seg" data-seg="offers">' +
-        'Fırsatlar' + (s.offers.length ? '<span class="n">' + s.offers.length + '</span>' : "") + '</button>' +
+        'Fırsat' + (s.offers.length ? '<span class="n">' + s.offers.length + '</span>' : "") + '</button>' +
       '<button class="segBtn' + (seg === "active" ? " active" : "") + (urgent ? " alert" : "") +
         '" data-action="seg" data-seg="active">' +
         'Aktif' + (s.contracts.length ? '<span class="n">' + s.contracts.length + '</span>' : "") + '</button>' +
+      '<button class="segBtn' + (seg === "supply" ? " active" : "") + '" data-action="seg" data-seg="supply">' +
+        'Tedarik' + (inTransit ? '<span class="n">' + inTransit + '</span>' : "") + '</button>' +
       '<button class="segBtn' + (seg === "history" ? " active" : "") + '" data-action="seg" data-seg="history">' +
         'Geçmiş</button>' +
     '</div>';
@@ -2491,6 +2916,9 @@ const UI = {
           '<div class="s">Fırsatlar sekmesinden bir talebi kabul et.</div>' +
           '<button class="btn primary sm" style="margin-top:14px;max-width:220px;margin-left:auto;margin-right:auto" data-action="seg" data-seg="offers">FIRSATLARA BAK</button></div>';
 
+    } else if (seg === "supply") {
+      html += this.procurementHTML();
+
     } else {
       html += '<div class="statGrid">' +
         '<div class="statBox"><div class="k">Tamamlanan</div><div class="v num">' + Utils.qty(s.stats.contractsDone) + '</div></div>' +
@@ -2499,6 +2927,9 @@ const UI = {
         '<div class="statBox"><div class="k">Sözleşme Cirosu</div><div class="v num">' + Utils.money(s.stats.contractRevenue) + '</div></div>' +
         '<div class="statBox"><div class="k">Ödenen Ceza</div><div class="v num ' +
           (s.stats.penaltiesPaid ? "down" : "") + '">' + Utils.money(s.stats.penaltiesPaid) + '</div></div>' +
+        '<div class="statBox"><div class="k">Tedarik Siparişi</div><div class="v num">' + Utils.qty(s.stats.poCount) + '</div></div>' +
+        '<div class="statBox"><div class="k">Tedarikten Alınan</div><div class="v num">' + Utils.qty(s.stats.poTons) + ' ton</div></div>' +
+        '<div class="statBox"><div class="k">Tedariğe Harcanan</div><div class="v num">' + Utils.money(s.stats.poSpent) + '</div></div>' +
       '</div>';
 
       if (s.contractLog.length) {
@@ -2532,6 +2963,145 @@ const UI = {
     $("#screenTrades").innerHTML = html;
   },
 
+  /* ---------------- bileşen: tedarik ekranı ---------------- */
+  fitLineHTML(fit, leadLabel) {
+    if (fit.state === "none") return "";
+    const c = fit.contract;
+    const head = Utils.escape(c.customer) + " · " + Utils.qty(c.qty) + " ton · " + this.deadlineText(c);
+    if (fit.state === "ok") {
+      return '<div class="fitLine ok">✓ En yakın sözleşmeye yetişir · ' + head + '</div>';
+    }
+    if (fit.state === "grace") {
+      return '<div class="fitLine grace">Telafi süresine yetişir · geç teslim olur · ' + head + '</div>';
+    }
+    return '<div class="fitLine late">⚠ En yakın sözleşmeye yetişmez · ' + head + '</div>';
+  },
+
+  procurementHTML() {
+    const s = GameState.data;
+    const pid = this.procProduct;
+    const p = GameState.product(pid) || CONFIG.PRODUCTS[0];
+    const market = GameState.price(p.id);
+    let html = "";
+
+    // Yoldaki siparişler
+    if (s.purchaseOrders.length) {
+      html += '<div class="sectionTitle"><h2>Yoldaki Siparişler</h2>' +
+        '<span class="hint">' + Utils.money(GameState.inTransitValue()) + '</span></div>';
+      html += s.purchaseOrders.slice().sort((a, b) => a.daysLeft - b.daysLeft).map((o) => {
+        const op = GameState.product(o.product);
+        const prog = o.leadTime > 0 ? (o.leadTime - o.daysLeft) / o.leadTime : 1;
+        return '<div class="poCard">' +
+          '<div class="poTop">' + this.productIcon(op) +
+            '<div style="flex:1;min-width:0"><div class="poName">' + Utils.escape(o.supplierName) + '</div>' +
+            '<div class="poSub num">' + Utils.qty(o.qty) + ' ton ' + op.name + ' · ' + Utils.price(o.unitPrice) + '/ton</div></div>' +
+            '<div style="text-align:right"><div class="lead' + (o.daysLeft <= 1 ? " fast" : "") + '">' +
+              o.daysLeft + ' GÜN</div>' +
+              '<div class="poSub num" style="margin-top:4px">' + Utils.money(o.totalCost) + '</div></div>' +
+          '</div>' +
+          '<div class="poBar"><div class="poFill" style="width:' + (prog * 100).toFixed(1) + '%"></div></div>' +
+        '</div>';
+      }).join("");
+    }
+
+    // Ürün seçici
+    html += '<div class="sectionTitle" style="margin-top:' + (s.purchaseOrders.length ? "18px" : "2px") + '">' +
+      '<h2>Tedarik Kaynakları</h2><span class="hint">Kullanılabilir ' +
+      Utils.qty(GameState.availableCapacity()) + ' ton</span></div>';
+    html += '<div class="pSel">' + CONFIG.PRODUCTS.map((pr) =>
+      '<button class="pBtn' + (pr.id === p.id ? " active" : "") + '" data-action="procProduct" data-id="' + pr.id + '">' +
+        '<span class="t">' + pr.name + '</span>' +
+        '<span class="p num">' + Utils.price(GameState.price(pr.id)) + '</span></button>').join("") + '</div>';
+
+    // Spot piyasa (anında teslim, referans kaynak)
+    const spotMax = TradingSystem.maxBuy(p.id);
+    html += '<div class="supCard spot">' +
+      '<div class="supHead">' +
+        '<div style="flex:1;min-width:0"><div class="supName">Spot Piyasa</div>' +
+        '<div class="supDesc">Anında teslim · min 1 ton</div></div>' +
+        '<span class="lead fast">ANINDA</span>' +
+      '</div>' +
+      '<div class="supPrice"><span class="v num">' + Utils.price(market) + '</span>' +
+        '<span class="u">/ton</span><span class="dlt flat">referans</span></div>' +
+      '<div class="ctrRows previewBox" style="margin:9px 0 0;border:0;background:transparent;padding:0">' +
+        '<div class="pRow"><span class="k">Şu an alınabilir</span><span class="v num">' + Utils.qty(spotMax) + ' ton</span></div>' +
+      '</div>' +
+      '<div class="mktBtns">' +
+        '<button class="btn primary" data-action="buy" data-id="' + p.id + '"' + (spotMax > 0 ? "" : " disabled") + '>' +
+          'SPOTTAN AL</button>' +
+      '</div>' +
+    '</div>';
+
+    // Tedarikçiler (ucuzdan pahalıya)
+    const list = ProcurementSystem.suppliersFor(p.id).slice().sort((a, b) => {
+      const qa = ProcurementSystem.quote(a.id, p.id), qb = ProcurementSystem.quote(b.id, p.id);
+      return (qa === null ? 1e9 : qa) - (qb === null ? 1e9 : qb);
+    });
+
+    html += list.map((sup) => {
+      const price = ProcurementSystem.quote(sup.id, p.id);
+      if (price === null) return "";
+      const delta = ProcurementSystem.delta(sup.id, p.id);
+      const max = ProcurementSystem.maxOrder(sup.id, p.id);
+      const canOrder = max >= sup.minQty;
+      const fit = ProcurementSystem.contractFit(p.id, sup.leadTime);
+
+      let blocker = "";
+      if (!canOrder) {
+        const need = sup.minQty;
+        blocker = (GameState.availableCapacity() < need)
+          ? '<div class="warnLine">Minimum sipariş için ' + Utils.qty(need - GameState.availableCapacity()) +
+            ' ton daha boş alan gerekiyor</div>'
+          : '<div class="warnLine soft">Minimum ' + Utils.qty(need) + ' ton için ' +
+            Utils.money(need * price - GameState.data.cash) + ' daha nakit gerekiyor</div>';
+      }
+
+      return '<div class="supCard">' +
+        '<div class="supHead">' +
+          '<div style="flex:1;min-width:0"><div class="supName">' + Utils.escape(sup.name) + '</div>' +
+          '<div class="supDesc">' + Utils.escape(sup.desc) + ' · min ' + Utils.qty(sup.minQty) + ' ton</div></div>' +
+          '<span class="lead ' + (sup.leadTime <= 1 ? "fast" : sup.leadTime >= 4 ? "slow" : "") + '">' +
+            sup.leadTime + ' GÜN</span>' +
+        '</div>' +
+        '<div class="supPrice"><span class="v num">' + Utils.price(price) + '</span>' +
+          '<span class="u">/ton</span>' +
+          '<span class="dlt ' + (delta > 0.0005 ? "up" : delta < -0.0005 ? "" : "flat") + '">' +
+            Utils.pct(delta) + ' spot</span></div>' +
+        '<div class="ctrRows previewBox" style="margin:9px 0 0;border:0;background:transparent;padding:0">' +
+          '<div class="pRow"><span class="k">Şu an alınabilir</span><span class="v num">' + Utils.qty(max) + ' ton</span></div>' +
+          (canOrder
+            ? '<div class="pRow"><span class="k">' + Utils.qty(sup.minQty) + ' ton maliyeti</span>' +
+              '<span class="v num">' + Utils.money(sup.minQty * price) + '</span></div>'
+            : "") +
+        '</div>' +
+        this.fitLineHTML(fit, sup.leadTime) +
+        blocker +
+        '<div class="mktBtns">' +
+          '<button class="btn primary" data-action="poOpen" data-sup="' + sup.id + '" data-id="' + p.id + '"' +
+            (canOrder ? "" : " disabled") + '>SİPARİŞ VER</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    // Son teslim alınanlar
+    if (s.purchaseHistory.length) {
+      html += '<div class="sectionTitle" style="margin-top:18px"><h2>Teslim Alınanlar</h2></div>';
+      html += s.purchaseHistory.slice(0, 6).map((o) => {
+        const op = GameState.product(o.product);
+        return '<div class="txRow">' +
+          '<div class="txIcon buy">↓</div>' +
+          '<div class="txMain"><div class="txTitle">' + Utils.escape(o.supplierName) + '</div>' +
+          '<div class="txSub num">Gün ' + (o.deliveredDay || o.orderedDay) + ' · ' + Utils.qty(o.qty) + ' ton ' +
+            (op ? op.name : "") + ' @ ' + Utils.price(o.unitPrice) + '</div></div>' +
+          '<div class="txAmt"><div class="a num">' + Utils.money(o.totalCost) + '</div>' +
+          '<div class="b muted3">teslim</div></div>' +
+        '</div>';
+      }).join("");
+    }
+
+    return html;
+  },
+
   /* ---------------- bileşen: alım/satım geçmişi ---------------- */
   txHistoryHTML() {
     const s = GameState.data;
@@ -2561,6 +3131,16 @@ const UI = {
       }
       const p = GameState.product(t.product);
       const name = p ? p.name : t.product;
+      if (t.type === "po") {
+        return '<div class="txRow">' +
+          '<div class="txIcon buy">⇥</div>' +
+          '<div class="txMain"><div class="txTitle">Tedarik Siparişi · ' + Utils.escape(t.supplier || "") + '</div>' +
+          '<div class="txSub num">Gün ' + t.day + ' · ' + Utils.qty(t.qty) + ' ton ' + name +
+            ' @ ' + Utils.price(t.price) + ' · ' + t.leadTime + ' gün</div></div>' +
+          '<div class="txAmt"><div class="a num">-' + Utils.money(t.total) + '</div>' +
+          '<div class="b muted3">yolda</div></div>' +
+        '</div>';
+      }
       if (t.type === "contract") {
         return '<div class="txRow">' +
           '<div class="txIcon sell">✓</div>' +
@@ -2693,6 +3273,19 @@ Object.assign(UI, {
     this.showSheet();
   },
 
+  /** Tedarikçi sipariş ekranı. Başlangıç miktarı minimum siparişe eşitlenir. */
+  openPoSheet(supplierId, productId) {
+    const sup = ProcurementSystem.supplier(supplierId);
+    if (!sup) return;
+    const max = ProcurementSystem.maxOrder(supplierId, productId);
+    this.sheet = {
+      open: true, mode: "po", productId: productId, supplierId: supplierId,
+      qty: Math.min(sup.minQty, max), confirm: null
+    };
+    this.renderSheet();
+    this.showSheet();
+  },
+
   openConfirm(cfg) {
     this.sheet = { open: true, mode: "confirm", productId: null, qty: 0, confirm: cfg };
     this.renderSheet();
@@ -2719,6 +3312,7 @@ Object.assign(UI, {
   sheetMax() {
     const st = this.sheet;
     if (!st.productId) return 0;
+    if (st.mode === "po") return ProcurementSystem.maxOrder(st.supplierId, st.productId);
     return st.mode === "buy" ? TradingSystem.maxBuy(st.productId) : TradingSystem.maxSell(st.productId);
   },
 
@@ -2733,6 +3327,7 @@ Object.assign(UI, {
       case "inc":   Audio_.haptic(5); this.setQty(this.sheet.qty + 1); break;
       case "dec":   Audio_.haptic(5); this.setQty(this.sheet.qty - 1); break;
       case "confirm": this.confirmTrade(); break;
+      case "poConfirm": this.confirmPurchaseOrder(); break;
       case "confirmYes":
         var cb = this.sheet.confirm && this.sheet.confirm.onConfirm;
         this.closeSheet();
@@ -2744,6 +3339,7 @@ Object.assign(UI, {
   renderSheet() {
     const st = this.sheet;
     if (st.mode === "confirm") { this.renderConfirmSheet(); return; }
+    if (st.mode === "po") { this.renderPoSheet(); return; }
 
     const p = GameState.product(st.productId);
     if (!p) return;
@@ -2823,6 +3419,92 @@ Object.assign(UI, {
         '<button class="btn ' + (isBuy ? "primary" : "sell") + '" data-sheet="confirm"' + (qty <= 0 ? " disabled" : "") + '>' +
           (isBuy ? "SATIN AL" : "SAT") + '</button>' +
       '</div>';
+  },
+
+  renderPoSheet() {
+    const st = this.sheet;
+    const sup = ProcurementSystem.supplier(st.supplierId);
+    const p = GameState.product(st.productId);
+    if (!sup || !p) return;
+
+    const price = ProcurementSystem.quote(sup.id, p.id);
+    const market = GameState.price(p.id);
+    const delta = ProcurementSystem.delta(sup.id, p.id);
+    const max = this.sheetMax();
+    const qty = Utils.clamp(st.qty, 0, max);
+    const total = Utils.round2((price || 0) * qty);
+    const fit = ProcurementSystem.contractFit(p.id, sup.leadTime);
+    const avail = GameState.availableCapacity();
+
+    const presets = [1, 5, 10, 25];
+    const chips = presets.map((n) =>
+      '<button class="chip' + (qty === n ? " active" : "") + '"' + (n > max || n < sup.minQty ? " disabled" : "") +
+      ' data-sheet="qty" data-q="' + n + '">' + n + '</button>').join("") +
+      '<button class="chip' + (qty === max && max >= sup.minQty ? " active" : "") + '"' +
+      (max < sup.minQty ? " disabled" : "") + ' data-sheet="qty" data-q="max">MAX</button>';
+
+    const belowMin = qty < sup.minQty;
+    const err = max < sup.minQty
+      ? "Minimum " + Utils.qty(sup.minQty) + " ton için nakit veya depo alanı yetmiyor"
+      : (belowMin ? "Minimum sipariş " + Utils.qty(sup.minQty) + " ton" : "");
+
+    this.el.sheet.innerHTML =
+      '<div class="grabber"></div>' +
+      '<div class="shHead">' +
+        this.productIcon(p) +
+        '<div><div class="shName">' + Utils.escape(sup.name) + '</div>' +
+        '<div class="shSub num">' + p.name + ' · ' + Utils.price(price || 0) + '/ton · ' + sup.leadTime + ' gün</div></div>' +
+        '<span class="shTag buy">SİPARİŞ</span>' +
+      '</div>' +
+      '<div class="qtyChips">' + chips + '</div>' +
+      '<div class="stepper">' +
+        '<button class="stepBtn" data-sheet="dec"' + (qty <= 0 ? " disabled" : "") + '>−</button>' +
+        '<div class="stepVal"><div class="n num">' + Utils.qty(qty) + '</div>' +
+        '<div class="u">' + p.unit + ' · min ' + Utils.qty(sup.minQty) + ' · max ' + Utils.qty(max) + '</div></div>' +
+        '<button class="stepBtn" data-sheet="inc"' + (qty >= max ? " disabled" : "") + '>+</button>' +
+      '</div>' +
+      '<div class="previewBox">' +
+        '<div class="pRow"><span class="k">Tedarikçi birim fiyatı</span><span class="v num">' + Utils.price(price || 0) + '</span></div>' +
+        '<div class="pRow"><span class="k">Spot piyasa fiyatı</span><span class="v num">' + Utils.price(market) + '</span></div>' +
+        '<div class="pRow"><span class="k">Spota göre fark</span><span class="v num ' +
+          (delta < 0 ? "up" : delta > 0 ? "down" : "") + '">' + Utils.pct(delta) + '</span></div>' +
+        '<div class="pRow"><span class="k">Teslim süresi</span><span class="v">' + sup.leadTime + ' gün</span></div>' +
+        '<div class="pRow total"><span class="k">Toplam maliyet</span><span class="v num">' + Utils.money(total) + '</span></div>' +
+        '<div class="pRow"><span class="k">Sipariş sonrası nakit</span><span class="v num ' +
+          (GameState.data.cash - total < 0 ? "down" : "") + '">' + Utils.money(GameState.data.cash - total) + '</span></div>' +
+        '<div class="pRow"><span class="k">Rezerve edilecek alan</span><span class="v num">' + Utils.qty(qty) + ' ton</span></div>' +
+        '<div class="pRow"><span class="k">Kalan kullanılabilir kapasite</span><span class="v num">' +
+          Utils.qty(Math.max(0, avail - qty)) + ' ton</span></div>' +
+      '</div>' +
+      this.fitLineHTML(fit, sup.leadTime) +
+      '<div class="shErr">' + err + '</div>' +
+      '<div class="mktBtns" style="margin-top:10px">' +
+        '<button class="btn ghost" data-sheet="close">VAZGEÇ</button>' +
+        '<button class="btn primary" data-sheet="poConfirm"' + (belowMin || qty <= 0 ? " disabled" : "") + '>' +
+          'SİPARİŞ VER</button>' +
+      '</div>';
+  },
+
+  confirmPurchaseOrder() {
+    const st = this.sheet;
+    const sup = ProcurementSystem.supplier(st.supplierId);
+    const p = GameState.product(st.productId);
+    if (!sup || !p) return;
+
+    const res = ProcurementSystem.order(sup.id, p.id, st.qty);
+    if (!res.ok) {
+      Audio_.error(); Audio_.haptic(30);
+      this.toast(res.reason, "err");
+      this.renderSheet();
+      return;
+    }
+    this.closeSheet();
+    Audio_.buy(); Audio_.haptic(14);
+    this.fx("neutral", "-" + Utils.money(res.order.totalCost),
+      Utils.qty(res.order.qty) + " TON · " + res.order.leadTime + " GÜN");
+    this.toast(Utils.qty(res.order.qty) + " ton " + p.name + " sipariş edildi · " +
+      sup.name + " · " + res.order.leadTime + " gün", "ok");
+    this.render();
   },
 
   renderConfirmSheet() {
@@ -3088,8 +3770,9 @@ const Game = {
         const o = ContractSystem.makeOffer();
         if (o) GameState.data.offers.push(o);
       }
-      SaveSystem.saveNow();
     }
+    // Tedarikçi teklifleri: aynı güne ait kayıt varsa korunur, yoksa üretilir.
+    if (ProcurementSystem.ensureQuotes() || !loaded) SaveSystem.saveNow();
     UI.init();
     UI.switchTab("market");
   },
@@ -3102,6 +3785,7 @@ const Game = {
     GameState.data = GameState.createNew(settings);
     const o = ContractSystem.makeOffer();
     if (o) GameState.data.offers.push(o);
+    ProcurementSystem.ensureQuotes();
     UI.tradeSegment = "offers";
     SaveSystem.saveNow();
     UI.switchTab("market");
@@ -3124,10 +3808,16 @@ const Game = {
     MarketSystem.advanceDay();
     // 3) Aktif olayların süresi azalır
     EventSystem.tick();
-    // 4) Sözleşme süreleri işler (son gün geçerse ceza, telafi dolarsa iflas)
+    // 4) Yoldaki tedarik siparişleri ilerler; o gün ulaşanlar depoya girer.
+    //    Sözleşme süresi işlemeden ÖNCE gelmeli ki son gün ulaşan mal
+    //    sözleşmeyi zamanında kapatabilsin.
+    const arrivals = ProcurementSystem.tickDay();
+    // 5) Sözleşme süreleri işler (son gün geçerse ceza, telafi dolarsa iflas)
     const contractEvents = ContractSystem.tickDay();
-    // 5) Yeni teklifler gelir, eskiler düşer
+    // 6) Yeni teklifler gelir, eskiler düşer
     const offerRoll = ContractSystem.rollOffers();
+    // 7) Güncellenmiş piyasa fiyatlarından yeni tedarikçi teklifleri üretilir
+    ProcurementSystem.ensureQuotes();
 
     const value = GameState.companyValue();
     if (value > s.stats.peakValue) s.stats.peakValue = Utils.round2(value);
@@ -3139,7 +3829,16 @@ const Game = {
     UI.flashPrices = true;
     UI.render();
 
-    // Bildirimler: önce kötü haber, sonra fırsat
+    // Bildirimler: önce depoya ulaşan mal, sonra kötü haber, sonra fırsat
+    arrivals.forEach((o, i) => {
+      const p = GameState.product(o.product);
+      setTimeout(() => {
+        Audio_.arrival();
+        UI.toast(Utils.qty(o.qty) + " ton " + (p ? p.name : "") + " depoya ulaştı · " + o.supplierName, "ok");
+      }, 150 + i * 450);
+    });
+    const notifyBase = arrivals.length ? 150 + arrivals.length * 450 : 250;
+
     contractEvents.forEach((ev, i) => {
       setTimeout(() => {
         if (ev.type === "overdue") {
@@ -3148,7 +3847,7 @@ const Game = {
         } else {
           UI.toast(ev.contract.customer + " · sözleşme iptal edildi, itibar düştü", "err");
         }
-      }, 250 + i * 500);
+      }, notifyBase + i * 500);
     });
 
     if (news && UI.currentTab !== "market") {
@@ -3160,7 +3859,7 @@ const Game = {
       setTimeout(() => {
         Audio_.offer();
         UI.toast("Yeni talep: " + o.customer + " · " + Utils.qty(o.qty) + " ton " + (p ? p.name : ""), "ok");
-      }, contractEvents.length ? 250 + contractEvents.length * 500 : 200);
+      }, notifyBase + contractEvents.length * 500);
     }
 
     setTimeout(() => { this.busy = false; btn.classList.remove("busy"); }, 320);
@@ -3182,6 +3881,7 @@ window.TradeEmpire = {
   InventorySystem: InventorySystem, TradingSystem: TradingSystem,
   EventSystem: EventSystem, CompanySystem: CompanySystem,
   ReputationSystem: ReputationSystem, ContractSystem: ContractSystem,
+  ProcurementSystem: ProcurementSystem,
   SaveSystem: SaveSystem, UI: UI, Game: Game
 };
 </script>
