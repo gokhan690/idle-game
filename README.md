@@ -1,4 +1,4 @@
-# Trade Empire — V3 (Part 2)
+# Trade Empire — V4 (Part 1)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -178,11 +178,67 @@ hiçbir zaman engellenmez.
 Lojistik gecikme müşteri cezası kesmez; sözleşme gecikirse cezayı her zamanki
 gibi ContractSystem bir kez keser.
 
+### Şirket filosu (V4 Part 1)
+
+Şirket değeri **$75.000**'i geçtiğinde kendi araç filonuz açılır. Filo yalnızca
+**karayolu** rotalarında kullanılabilir; deniz ve demiryolu her zaman harici
+nakliyecidir.
+
+| Araç | Kapasite | Fiyat | Dönüş | Not |
+| --- | --- | --- | --- | --- |
+| Hafif Kamyon (HK) | 10 ton | $1.800 | 1 gün | Küçük siparişlerde esnek |
+| Standart Tır (ST) | 20 ton | $3.600 | 1 gün | Genel amaçlı |
+| Ağır Tır (AT) | 30 ton | $4.600 | 2 gün | Büyük hacimde verimli |
+
+Araç satın almak **şirket değerini değiştirmez**: nakit azalır, aynı tutar
+filonun defter değeri olarak geri gelir. Kazanç ya da kayıp, aracın sonraki
+seferlerinde ortaya çıkar.
+
+```
+harici navlun  = freightPerTon x qty
+filo navlunu   = fleetCostPerTon x qty + fleetDispatchCost x araçSayısı
+```
+
+| Karayolu rotası | Harici/ton | Filo/ton | Araç sevk |
+| --- | --- | --- | --- |
+| İstanbul → İstanbul | $4 | $1,5 | $12 |
+| Konya → İstanbul | $12 | $4 | $30 |
+| Belgrad → İstanbul | $28 | $9 | $60 |
+| Köstence → İstanbul | $34 | $11 | $75 |
+| Novorossiysk → İstanbul | $52 | $17 | $110 |
+
+Sevk bedeli araç başınadır, bu yüzden **yarım dolu araç pahalıdır**. Araç
+seçimi otomatiktir: önce en az sayıda araç, eşitlikte en az fazla kapasite.
+35 ton için 10+30 (fazlalık 5) seçilir, 20+30 (fazlalık 15) değil.
+
+Bir siparişte taşıyıcılar karıştırılamaz: sipariş ya tamamen harici ya tamamen
+kendi filonuzladır. Sipariş verildiği anda araçlar bağlanır, teslimattan sonra
+`returnDays` kadar dönüşte kalır ve ancak sonra yeniden müsait olur. Yalnızca
+**müsait** araçlar kapasiteye sayılır.
+
+Filo, teslim süresini ve rota güvenilirliğini **değiştirmez**. Aynı rotadaki
+kendi aracınız da harici nakliyeci de aynı gecikme olaylarından etkilenir.
+
+Araç fiyatları simülasyonla kalibre edildi. Ölçülen amortisman süresi (tam yük,
+sefer + dönüş döngüsü üzerinden):
+
+| Araç | Belgrad | Köstence | Novorossiysk |
+| --- | --- | --- | --- |
+| Hafif Kamyon | 42 gün | 46 gün | 38 gün |
+| Standart Tır | 34 gün | 37 gün | 31 gün |
+| Ağır Tır | 36 gün | 37 gün | 29 gün |
+
+Yurtiçi kısa hatlarda (İstanbul, Konya) harici navlun zaten ucuz olduğu için
+filo kendini 110 günden önce amorti etmez: **kendi filon uzun uluslararası
+karayolu hattında kazandırır.** Boş bekleyen araç ise doğrudan zarardır —
+sermaye bağlanır, tasarruf üretilmez.
+
 ### Landed cost
 
 ```
 goodsCost      = goodsUnitPrice x qty
-freightCost    = freightPerTon  x qty
+freightCost    = harici : freightPerTon x qty
+                 filo   : fleetCostPerTon x qty + fleetDispatchCost x araçSayısı
 totalCost      = goodsCost + freightCost        (sipariş anında peşin ödenir)
 landedUnitCost = totalCost / qty                (stok maliyeti budur)
 ```
@@ -232,6 +288,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `ContractSystem` | Müşteri talepleri, sözleşme yaşam döngüsü, ceza ve teslimat |
 | `ProcurementSystem` | Tedarikçiler, ülke/hub/rota/taşıma, günlük teklifler, landed cost, satın alma siparişleri, yoldaki mallar |
 | `LogisticsSystem` | Rota güvenilirliği, hat durumları, gecikme olayları, ETA yönetimi |
+| `FleetSystem` | Araç tipleri, satın alma, araç atama, sevkiyat/dönüş döngüsü, filo kapasitesi |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -253,21 +310,24 @@ erişilebilirdir.
 - **V3 Part 1** — ülkeler, ticaret merkezleri, rotalar, taşıma yöntemleri,
   navlun ve landed cost ✅
 - **V3 Part 2** — rota güvenilirliği, hat durumları, gerçek gecikmeler ve
-  ETA yönetimi ✅ *(bu sürüm)*
-- **Sonrası** — navlun piyasası, gümrük/vergi, sigorta, kendi araç filosu,
-  birden fazla depo, çalışanlar, banka/kredi, fabrikalar, rakip şirketler
+  ETA yönetimi ✅
+- **V4 Part 1** — şirket filosu, kamyonlar, lojistik kapasitesi ✅ *(bu sürüm)*
+- **Sonrası** — navlun piyasası, gümrük/vergi, sigorta, gemi/uçak filosu,
+  şoför ve bakım, birden fazla depo, çalışanlar, banka/kredi, fabrikalar,
+  rakip şirketler
 
 Savaş, yaptırım, siyasi risk, rota kapanması, navlun piyasası, dinamik petrol
-fiyatı, gümrük, vergi, sigorta, Incoterms, döviz, kendi kamyon/gemi filosu,
-birden fazla depo, liman sahipliği, çalışanlar, bankalar, kredi, fabrikalar ve
-rakip şirketler bu sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
+fiyatı, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak filosu, araç bakımı
+ve yakıt, şoför/çalışan, araç satışı ve amortismanı, filo yükseltmesi, birden
+fazla depo, liman sahipliği, bankalar, kredi, fabrikalar ve rakip şirketler bu
+sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
 çalışır. Sözleşme sistemi, sonradan
 eklenecek geminin/fabrikanın/çalışanın oyunda gerçek bir sebebi olsun diye önce
 kuruldu.
 
 ## Test
 
-Playwright ile sekiz ayrı takım çalışır (toplam 703 kontrol):
+Playwright ile dokuz ayrı takım çalışır (toplam 808 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -293,3 +353,8 @@ Playwright ile sekiz ayrı takım çalışır (toplam 703 kontrol):
   (mod/hub), gecikme tavanı, rezervasyon ve şirket değerinin korunması,
   sözleşme sonuçları, zaman tamponu, bilinen koşulun plana dahil edilmesi,
   determinizm, legacy/snapshot/orphan davranışı ve yerleşim
+- `test-v8.js` — şirket filosu: açılma eşiği, araç satın alma ve defter değeri,
+  müsait/sevkiyatta/dönüşte kapasite, araç atama önceliği, filo navlunu ve
+  landed cost, araçların siparişe bağlanması ve dönüş döngüsü, filonun risk
+  sistemine etkisizliği, PO↔araç referans bütünlüğü göçü, birebir yeniden
+  yükleme ve 320–390 px yerleşim
