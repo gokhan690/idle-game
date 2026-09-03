@@ -903,6 +903,36 @@ main{
 .daBtn{min-height:44px;padding:0 14px;flex:0 0 auto;max-width:100%;}
 .strike{text-decoration:line-through;opacity:.6;}
 
+/* V5 Part 2 — delegasyon */
+.deptRow .a.warn{background:rgba(233,196,106,.16);color:var(--gold);}
+.optRow{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:9px 0;border-top:1px solid var(--line);
+}
+.optLabel{font-size:12px;font-weight:800;color:var(--text-3);flex:1;min-width:88px;}
+.optSeg{display:flex;gap:5px;flex-wrap:wrap;}
+.optBtn{
+  min-height:40px;padding:0 11px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--line);
+  font-size:12px;font-weight:800;color:var(--text-3);white-space:nowrap;
+}
+.optBtn.active{background:var(--surface-3);border-color:rgba(76,125,255,.55);color:var(--text);}
+.optBtn:active{transform:scale(.96);}
+/* Politika anahtarı dokunmatik hedefi 30px'ti; görsel boyut aynı kalıp
+   tıklanabilir alan 44px'e çıkarılıyor. */
+.supCard .switch{flex:0 0 auto;margin:7px 0;box-sizing:content-box;
+  border-top:7px solid transparent;border-bottom:7px solid transparent;
+  background-clip:padding-box;}
+.supCard .switch.on{background-clip:padding-box;}
+
+.autoDay{margin-bottom:10px;}
+.adHead{font-size:11px;font-weight:900;letter-spacing:.5px;color:var(--text-3);margin-bottom:4px;}
+.autoRow{padding:7px 0;border-top:1px solid var(--line);}
+.autoRow:first-child{border-top:0;}
+.ar1{font-size:10.5px;font-weight:900;letter-spacing:.5px;color:#8FB0FF;}
+.ar2{font-size:12.5px;font-weight:700;color:var(--text-2);line-height:1.4;margin-top:2px;}
+.ar3{font-size:11px;font-weight:700;color:var(--text-3);line-height:1.4;margin-top:2px;}
+
 .fleetSum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
 .vCard{
   display:flex;align-items:center;gap:10px;
@@ -1072,7 +1102,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 8,
+  VERSION: 9,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -1495,6 +1525,40 @@ const CONFIG = {
     LAST_NAMES: ["Kaya", "Yılmaz", "Demir", "Aydın", "Şahin", "Aksoy", "Arslan", "Çelik",
                  "Doğan", "Koç", "Erdem", "Polat", "Yıldız", "Öztürk", "Kurt", "Tekin",
                  "Acar", "Bulut", "Güneş", "Sarı"]
+  },
+
+  /* -------------------------------------------------------------------------
+   * DELEGASYON (V5 · Part 2)
+   * Departmanlar hazırlık işlerini kendi başına yürütür: müşteri arar,
+   * pazarlık eder, hattı analiz eder. Ama BÜYÜK FİNANSAL KARARLAR oyuncunun
+   * kalır — otomasyon sözleşme kabul etmez, sipariş vermez, stok satmaz,
+   * kapasite rezerve etmez, araç göndermez.
+   *
+   * Otomasyon YENİ AKSİYON ÜRETMEZ: mevcut departmentActions havuzunu
+   * kullanır. Yani ekonomik bir bonus değil, tıklamanın devralınmasıdır.
+   * -----------------------------------------------------------------------*/
+  AUTOMATION: {
+    UNLOCK_VALUE: 300000,
+    LOG_LEN: 24,
+    SUMMARY_DAYS: 3,          // Şirket ekranında gösterilen gün sayısı
+
+    // Departman başına GÜNLÜK otomatik işlem tavanı. Çalışanın 6 puanı olsa
+    // bile otomasyon kendi kendine tüm tedarikçileri dolaşmaz.
+    DAILY_CAP: { sales: 1, trader: 1, logistics: 1 },
+
+    SALES_THRESHOLDS: [0, 1, 2],
+    URGENCY_DAYS: [2, 3, 4],
+    MARGIN_PCTS: [0.05, 0.08, 0.12],
+
+    DEFAULTS: {
+      sales: { enabled: false, offerThreshold: 1 },
+      trader: { enabled: false, urgencyDays: 3, minMarginPct: 0.08 },
+      logistics: { enabled: false, urgencyDays: 3 }
+    },
+
+    // Tahmin tavsiyesi için eşikler: her $0,20 farkta tavsiye değişmesin.
+    REC_FREIGHT_PCT: 0.09,    // navlun farkı bu oranı geçerse güçlü öneri
+    REC_CAPACITY_PCT: 0.22    // kapasite farkı bu oranı geçerse güçlü öneri
   }
 };
 
@@ -1615,6 +1679,13 @@ const GameState = {
       negotiatedQuotes: [],     // tek kullanımlık pazarlık fiyatları (bugüne ait)
       logisticsForecasts: [],   // gelecek gün nakliye tahminleri (bilgi, ekonomi değil)
 
+      /* V5 Part 2 · Delegasyon */
+      automationUnlocked: false,
+      automationPolicies: null,   // { sales, trader, logistics } — init'te kurulur
+      automationLastRunDay: 0,    // aynı gün ikinci kez çalışmaz
+      automationDailySummary: null,
+      automationLog: [],
+
       stats: {
         realizedProfit: 0,
         totalTrades: 0,
@@ -1644,7 +1715,10 @@ const GameState = {
         highestStaffCount: 0,
         salesSearches: 0,
         negotiations: 0,
-        forecasts: 0
+        forecasts: 0,
+        autoSalesRuns: 0,
+        autoTraderRuns: 0,
+        autoLogisticsRuns: 0
       },
       settings: keepSettings || { sound: true }
     };
@@ -3476,9 +3550,21 @@ const EmployeeSystem = {
   byRole(roleId) { return GameState.data.employees.filter((e) => e.roleId === roleId); },
   countByRole(roleId) { return this.byRole(roleId).length; },
 
-  /** Departmanın en yüksek skill'i — pazarlık ve tahmin kalitesini belirler. */
-  topSkill(roleId) {
-    return this.byRole(roleId).reduce((m, e) => Math.max(m, e.skill), 0);
+  /**
+   * BUGÜN ÇALIŞAN personel: işe alındığı gün kimse üretmez, ilk tam çalışma
+   * günü ertesi gündür. Aksiyon puanı da, aksiyonun KALİTESİ de bu kümeden
+   * gelmeli — aksi hâlde bugün alınan kıdemli, dünkü junior'ın puanını kendi
+   * gücüyle harcardı.
+   */
+  workingByRole(roleId) {
+    const day = GameState.data.day;
+    return this.byRole(roleId).filter((e) => e.hiredDay < day);
+  },
+  workingCount(roleId) { return this.workingByRole(roleId).length; },
+
+  /** Departmanın bugün çalışan en yüksek skill'i. */
+  workingTopSkill(roleId) {
+    return this.workingByRole(roleId).reduce((m, e) => Math.max(m, e.skill), 0);
   },
 
   /* ---------------- maaş ---------------- */
@@ -3628,7 +3714,8 @@ const EmployeeSystem = {
    * (hiredDay < day): işe alındığı gün kimse puan üretmez.
    */
   buildActions(day) {
-    const out = { day: day, sales: 0, trader: 0, logistics: 0, foundToday: 0 };
+    const out = { day: day, sales: 0, trader: 0, logistics: 0, foundToday: 0,
+                  autoSales: 0, autoTrader: 0, autoLogistics: 0 };
     GameState.data.employees.forEach((e) => {
       if (e.hiredDay >= day) return;
       const sd = this.skillDef(e.skill);
@@ -3658,7 +3745,7 @@ const EmployeeSystem = {
     if (this.actionsLeft(roleId) <= 0) return false;
     GameState.data.departmentActions[roleId] -= 1;
     // Kullanımı çalışan bazında da say (istatistik).
-    const team = this.byRole(roleId).filter((e) => e.hiredDay < GameState.data.day);
+    const team = this.workingByRole(roleId);
     if (team.length) {
       team.sort((a, b) => a.actionsUsed - b.actionsUsed);
       team[0].actionsUsed += 1;
@@ -3701,20 +3788,40 @@ const EmployeeSystem = {
    * puan harcanır — aksi hâlde butona basarak RNG bedavaya ileri sarılırdı.
    * Sözleşme fiyat algoritmasına DOKUNULMAZ: yalnız ekstra deneme hakkıdır.
    */
-  searchCustomer() {
+  /** Bugün bu departmanda kaç fırsat bulundu. */
+  foundToday() {
+    const a = GameState.data.departmentActions;
+    return (a && a.day === GameState.data.day) ? Math.max(0, a.foundToday || 0) : 0;
+  },
+
+  /**
+   * Müşteri aramasının bugün mümkün olup olmadığı — manuel buton ve otomasyon
+   * AYNI kuralları kullansın diye tek yerde. Aksiyon havuzu boşuna yakılmaz.
+   */
+  canSearchCustomer() {
     const s = GameState.data;
-    if (this.countByRole("sales") === 0) return { ok: false, reason: "Satış ekibin yok" };
-    if (this.actionsLeft("sales") <= 0) return { ok: false, reason: "Bugünkü satış aksiyonu bitti" };
+    if (this.workingCount("sales") === 0) return { ok: false, reason: "Satış ekibin yok" };
     if (s.offers.length >= ContractSystem.maxOffers()) {
       return { ok: false, reason: "Fırsat listesi dolu" };
     }
+    if (this.foundToday() >= CONFIG.STAFF.SEARCH_MAX_FINDS_PER_DAY) {
+      return { ok: false, reason: "Bugünkü müşteri bulma limiti doldu" };
+    }
+    if (this.actionsLeft("sales") <= 0) return { ok: false, reason: "Bugünkü satış aksiyonu bitti" };
+    return { ok: true };
+  },
+
+  searchCustomer() {
+    const s = GameState.data;
+    const gate = this.canSearchCustomer();
+    if (!gate.ok) return gate;
     this.spendAction("sales");
     s.stats.salesSearches += 1;
     // Deneme başarısız olsa da puan harcanır: aksi hâlde butona basarak
     // RNG bedavaya ileri sarılırdı.
     const C = CONFIG.STAFF;
-    const skill = Utils.clamp(this.topSkill("sales"), 1, 3);
-    const found = Math.max(0, (s.departmentActions && s.departmentActions.foundToday) || 0);
+    const skill = Utils.clamp(this.workingTopSkill("sales"), 1, 3);
+    const found = this.foundToday();
     const chance = Utils.clamp(
       Utils.lerp(C.SEARCH_SUCCESS[0], C.SEARCH_SUCCESS[1], ReputationSystem.norm()) *
         (C.SEARCH_SKILL_MUL[skill] || 1), 0, 0.95);
@@ -3741,7 +3848,7 @@ const EmployeeSystem = {
   /** Pazarlık indirimi departmanın en yüksek skill'inden gelir. */
   negotiate(supplierId, productId) {
     const s = GameState.data;
-    if (this.countByRole("trader") === 0) return { ok: false, reason: "Ticaret ekibin yok" };
+    if (this.workingCount("trader") === 0) return { ok: false, reason: "Ticaret ekibin yok" };
     if (this.negotiationFor(supplierId, productId)) {
       return { ok: false, reason: "Bu tedarikçiyle bugün pazarlık zaten yapıldı" };
     }
@@ -3749,7 +3856,7 @@ const EmployeeSystem = {
     const base = ProcurementSystem.quote(supplierId, productId);
     if (base === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
 
-    const skill = Utils.clamp(this.topSkill("trader"), 1, 3);
+    const skill = Utils.clamp(this.workingTopSkill("trader"), 1, 3);
     const band = CONFIG.STAFF.NEGOTIATION[skill];
     const t = this.hash(s.day, "neg:" + supplierId + ":" + productId + ":" + s.stats.negotiations);
     const pct = band[0] + t * (band[1] - band[0]);
@@ -3793,7 +3900,7 @@ const EmployeeSystem = {
    */
   forecastRoute(routeId) {
     const s = GameState.data;
-    if (this.countByRole("logistics") === 0) return { ok: false, reason: "Lojistik ekibin yok" };
+    if (this.workingCount("logistics") === 0) return { ok: false, reason: "Lojistik ekibin yok" };
     const route = ProcurementSystem.route(routeId);
     if (!route || !(route.baseExternalCapacity > 0)) {
       return { ok: false, reason: "Bu hat için analiz yapılamıyor" };
@@ -3804,7 +3911,7 @@ const EmployeeSystem = {
     }
     if (this.actionsLeft("logistics") <= 0) return { ok: false, reason: "Bugünkü analiz hakkı bitti" };
 
-    const skill = Utils.clamp(this.topSkill("logistics"), 1, 3);
+    const skill = Utils.clamp(this.workingTopSkill("logistics"), 1, 3);
     const row = FreightMarketSystem.buildRow(route, targetDay);
     const f = {
       routeId: routeId,
@@ -3830,6 +3937,409 @@ const EmployeeSystem = {
     }
     SaveSystem.save();
     return { ok: true, forecast: f };
+  }
+};
+
+/* ===========================================================================
+ * AutomationSystem — delegasyon ve departman politikaları (V5 · Part 2)
+ *
+ * Departmanlar hazırlık işlerini kendi başına yürütür. Kesin sınır:
+ *   YAPAR    : müşteri arar, pazarlık eder, hattı analiz eder, öneri üretir
+ *   YAPMAZ   : sözleşme kabul/red, sipariş, spot al/sat, kapasite rezervasyonu,
+ *              filo sevki, depo yükseltme, araç alımı
+ *
+ * İki kural bu sistemi ekonomik bir bonus olmaktan çıkarır:
+ *   1. Otomasyon YENİ aksiyon puanı üretmez — mevcut havuzu tüketir.
+ *   2. Departman başına günde en fazla 1 otomatik işlem yapar; kalan puanı
+ *      oyuncu manuel kullanabilir.
+ * Motor da ayrı değildir: her şey EmployeeSystem'in public fonksiyonlarından
+ * geçer, yani manuel pazarlık %2 ise otomatik pazarlık da %2'dir.
+ * =========================================================================*/
+const AutomationSystem = {
+  /* ---------------- açılma ve politika ---------------- */
+
+  isUnlocked() {
+    const s = GameState.data;
+    if (s.automationUnlocked) return true;
+    if (GameState.companyValue() >= CONFIG.AUTOMATION.UNLOCK_VALUE) {
+      s.automationUnlocked = true;
+      return true;
+    }
+    return false;
+  },
+
+  unlockProgress() {
+    return Utils.clamp(GameState.companyValue() / CONFIG.AUTOMATION.UNLOCK_VALUE, 0, 1);
+  },
+
+  defaults() { return JSON.parse(JSON.stringify(CONFIG.AUTOMATION.DEFAULTS)); },
+
+  ensurePolicies() {
+    const s = GameState.data;
+    if (!s.automationPolicies || typeof s.automationPolicies !== "object") {
+      s.automationPolicies = this.defaults();
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Gün muhafızını "bugün çalışmış" konumuna alır. YALNIZ oyun açılışında ve
+   * yeni oyunda çağrılır: otomasyon sadece nextDay akışından tetiklenir, kayıt
+   * yüklenirken kendiliğinden çalışmaz. Bu sayede bellekteki state ile yeniden
+   * yüklenen state birebir aynı kalır. Politika okuma/yazma buna DOKUNMAZ.
+   */
+  armDayGuard() {
+    const s = GameState.data;
+    if (s.automationLastRunDay >= s.day) return false;
+    s.automationLastRunDay = s.day;
+    return true;
+  },
+
+  policy(dept) {
+    this.ensurePolicies();
+    return GameState.data.automationPolicies[dept] || CONFIG.AUTOMATION.DEFAULTS[dept];
+  },
+
+  /** Politika değişikliği bugünkü turu YENİDEN çalıştırmaz; yarın uygulanır. */
+  setPolicy(dept, key, value) {
+    this.ensurePolicies();
+    const p = GameState.data.automationPolicies[dept];
+    if (!p) return false;
+    p[key] = value;
+    SaveSystem.save();
+    return true;
+  },
+
+  toggle(dept) {
+    const p = this.policy(dept);
+    return this.setPolicy(dept, "enabled", !p.enabled);
+  },
+
+  /**
+   * Departmanın bugün otomasyon çalıştırabilir durumu. Politika açık ama
+   * bugün çalışan personel yoksa politika KAPATILMAZ, yalnız duraklatılır.
+   */
+  status(dept) {
+    if (!this.isUnlocked()) return "locked";
+    if (!this.policy(dept).enabled) return "off";
+    if (EmployeeSystem.workingCount(dept) === 0) return "paused";
+    return "on";
+  },
+
+  /* ---------------- günlük tavan ---------------- */
+
+  /**
+   * Departmanın bugün kaç otomatik işlem yaptığı. automationLastRunDay turu
+   * zaten günde bir çalıştırır; bu sayaç ikinci savunma katmanıdır ve
+   * departman fonksiyonları doğrudan çağrılsa bile tavanı korur.
+   */
+  autoUsed(dept) {
+    const a = GameState.data.departmentActions;
+    if (!a || a.day !== GameState.data.day) return 0;
+    const key = "auto" + dept.charAt(0).toUpperCase() + dept.slice(1);
+    return Math.max(0, a[key] || 0);
+  },
+
+  atDailyCap(dept) {
+    return this.autoUsed(dept) >= (CONFIG.AUTOMATION.DAILY_CAP[dept] || 1);
+  },
+
+  markAuto(dept) {
+    const a = GameState.data.departmentActions;
+    if (!a || a.day !== GameState.data.day) return;
+    const key = "auto" + dept.charAt(0).toUpperCase() + dept.slice(1);
+    a[key] = (a[key] || 0) + 1;
+  },
+
+  /** Log ve özet kayıtları göçle BİREBİR aynı şekle sahip olmalı. */
+  entry(e) {
+    return {
+      day: GameState.data.day,
+      dept: e.dept,
+      type: String(e.type || ""),
+      result: String(e.result || ""),
+      actionSpent: Math.max(0, Math.floor(e.actionSpent || 0)),
+      targetId: typeof e.targetId === "string" ? e.targetId : "",
+      targetLabel: String(e.targetLabel || ""),
+      message: String(e.message || ""),
+      detail: String(e.detail || "")
+    };
+  },
+
+  /* ---------------- günlük tur ---------------- */
+
+  /**
+   * Gün içinde YALNIZ BİR KEZ çalışır. Reload, render, sheet açma ve aynı gün
+   * politika değişikliği turu tekrar tetiklemez.
+   */
+  tickDay() {
+    const s = GameState.data;
+    if (!this.isUnlocked()) return null;
+    if (s.automationLastRunDay === s.day) return null;
+    s.automationLastRunDay = s.day;
+
+    const entries = [];
+    const push = (raw) => {
+      if (!raw) return;
+      const e = this.entry(raw);
+      entries.push(e);
+      s.automationLog.push(e);
+      if (s.automationLog.length > CONFIG.AUTOMATION.LOG_LEN) {
+        s.automationLog.splice(0, s.automationLog.length - CONFIG.AUTOMATION.LOG_LEN);
+      }
+    };
+    push(this.runSales());
+    push(this.runTrader());
+    push(this.runLogistics());
+
+    s.automationDailySummary = { day: s.day, entries: entries };
+    return entries;
+  },
+
+  /* ---------------- SATIŞ ---------------- */
+
+  /**
+   * Fırsat listesi eşiğin altındaysa GÜNDE BİR kez müşteri arar. Çalışanın 5
+   * aksiyonu olsa bile ikinci otomatik deneme yoktur; kalanı oyuncunun.
+   * Sözleşmeyi kabul etmez, fiyatına dokunmaz.
+   */
+  runSales() {
+    const s = GameState.data;
+    if (this.status("sales") !== "on") return null;
+    if (this.atDailyCap("sales")) return null;
+    const p = this.policy("sales");
+    if (s.offers.length > p.offerThreshold) return null;   // havuz yeterli
+
+    // Aksiyon havuzu boşuna yakılmasın: manuel butonla aynı kapı.
+    const gate = EmployeeSystem.canSearchCustomer();
+    if (!gate.ok) return null;
+
+    const res = EmployeeSystem.searchCustomer();
+    if (!res.ok) return null;
+    this.markAuto("sales");
+    s.stats.autoSalesRuns += 1;
+    return {
+      dept: "sales", type: "search", actionSpent: 1,
+      result: res.offer ? "found" : "none",
+      targetLabel: res.offer ? res.offer.customer : "",
+      message: res.offer
+        ? "Yeni müşteri fırsatı bulundu · " + res.offer.customer
+        : "Arama yapıldı · bugün uygun müşteri çıkmadı"
+    };
+  },
+
+  /* ---------------- ortak: sözleşme ihtiyacı ---------------- */
+
+  /**
+   * Yakında gerçekten tedarik gerektiren sözleşmeler. Depodaki stok ve
+   * deadline'dan önce ulaşması beklenen yoldaki mal düşülür.
+   */
+  urgentContracts(urgencyDays) {
+    const s = GameState.data;
+    return s.contracts.filter((c) => {
+      if (c.status !== "active" && c.status !== "overdue") return false;
+      if (c.status === "active" && c.daysLeft > urgencyDays) return false;
+      const have = GameState.holding(c.product).qty;
+      // Süresi içinde yetişecek yoldaki mal da sayılır.
+      const inbound = s.purchaseOrders.reduce((sum, o) =>
+        sum + ((o.product === c.product && o.daysLeft <= Math.max(0, c.daysLeft)) ? o.qty : 0), 0);
+      return (have + inbound) < c.qty;
+    }).sort((a, b) =>
+      ((a.status === "overdue" ? 0 : 1) - (b.status === "overdue" ? 0 : 1)) ||
+      (a.daysLeft - b.daysLeft) || (b.value - a.value));
+  },
+
+  /**
+   * Bir sözleşme için BUGÜN gerçekten kullanılabilir tedarik seçenekleri.
+   * "Kullanılabilir" = bugün en az MOQ kadar sipariş fiilen verilebiliyor
+   * (nakit + depo + harici kapasite ya da müsait filo). Otomasyon siparişi
+   * VERMEZ; yalnız hedefin gerçek olup olmadığına bakar.
+   */
+  viableOptions(contract) {
+    const out = [];
+    const pid = contract.product;
+    ProcurementSystem.suppliersFor(pid).forEach((sup) => {
+      ProcurementSystem.routesFor(sup.id).forEach((rt) => {
+        const lead = ProcurementSystem.quotedLeadTime(sup.id, rt.id);
+        if (lead === null) return;
+        const extMax = ProcurementSystem.maxOrder(sup.id, pid, rt.id, "external");
+        const ownMax = FleetSystem.routeSupportsFleet(rt.id) && FleetSystem.isUnlocked()
+          ? ProcurementSystem.maxOrder(sup.id, pid, rt.id, "owned_fleet") : 0;
+        const carrier = extMax >= sup.minQty ? "external"
+          : (ownMax >= sup.minQty ? "owned_fleet" : null);
+        if (!carrier) return;   // bugün bu seçenek fiilen kullanılamıyor
+        const landed = carrier === "owned_fleet"
+          ? ProcurementSystem.fleetLandedUnitCost(sup.id, pid, rt.id, sup.minQty)
+          : ProcurementSystem.landedUnitCost(sup.id, pid, rt.id);
+        if (landed === null || !(landed > 0)) return;
+        const margin = contract.unitPrice > 0
+          ? (contract.unitPrice - landed) / contract.unitPrice : -1;
+        out.push({
+          supplierId: sup.id, supplierName: sup.name, routeId: rt.id, carrier: carrier,
+          lead: lead, landed: landed, margin: margin,
+          inTime: lead <= Math.max(0, contract.daysLeft),
+          reliability: LogisticsSystem.quotedReliability(sup.id, rt.id) || 0
+        });
+      });
+    });
+    // Deterministik sıralama: yetişen > yüksek marj > düşük landed > güvenilir
+    out.sort((a, b) =>
+      ((b.inTime ? 1 : 0) - (a.inTime ? 1 : 0)) ||
+      (b.margin - a.margin) || (a.landed - b.landed) || (b.reliability - a.reliability));
+    return out;
+  },
+
+  /* ---------------- TİCARET ---------------- */
+
+  /**
+   * Yalnız gerçek bir sözleşme ihtiyacı için, yalnız marj eşiğini geçen bir
+   * hedefte, günde EN FAZLA BİR pazarlık. Sipariş vermez. Sözleşmesiz
+   * spot arbitraj için asla çalışmaz.
+   */
+  runTrader() {
+    const s = GameState.data;
+    if (this.status("trader") !== "on") return null;
+    if (this.atDailyCap("trader")) return null;
+    if (EmployeeSystem.actionsLeft("trader") <= 0) return null;
+    const p = this.policy("trader");
+
+    const contracts = this.urgentContracts(p.urgencyDays);
+    if (!contracts.length) return null;
+
+    let skipNoMargin = 0, skipNoRoute = 0;
+    for (let i = 0; i < contracts.length; i++) {
+      const c = contracts[i];
+      const opts = this.viableOptions(c);
+      if (!opts.length) { skipNoRoute++; continue; }
+      const target = opts.find((o) => o.margin >= p.minMarginPct &&
+        !EmployeeSystem.negotiationFor(o.supplierId, c.product));
+      if (!target) {
+        if (opts.every((o) => o.margin < p.minMarginPct)) skipNoMargin++;
+        continue;
+      }
+      const res = EmployeeSystem.negotiate(target.supplierId, c.product);
+      if (!res.ok) continue;   // yarış durumu: aksiyon boşa gitmez
+      this.markAuto("trader");
+      s.stats.autoTraderRuns += 1;
+      // Pazarlık mal fiyatını düşürür; navlun aynı kaldığı için landed maliyet
+      // tam olarak indirim kadar azalır.
+      const newLanded = Utils.round2(target.landed - (res.quote.basePrice - res.quote.negotiatedPrice));
+      const newMargin = c.unitPrice > 0 ? (c.unitPrice - newLanded) / c.unitPrice : 0;
+      return {
+        dept: "trader", type: "negotiate", actionSpent: 1, result: "done",
+        targetId: target.supplierId, targetLabel: target.supplierName,
+        message: Utils.escape(c.customer) + " sözleşmesi için " + target.supplierName +
+          " ile pazarlık · %" + (res.quote.discountPct * 100).toFixed(1) + " indirim",
+        detail: "Yeni landed " + Utils.price(newLanded) + "/t · sözleşme marjı %" +
+          Math.round(newMargin * 100) + " · sipariş VERİLMEDİ"
+      };
+    }
+    return skipNoMargin || skipNoRoute
+      ? { dept: "trader", type: "skip", actionSpent: 0,
+          result: skipNoMargin ? "no_margin" : "no_route",
+          message: skipNoMargin
+            ? "Marj eşiğinin altında · pazarlık yapılmadı"
+            : "Bugün kullanılabilir tedarik seçeneği yok" }
+      : null;
+  },
+
+  /* ---------------- LOJİSTİK ---------------- */
+
+  /**
+   * Yakında tedarik kararı gerektiren sözleşme için en mantıklı hattı seçer
+   * ve yarını analiz eder. Günde en fazla bir analiz. Booking YAPMAZ.
+   */
+  runLogistics() {
+    const s = GameState.data;
+    if (this.status("logistics") !== "on") return null;
+    if (this.atDailyCap("logistics")) return null;
+    if (EmployeeSystem.actionsLeft("logistics") <= 0) return null;
+    const p = this.policy("logistics");
+
+    const contracts = this.urgentContracts(p.urgencyDays);
+    if (!contracts.length) return null;
+
+    for (let i = 0; i < contracts.length; i++) {
+      const c = contracts[i];
+      const opts = this.viableOptions(c);
+      const target = opts.find((o) => FreightMarketSystem.row(o.routeId) &&
+        !EmployeeSystem.forecastFor(o.routeId, s.day + 1));
+      if (!target) continue;
+      const res = EmployeeSystem.forecastRoute(target.routeId);
+      if (!res.ok) continue;
+      this.markAuto("logistics");
+      s.stats.autoLogisticsRuns += 1;
+      const rec = this.recommend(res.forecast);
+      return {
+        dept: "logistics", type: "forecast", actionSpent: 1, result: rec.kind,
+        targetId: target.routeId, targetLabel: res.forecast.routeName,
+        message: res.forecast.routeName + " · yarın " +
+          FreightMarketSystem.label(res.forecast.state),
+        detail: rec.text
+      };
+    }
+    return null;
+  },
+
+  /**
+   * Tahmini karar desteğine çevirir. ÖNERİ ÜRETİR, İŞLEM YAPMAZ: ne sipariş
+   * verir ne kapasite rezerve eder. Küçük farklarda "belirgin avantaj yok"
+   * der — her $0,20'de tavsiye değiştirmez.
+   */
+  recommend(f) {
+    const A = CONFIG.AUTOMATION;
+    const row = FreightMarketSystem.row(f.routeId);
+    if (!row) return { kind: "none", text: "Bugünkü hat verisi yok" };
+
+    // Skill 1 yalnız durumu bilir; 2 bandın ortasını, 3 kesin değeri kullanır.
+    if (f.skill < 2) {
+      const rank = { rahat: 0, normal: 1, sikisik: 2 };
+      const now = rank[row.state], next = rank[f.state];
+      if (next > now) return { kind: "book_today",
+        text: "Yarın hat daha sıkışık görünüyor · bugün booking avantajlı olabilir" };
+      if (next < now) return { kind: "wait",
+        text: "Yarın hat rahatlıyor · deadline uygunsa beklemek maliyeti düşürebilir" };
+      return { kind: "neutral", text: "Yarın için belirgin avantaj yok" };
+    }
+
+    const predFreight = f.exact ? f.freightHigh : (f.freightLow + f.freightHigh) / 2;
+    const predCap = f.exact ? f.capacityHigh : (f.capacityLow + f.capacityHigh) / 2;
+    const dFreight = row.freightPerTon > 0 ? (predFreight - row.freightPerTon) / row.freightPerTon : 0;
+    const dCap = row.capacity > 0 ? (predCap - row.capacity) / row.capacity : 0;
+
+    const worse = dFreight >= A.REC_FREIGHT_PCT || dCap <= -A.REC_CAPACITY_PCT;
+    const better = dFreight <= -A.REC_FREIGHT_PCT || dCap >= A.REC_CAPACITY_PCT;
+    const detail = "Bugün " + Utils.price(row.freightPerTon) + "/t · " +
+      Utils.qty(row.capacity) + "t → yarın " + Utils.price(Utils.round2(predFreight)) + "/t · " +
+      Utils.qty(Math.round(predCap)) + "t";
+    if (worse && !better) return { kind: "book_today",
+      text: detail + " · yarın pahalı ve dar, bugün booking avantajlı olabilir" };
+    if (better && !worse) return { kind: "wait",
+      text: detail + " · yarın hat rahatlıyor, deadline uygunsa beklemek maliyeti düşürebilir" };
+    return { kind: "neutral", text: detail + " · belirgin avantaj yok" };
+  },
+
+  /* ---------------- UI yardımcıları ---------------- */
+
+  summaryFor(day) {
+    const s = GameState.data;
+    if (s.automationDailySummary && s.automationDailySummary.day === day) {
+      return s.automationDailySummary.entries || [];
+    }
+    return s.automationLog.filter((e) => e.day === day);
+  },
+
+  recentDays() {
+    const s = GameState.data;
+    const days = [];
+    for (let d = s.day; d > s.day - CONFIG.AUTOMATION.SUMMARY_DAYS && d >= 1; d--) days.push(d);
+    return days;
+  },
+
+  deptLabel(dept) {
+    const r = EmployeeSystem.role(dept);
+    return r ? r.dept : dept;
   }
 };
 
@@ -4557,7 +5067,10 @@ const SaveSystem = {
         sales: Math.max(0, Math.floor(num(da.sales, 0, 0))),
         trader: Math.max(0, Math.floor(num(da.trader, 0, 0))),
         logistics: Math.max(0, Math.floor(num(da.logistics, 0, 0))),
-        foundToday: Math.max(0, Math.floor(num(da.foundToday, 0, 0)))
+        foundToday: Math.max(0, Math.floor(num(da.foundToday, 0, 0))),
+        autoSales: Math.max(0, Math.floor(num(da.autoSales, 0, 0))),
+        autoTrader: Math.max(0, Math.floor(num(da.autoTrader, 0, 0))),
+        autoLogistics: Math.max(0, Math.floor(num(da.autoLogistics, 0, 0)))
       };
     }
 
@@ -4607,6 +5120,82 @@ const SaveSystem = {
       exact: f.exact === true,
       nextState: (["rahat", "normal", "sikisik"].indexOf(f.nextState) >= 0) ? f.nextState : ""
     })) : [];
+
+    /* -----------------------------------------------------------------------
+     * --- V5 Part 2: delegasyon ---
+     * Eski kayıtlar otomasyon KAPALI açılır. Hiçbir politika geriye dönük
+     * aynı gün kendiliğinden çalışmaz: automationLastRunDay yükleme anında
+     * bugüne kilitlenir, ilk gerçek çalışma bir sonraki nextDay akışındadır.
+     * ---------------------------------------------------------------------*/
+    out.stats.autoSalesRuns = Math.max(0, Math.floor((d.stats && d.stats.autoSalesRuns) || 0));
+    out.stats.autoTraderRuns = Math.max(0, Math.floor((d.stats && d.stats.autoTraderRuns) || 0));
+    out.stats.autoLogisticsRuns = Math.max(0, Math.floor((d.stats && d.stats.autoLogisticsRuns) || 0));
+
+    out.automationUnlocked = d.automationUnlocked === true;
+
+    const A = CONFIG.AUTOMATION;
+    const pickFrom = (list, v, fallback) => {
+      const n = num(v, -Infinity, NaN);
+      return list.indexOf(n) >= 0 ? n : fallback;
+    };
+    const raw = (d.automationPolicies && typeof d.automationPolicies === "object")
+      ? d.automationPolicies : {};
+    const rp = (k) => (raw[k] && typeof raw[k] === "object") ? raw[k] : {};
+    // Bilinmeyen politika alanları TAŞINMAZ: her departman yalnız kendi
+    // şemasındaki alanlarla yeniden kurulur, bozuk değer default'a düşer.
+    out.automationPolicies = {
+      sales: {
+        enabled: rp("sales").enabled === true,
+        offerThreshold: pickFrom(A.SALES_THRESHOLDS, rp("sales").offerThreshold,
+          A.DEFAULTS.sales.offerThreshold)
+      },
+      trader: {
+        enabled: rp("trader").enabled === true,
+        urgencyDays: pickFrom(A.URGENCY_DAYS, rp("trader").urgencyDays,
+          A.DEFAULTS.trader.urgencyDays),
+        minMarginPct: pickFrom(A.MARGIN_PCTS, rp("trader").minMarginPct,
+          A.DEFAULTS.trader.minMarginPct)
+      },
+      logistics: {
+        enabled: rp("logistics").enabled === true,
+        urgencyDays: pickFrom(A.URGENCY_DAYS, rp("logistics").urgencyDays,
+          A.DEFAULTS.logistics.urgencyDays)
+      }
+    };
+
+    // Gelecekteki bir gün olamaz; yükleme anında bugüne kilitlenir.
+    out.automationLastRunDay = Math.min(Math.max(0, Math.floor(num(d.automationLastRunDay, 0, 0))),
+      out.day);
+    if (out.automationLastRunDay < out.day) out.automationLastRunDay = out.day;
+
+    const validDept = (x) => x === "sales" || x === "trader" || x === "logistics";
+    const logEntry = (e) => ({
+      day: Math.floor(e.day),
+      dept: e.dept,
+      type: String(e.type || ""),
+      result: String(e.result || ""),
+      actionSpent: Math.max(0, Math.floor(num(e.actionSpent, 0, 0))),
+      targetId: typeof e.targetId === "string" ? e.targetId : "",
+      targetLabel: String(e.targetLabel || ""),
+      message: String(e.message || ""),
+      detail: String(e.detail || "")
+    });
+    out.automationLog = Array.isArray(d.automationLog) ? d.automationLog.filter((e) =>
+      e && typeof e === "object" && validDept(e.dept) &&
+      num(e.day, 1, 0) >= 1 && Math.floor(e.day) <= out.day
+    ).slice(-A.LOG_LEN).map(logEntry) : [];
+
+    // Özet ekonomik gerçek değildir; bozuksa düşer.
+    out.automationDailySummary = null;
+    const sum = d.automationDailySummary;
+    if (sum && typeof sum === "object" && Math.floor(num(sum.day, 0, -1)) === out.day &&
+        Array.isArray(sum.entries)) {
+      out.automationDailySummary = {
+        day: out.day,
+        entries: sum.entries.filter((e) => e && typeof e === "object" && validDept(e.dept))
+          .slice(0, 12).map(logEntry)
+      };
+    }
 
     /* --- V3 Part 2: lojistik durumları (eski kayıtlarda yok) --- */
     const validRoute = (id) => !!ProcurementSystem.route(id);
@@ -4794,6 +5383,7 @@ const UI = {
       case "poDetail":    Audio_.tap(); this.openPoDetail(parseInt(ds.id, 10)); break;
       case "fleetOpen":   Audio_.tap(); this.openFleetSheet(); break;
       case "staffOpen":   Audio_.tap(); this.openStaffSheet(); break;
+      case "autoOpen":    Audio_.tap(); this.openAutomationSheet(); break;
       case "salesSearch": this.doSalesSearch(); break;
       case "offerAccept":    this.acceptOffer(parseInt(ds.id, 10)); break;
       case "offerReject":    this.rejectOffer(parseInt(ds.id, 10)); break;
@@ -4922,6 +5512,47 @@ const UI = {
     return '<div class="upgCard">' + inner + '</div>';
   },
 
+  /** Şirket ekranındaki delegasyon özeti + "bugün ekip ne yaptı" kartı. */
+  automationSectionHTML() {
+    if (!EmployeeSystem.isUnlocked()) return "";
+    if (!AutomationSystem.isUnlocked()) {
+      const prog = AutomationSystem.unlockProgress();
+      return '<div class="lockCard">' +
+        '<div class="t">Delegasyon</div>' +
+        '<div class="s">' + Utils.money(CONFIG.AUTOMATION.UNLOCK_VALUE) +
+          ' şirket değerinde açılır · şu an ' + Utils.money(GameState.companyValue()) + '</div>' +
+        '<div class="progWrap"><div class="progFill" style="width:' + (prog * 100).toFixed(1) + '%"></div></div>' +
+      '</div>';
+    }
+
+    const rows = CONFIG.STAFF.ROLES.map((r) => {
+      const st = AutomationSystem.status(r.id);
+      return '<div class="deptRow">' +
+        '<span class="d">' + Utils.escape(r.dept) + '</span>' +
+        '<span class="a ' + (st === 'on' ? 'on' : st === 'paused' ? 'warn' : '') + '">' +
+          (st === 'on' ? 'AÇIK' : st === 'paused' ? 'DURAKLATILDI' : 'KAPALI') + '</span>' +
+      '</div>';
+    }).join("");
+
+    const today = AutomationSystem.summaryFor(GameState.data.day);
+    const acted = today.filter((e) => e.actionSpent > 0);
+    const summary = acted.length
+      ? acted.map((e) =>
+          '<div class="autoRow">' +
+            '<div class="ar1">' + Utils.escape(AutomationSystem.deptLabel(e.dept)) + '</div>' +
+            '<div class="ar2">' + Utils.escape(e.message) + '</div>' +
+            (e.detail ? '<div class="ar3">' + Utils.escape(e.detail) + '</div>' : '') +
+          '</div>').join("")
+      : '<div class="allClear">Bugün otomatik departman aksiyonu yok</div>';
+
+    return '<div class="upgCard">' +
+      '<div class="deptList" style="margin-top:0;padding-top:0;border-top:0">' + rows + '</div>' +
+      '<button class="btn primary" style="margin-top:12px" data-action="autoOpen">POLİTİKALARI AYARLA</button>' +
+    '</div>' +
+    '<div class="sectionTitle" style="margin-top:14px"><h2>Bugün Ekip Ne Yaptı?</h2></div>' +
+    '<div class="card fmCard">' + summary + '</div>';
+  },
+
   /** Şirket ekranındaki ekip özeti. Kilitliyken ilerleme kartı gösterir. */
   staffSectionHTML() {
     const s = GameState.data;
@@ -5035,6 +5666,98 @@ const UI = {
     this.sheet = { open: true, mode: "fleetBuy", confirm: null };
     this.renderSheet();
     this.showSheet();
+  },
+
+  /* ---------------- V5 Part 2: delegasyon ---------------- */
+
+  openAutomationSheet() {
+    AutomationSystem.ensurePolicies();
+    this.sheet = { open: true, mode: "automation", confirm: null };
+    this.renderSheet();
+    this.showSheet();
+  },
+
+  /** Seçenek satırı: küçük segment butonları. */
+  optRow(label, dept, key, options, current, fmt) {
+    return '<div class="optRow">' +
+      '<span class="optLabel">' + Utils.escape(label) + '</span>' +
+      '<span class="optSeg">' + options.map((o) =>
+        '<button class="optBtn' + (o === current ? ' active' : '') +
+          '" data-sheet="autoSet" data-dept="' + dept + '" data-key="' + key +
+          '" data-val="' + o + '">' + fmt(o) + '</button>').join("") + '</span>' +
+    '</div>';
+  },
+
+  renderAutomationSheet() {
+    const A = CONFIG.AUTOMATION;
+    const card = (dept, title, body, autoLine) => {
+      const st = AutomationSystem.status(dept);
+      const p = AutomationSystem.policy(dept);
+      return '<div class="supCard">' +
+        '<div class="supHead">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="supName">' + Utils.escape(title) + '</div>' +
+            '<div class="supDesc">' + (st === 'paused'
+              ? '<span class="warnTxt">DURAKLATILDI · bugün çalışan yok</span>'
+              : Utils.escape(autoLine)) + '</div></div>' +
+          '<button class="switch' + (p.enabled ? " on" : "") +
+            '" data-sheet="autoToggle" data-dept="' + dept + '"></button>' +
+        '</div>' +
+        body +
+      '</div>';
+    };
+
+    const sales = AutomationSystem.policy("sales");
+    const trader = AutomationSystem.policy("trader");
+    const logi = AutomationSystem.policy("logistics");
+
+    this.el.sheet.innerHTML =
+      '<div class="grabber"></div>' +
+      '<div class="shHead">' +
+        '<div style="flex:1;min-width:0"><div class="shName">Delegasyon</div>' +
+        '<div class="shSub">Departmanlar hazırlık işlerini kendi yürütür</div></div>' +
+        '<span class="shTag buy">POLİTİKA</span>' +
+      '</div>' +
+      '<div class="muted3" style="margin-bottom:12px;line-height:1.5">' +
+        'Otomasyon yeni aksiyon hakkı üretmez, mevcut havuzdan harcar; kalanı sen ' +
+        'kullanırsın. <b>Büyük finansal işlemler otomatik yapılmaz</b> — sözleşme ' +
+        'kabulü, sipariş, satış ve sevkiyat kararı hep sende.</div>' +
+
+      card("sales", "Satış", this.optRow("Fırsat sayısı", "sales", "offerThreshold",
+        A.SALES_THRESHOLDS, sales.offerThreshold, (o) => "≤ " + o),
+        "Günde en fazla 1 müşteri araması") +
+
+      card("trader", "Ticaret",
+        this.optRow("Aciliyet", "trader", "urgencyDays", A.URGENCY_DAYS,
+          trader.urgencyDays, (o) => "≤ " + o + " gün") +
+        this.optRow("Minimum marj", "trader", "minMarginPct", A.MARGIN_PCTS,
+          trader.minMarginPct, (o) => "%" + Math.round(o * 100)),
+        "Günde en fazla 1 pazarlık · sipariş verilmez") +
+
+      card("logistics", "Lojistik",
+        this.optRow("Aciliyet", "logistics", "urgencyDays", A.URGENCY_DAYS,
+          logi.urgencyDays, (o) => "≤ " + o + " gün"),
+        "Günde en fazla 1 hat analizi · booking yapılmaz") +
+
+      '<div class="muted3" style="margin:2px 0 12px;line-height:1.5">' +
+        'Yeni ayar yarın uygulanır — bugünkü otomasyon turu tekrar çalışmaz.</div>' +
+
+      '<div class="sectionTitle" style="margin:4px 0 8px"><h2>Son Günler</h2></div>' +
+      AutomationSystem.recentDays().map((d) => {
+        const list = AutomationSystem.summaryFor(d).filter((e) => e.actionSpent > 0);
+        return '<div class="autoDay"><div class="adHead">Gün ' + d + '</div>' +
+          (list.length ? list.map((e) =>
+            '<div class="autoRow">' +
+              '<div class="ar1">' + Utils.escape(AutomationSystem.deptLabel(e.dept)) + '</div>' +
+              '<div class="ar2">' + Utils.escape(e.message) + '</div>' +
+              (e.detail ? '<div class="ar3">' + Utils.escape(e.detail) + '</div>' : '') +
+            '</div>').join("")
+            : '<div class="ar3" style="padding:2px 0 6px">İşlem yok</div>') + '</div>';
+      }).join("") +
+
+      '<div class="mktBtns" style="margin-top:10px">' +
+        '<button class="btn ghost" data-sheet="close">KAPAT</button>' +
+      '</div>';
   },
 
   /* ---------------- V5 Part 1: ekip yönetimi ---------------- */
@@ -5796,6 +6519,7 @@ const UI = {
     let out = "";
 
     if (EmployeeSystem.countByRole("trader") > 0) {
+      const working = EmployeeSystem.workingCount("trader") > 0;
       const nego = EmployeeSystem.negotiationFor(supplierId, productId);
       const left = EmployeeSystem.actionsLeft("trader");
       out += '<div class="deptAction">' +
@@ -5806,7 +6530,7 @@ const UI = {
             : 'Bugün ' + left + ' pazarlık hakkı kaldı') + '</div>' +
         '</div>' +
         '<button class="btn primary sm daBtn" data-sheet="negotiate"' +
-          (!nego && left > 0 ? "" : " disabled") + '>' +
+          (!nego && left > 0 && working ? "" : " disabled") + '>' +
           (nego ? "PAZARLIK YAPILDI" : "PAZARLIK YAP") + '</button>' +
       '</div>';
     }
@@ -5838,8 +6562,11 @@ const UI = {
 
   salesActionHTML() {
     if (!EmployeeSystem.isUnlocked() || EmployeeSystem.countByRole("sales") === 0) return "";
-    const left = EmployeeSystem.actionsLeft("sales");
     const s = GameState.data;
+    const left = EmployeeSystem.actionsLeft("sales");
+    // Manuel buton ve otomasyon AYNI kapıyı kullanır: aksiyon boşuna yakılmaz.
+    const gate = EmployeeSystem.canSearchCustomer();
+    const capped = EmployeeSystem.foundToday() >= CONFIG.STAFF.SEARCH_MAX_FINDS_PER_DAY;
     const full = s.offers.length >= ContractSystem.maxOffers();
     return '<div class="deptAction">' +
       '<div class="daInfo">' +
@@ -5848,8 +6575,8 @@ const UI = {
           s.offers.length + ' / ' + ContractSystem.maxOffers() + '</div>' +
       '</div>' +
       '<button class="btn primary sm daBtn" data-action="salesSearch"' +
-        (left > 0 && !full ? "" : " disabled") + '>' +
-        (full ? "LİSTE DOLU" : "MÜŞTERİ ARA") + '</button>' +
+        (gate.ok ? "" : " disabled") + '>' +
+        (capped ? "BUGÜNKÜ LİMİT DOLDU" : full ? "LİSTE DOLU" : "MÜŞTERİ ARA") + '</button>' +
     '</div>';
   },
 
@@ -6167,6 +6894,13 @@ const UI = {
       '</div>';
     html += this.staffSectionHTML();
 
+    html += '<div class="sectionTitle" style="margin-top:18px"><h2>Delegasyon</h2>' +
+      (AutomationSystem.isUnlocked()
+        ? '<span class="hint">' + ['sales', 'trader', 'logistics']
+            .filter((x) => AutomationSystem.status(x) === 'on').length + ' / 3 açık</span>' : '') +
+      '</div>';
+    html += this.automationSectionHTML();
+
     html += '<div class="sectionTitle" style="margin-top:18px"><h2>İtibar</h2></div>';
     html += this.reputationCardHTML();
 
@@ -6327,6 +7061,16 @@ Object.assign(UI, {
       case "fleetBuy":
         this.buyVehicle(ds.type);
         break;
+      case "autoToggle":
+        Audio_.tap(); Audio_.haptic(8);
+        AutomationSystem.toggle(ds.dept);
+        this.renderSheet(); this.render();
+        break;
+      case "autoSet":
+        Audio_.tap(); Audio_.haptic(6);
+        AutomationSystem.setPolicy(ds.dept, ds.key, parseFloat(ds.val));
+        this.renderSheet(); this.render();
+        break;
       case "hire":
         Audio_.tap(); this.hireCandidate(parseInt(ds.cand, 10));
         break;
@@ -6354,6 +7098,7 @@ Object.assign(UI, {
     if (st.mode === "poDetail") { this.renderPoDetailSheet(); return; }
     if (st.mode === "fleetBuy") { this.renderFleetSheet(); return; }
     if (st.mode === "staff") { this.renderStaffSheet(); return; }
+    if (st.mode === "automation") { this.renderAutomationSheet(); return; }
 
     const p = GameState.product(st.productId);
     if (!p) return;
@@ -7054,7 +7799,10 @@ const Game = {
     const freshFreight = FreightMarketSystem.ensureMarket();
     const freshCand = EmployeeSystem.ensureCandidates();
     const freshAct = EmployeeSystem.ensureActions();
-    if (freshQuotes || freshFreight || freshCand || freshAct || !loaded) SaveSystem.saveNow();
+    // Politikalar kurulur ama otomasyon YÜKLEMEDE ÇALIŞMAZ: yalnız nextDay
+    // akışından tetiklenir.
+    const freshPol = AutomationSystem.ensurePolicies() | AutomationSystem.armDayGuard();
+    if (freshQuotes || freshFreight || freshCand || freshAct || freshPol || !loaded) SaveSystem.saveNow();
     UI.init();
     UI.switchTab("market");
   },
@@ -7071,6 +7819,8 @@ const Game = {
     FreightMarketSystem.ensureMarket();
     EmployeeSystem.ensureCandidates();
     EmployeeSystem.ensureActions();
+    AutomationSystem.ensurePolicies();
+    AutomationSystem.armDayGuard();
     UI.tradeSegment = "offers";
     SaveSystem.saveNow();
     UI.switchTab("market");
@@ -7117,6 +7867,11 @@ const Game = {
     ProcurementSystem.ensureQuotes();
     FreightMarketSystem.ensureMarket();
     EmployeeSystem.ensureCandidates();
+    // 10) Delegasyon: departman politikaları BUGÜNÜN teklifleri ve nakliye
+    //     piyasası kurulduktan SONRA çalışır. Böylece otomatik müşteri arama
+    //     bugünkü tedarikçi fiyatlarını ve piyasasını değiştirmez — oyuncunun
+    //     render sonrası manuel butona basmasıyla aynı semantik.
+    const autoRuns = AutomationSystem.tickDay();
 
     const value = GameState.companyValue();
     if (value > s.stats.peakValue) s.stats.peakValue = Utils.round2(value);
@@ -7125,6 +7880,11 @@ const Game = {
 
     Audio_.day(); Audio_.haptic(12);
     if (payroll > 0) UI.toast("Maaş ödendi · " + Utils.money(payroll), s.cash < 0 ? "warn" : "");
+    // Üç departman da çalıştıysa 3 ayrı toast değil, tek özet.
+    const autoDone = (autoRuns || []).filter((e) => e.actionSpent > 0).length;
+    if (autoDone > 0) {
+      UI.toast("Ekip otomasyonu · " + autoDone + " işlem tamamlandı", "ok");
+    }
     UI.dayFlash(s.day);
     UI.flashPrices = true;
     UI.render();
@@ -7197,7 +7957,7 @@ window.TradeEmpire = {
   ReputationSystem: ReputationSystem, ContractSystem: ContractSystem,
   ProcurementSystem: ProcurementSystem, LogisticsSystem: LogisticsSystem,
   FleetSystem: FleetSystem, FreightMarketSystem: FreightMarketSystem,
-  EmployeeSystem: EmployeeSystem,
+  EmployeeSystem: EmployeeSystem, AutomationSystem: AutomationSystem,
   SaveSystem: SaveSystem, UI: UI, Game: Game
 };
 </script>

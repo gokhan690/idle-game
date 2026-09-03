@@ -1,4 +1,4 @@
-# Trade Empire — V5 (Part 1)
+# Trade Empire — V5 (Part 2)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -390,6 +390,66 @@ gerçekleşen piyasa tahminle birebir tutar.
 
 Aynı rota ve hedef gün için ikinci kez puan harcanmaz.
 
+## Delegasyon (V5 Part 2)
+
+Şirket değeri **$300.000**'i ilk kez geçtiğinde delegasyon kalıcı açılır.
+Departmanlar hazırlık işlerini kendi başına yürütmeye başlar — ama **büyük
+finansal kararlar oyuncunun kalır**.
+
+| Otomasyon YAPAR | Otomasyon YAPMAZ |
+| --- | --- |
+| Müşteri arar | Sözleşme kabul/red etmez |
+| Tedarikçiyle pazarlık eder | Satın alma siparişi vermez |
+| Yarınki hattı analiz eder | Spot alım/satım yapmaz |
+| Öneri ve günlük özet üretir | Kapasite rezerve etmez, araç göndermez |
+
+İki kural otomasyonu ekonomik bir bonus olmaktan çıkarır:
+
+1. **Yeni aksiyon üretmez.** Mevcut `departmentActions` havuzundan harcar.
+   Sabah 2 ticaret hakkın varsa otomasyon 1'ini kullanır, 1'i sana kalır.
+2. **Departman başına günde en fazla 1 işlem.** Beş satışçın olsa bile
+   otomasyon günde tek arama yapar; kalanı manuel kullanırsın.
+
+Motor da ayrı değildir: otomasyon `EmployeeSystem`'in aynı public
+fonksiyonlarından geçer, yani manuel pazarlık %2 ise otomatik pazarlık da %2.
+
+### Politikalar
+
+| Departman | Tetikleyici | Ayar |
+| --- | --- | --- |
+| Satış | Fırsat sayısı eşiğin altında | ≤ 0 / ≤ 1 / ≤ 2 |
+| Ticaret | Aciliyet penceresindeki sözleşmede gerçek tedarik ihtiyacı | ≤ 2/3/4 gün · min. marj %5/%8/%12 |
+| Lojistik | Aynı ihtiyaç için kullanılabilir hat | ≤ 2/3/4 gün |
+
+Ticaret otomasyonu **yalnız gerçek sözleşme ihtiyacı** için çalışır: depodaki
+stok ve süresi içinde yetişecek yoldaki mal düşülür, kalan açık varsa devreye
+girer. Böylece otomasyon sözleşmesiz spot arbitraj motoruna dönüşmez. Ayrıca
+bugün fiilen sipariş verilemeyecek (nakit / depo / kapasite yetmeyen) bir
+seçenek için aksiyon harcamaz ve marj eşiğinin altındaysa da harcamaz.
+
+Lojistik tavsiyesi karar desteğidir, işlem değil:
+
+```
+Bugün $28/t · 100t → yarın $34/t · 65t
+· yarın pahalı ve dar, bugün booking avantajlı olabilir
+```
+
+Küçük farklarda "belirgin avantaj yok" der (navlun eşiği %9, kapasite %22) —
+her $0,20'de tavsiye değişmez.
+
+### Günde bir kez, yalnız gün akışından
+
+Otomasyon **yalnız `nextDay` akışından** ve günde **bir kez** çalışır. Reload,
+render, sheet açma ve aynı gün politika değişikliği turu tekrar tetiklemez;
+yeni ayar ertesi gün uygulanır. Kayıt yüklenmesi de otomasyonu çalıştırmaz.
+
+Otomasyon, günün tedarikçi teklifleri ve nakliye piyasası kurulduktan **sonra**
+çalışır: böylece otomatik müşteri arama bugünkü fiyatları ve piyasayı
+değiştirmez — oyuncunun render sonrası manuel butona basmasıyla aynı semantik.
+
+Politika açık ama departmanda **bugün çalışan** personel yoksa politika
+kapatılmaz, `DURAKLATILDI` olur; personel geldiğinde ertesi gün devam eder.
+
 ## Piyasa modeli
 
 Fiyatlar rastgele zıplamaz. Her ürünün temel fiyatı, volatilitesi ve mantıklı
@@ -428,6 +488,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `FleetSystem` | Araç tipleri, satın alma, araç atama, sevkiyat/dönüş döngüsü, filo kapasitesi |
 | `FreightMarketSystem` | Günlük harici navlun ve taşıma kapasitesi, rezervasyon, piyasa durumu |
 | `EmployeeSystem` | Aday pazarı, işe alım/çıkarma, maaşlar, departman aksiyon hakları |
+| `AutomationSystem` | Departman politikaları, günlük delegasyon turu, tavsiye ve operasyon özeti |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -454,14 +515,15 @@ erişilebilirdir.
 - **V4 Part 2** — nakliye piyasası, harici taşıma kapasitesi, konteyner
   slotları ✅
 - **V5 Part 1** — çalışanlar, departmanlar, maaşlar, manuel departman
-  aksiyonları ✅ *(bu sürüm)*
-- **V5 Part 2** — departman politikaları ve otomasyon/delegasyon
+  aksiyonları ✅
+- **V5 Part 2** — delegasyon, departman politikaları, operasyon otomasyonu ✅
+  *(bu sürüm)*
 - **Sonrası** — gümrük/vergi, sigorta, gemi/uçak filosu, şoför ve bakım,
   navlun hedge, yakıt piyasası, birden fazla depo, banka/kredi, fabrikalar,
   rakip şirketler
 
-Otomatik sözleşme kabulü, otomatik satın alma/satış, otomatik rota seçimi ve
-filo sevki, departman müdürü / CEO / CFO, çalışan XP ve terfisi, moral,
+Otomatik sözleşme kabulü/reddi, otomatik satın alma/satış, otomatik rota seçimi
+ve filo sevki, otomatik depo yükseltme ve araç alımı, departman müdürü / CEO / CFO, çalışan XP ve terfisi, moral,
 hastalık, izin, prim, ofis binası, savaş, yaptırım, siyasi risk, rota kapanması,
 navlun hedge, uzun dönem taşıyıcı kontratı, fiziksel konteyner envanteri,
 yakıt piyasası, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak/tren
@@ -474,7 +536,7 @@ kuruldu.
 
 ## Test
 
-Playwright ile on bir ayrı takım çalışır (toplam 1044 kontrol):
+Playwright ile on iki ayrı takım çalışır (toplam 1142 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -517,3 +579,9 @@ Playwright ile on bir ayrı takım çalışır (toplam 1044 kontrol):
   tedarikçi teklifini bozmaması ve tek kullanımlık olması, tahminin piyasayı
   mutate etmemesi ve ertesi gün tutması, V1–V4P2 kayıtlarının açılması ve
   320–390 px yerleşim
+- `test-v11.js` — delegasyon: aynı gün işe alınanın skill vermemesi, otomasyon
+  açılma eşiği, politika varsayılanları ve göç normalizasyonu, günde bir kez
+  çalışma (reload/render/politika değişikliği tekrar tetiklemez), aksiyon
+  havuzunun paylaşılması, departman başına günlük tavan, satış/ticaret/lojistik
+  tetikleyicileri ve skip'leri, tavsiye eşikleri, otomasyonun sipariş
+  oluşturmaması, manuel-otomatik RNG eşdeğerliği ve 320–390 px yerleşim
