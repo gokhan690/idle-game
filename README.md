@@ -1,4 +1,4 @@
-# Trade Empire — V4 (Part 1)
+# Trade Empire — V4 (Part 2)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -178,6 +178,58 @@ hiçbir zaman engellenmez.
 Lojistik gecikme müşteri cezası kesmez; sözleşme gecikirse cezayı her zamanki
 gibi ContractSystem bir kez keser.
 
+### Nakliye piyasası (V4 Part 2)
+
+Harici nakliyecinin kapasitesi sınırsız değildir. Her rotanın **her gün** bir
+taşıma kapasitesi ve bir navlun çarpanı vardır; ikisi de aynı sıkışıklık
+değerinden türer, yani kapasite daraldığında navlun pahalanır.
+
+```
+harici navlun/ton = CONFIG base navlun x günlük çarpan
+```
+
+| Rota | Base navlun | Günlük kapasite (base) |
+| --- | --- | --- |
+| İstanbul → İstanbul · Karayolu | $4 | 160 ton |
+| Konya → İstanbul · Karayolu | $12 | 130 ton |
+| Belgrad → İstanbul · Karayolu | $28 | 100 ton |
+| Belgrad → İstanbul · Demiryolu | $14 | 190 ton |
+| Köstence → İstanbul · Karayolu | $34 | 100 ton |
+| Köstence → İstanbul · Deniz | $16 | 260 ton |
+| Novorossiysk → İstanbul · Karayolu | $52 | 80 ton |
+| Novorossiysk → İstanbul · Deniz | $18 | 320 ton |
+
+Ölçülen dağılım (40 seed × 60 gün × 8 rota): çarpan **0.85 – 1.30**, günlerin
+**%70'i 0.95 – 1.10** arasında, **%2,5'i 1.20 ve üstü**. Kapasite base değerin
+**%62 – %140**'ı arasında. Durum dağılımı ≈ %20 RAHAT · %67 NORMAL · %13 SIKIŞIK.
+
+Piyasa durumu ayrı bir zar değildir, üretilen fiyat ve kapasiteden türer:
+
+| Durum | Koşul |
+| --- | --- |
+| SIKIŞIK | çarpan ≥ 1.12 **veya** kapasite base'in %78'inin altında |
+| RAHAT | çarpan ≤ 0.96 **ve** kapasite base'in %112'sinin üstünde |
+| NORMAL | diğer |
+
+**Kapasite yalnız sipariş anında tüketilir.** 60 tonluk hatta 25 ton sipariş
+verirsen 35 ton kalır; ikinci 20 tonluk sipariş sonrası 15 ton kalır ve üçüncü
+20 tonluk sipariş **reddedilir**. Reddedilen sipariş nakit düşürmez, depo
+rezerve etmez, araç bağlamaz. Yola çıkmış sevkiyat ertesi günün kapasitesini
+tekrar tüketmez; teslim olduğunda da geri vermez. Kullanılmayan kapasite
+devretmez, her sabah yeniden oluşur.
+
+Sipariş anında navlun **kilitlenir**. Ertesi gün piyasa değişse bile açık
+siparişin `freightPerTon` / `freightCost` / `landedUnitCost` / `totalCost`
+değerleri asla yeniden fiyatlanmaz.
+
+Nakliye piyasası sıkışıklığı **teslim süresine dokunmaz**. Sipariş anındaki arz
+ve fiyat FreightMarketSystem'in, yola çıktıktan sonraki gecikme riski
+LogisticsSystem'in işidir; sıkışık piyasa kendiliğinden transit gün eklemez.
+
+Deniz hatlarında kalan kapasite konteyner slotu olarak da gösterilir
+(`20 ton = 1 slot`). Bu yalnız karar desteğidir: 25 ton sipariş 25 ton olarak
+ücretlendirilir, 40 tona yuvarlanmaz.
+
 ### Şirket filosu (V4 Part 1)
 
 Şirket değeri **$75.000**'i geçtiğinde kendi araç filonuz açılır. Filo yalnızca
@@ -219,6 +271,12 @@ kendi filonuzladır. Sipariş verildiği anda araçlar bağlanır, teslimattan s
 Filo, teslim süresini ve rota güvenilirliğini **değiştirmez**. Aynı rotadaki
 kendi aracınız da harici nakliyeci de aynı gecikme olaylarından etkilenir.
 
+Filonun asıl stratejik değeri **kapasite bağımsızlığıdır**: kendi aracınız
+harici nakliye piyasasının kapasitesini tüketmez ve günlük navlun çarpanından
+etkilenmez. Belgrad karayolunda harici kapasite bittiyse (0 ton kaldı) ve
+elinizde 60 ton boş filo varsa, o gün yine 60 tonluk sevkiyat çıkarabilirsiniz —
+üstelik harici navlun %24 pahalıyken bile filo işletme maliyetiniz sabit kalır.
+
 Araç fiyatları simülasyonla kalibre edildi. Ölçülen amortisman süresi (tam yük,
 sefer + dönüş döngüsü üzerinden):
 
@@ -237,7 +295,7 @@ sermaye bağlanır, tasarruf üretilmez.
 
 ```
 goodsCost      = goodsUnitPrice x qty
-freightCost    = harici : freightPerTon x qty
+freightCost    = harici : BUGÜNKÜ piyasa navlunu x qty
                  filo   : fleetCostPerTon x qty + fleetDispatchCost x araçSayısı
 totalCost      = goodsCost + freightCost        (sipariş anında peşin ödenir)
 landedUnitCost = totalCost / qty                (stok maliyeti budur)
@@ -289,6 +347,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `ProcurementSystem` | Tedarikçiler, ülke/hub/rota/taşıma, günlük teklifler, landed cost, satın alma siparişleri, yoldaki mallar |
 | `LogisticsSystem` | Rota güvenilirliği, hat durumları, gecikme olayları, ETA yönetimi |
 | `FleetSystem` | Araç tipleri, satın alma, araç atama, sevkiyat/dönüş döngüsü, filo kapasitesi |
+| `FreightMarketSystem` | Günlük harici navlun ve taşıma kapasitesi, rezervasyon, piyasa durumu |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -311,23 +370,26 @@ erişilebilirdir.
   navlun ve landed cost ✅
 - **V3 Part 2** — rota güvenilirliği, hat durumları, gerçek gecikmeler ve
   ETA yönetimi ✅
-- **V4 Part 1** — şirket filosu, kamyonlar, lojistik kapasitesi ✅ *(bu sürüm)*
-- **Sonrası** — navlun piyasası, gümrük/vergi, sigorta, gemi/uçak filosu,
-  şoför ve bakım, birden fazla depo, çalışanlar, banka/kredi, fabrikalar,
-  rakip şirketler
+- **V4 Part 1** — şirket filosu, kamyonlar, lojistik kapasitesi ✅
+- **V4 Part 2** — nakliye piyasası, harici taşıma kapasitesi, konteyner
+  slotları ✅ *(bu sürüm)*
+- **Sonrası** — gümrük/vergi, sigorta, gemi/uçak filosu, şoför ve bakım,
+  navlun hedge, yakıt piyasası, birden fazla depo, çalışanlar, banka/kredi,
+  fabrikalar, rakip şirketler
 
-Savaş, yaptırım, siyasi risk, rota kapanması, navlun piyasası, dinamik petrol
-fiyatı, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak filosu, araç bakımı
-ve yakıt, şoför/çalışan, araç satışı ve amortismanı, filo yükseltmesi, birden
-fazla depo, liman sahipliği, bankalar, kredi, fabrikalar ve rakip şirketler bu
-sürümde **bilinçli olarak yoktur**. Tüm oyun USD ile
+Savaş, yaptırım, siyasi risk, rota kapanması, navlun hedge, uzun dönem taşıyıcı
+kontratı, fiziksel konteyner envanteri ve kiralama, dinamik petrol fiyatı, yakıt
+piyasası, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak/tren filosu, araç
+bakımı, şoför/çalışan, araç satışı ve amortismanı, birden fazla depo, liman
+sahipliği, bankalar, kredi, fabrikalar ve rakip şirketler bu sürümde
+**bilinçli olarak yoktur**. Tüm oyun USD ile
 çalışır. Sözleşme sistemi, sonradan
 eklenecek geminin/fabrikanın/çalışanın oyunda gerçek bir sebebi olsun diye önce
 kuruldu.
 
 ## Test
 
-Playwright ile dokuz ayrı takım çalışır (toplam 808 kontrol):
+Playwright ile on ayrı takım çalışır (toplam 919 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -358,3 +420,9 @@ Playwright ile dokuz ayrı takım çalışır (toplam 808 kontrol):
   landed cost, araçların siparişe bağlanması ve dönüş döngüsü, filonun risk
   sistemine etkisizliği, PO↔araç referans bütünlüğü göçü, birebir yeniden
   yükleme ve 320–390 px yerleşim
+- `test-v9.js` — nakliye piyasası: gecikmiş PO'nun göçte korunması, kısmi filo
+  atamasının kurtarılması, günlük quote/kapasite üretimi ve determinizmi, aynı
+  gün rerender ve reload sabitliği, taşıyıcıya göre `maxOrder`, kapasite
+  rezervasyonu ve reddedilen siparişin yan etkisizliği, kendi filonun kapasite
+  bağımsızlığı, navlun kilidi, konteyner slotu gösterimi, V1–V4P1 kayıtlarının
+  yeniden fiyatlanmaması ve 320–390 px yerleşim

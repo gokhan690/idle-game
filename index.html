@@ -840,6 +840,29 @@ main{
 .carrierBtn[disabled]{opacity:.55;}
 .carrierBtn:active{transform:scale(.97);}
 
+/* V4 Part 2 — nakliye piyasası durumu */
+.cap{
+  font-size:10px;font-weight:900;letter-spacing:.5px;padding:3px 7px;border-radius:6px;
+  background:var(--surface-3);color:var(--text-3);white-space:nowrap;
+}
+.cap.rahat{background:rgba(35,197,122,.14);color:var(--up);}
+.cap.normal{background:rgba(127,176,255,.12);color:#7FB0FF;}
+.cap.sikisik{background:rgba(255,107,107,.14);color:var(--down);}
+.capBar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:9px 11px;margin-bottom:12px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--line);
+}
+.capLeft{font-size:11.5px;font-weight:700;color:var(--text-3);min-width:0;}
+.fmCard{padding:11px 12px;}
+.fmRow{
+  display:flex;align-items:center;gap:8px;padding:7px 0;
+  border-top:1px solid var(--line);flex-wrap:wrap;
+}
+.fmRow:first-of-type{border-top:0;}
+.fmRow .n{font-size:12.5px;font-weight:800;color:var(--text-2);flex:1;min-width:90px;}
+.fmRow .v{font-size:11.5px;font-weight:700;color:var(--text-3);white-space:nowrap;}
+
 .fleetSum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
 .vCard{
   display:flex;align-items:center;gap:10px;
@@ -1009,7 +1032,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 6,
+  VERSION: 7,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -1239,30 +1262,30 @@ const CONFIG = {
        Yani ekrandaki yüzde dekoratif değil, modelin kendi tahminidir. */
     ROUTES: [
       { id:"ist_road", origin:"istanbul", destination:"istanbul", mode:"road",
-        transitDays:1, freightPerTon:4,  dailyRisk:0.0100, primary:true,
+        transitDays:1, freightPerTon:4,  dailyRisk:0.0100, baseExternalCapacity:160, primary:true,
         fleetCostPerTon:1.5, fleetDispatchCost:12 },
 
       { id:"kon_road", origin:"konya", destination:"istanbul", mode:"road",
-        transitDays:1, freightPerTon:12, dailyRisk:0.0151, primary:true,
+        transitDays:1, freightPerTon:12, dailyRisk:0.0151, baseExternalCapacity:130, primary:true,
         fleetCostPerTon:4, fleetDispatchCost:30 },
 
       { id:"bel_road", origin:"belgrad", destination:"istanbul", mode:"road",
-        transitDays:2, freightPerTon:28, dailyRisk:0.0305, primary:true,
+        transitDays:2, freightPerTon:28, dailyRisk:0.0305, baseExternalCapacity:100, primary:true,
         fleetCostPerTon:9, fleetDispatchCost:60 },
       { id:"bel_rail", origin:"belgrad", destination:"istanbul", mode:"rail",
-        transitDays:4, freightPerTon:14, dailyRisk:0.0127 },
+        transitDays:4, freightPerTon:14, dailyRisk:0.0127, baseExternalCapacity:190 },
 
       { id:"kos_road", origin:"kostence", destination:"istanbul", mode:"road",
-        transitDays:2, freightPerTon:34, dailyRisk:0.0205,
+        transitDays:2, freightPerTon:34, dailyRisk:0.0205, baseExternalCapacity:100,
         fleetCostPerTon:11, fleetDispatchCost:75 },
       { id:"kos_sea",  origin:"kostence", destination:"istanbul", mode:"sea",
-        transitDays:3, freightPerTon:16, dailyRisk:0.0207, primary:true },
+        transitDays:3, freightPerTon:16, dailyRisk:0.0207, baseExternalCapacity:260, primary:true },
 
       { id:"nov_road", origin:"novorossiysk", destination:"istanbul", mode:"road",
-        transitDays:3, freightPerTon:52, dailyRisk:0.0233,
+        transitDays:3, freightPerTon:52, dailyRisk:0.0233, baseExternalCapacity:80,
         fleetCostPerTon:17, fleetDispatchCost:110 },
       { id:"nov_sea",  origin:"novorossiysk", destination:"istanbul", mode:"sea",
-        transitDays:5, freightPerTon:18, dailyRisk:0.0191, primary:true }
+        transitDays:5, freightPerTon:18, dailyRisk:0.0191, baseExternalCapacity:320, primary:true }
     ]
   },
 
@@ -1330,6 +1353,34 @@ const CONFIG = {
       { id:"heavy_truck",    name:"Ağır Tır",     code:"AT", capacity:30,
         price:4600, returnDays:2, desc:"Büyük hacimde verimli" }
     ]
+  },
+
+  /* -------------------------------------------------------------------------
+   * NAKLİYE PİYASASI (V4 · Part 2)
+   * Harici nakliyecinin kapasitesi artık sınırsız değil. Her rotanın günlük
+   * bir taşıma kapasitesi ve günlük bir navlun çarpanı vardır. Kendi filo bu
+   * piyasadan bağımsızdır: ne kapasitesini tüketir ne de fiyatından etkilenir.
+   * Bu partta navlun hedge, yakıt piyasası, uzun dönem taşıyıcı kontratı ve
+   * fiziksel konteyner envanteri YOKTUR.
+   * -----------------------------------------------------------------------*/
+  FREIGHT_MARKET: {
+    CONTAINER_TONS: 20,        // deniz hattında "~N konteyner slotu" gösterimi
+
+    // Günlük navlun çarpanı bandı. Çoğu gün 0.95-1.10 civarında kalır;
+    // 1.20+ nadir sıkışık gündür. V3 landed ekonomisini bozacak x2/x3 yok.
+    MULT_MIN: 0.85,
+    MULT_MID: 1.00,
+    MULT_MAX: 1.30,
+
+    // Günlük kapasite, rotanın base kapasitesinin bu aralığındadır.
+    CAP_MIN: 0.60,
+    CAP_MAX: 1.40,
+
+    // Piyasa durumu fiyat ve kapasiteden TÜRETİLİR, ayrı zar atılmaz.
+    TIGHT_MULT: 1.12,          // bu çarpanın üstü sıkışık
+    TIGHT_CAP: 0.78,           // base kapasitenin bu oranı altı sıkışık
+    EASY_MULT: 0.96,           // bu çarpanın altı + bol kapasite = rahat
+    EASY_CAP: 1.12
   }
 };
 
@@ -1432,6 +1483,9 @@ const GameState = {
       vehicleSeq: 1,
       vehicles: [],
 
+      /* V4 Part 2 · Nakliye piyasası */
+      freightMarket: null,  // { day, routes: { routeId: { ...günlük arz/fiyat } } }
+
       stats: {
         realizedProfit: 0,
         totalTrades: 0,
@@ -1451,7 +1505,10 @@ const GameState = {
         fleetTonsMoved: 0,
         fleetFreightPaid: 0,
         externalFreightPaid: 0,
-        fleetFreightSavings: 0   // aynı sevkiyat harici gitseydi fark (negatif olabilir)
+        fleetFreightSavings: 0,  // aynı sevkiyat harici gitseydi fark (negatif olabilir)
+        externalCapacityBooked: 0,   // harici piyasadan rezerve edilen toplam ton
+        externalFreightSpend: 0,     // harici navluna ödenen toplam tutar
+        capacityBlockedOrders: 0     // kapasite yüzünden reddedilen gerçek onay
       },
       settings: keepSettings || { sound: true }
     };
@@ -2216,12 +2273,40 @@ const ProcurementSystem = {
     return { min: Math.min.apply(null, days), max: Math.max.apply(null, days) };
   },
 
-  /** Malın ana depoya varmış hâlindeki birim maliyeti: mal + ton başına navlun. */
+  /**
+   * Harici nakliyecinin BUGÜNKÜ ton başı navlunu. V4 Part 2'den itibaren
+   * CONFIG'teki freightPerTon yalnız "base" fiyattır; gerçek fiyat günlük
+   * nakliye piyasasından gelir.
+   */
+  externalFreightPerTon(routeId) {
+    const r = this.route(routeId);
+    if (!r) return null;
+    const q = FreightMarketSystem.freightPerTon(r.id);
+    return q === null ? r.freightPerTon : q;
+  },
+
+  /**
+   * Malın ana depoya varmış hâlindeki birim maliyeti: mal + ton başına navlun.
+   * Harici taşıyıcıda bugünkü piyasa navlunu kullanılır.
+   */
   landedUnitCost(supplierId, productId, routeId) {
     const goods = this.quote(supplierId, productId);
     const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
     if (goods === null || !r) return null;
-    return Utils.round2(goods + r.freightPerTon);
+    return Utils.round2(goods + this.externalFreightPerTon(r.id));
+  },
+
+  /**
+   * Kendi filoyla taşınırsa birim landed maliyet. Sevk bedeli araç başına
+   * olduğu için miktara bağlıdır; plan kurulamıyorsa null döner.
+   */
+  fleetLandedUnitCost(supplierId, productId, routeId, qty) {
+    const goods = this.quote(supplierId, productId);
+    const r = this.route(routeId);
+    if (goods === null || !r || !(qty > 0)) return null;
+    const plan = FleetSystem.quote(r.id, qty);
+    if (!plan) return null;
+    return Utils.round2((goods * qty + plan.freightCost) / qty);
   },
 
   /** Landed maliyetin spot fiyata göre farkı (negatif = tedarik daha ucuz). */
@@ -2232,15 +2317,24 @@ const ProcurementSystem = {
     return (landed - market) / market;
   },
 
-  /** Bu ürün için en düşük landed maliyetli rota. */
+  /**
+   * Bu ürün için en düşük landed maliyetli rota — bugünkü harici navlunla.
+   * Bugün harici kapasitesi bitmiş rota varsayılan olarak önerilmez; hiçbiri
+   * uygun değilse yine en ucuzu döner (oyuncu filoyla ya da başka miktarla
+   * kullanabilir).
+   */
   bestRoute(supplierId, productId) {
     const list = this.routesFor(supplierId);
     let best = null, bestCost = Infinity;
+    let anyBest = null, anyCost = Infinity;
     list.forEach((r) => {
       const c = this.landedUnitCost(supplierId, productId, r.id);
-      if (c !== null && c < bestCost) { bestCost = c; best = r; }
+      if (c === null) return;
+      if (c < anyCost) { anyCost = c; anyBest = r; }
+      if (FreightMarketSystem.remaining(r.id) <= 0) return;
+      if (c < bestCost) { bestCost = c; best = r; }
     });
-    return best;
+    return best || anyBest;
   },
 
   /* ---------------- günlük fiyat teklifleri ---------------- */
@@ -2291,18 +2385,44 @@ const ProcurementSystem = {
    * Nakit ve kullanılabilir kapasiteye göre şu an alınabilecek en yüksek miktar.
    * Nakit hesabı landed maliyet üzerinden yapılır: navlun da peşin ödenir.
    */
-  maxOrder(supplierId, productId, routeId) {
-    const landed = this.landedUnitCost(supplierId, productId, routeId);
+  maxOrder(supplierId, productId, routeId, carrierType) {
+    const bySpace = GameState.availableCapacity();
+    const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
+    if (!r) return 0;
+
+    if (carrierType === "owned_fleet") {
+      // Kendi filo harici piyasadan bağımsızdır: yalnız müsait araç
+      // kapasitesi ve nakit sınırlar. Sevk bedeli araç başına olduğu için
+      // maliyet miktara göre basamaklı artar; en yüksek karşılanabilir
+      // miktar ikili aramayla bulunur (maliyet miktarla azalmaz).
+      if (!FleetSystem.routeSupportsFleet(r.id) || !FleetSystem.isUnlocked()) return 0;
+      let hi = Math.min(bySpace, FleetSystem.idleCapacity());
+      if (hi <= 0) return 0;
+      const affordable = (q) => {
+        const landed = this.fleetLandedUnitCost(supplierId, productId, r.id, q);
+        return landed !== null && Utils.round2(landed * q) <= GameState.data.cash + 0.001;
+      };
+      if (affordable(hi)) return hi;
+      let lo = 0;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        if (affordable(mid)) lo = mid; else hi = mid - 1;
+      }
+      return Math.max(0, lo);
+    }
+
+    const landed = this.landedUnitCost(supplierId, productId, r.id);
     if (landed === null || landed <= 0) return 0;
     const byCash = Math.floor(GameState.data.cash / landed);
-    const bySpace = GameState.availableCapacity();
-    return Math.max(0, Math.min(byCash, bySpace));
+    // Harici taşımada günlük piyasa kapasitesi gerçek bir üst sınırdır.
+    const byMarket = FreightMarketSystem.remaining(r.id);
+    return Math.max(0, Math.min(byCash, bySpace, byMarket));
   },
 
-  canOrder(supplierId, productId, routeId) {
+  canOrder(supplierId, productId, routeId, carrierType) {
     const sup = this.supplier(supplierId);
     if (!sup) return false;
-    return this.maxOrder(supplierId, productId, routeId) >= sup.minQty;
+    return this.maxOrder(supplierId, productId, routeId, carrierType) >= sup.minQty;
   },
 
   /* ---------------- sipariş oluşturma ---------------- */
@@ -2343,7 +2463,21 @@ const ProcurementSystem = {
       }
     }
 
-    const freightPerTon = carrier === "owned_fleet" ? fleetPlan.fleetCostPerTon : route.freightPerTon;
+    /*
+     * Harici taşımada günlük piyasa kapasitesi gerçek bir kısıttır. Kendi filo
+     * bu piyasadan bağımsızdır: ne kapasitesini tüketir ne de fiyatından
+     * etkilenir. Kontrol nakit düşülmeden, depo rezerve edilmeden ve araç
+     * bağlanmadan ÖNCE yapılır; reddedilen sipariş hiçbir yan etki bırakmaz.
+     */
+    const marketRow = carrier === "external" ? FreightMarketSystem.row(route.id) : null;
+    if (carrier === "external" && !FreightMarketSystem.canBook(route.id, qty)) {
+      s.stats.capacityBlockedOrders += 1;
+      return { ok: false, reason: "Bugün bu hatta harici taşıma kapasitesi yetersiz (" +
+        Utils.qty(FreightMarketSystem.remaining(route.id)) + " ton kaldı)" };
+    }
+
+    const freightPerTon = carrier === "owned_fleet"
+      ? fleetPlan.fleetCostPerTon : this.externalFreightPerTon(route.id);
     const goodsCost = Utils.round2(goodsUnitPrice * qty);
     const freightCost = carrier === "owned_fleet" ? fleetPlan.freightCost : Utils.round2(freightPerTon * qty);
     const totalCost = Utils.round2(goodsCost + freightCost);
@@ -2396,6 +2530,12 @@ const ProcurementSystem = {
       landedUnitCost: landedUnitCost,
       totalCost: totalCost,
 
+      // Nakliye piyasası anlık görüntüsü (V4 Part 2). Ertesi gün piyasa
+      // değişse bile bu sipariş ASLA yeniden fiyatlanmaz.
+      freightMarketDay: marketRow ? s.day : 0,
+      externalBaseFreightPerTon: marketRow ? marketRow.baseFreightPerTon : 0,
+      externalFreightMultiplier: marketRow ? marketRow.multiplier : 0,
+
       orderedDay: s.day,
       status: "in_transit",
       legacyLogistics: false,
@@ -2420,6 +2560,13 @@ const ProcurementSystem = {
     };
     s.purchaseOrders.push(po);
     if (fleetPlan) FleetSystem.assign(po, fleetPlan.vehicles);
+    // Kapasite yalnız burada, bir kez tüketilir. Yola çıkmış sevkiyat sonraki
+    // günlerin kapasitesini tekrar tüketmez, teslim olunca da geri vermez.
+    if (carrier === "external") {
+      FreightMarketSystem.book(route.id, qty);
+      s.stats.externalCapacityBooked += qty;
+      s.stats.externalFreightSpend = Utils.round2(s.stats.externalFreightSpend + freightCost);
+    }
 
     s.stats.poCount += 1;
     s.stats.poTons += qty;
@@ -2427,8 +2574,10 @@ const ProcurementSystem = {
     if (carrier === "owned_fleet") {
       s.stats.fleetFreightPaid = Utils.round2(s.stats.fleetFreightPaid + freightCost);
       // Aynı sevkiyat harici gitseydi ödenecek fark; negatif de olabilir.
+      // Referans, aynı gün harici gitseydi ödenecek GÜNCEL piyasa navlunudur.
+      const extAlt = Utils.round2(this.externalFreightPerTon(route.id) * qty);
       s.stats.fleetFreightSavings = Utils.round2(
-        s.stats.fleetFreightSavings + (fleetPlan.externalFreightCost - freightCost));
+        s.stats.fleetFreightSavings + (extAlt - freightCost));
     } else {
       s.stats.externalFreightPaid = Utils.round2(s.stats.externalFreightPaid + freightCost);
     }
@@ -2900,6 +3049,212 @@ const FleetSystem = {
 };
 
 /* ===========================================================================
+ * FreightMarketSystem — günlük harici taşıma piyasası (V4 · Part 2)
+ *
+ * Harici nakliyeci artık sınırsız değil. Her rotanın her gün bir taşıma
+ * kapasitesi ve bir navlun çarpanı vardır; ikisi de aynı "sıkışıklık"
+ * değerinden türer, yani kapasite daraldığında navlun pahalanır.
+ *
+ * Sınırları net tutmak önemli:
+ *   FreightMarketSystem : sipariş VERİLİRKEN mevcut dış taşıma arzı ve fiyatı
+ *   LogisticsSystem     : sipariş YOLA ÇIKTIKTAN sonraki gecikme riski
+ * Bunlar birbirini beslemez. Sıkışık piyasa kendiliğinden transit gün
+ * eklemez; gecikmeyi eskisi gibi yalnızca LogisticsSystem üretir.
+ *
+ * Kapasite yalnız BOOKING anında tüketilir. Yola çıkmış sevkiyat sonraki
+ * günlerin kapasitesini tekrar tüketmez, teslim olunca da geri vermez.
+ * =========================================================================*/
+const FreightMarketSystem = {
+  /**
+   * (seed, gün, anahtar) üçlüsünden türeyen saf hash. Paylaşılan RNG akışını
+   * TÜKETMEZ; böylece piyasanın üretilmesi tedarikçi tekliflerinin
+   * determinizmini bozmaz ve göç sırasında güvenle çağrılabilir.
+   */
+  hash(day, key) {
+    let h = (GameState.data.seed ^ 0x9E3779B9) >>> 0;
+    h = Math.imul(h ^ (day + 0x165667B1), 0x85EBCA6B) >>> 0;
+    for (let i = 0; i < key.length; i++) {
+      h = Math.imul(h ^ key.charCodeAt(i), 0xC2B2AE35) >>> 0;
+    }
+    h ^= h >>> 15; h = Math.imul(h, 0x2545F491) >>> 0; h ^= h >>> 13;
+    return (h >>> 0) / 4294967296;
+  },
+
+  /** Üç örneğin ortalaması (Bates): merkeze yakın, uçlar nadir. */
+  centered(day, key) {
+    return (this.hash(day, key + ":a") + this.hash(day, key + ":b") +
+            this.hash(day, key + ":c")) / 3;
+  },
+
+  routes() {
+    return CONFIG.LOGISTICS.ROUTES.filter((r) => r.baseExternalCapacity > 0);
+  },
+
+  /** Rotanın o günkü satırını üretir. tightness 0 = bol, 1 = çok sıkışık. */
+  buildRow(route, day) {
+    const F = CONFIG.FREIGHT_MARKET;
+    const t = Utils.clamp(this.centered(day, route.id + ":tight"), 0, 1);
+    // Fiyat ve kapasite aynı sıkışıklıktan türer; küçük bağımsız gürültü
+    // ikisini birebir aynı yapmaz ama yönü hep aynı kalır.
+    const jP = (this.hash(day, route.id + ":p") - 0.5) * 0.08;
+    const jC = (this.hash(day, route.id + ":c2") - 0.5) * 0.10;
+
+    const tp = Utils.clamp(t + jP, 0, 1);
+    // Çarpan önce yuvarlanır, ton fiyatı ONDAN türer: ekranda gösterilen
+    // "base x çarpan" hesabı her zaman gösterilen fiyatı vermelidir.
+    const multiplier = Utils.round2(tp < 0.5
+      ? F.MULT_MIN + (tp / 0.5) * (F.MULT_MID - F.MULT_MIN)
+      : F.MULT_MID + ((tp - 0.5) / 0.5) * (F.MULT_MAX - F.MULT_MID));
+
+    const tc = Utils.clamp(t + jC, 0, 1);
+    const capFactor = F.CAP_MAX - tc * (F.CAP_MAX - F.CAP_MIN);
+    const capacity = Math.max(1, Math.round(route.baseExternalCapacity * capFactor));
+
+    const row = {
+      routeId: route.id,
+      baseFreightPerTon: route.freightPerTon,
+      multiplier: multiplier,
+      freightPerTon: Math.max(0.01, Utils.round2(route.freightPerTon * multiplier)),
+      baseCapacity: route.baseExternalCapacity,
+      capacity: capacity,
+      remaining: capacity,
+      state: ""
+    };
+    row.state = this.deriveState(row);
+    return row;
+  },
+
+  /** Durum ayrı bir zar değil; üretilen fiyat ve kapasitenin sonucudur. */
+  deriveState(row) {
+    const F = CONFIG.FREIGHT_MARKET;
+    const ratio = row.capacity / Math.max(1, row.baseCapacity);
+    if (row.multiplier >= F.TIGHT_MULT || ratio <= F.TIGHT_CAP) return "sikisik";
+    if (row.multiplier <= F.EASY_MULT && ratio >= F.EASY_CAP) return "rahat";
+    return "normal";
+  },
+
+  build(day) {
+    const rows = {};
+    this.routes().forEach((r) => { rows[r.id] = this.buildRow(r, day); });
+    return { day: day, routes: rows };
+  },
+
+  /**
+   * Piyasa yoksa ya da gün değiştiyse yeniden üretir. Aynı gün içinde
+   * sabittir: render, sheet açma/kapama ve reload değiştirmez.
+   */
+  ensureMarket() {
+    const s = GameState.data;
+    if (!s.freightMarket || s.freightMarket.day !== s.day || !s.freightMarket.routes) {
+      s.freightMarket = this.build(s.day);
+      return true;
+    }
+    // CONFIG'e sonradan rota eklenmiş olabilir; eksik satır güvenle kurulur.
+    let added = false;
+    this.routes().forEach((r) => {
+      if (!s.freightMarket.routes[r.id]) {
+        s.freightMarket.routes[r.id] = this.buildRow(r, s.day);
+        added = true;
+      }
+    });
+    return added;
+  },
+
+  row(routeId) {
+    const m = GameState.data.freightMarket;
+    if (!m || !m.routes) return null;
+    return m.routes[routeId] || null;
+  },
+
+  /** Bugünkü harici navlun. Rota piyasada yoksa CONFIG base fiyatına düşer. */
+  freightPerTon(routeId) {
+    const row = this.row(routeId);
+    if (row) return row.freightPerTon;
+    const r = ProcurementSystem.route(routeId);
+    return r ? r.freightPerTon : null;
+  },
+
+  multiplier(routeId) {
+    const row = this.row(routeId);
+    return row ? row.multiplier : 1;
+  },
+
+  state(routeId) {
+    const row = this.row(routeId);
+    return row ? row.state : "normal";
+  },
+
+  /** Bugün bu rotada harici olarak kaç ton daha yüklenebilir. */
+  remaining(routeId) {
+    const row = this.row(routeId);
+    if (row) return Math.max(0, row.remaining);
+    // Piyasada olmayan (eski/orphan) rota harici kapasite ile sınırlanmaz.
+    return Infinity;
+  },
+
+  capacity(routeId) {
+    const row = this.row(routeId);
+    return row ? row.capacity : Infinity;
+  },
+
+  canBook(routeId, qty) {
+    return qty > 0 && qty <= this.remaining(routeId);
+  },
+
+  /** Harici sevkiyat rezervasyonu. Yalnız sipariş anında bir kez çağrılır. */
+  book(routeId, qty) {
+    const row = this.row(routeId);
+    if (!row) return false;
+    if (qty > row.remaining) return false;
+    row.remaining = Math.max(0, row.remaining - qty);
+    row.state = this.deriveState(row);
+    return true;
+  },
+
+  /** Ton -> yaklaşık konteyner slotu (yalnız görsel karar desteği). */
+  containers(tons) {
+    const per = CONFIG.FREIGHT_MARKET.CONTAINER_TONS;
+    if (!(per > 0)) return 0;
+    return Math.floor(tons / per);
+  },
+
+  /** Bu rotada konteyner slotu gösterilsin mi (deniz hatları). */
+  showsContainers(routeId) {
+    const r = ProcurementSystem.route(routeId);
+    return !!(r && r.mode === "sea");
+  },
+
+  label(state) {
+    return state === "sikisik" ? "SIKIŞIK" : state === "rahat" ? "RAHAT" : "NORMAL";
+  },
+
+  /** UI özeti: dikkat gerektiren rotalar önce. */
+  summary() {
+    const list = [];
+    this.routes().forEach((r) => {
+      const row = this.row(r.id);
+      if (!row) return;
+      const hub = ProcurementSystem.hub(r.origin);
+      const mode = ProcurementSystem.mode(r.mode);
+      list.push({
+        routeId: r.id,
+        name: (hub ? hub.name : r.origin) + " " + (mode ? mode.name : r.mode),
+        state: row.state,
+        remaining: row.remaining,
+        capacity: row.capacity,
+        freightPerTon: row.freightPerTon,
+        base: row.baseFreightPerTon,
+        sea: r.mode === "sea"
+      });
+    });
+    const rank = { sikisik: 0, normal: 1, rahat: 2 };
+    list.sort((a, b) => (rank[a.state] - rank[b.state]) ||
+      (a.remaining / Math.max(1, a.capacity)) - (b.remaining / Math.max(1, b.capacity)));
+    return list;
+  }
+};
+
+/* ===========================================================================
  * SaveSystem — localStorage kalıcılığı
  * =========================================================================*/
 const SaveSystem = {
@@ -3098,6 +3453,12 @@ const SaveSystem = {
      */
     const carrierFields = (o) => {
       const owned = o.carrierType === "owned_fleet";
+      // V4 Part 2 nakliye piyasası anlık görüntüsü. Eski kayıtlarda yoktur;
+      // uydurulmaz, 0 bırakılır. Siparişin ekonomisi zaten freightPerTon /
+      // freightCost / totalCost alanlarında kilitlidir ve değişmez.
+      const fmDay = owned ? 0 : Math.max(0, Math.floor(num(o.freightMarketDay, 0, 0)));
+      const fmBase = owned ? 0 : Math.max(0, Utils.round2(num(o.externalBaseFreightPerTon, 0, 0)));
+      const fmMult = owned ? 0 : Math.max(0, Utils.round2(num(o.externalFreightMultiplier, 0, 0)));
       const ids = owned && Array.isArray(o.assignedVehicleIds)
         ? o.assignedVehicleIds.filter((x) => typeof x === "number" && isFinite(x) && x >= 0)
           .map((x) => Math.floor(x)) : [];
@@ -3111,7 +3472,10 @@ const SaveSystem = {
         fleetCostPerTon: Math.max(0, Utils.round2(num(o.fleetCostPerTon, 0, 0))),
         fleetDispatchCost: Math.max(0, Utils.round2(num(o.fleetDispatchCost, 0, 0))),
         vehicleDispatchCostTotal: Math.max(0, Utils.round2(num(o.vehicleDispatchCostTotal, 0, 0))),
-        legacyFleetAssignment: o.legacyFleetAssignment === true
+        legacyFleetAssignment: o.legacyFleetAssignment === true,
+        freightMarketDay: fmDay,
+        externalBaseFreightPerTon: fmBase,
+        externalFreightMultiplier: fmMult
       };
     };
 
@@ -3141,6 +3505,9 @@ const SaveSystem = {
       freightCost: log.freightCost,
       landedUnitCost: log.landedUnitCost,
       totalCost: log.totalCost,
+      freightMarketDay: base.freightMarketDay,
+      externalBaseFreightPerTon: base.externalBaseFreightPerTon,
+      externalFreightMultiplier: base.externalFreightMultiplier,
       orderedDay: base.orderedDay,
       status: base.status,
       legacyLogistics: log.legacyLogistics,
@@ -3273,7 +3640,18 @@ const SaveSystem = {
       if (!sup) return false;
       const price = posNum(o.goodsUnitPrice) || posNum(o.unitPrice);
       if (!(o.qty > 0) || price === null) return false;
-      if (!(o.leadTime >= 1) || !(o.daysLeft >= 1) || o.daysLeft > o.leadTime) return false;
+      /*
+       * V3 Part 2'den beri beklenmeyen lojistik olayı daysLeft'i ARTIRABİLİR:
+       * planlanan 4 günlük sipariş +2 gün gecikince daysLeft 5 olur. Bu tamamen
+       * geçerli bir durumdur, bozuk kayıt değildir. Bu yüzden üst sınır artık
+       * leadTime değil, "planlanan süre + gecikme tavanı"dır.
+       */
+      if (!(o.leadTime >= 1) || !(o.daysLeft >= 1)) return false;
+      const plannedLead = (typeof o.plannedLeadTime === "number" && isFinite(o.plannedLeadTime) &&
+        o.plannedLeadTime >= 1) ? Math.floor(o.plannedLeadTime) : Math.floor(o.leadTime);
+      const maxDays = Math.max(Math.floor(o.leadTime), plannedLead) +
+        CONFIG.LOGISTICS_RISK.MAX_DELAY_PER_PO;
+      if (o.daysLeft > maxDays) return false;   // yüzlerce gün kalan bozuk kayıt
       const id = Math.floor(num(o.id, 0, -1));
       if (id < 0 || seenPo[id]) return false;   // bozuk veya çift id
       seenPo[id] = true;
@@ -3369,6 +3747,11 @@ const SaveSystem = {
     out.stats.externalFreightPaid = Utils.round2((d.stats && d.stats.externalFreightPaid) || 0);
     out.stats.fleetFreightSavings = Utils.round2((d.stats && d.stats.fleetFreightSavings) || 0);
 
+    /* --- V4 Part 2: nakliye piyasası istatistikleri --- */
+    out.stats.externalCapacityBooked = Math.max(0, Math.floor((d.stats && d.stats.externalCapacityBooked) || 0));
+    out.stats.externalFreightSpend = Utils.round2((d.stats && d.stats.externalFreightSpend) || 0);
+    out.stats.capacityBlockedOrders = Math.max(0, Math.floor((d.stats && d.stats.capacityBlockedOrders) || 0));
+
     // Araçlar: olmayan araç uydurulmaz, bozuk kayıt elenir.
     const seenVehicle = {};
     out.vehicles = Array.isArray(d.vehicles) ? d.vehicles.filter((v) => {
@@ -3414,26 +3797,40 @@ const SaveSystem = {
     const claimed = {};
     out.purchaseOrders.forEach((po) => {
       if (po.carrierType !== "owned_fleet") return;
-      const valid = [];
+      const veh = [];
       po.assignedVehicleIds.forEach((id) => {
         const v = out.vehicles.find((x) => x.id === id);
-        if (!v || claimed[id]) return;   // yok ya da başka sipariş almış
+        if (!v || claimed[id] !== undefined) return;   // yok ya da başka sipariş almış
         claimed[id] = po.id;
-        v.status = "assigned";
-        v.assignedPoId = po.id;
-        v.returnDaysLeft = 0;
-        valid.push(id);
+        veh.push(v);
       });
-      po.assignedVehicleIds = valid;
-      po.assignedVehicleTypes = valid.map((id) => {
-        const v = out.vehicles.find((x) => x.id === id);
-        return v ? v.typeId : "";
-      });
-      po.assignedFleetCapacity = valid.reduce((sum, id) => {
-        const v = out.vehicles.find((x) => x.id === id);
-        return sum + (v ? v.capacity : 0);
-      }, 0);
-      if (!valid.length) po.legacyFleetAssignment = true;   // araçsız devam eder
+      /*
+       * Kısmi kurtarma: araçların bir kısmı silinmiş olabilir. Kalan araçlar
+       * yükü FİZİKSEL olarak hâlâ taşıyabiliyorsa (kapasite >= qty) atama
+       * geçerli sayılır — 20t+30t'lik bir 30 tonluk sevkiyatta 20t araç
+       * bozulsa bile kalan 30t işi görür. Kapasite yetmiyorsa atama
+       * kurtarılamamıştır: araçlar boşuna bağlanmaz, serbest kalır ve sipariş
+       * araç bağımlılığı olmadan legacy olarak tamamlanır.
+       * Her iki durumda da siparişin ekonomisi ve ETA'sı ASLA değişmez.
+       */
+      const recovered = veh.reduce((sum, v) => sum + v.capacity, 0);
+      const usable = veh.length > 0 && recovered >= po.qty;
+      if (usable) {
+        veh.forEach((v) => {
+          v.status = "assigned";
+          v.assignedPoId = po.id;
+          v.returnDaysLeft = 0;
+        });
+        po.assignedVehicleIds = veh.map((v) => v.id);
+        po.assignedVehicleTypes = veh.map((v) => v.typeId);
+        po.assignedFleetCapacity = recovered;
+      } else {
+        veh.forEach((v) => { delete claimed[v.id]; });   // yeniden sahiplenilebilir
+        po.assignedVehicleIds = [];
+        po.assignedVehicleTypes = [];
+        po.assignedFleetCapacity = 0;
+        po.legacyFleetAssignment = true;
+      }
     });
 
     // Siparişi olmayan "assigned" araçlar boşa alınır.
@@ -3445,6 +3842,44 @@ const SaveSystem = {
         if (v.returnDaysLeft <= 0) v.returnDaysLeft = 1;
       }
     });
+
+    /*
+     * --- V4 Part 2: nakliye piyasası ---
+     * Kayıttaki piyasa yalnız AYNI güne aitse ve şekli sağlamsa korunur;
+     * böylece aynı gün içinde yeniden yükleme fiyatı ve kalan kapasiteyi
+     * birebir aynı bırakır. Aksi hâlde null bırakılır ve Game.init günün
+     * piyasasını bir kez üretir. Burada RNG tüketilmez: piyasa üretimi saf
+     * hash tabanlıdır, tedarikçi teklifi determinizmini etkilemez.
+     */
+    out.freightMarket = null;
+    const fm = d.freightMarket;
+    if (fm && typeof fm === "object" && Math.floor(num(fm.day, 0, -1)) === out.day &&
+        fm.routes && typeof fm.routes === "object") {
+      const rows = {};
+      CONFIG.LOGISTICS.ROUTES.forEach((r) => {
+        if (!(r.baseExternalCapacity > 0)) return;
+        const raw = fm.routes[r.id];
+        if (!raw || typeof raw !== "object") return;
+        const capacity = Math.floor(num(raw.capacity, 1, 0));
+        const remaining = Math.floor(num(raw.remaining, 0, 0));
+        const mult = Utils.round2(num(raw.multiplier, 0.01, 0));
+        const freight = Utils.round2(num(raw.freightPerTon, 0.01, 0));
+        if (!(capacity > 0) || !(mult > 0) || !(freight > 0)) return;
+        const row = {
+          routeId: r.id,
+          baseFreightPerTon: r.freightPerTon,
+          multiplier: mult,
+          freightPerTon: freight,
+          baseCapacity: r.baseExternalCapacity,
+          capacity: capacity,
+          remaining: Utils.clamp(remaining, 0, capacity),
+          state: ""
+        };
+        row.state = FreightMarketSystem.deriveState(row);
+        rows[r.id] = row;
+      });
+      if (Object.keys(rows).length) out.freightMarket = { day: out.day, routes: rows };
+    }
 
     /* --- V3 Part 2: lojistik durumları (eski kayıtlarda yok) --- */
     const validRoute = (id) => !!ProcurementSystem.route(id);
@@ -4424,6 +4859,28 @@ const UI = {
     '</div>';
   },
 
+  /**
+   * Nakliye piyasası özeti. 8 rotayı kocaman kartlarla yığmak yerine yalnız
+   * dikkat gerektirenler (sıkışık hatlar) listelenir; hepsi normalse tek satır.
+   */
+  freightMarketHTML() {
+    const list = FreightMarketSystem.summary();
+    if (!list.length) return "";
+    const tight = list.filter((r) => r.state === "sikisik" || r.remaining <= 0);
+    const show = tight.length ? tight.slice(0, 4) : list.slice(0, 2);
+    return '<div class="sectionTitle"><h2>Nakliye Piyasası</h2>' +
+        '<span class="hint">' + (tight.length ? tight.length + ' hat sıkışık' : 'genel olarak rahat') +
+        '</span></div>' +
+      '<div class="card fmCard">' + show.map((r) =>
+        '<div class="fmRow">' +
+          '<span class="n">' + Utils.escape(r.name) + '</span>' +
+          '<span class="cap ' + r.state + '">' + FreightMarketSystem.label(r.state) + '</span>' +
+          '<span class="v num">' + Utils.qty(r.remaining) + ' t' +
+            (r.sea ? ' · ~' + FreightMarketSystem.containers(r.remaining) + ' kont.' : '') +
+            ' · ' + Utils.price(r.freightPerTon) + '/t</span>' +
+        '</div>').join("") + '</div>';
+  },
+
   procurementHTML() {
     const s = GameState.data;
     const pid = this.procProduct;
@@ -4438,6 +4895,8 @@ const UI = {
       ? s.logisticsConditions.slice().sort((a, b) => b.delayDays - a.delayDays)
           .map((c) => this.conditionCardHTML(c)).join("")
       : '<div class="allClear">✓ Tüm rotalar normal çalışıyor</div>';
+
+    html += this.freightMarketHTML();
 
     // Yoldaki siparişler
     if (s.purchaseOrders.length) {
@@ -4831,7 +5290,14 @@ Object.assign(UI, {
   sheetMax() {
     const st = this.sheet;
     if (!st.productId) return 0;
-    if (st.mode === "po") return ProcurementSystem.maxOrder(st.supplierId, st.productId, st.routeId);
+    // Taşıyıcıya göre üst sınır: harici piyasada günlük kapasite, kendi filoda
+    // müsait araç kapasitesi belirleyicidir.
+    if (st.mode === "po") {
+      const carrier = (st.carrier === "owned_fleet" &&
+        FleetSystem.routeSupportsFleet(st.routeId) && FleetSystem.isUnlocked())
+        ? "owned_fleet" : "external";
+      return ProcurementSystem.maxOrder(st.supplierId, st.productId, st.routeId, carrier);
+    }
     return st.mode === "buy" ? TradingSystem.maxBuy(st.productId) : TradingSystem.maxSell(st.productId);
   },
 
@@ -4858,6 +5324,8 @@ Object.assign(UI, {
       case "poCarrier":
         Audio_.tap(); Audio_.haptic(6);
         this.sheet.carrier = ds.carrier;
+        // Taşıyıcı değişince üst sınır da değişir (harici kapasite <-> filo).
+        this.sheet.qty = Utils.clamp(this.sheet.qty, 0, this.sheetMax());
         this.renderSheet();
         break;
       case "fleetBuy":
@@ -4990,9 +5458,12 @@ Object.assign(UI, {
 
     const fleetPlan = fleetOk ? FleetSystem.quote(route.id, qty) : null;
     const useFleet = carrier === "owned_fleet" && !!fleetPlan;
-    const freightPerTon = useFleet ? route.fleetCostPerTon : route.freightPerTon;
+    // Harici navlun artık CONFIG'ten değil, günün nakliye piyasasından gelir.
+    const extPerTon = ProcurementSystem.externalFreightPerTon(route.id);
+    const extRemaining = FreightMarketSystem.remaining(route.id);
+    const freightPerTon = useFleet ? route.fleetCostPerTon : extPerTon;
     const goodsCost = Utils.round2(goodsUnitPrice * qty);
-    const freightCost = useFleet ? fleetPlan.freightCost : Utils.round2(route.freightPerTon * qty);
+    const freightCost = useFleet ? fleetPlan.freightCost : Utils.round2(extPerTon * qty);
     const totalCost = Utils.round2(goodsCost + freightCost);
     const landedUnitCost = qty > 0 ? Utils.round2(totalCost / qty)
                                    : Utils.round2(goodsUnitPrice + freightPerTon);
@@ -5008,11 +5479,15 @@ Object.assign(UI, {
     // Rota seçenekleri: her biri kendi süresi, navlunu ve landed maliyetiyle
     const routeHTML = routes.map((r) => {
       const mode = ProcurementSystem.mode(r.mode);
-      const landed = Utils.round2(goodsUnitPrice + r.freightPerTon);
+      const rFreight = ProcurementSystem.externalFreightPerTon(r.id);
+      const landed = Utils.round2(goodsUnitPrice + rFreight);
       const known = LogisticsSystem.plannedPenalty(r.id);
       const total = sup.prepDays + r.transitDays + known;
       const rel = LogisticsSystem.quotedReliability(sup.id, r.id);
       const d = market > 0 ? (landed - market) / market : 0;
+      const rState = FreightMarketSystem.state(r.id);
+      const rLeft = FreightMarketSystem.remaining(r.id);
+      const rMult = FreightMarketSystem.multiplier(r.id);
       return '<button class="routeOpt' + (r.id === route.id ? " active" : "") +
           '" data-sheet="poRoute" data-route="' + r.id + '">' +
         '<div class="routeTop">' +
@@ -5023,8 +5498,17 @@ Object.assign(UI, {
           (known > 0 ? ' · aktif aksama +' + known + ' gün dahil' : '') + '</div>' +
         '<div class="routeCost">' +
           '<span class="l num">' + Utils.price(landed) + '</span>' +
-          '<span class="f num">landed · navlun ' + Utils.price(r.freightPerTon) + '/t</span>' +
+          '<span class="f num">landed · bugün ' + Utils.price(rFreight) + '/t' +
+            (rMult && Math.abs(rMult - 1) >= 0.03
+              ? ' (' + (rMult > 1 ? '+' : '') + Math.round((rMult - 1) * 100) + '%)' : '') + '</span>' +
           '<span class="d num ' + (d < 0 ? "up" : d > 0 ? "down" : "") + '">' + Utils.pct(d) + '</span>' +
+        '</div>' +
+        '<div class="routeCost" style="margin-top:6px">' +
+          '<span class="cap ' + rState + '">' + FreightMarketSystem.label(rState) + '</span>' +
+          '<span class="f num">' + (rLeft === Infinity ? 'kapasite serbest'
+            : Utils.qty(rLeft) + ' ton kaldı' +
+              (FreightMarketSystem.showsContainers(r.id)
+                ? ' · ~' + FreightMarketSystem.containers(rLeft) + ' konteyner' : '')) + '</span>' +
         '</div>' +
         '<div class="routeCost" style="margin-top:6px">' +
           '<span class="rel num">Güvenilirlik <b>' +
@@ -5069,20 +5553,35 @@ Object.assign(UI, {
             '<span class="hint">Müsait filo ' + Utils.qty(idleCap) + ' ton</span></div>' +
           '<div class="carrierSeg">' +
             '<button class="carrierBtn' + (carrier === "external" ? " active" : "") +
-              '" data-sheet="poCarrier" data-carrier="external">' +
-              '<span class="t">HARİCİ</span>' +
-              '<span class="s">' + Utils.price(route.freightPerTon) + '/ton · sınırsız kapasite</span></button>' +
+              '" data-sheet="poCarrier" data-carrier="external"' +
+              (extRemaining > 0 ? "" : " disabled") + '>' +
+              '<span class="t">HARİCİ' + (extRemaining > 0 ? "" : " · KAPASİTE YOK") + '</span>' +
+              '<span class="s">' + Utils.price(extPerTon) + '/ton · ' +
+                (extRemaining === Infinity ? 'kapasite serbest'
+                  : Utils.qty(extRemaining) + ' ton kaldı') + '</span></button>' +
             '<button class="carrierBtn' + (useFleet ? " active" : "") +
               '" data-sheet="poCarrier" data-carrier="owned_fleet"' +
               (fleetPlan ? "" : " disabled") + '>' +
               '<span class="t">KENDİ FİLOM' + (fleetPlan ? "" :
                 (fleetShort > 0 ? " · " + Utils.qty(fleetShort) + " TON EKSİK" : " · ARAÇ YOK")) + '</span>' +
               '<span class="s">' + (fleetPlan
-                ? Utils.price(route.fleetCostPerTon) + '/ton · ' + fleetPlan.vehicles.length + ' araç'
+                ? Utils.price(route.fleetCostPerTon) + '/ton · ' + fleetPlan.vehicles.length + ' araç' +
+                  ' · piyasadan bağımsız'
                 : 'Müsait filo ' + Utils.qty(idleCap) + ' ton · sipariş ' + Utils.qty(qty) + ' ton') +
               '</span></button>' +
           '</div>'
-        : "") +
+        : '<div class="sectionTitle" style="margin:4px 0 8px"><h2>Harici Taşıma</h2>' +
+            '<span class="hint">' + FreightMarketSystem.label(FreightMarketSystem.state(route.id)) +
+            '</span></div>' +
+          '<div class="capBar">' +
+            '<span class="cap ' + FreightMarketSystem.state(route.id) + '">' +
+              Utils.price(extPerTon) + '/ton</span>' +
+            '<span class="capLeft num">' + (extRemaining === Infinity ? 'kapasite serbest'
+              : Utils.qty(extRemaining) + ' ton kaldı' +
+                (FreightMarketSystem.showsContainers(route.id)
+                  ? ' · ~' + FreightMarketSystem.containers(extRemaining) + ' konteyner slotu' : '')) +
+            '</span>' +
+          '</div>') +
       '<div class="qtyChips">' + chips + '</div>' +
       '<div class="stepper">' +
         '<button class="stepBtn" data-sheet="dec"' + (qty <= 0 ? " disabled" : "") + '>−</button>' +
@@ -5099,15 +5598,22 @@ Object.assign(UI, {
             '<div class="pRow"><span class="k">Araç sevk (' + fleetPlan.vehicles.length + ' × ' +
               Utils.money(route.fleetDispatchCost) + ')</span>' +
               '<span class="v num">' + Utils.money(fleetPlan.vehicleDispatchCostTotal) + '</span></div>' +
-            '<div class="pRow"><span class="k">Harici olsaydı</span><span class="v num">' +
-              Utils.money(fleetPlan.externalFreightCost) + '</span></div>' +
+            '<div class="pRow"><span class="k">Harici olsaydı (bugün ' +
+              Utils.price(extPerTon) + '/t)</span><span class="v num">' +
+              Utils.money(extPerTon * qty) + '</span></div>' +
             '<div class="pRow"><span class="k">Taşımada fark</span><span class="v num ' +
-              (fleetPlan.externalFreightCost - freightCost > 0 ? "up" : "down") + '">' +
-              Utils.moneySigned(fleetPlan.externalFreightCost - freightCost) + '</span></div>' +
+              (extPerTon * qty - freightCost > 0 ? "up" : "down") + '">' +
+              Utils.moneySigned(extPerTon * qty - freightCost) + '</span></div>' +
             '<div class="pRow"><span class="k">Kullanılan filo</span><span class="v num">' +
               Utils.qty(fleetPlan.capacity) + ' / ' + Utils.qty(idleCap) + ' ton</span></div>'
-          : '<div class="pRow"><span class="k">Navlun (' + Utils.price(route.freightPerTon) + '/ton)</span>' +
-              '<span class="v num">' + Utils.money(freightCost) + '</span></div>') +
+          : '<div class="pRow"><span class="k">Navlun (bugün ' + Utils.price(extPerTon) + '/ton)</span>' +
+              '<span class="v num">' + Utils.money(freightCost) + '</span></div>' +
+            '<div class="pRow"><span class="k">Piyasa durumu</span><span class="v">' +
+              FreightMarketSystem.label(FreightMarketSystem.state(route.id)) +
+              ' <span class="muted3">· base ' + Utils.price(route.freightPerTon) + '/t</span></span></div>' +
+            '<div class="pRow"><span class="k">Rezerve edilecek taşıma</span><span class="v num">' +
+              Utils.qty(qty) + ' / ' + (extRemaining === Infinity ? '—' : Utils.qty(extRemaining)) +
+              ' ton</span></div>') +
         '<div class="pRow total"><span class="k">Toplam maliyet</span><span class="v num">' + Utils.money(totalCost) + '</span></div>' +
         '<div class="pRow"><span class="k">Landed birim maliyet</span><span class="v num">' + Utils.price(landedUnitCost) + '</span></div>' +
         '<div class="pRow"><span class="k">Spot birim fiyat</span><span class="v num">' + Utils.price(market) + '</span></div>' +
@@ -5523,8 +6029,12 @@ const Game = {
         if (o) GameState.data.offers.push(o);
       }
     }
-    // Tedarikçi teklifleri: aynı güne ait kayıt varsa korunur, yoksa üretilir.
-    if (ProcurementSystem.ensureQuotes() || !loaded) SaveSystem.saveNow();
+    // Tedarikçi teklifleri ve nakliye piyasası: aynı güne ait kayıt varsa
+    // birebir korunur, yoksa bir kez üretilip hemen kaydedilir. Böylece
+    // sonraki yeniden yükleme aynı fiyatı ve aynı kalan kapasiteyi görür.
+    const freshQuotes = ProcurementSystem.ensureQuotes();
+    const freshFreight = FreightMarketSystem.ensureMarket();
+    if (freshQuotes || freshFreight || !loaded) SaveSystem.saveNow();
     UI.init();
     UI.switchTab("market");
   },
@@ -5538,6 +6048,7 @@ const Game = {
     const o = ContractSystem.makeOffer();
     if (o) GameState.data.offers.push(o);
     ProcurementSystem.ensureQuotes();
+    FreightMarketSystem.ensureMarket();
     UI.tradeSegment = "offers";
     SaveSystem.saveNow();
     UI.switchTab("market");
@@ -5575,8 +6086,10 @@ const Game = {
     const contractEvents = ContractSystem.tickDay();
     // 8) Yeni teklifler gelir, eskiler düşer
     const offerRoll = ContractSystem.rollOffers();
-    // 9) Güncellenmiş piyasa fiyatlarından yeni tedarikçi teklifleri üretilir
+    // 9) Günün son state üretimi: yeni tedarikçi teklifleri ve yeni nakliye
+    //    piyasası. Oyuncu o gün sipariş vermeden ÖNCE ikisi de hazır olmalı.
     ProcurementSystem.ensureQuotes();
+    FreightMarketSystem.ensureMarket();
 
     const value = GameState.companyValue();
     if (value > s.stats.peakValue) s.stats.peakValue = Utils.round2(value);
@@ -5655,7 +6168,7 @@ window.TradeEmpire = {
   EventSystem: EventSystem, CompanySystem: CompanySystem,
   ReputationSystem: ReputationSystem, ContractSystem: ContractSystem,
   ProcurementSystem: ProcurementSystem, LogisticsSystem: LogisticsSystem,
-  FleetSystem: FleetSystem,
+  FleetSystem: FleetSystem, FreightMarketSystem: FreightMarketSystem,
   SaveSystem: SaveSystem, UI: UI, Game: Game
 };
 </script>
