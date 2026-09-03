@@ -863,6 +863,46 @@ main{
 .fmRow .n{font-size:12.5px;font-weight:800;color:var(--text-2);flex:1;min-width:90px;}
 .fmRow .v{font-size:11.5px;font-weight:700;color:var(--text-3);white-space:nowrap;}
 
+/* V5 Part 1 — ekip, departmanlar, aksiyonlar */
+.deptList{margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
+.deptRow{display:flex;align-items:center;gap:8px;padding:5px 0;}
+.deptRow .d{font-size:12.5px;font-weight:800;color:var(--text-2);flex:1;min-width:0;}
+.deptRow .c{font-size:11.5px;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.deptRow .a{
+  font-size:10.5px;font-weight:900;letter-spacing:.3px;padding:3px 7px;border-radius:6px;
+  background:var(--surface-3);color:var(--text-3);white-space:nowrap;
+}
+.deptRow .a.on{background:rgba(76,125,255,.16);color:#8FB0FF;}
+
+.stars{letter-spacing:1px;color:var(--gold,#F5B942);}
+.stars .off{color:var(--text-3);opacity:.35;}
+
+.empCard{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:12px;margin-bottom:9px;
+}
+.empHead{display:flex;align-items:flex-start;gap:10px;}
+.empName{font-size:14.5px;font-weight:800;color:var(--text);}
+.empRole{font-size:11.5px;font-weight:700;color:var(--text-3);margin-top:2px;line-height:1.4;}
+.empPay{font-size:14px;font-weight:800;color:var(--text-2);}
+.empMeta{
+  display:flex;flex-wrap:wrap;gap:4px 12px;margin:9px 0 10px;
+  font-size:11px;font-weight:700;color:var(--text-3);
+}
+.empMeta .warnTxt{color:#F5B942;}
+.empCard .btn.sm{width:100%;min-height:44px;}
+
+.deptAction{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:10px 12px;margin-bottom:11px;
+}
+.daInfo{flex:1;min-width:120px;}
+.daT{font-size:12.5px;font-weight:800;color:var(--text-2);}
+.daS{font-size:11px;font-weight:700;color:var(--text-3);line-height:1.4;margin-top:2px;}
+.daBtn{min-height:44px;padding:0 14px;flex:0 0 auto;max-width:100%;}
+.strike{text-decoration:line-through;opacity:.6;}
+
 .fleetSum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
 .vCard{
   display:flex;align-items:center;gap:10px;
@@ -1032,7 +1072,7 @@ main{
  * CONFIG
  * =========================================================================*/
 const CONFIG = {
-  VERSION: 7,
+  VERSION: 8,
   SAVE_KEY: "tradeEmpire.save.v1",
   START_CASH: 10000,
 
@@ -1381,6 +1421,80 @@ const CONFIG = {
     TIGHT_CAP: 0.78,           // base kapasitenin bu oranı altı sıkışık
     EASY_MULT: 0.96,           // bu çarpanın altı + bol kapasite = rahat
     EASY_CAP: 1.12
+  },
+
+  /* -------------------------------------------------------------------------
+   * ÇALIŞANLAR VE DEPARTMANLAR (V5 · Part 1)
+   * Çalışanlar pasif "+%5 kâr" kartı değildir ve bu partta hiçbir işi kendi
+   * kendine yapmazlar. Yaptıkları tek şey oyuncuya GÜNLÜK AKSİYON HAKKI
+   * vermektir: satış yeni müşteri arar, ticaret pazarlık eder, lojistik
+   * yarını analiz eder. Kararı hep oyuncu verir.
+   * Otomasyon, delegasyon, XP, moral, prim, izin V5 Part 2 ve sonrasıdır.
+   * -----------------------------------------------------------------------*/
+  STAFF: {
+    UNLOCK_VALUE: 120000,
+    CANDIDATE_COUNT: 6,        // her gün üretilen aday sayısı
+    ACTION_HISTORY_LEN: 12,
+
+    // Personel kapasitesi şirketin GÖRDÜĞÜ en yüksek değere göre açılır;
+    // değer sonradan düşerse kimse kovulmaz, kapasite geri alınmaz.
+    CAPACITY_TIERS: [
+      { value: 120000,  slots: 3 },
+      { value: 300000,  slots: 5 },
+      { value: 750000,  slots: 8 },
+      { value: 1500000, slots: 12 }
+    ],
+
+    ROLES: [
+      { id: "sales",     name: "Satış Uzmanı",    dept: "Satış",
+        salaryMul: 1.00, desc: "Yeni müşteri fırsatı arar" },
+      { id: "trader",    name: "Ticaret Uzmanı",  dept: "Ticaret",
+        salaryMul: 1.15, desc: "Tedarikçiyle pazarlık eder" },
+      { id: "logistics", name: "Lojistik Uzmanı", dept: "Lojistik",
+        salaryMul: 1.05, desc: "Yarınki nakliye piyasasını analiz eder" }
+    ],
+
+    // Skill 1 Junior · 2 Uzman · 3 Kıdemli. Bu partta XP/terfi yok, skill sabit.
+    /* Maaş bandı simülasyonla kalibre edildi. Spec'in başlangıç önerisi
+       (70-110 / 120-170 / 190-260) günlük gideri şirket değerinin binde
+       1'inin altında bırakıyordu: kalabalık ekip hiç cezalanmıyor, personel
+       her durumda serbest kâr oluyordu. Band 2x'e çekildi. */
+    SKILLS: [
+      { skill: 1, label: "Junior",  salary: [140, 220], actions: 1 },
+      { skill: 2, label: "Uzman",   salary: [240, 340], actions: 1 },
+      { skill: 3, label: "Kıdemli", salary: [380, 520], actions: 2 }
+    ],
+    HIRE_COST_DAYS: 2,         // işe alım gideri = günlük maaş x bu
+
+    // Satış: ekranda tutulabilen fırsat sayısını artırır (tavan +3).
+    SALES_OFFER_BONUS_MAX: 3,
+
+    // Müşteri arama garantili değildir: her aksiyon bir DENEMEDİR. Başarı
+    // şansı itibarla ve satış ekibinin en yüksek skill'iyle artar. Aksi hâlde
+    // her satışçı günde garantili bir sözleşme fırsatı üretir ve oyun otomatik
+    // para makinesine döner.
+    SEARCH_SUCCESS: [0.30, 0.55],   // itibar 0 -> 100
+    SEARCH_SKILL_MUL: { 1: 0.85, 2: 1.00, 3: 1.15 },
+    /* Bir günde piyasada bulunabilecek yeni müşteri sınırlıdır: kaç satışçın
+       olursa olsun günde en fazla bu kadar yeni fırsat çıkar. Tek departmana
+       aşırı yüklenmenin (5 satışçı) doğal fırsat maliyeti budur — ilk
+       satışçı çok değerli, beşincisi neredeyse değersiz. */
+    SEARCH_MAX_FINDS_PER_DAY: 2,
+
+    // Ticaret: pazarlık indirimi departmanın EN YÜKSEK skill'inden gelir.
+    NEGOTIATION: {
+      1: [0.007, 0.011],
+      2: [0.012, 0.017],
+      3: [0.017, 0.023]
+    },
+
+    // İsim havuzu (data-driven). Cinsiyet/avatar sistemi yok, isim yeterli.
+    FIRST_NAMES: ["Emre", "Burak", "Ece", "Selin", "Mert", "Deniz", "Can", "İrem",
+                  "Kaan", "Zeynep", "Ozan", "Elif", "Barış", "Nehir", "Tolga", "Sude",
+                  "Serkan", "Melis", "Umut", "Pınar", "Efe", "Yasemin", "Onur", "Ceren"],
+    LAST_NAMES: ["Kaya", "Yılmaz", "Demir", "Aydın", "Şahin", "Aksoy", "Arslan", "Çelik",
+                 "Doğan", "Koç", "Erdem", "Polat", "Yıldız", "Öztürk", "Kurt", "Tekin",
+                 "Acar", "Bulut", "Güneş", "Sarı"]
   }
 };
 
@@ -1393,6 +1507,7 @@ const Utils = {
 
   clamp: (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v),
   round2: (v) => Math.round(v * 100) / 100,
+  round4: (v) => Math.round(v * 10000) / 10000,
   lerp: (a, b, t) => a + (b - a) * (t < 0 ? 0 : t > 1 ? 1 : t),
 
   /** Para: $12,340 (tam dolar) */
@@ -1451,6 +1566,11 @@ const GameState = {
     return {
       version: CONFIG.VERSION,
       seed: (Math.random() * 4294967295) >>> 0,
+      /* Nakliye piyasası ve aday pazarı SABİT bir seed kullanır: ana `seed`
+         her rand() çağrısında ilerlediği için ondan türeyen gelecek gün
+         hesaplanamazdı. Bu seed hiç değişmez, böylece lojistik uzmanının
+         yarın için verdiği tahmin ertesi gün BİREBİR gerçekleşir. */
+      worldSeed: (Math.random() * 4294967295) >>> 0,
       day: 1,
       cash: CONFIG.START_CASH,
       warehouseLevel: 1,
@@ -1486,6 +1606,15 @@ const GameState = {
       /* V4 Part 2 · Nakliye piyasası */
       freightMarket: null,  // { day, routes: { routeId: { ...günlük arz/fiyat } } }
 
+      /* V5 Part 1 · Çalışanlar ve departmanlar */
+      staffUnlocked: false,
+      employeeSeq: 1,
+      employees: [],            // işe alınmış çalışanlar
+      employeeCandidates: null, // { day, candidates: [...] } — günlük aday pazarı
+      departmentActions: null,  // { day, sales, trader, logistics } — bugünkü haklar
+      negotiatedQuotes: [],     // tek kullanımlık pazarlık fiyatları (bugüne ait)
+      logisticsForecasts: [],   // gelecek gün nakliye tahminleri (bilgi, ekonomi değil)
+
       stats: {
         realizedProfit: 0,
         totalTrades: 0,
@@ -1508,7 +1637,14 @@ const GameState = {
         fleetFreightSavings: 0,  // aynı sevkiyat harici gitseydi fark (negatif olabilir)
         externalCapacityBooked: 0,   // harici piyasadan rezerve edilen toplam ton
         externalFreightSpend: 0,     // harici navluna ödenen toplam tutar
-        capacityBlockedOrders: 0     // kapasite yüzünden reddedilen gerçek onay
+        capacityBlockedOrders: 0,    // kapasite yüzünden reddedilen gerçek onay
+        payrollPaid: 0,              // ödenen toplam maaş
+        employeesHired: 0,
+        employeesFired: 0,
+        highestStaffCount: 0,
+        salesSearches: 0,
+        negotiations: 0,
+        forecasts: 0
       },
       settings: keepSettings || { sound: true }
     };
@@ -1997,7 +2133,7 @@ const ContractSystem = {
     });
 
     let created = null;
-    if (s.offers.length < C.MAX_OFFERS) {
+    if (s.offers.length < this.maxOffers()) {
       const chance = Utils.lerp(C.OFFER_CHANCE[0], C.OFFER_CHANCE[1], ReputationSystem.norm());
       if (GameState.rand() < chance) {
         created = this.makeOffer();
@@ -2005,6 +2141,15 @@ const ContractSystem = {
       }
     }
     return { created: created, expired: expired };
+  },
+
+  /**
+   * Ekranda aynı anda tutulabilen teklif sayısı. Satış ekibi bunu artırır
+   * (tavan +3); ekip yoksa V4 davranışı birebir korunur. Bu limit her gün
+   * otomatik dolmaz — fazlası ancak satış aksiyonuyla aranır.
+   */
+  maxOffers() {
+    return CONFIG.CONTRACTS.MAX_OFFERS + EmployeeSystem.offerBonus();
   },
 
   /* ---------------- teklif kararları ---------------- */
@@ -2274,6 +2419,17 @@ const ProcurementSystem = {
   },
 
   /**
+   * Bugün bu tedarikçiden bu ürünü almanın gerçek birim fiyatı: ticaret
+   * uzmanının pazarlığı varsa o, yoksa günlük teklif. Günlük teklif objesi
+   * (supplierQuotes) ASLA değiştirilmez; pazarlık ayrı state'te durur.
+   */
+  effectiveQuote(supplierId, productId) {
+    const nego = EmployeeSystem.negotiationFor(supplierId, productId);
+    if (nego) return nego.negotiatedPrice;
+    return this.quote(supplierId, productId);
+  },
+
+  /**
    * Harici nakliyecinin BUGÜNKÜ ton başı navlunu. V4 Part 2'den itibaren
    * CONFIG'teki freightPerTon yalnız "base" fiyattır; gerçek fiyat günlük
    * nakliye piyasasından gelir.
@@ -2290,7 +2446,7 @@ const ProcurementSystem = {
    * Harici taşıyıcıda bugünkü piyasa navlunu kullanılır.
    */
   landedUnitCost(supplierId, productId, routeId) {
-    const goods = this.quote(supplierId, productId);
+    const goods = this.effectiveQuote(supplierId, productId);
     const r = routeId ? this.route(routeId) : this.defaultRoute(supplierId);
     if (goods === null || !r) return null;
     return Utils.round2(goods + this.externalFreightPerTon(r.id));
@@ -2301,7 +2457,7 @@ const ProcurementSystem = {
    * olduğu için miktara bağlıdır; plan kurulamıyorsa null döner.
    */
   fleetLandedUnitCost(supplierId, productId, routeId, qty) {
-    const goods = this.quote(supplierId, productId);
+    const goods = this.effectiveQuote(supplierId, productId);
     const r = this.route(routeId);
     if (goods === null || !r || !(qty > 0)) return null;
     const plan = FleetSystem.quote(r.id, qty);
@@ -2447,8 +2603,13 @@ const ProcurementSystem = {
     if (!(qty > 0)) return { ok: false, reason: "Geçersiz miktar" };
     if (qty < sup.minQty) return { ok: false, reason: "Minimum sipariş " + Utils.qty(sup.minQty) + " ton" };
 
-    const goodsUnitPrice = this.quote(supplierId, productId);
-    if (goodsUnitPrice === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
+    const baseQuote = this.quote(supplierId, productId);
+    if (baseQuote === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
+    /* Ticaret uzmanının bugünkü pazarlığı varsa fiyat ondan gelir. Pazarlık
+       yalnız sipariş GERÇEKTEN oluştuğunda tüketilir; nakit/depo/kapasite
+       yüzünden reddedilen sipariş hakkı yakmaz. */
+    const nego = EmployeeSystem.negotiationFor(supplierId, productId);
+    const goodsUnitPrice = nego ? nego.negotiatedPrice : baseQuote;
 
     // Taşıyıcı: harici nakliyeci (varsayılan) veya şirket filosu.
     const carrier = carrierType === "owned_fleet" ? "owned_fleet" : "external";
@@ -2536,6 +2697,11 @@ const ProcurementSystem = {
       externalBaseFreightPerTon: marketRow ? marketRow.baseFreightPerTon : 0,
       externalFreightMultiplier: marketRow ? marketRow.multiplier : 0,
 
+      // Pazarlık anlık görüntüsü (V5 Part 1)
+      negotiated: !!nego,
+      negotiationDiscountPct: nego ? nego.discountPct : 0,
+      originalSupplierQuote: nego ? nego.basePrice : 0,
+
       orderedDay: s.day,
       status: "in_transit",
       legacyLogistics: false,
@@ -2560,6 +2726,7 @@ const ProcurementSystem = {
     };
     s.purchaseOrders.push(po);
     if (fleetPlan) FleetSystem.assign(po, fleetPlan.vehicles);
+    if (nego) EmployeeSystem.consumeNegotiation(supplierId, productId);
     // Kapasite yalnız burada, bir kez tüketilir. Yola çıkmış sevkiyat sonraki
     // günlerin kapasitesini tekrar tüketmez, teslim olunca da geri vermez.
     if (carrier === "external") {
@@ -2993,8 +3160,7 @@ const FleetSystem = {
       fleetDispatchCost: r.fleetDispatchCost,
       vehicleDispatchCostTotal: dispatch,
       freightCost: freightCost,
-      capacity: plan.reduce((s, v) => s + v.capacity, 0),
-      externalFreightCost: Utils.round2(r.freightPerTon * qty)
+      capacity: plan.reduce((s, v) => s + v.capacity, 0)
     };
   },
 
@@ -3071,7 +3237,7 @@ const FreightMarketSystem = {
    * determinizmini bozmaz ve göç sırasında güvenle çağrılabilir.
    */
   hash(day, key) {
-    let h = (GameState.data.seed ^ 0x9E3779B9) >>> 0;
+    let h = (GameState.data.worldSeed ^ 0x9E3779B9) >>> 0;
     h = Math.imul(h ^ (day + 0x165667B1), 0x85EBCA6B) >>> 0;
     for (let i = 0; i < key.length; i++) {
       h = Math.imul(h ^ key.charCodeAt(i), 0xC2B2AE35) >>> 0;
@@ -3255,6 +3421,419 @@ const FreightMarketSystem = {
 };
 
 /* ===========================================================================
+ * EmployeeSystem — çalışanlar, departmanlar, maaşlar (V5 · Part 1)
+ *
+ * Bu partta çalışanlar HİÇBİR İŞİ KENDİ KENDİNE YAPMAZ. Tek ürettikleri şey
+ * günlük DEPARTMAN AKSİYON HAKKI'dır; o hakkı oyuncu harcar:
+ *   sales     -> yeni müşteri fırsatı aramak
+ *   trader    -> bir tedarikçi/ürün için tek kullanımlık pazarlık
+ *   logistics -> yarınki nakliye piyasasını analiz etmek
+ *
+ * Sorumluluk sınırı: burada piyasa fiyatı üretilmez, sipariş verilmez,
+ * sözleşme kabul edilmez, araç gönderilmez. Delegasyon V5 Part 2'dir.
+ * =========================================================================*/
+const EmployeeSystem = {
+  /* ---------------- referans ---------------- */
+  role(id) { return CONFIG.STAFF.ROLES.find((r) => r.id === id); },
+  skillDef(skill) { return CONFIG.STAFF.SKILLS.find((s) => s.skill === skill); },
+  roleName(id) { const r = this.role(id); return r ? r.name : id; },
+  deptName(id) { const r = this.role(id); return r ? r.dept : id; },
+
+  /* ---------------- açılma ve kapasite ---------------- */
+
+  /**
+   * Ekip sistemi şirket değeri eşiği ilk kez geçtiğinde KALICI olarak açılır.
+   * Sonradan değer düşerse kapanmaz.
+   */
+  isUnlocked() {
+    const s = GameState.data;
+    if (s.staffUnlocked) return true;
+    if (GameState.companyValue() >= CONFIG.STAFF.UNLOCK_VALUE) {
+      s.staffUnlocked = true;
+      return true;
+    }
+    return false;
+  },
+
+  unlockProgress() {
+    return Utils.clamp(GameState.companyValue() / CONFIG.STAFF.UNLOCK_VALUE, 0, 1);
+  },
+
+  /**
+   * Personel kapasitesi şirketin GÖRDÜĞÜ en yüksek değere göre belirlenir.
+   * Değer düşse bile kapasite geri alınmaz ve kimse otomatik kovulmaz.
+   */
+  capacity() {
+    const peak = Math.max(GameState.data.stats.peakValue || 0, GameState.companyValue());
+    let slots = 0;
+    CONFIG.STAFF.CAPACITY_TIERS.forEach((t) => { if (peak >= t.value) slots = t.slots; });
+    return slots;
+  },
+
+  count() { return GameState.data.employees.length; },
+  hasRoom() { return this.count() < this.capacity(); },
+
+  byRole(roleId) { return GameState.data.employees.filter((e) => e.roleId === roleId); },
+  countByRole(roleId) { return this.byRole(roleId).length; },
+
+  /** Departmanın en yüksek skill'i — pazarlık ve tahmin kalitesini belirler. */
+  topSkill(roleId) {
+    return this.byRole(roleId).reduce((m, e) => Math.max(m, e.skill), 0);
+  },
+
+  /* ---------------- maaş ---------------- */
+
+  dailyPayroll() {
+    return Utils.round2(GameState.data.employees.reduce((sum, e) => sum + e.salaryPerDay, 0));
+  },
+
+  hireCost(salaryPerDay) {
+    return Utils.round2(salaryPerDay * CONFIG.STAFF.HIRE_COST_DAYS);
+  },
+
+  /* ---------------- aday pazarı ---------------- */
+
+  /**
+   * Saf hash — paylaşılan GameState.rand() akışını TÜKETMEZ. Böylece aday
+   * üretimi tedarikçi teklifi ve nakliye piyasası determinizmini bozmaz.
+   */
+  hash(day, key) {
+    let h = (GameState.data.worldSeed ^ 0x27D4EB2F) >>> 0;
+    h = Math.imul(h ^ (day + 0x9E3779B1), 0x85EBCA77) >>> 0;
+    for (let i = 0; i < key.length; i++) {
+      h = Math.imul(h ^ key.charCodeAt(i), 0xC2B2AE3D) >>> 0;
+    }
+    h ^= h >>> 15; h = Math.imul(h, 0x27D4EB2F) >>> 0; h ^= h >>> 13;
+    return (h >>> 0) / 4294967296;
+  },
+
+  pick(day, key, list) {
+    return list[Math.min(list.length - 1, Math.floor(this.hash(day, key) * list.length))];
+  },
+
+  buildCandidate(day, index, forcedRole) {
+    const k = "c" + index;
+    const roles = CONFIG.STAFF.ROLES;
+    const role = forcedRole || this.pick(day, k + ":role", roles);
+    // Skill dağılımı: junior daha sık, kıdemli daha nadir.
+    const rs = this.hash(day, k + ":skill");
+    const skill = rs < 0.45 ? 1 : rs < 0.82 ? 2 : 3;
+    const sd = this.skillDef(skill);
+    const t = this.hash(day, k + ":salary");
+    const base = sd.salary[0] + t * (sd.salary[1] - sd.salary[0]);
+    const salary = Math.round(base * role.salaryMul);
+    const first = this.pick(day, k + ":fn", CONFIG.STAFF.FIRST_NAMES);
+    const last = this.pick(day, k + ":ln", CONFIG.STAFF.LAST_NAMES);
+    return {
+      id: day * 100 + index,
+      name: first + " " + last,
+      roleId: role.id,
+      roleName: role.name,
+      skill: skill,
+      salaryPerDay: salary,
+      hireCost: this.hireCost(salary)
+    };
+  },
+
+  /** Her gün en az bir sales, bir trader, bir logistics adayı garanti. */
+  buildCandidates(day) {
+    const list = [];
+    CONFIG.STAFF.ROLES.forEach((role, i) => { list.push(this.buildCandidate(day, i, role)); });
+    for (let i = CONFIG.STAFF.ROLES.length; i < CONFIG.STAFF.CANDIDATE_COUNT; i++) {
+      list.push(this.buildCandidate(day, i, null));
+    }
+    return { day: day, candidates: list };
+  },
+
+  ensureCandidates() {
+    const s = GameState.data;
+    if (!s.employeeCandidates || s.employeeCandidates.day !== s.day ||
+        !Array.isArray(s.employeeCandidates.candidates)) {
+      s.employeeCandidates = this.buildCandidates(s.day);
+      return true;
+    }
+    return false;
+  },
+
+  candidates() {
+    const c = GameState.data.employeeCandidates;
+    return (c && Array.isArray(c.candidates)) ? c.candidates : [];
+  },
+
+  /* ---------------- işe alma / çıkarma ---------------- */
+
+  hire(candidateId) {
+    const s = GameState.data;
+    if (!this.isUnlocked()) return { ok: false, reason: "Ekip sistemi henüz açılmadı" };
+    const list = this.candidates();
+    const idx = list.findIndex((c) => c.id === candidateId);
+    if (idx < 0) return { ok: false, reason: "Aday bulunamadı" };
+    const c = list[idx];
+    if (!this.hasRoom()) {
+      return { ok: false, reason: "Personel kapasitesi dolu (" + this.capacity() + " kişi)" };
+    }
+    if (c.hireCost > s.cash + 0.001) return { ok: false, reason: "Yetersiz nakit" };
+
+    s.cash = Utils.round2(s.cash - c.hireCost);
+    const emp = {
+      id: s.employeeSeq++,
+      name: c.name,
+      roleId: c.roleId,
+      skill: c.skill,
+      salaryPerDay: c.salaryPerDay,
+      hiredDay: s.day,
+      totalSalaryPaid: 0,
+      actionsUsed: 0,
+      status: "active"
+    };
+    s.employees.push(emp);
+    list.splice(idx, 1);   // aday listeden kalıcı düşer
+
+    s.stats.employeesHired += 1;
+    if (s.employees.length > s.stats.highestStaffCount) {
+      s.stats.highestStaffCount = s.employees.length;
+    }
+    /* Aynı gün işe alınan çalışan aksiyon üretmez: ilk tam çalışma günü
+       ertesi gündür. Yoksa "işe al -> aksiyonu kullan -> kov" istismarı olur. */
+    TradingSystem.log({
+      type: "hire", product: null, qty: 1, price: c.hireCost, total: c.hireCost,
+      name: c.name, role: this.roleName(c.roleId), skill: c.skill,
+      salary: c.salaryPerDay, day: s.day
+    });
+    SaveSystem.save();
+    return { ok: true, employee: emp };
+  },
+
+  fire(employeeId) {
+    const s = GameState.data;
+    const idx = s.employees.findIndex((e) => e.id === employeeId);
+    if (idx < 0) return { ok: false, reason: "Çalışan bulunamadı" };
+    const emp = s.employees[idx];
+    s.employees.splice(idx, 1);
+    s.stats.employeesFired += 1;
+    /* Bugünün aksiyon puanları AYNEN kalır: kullanılan puan geri gelmez,
+       kalan puan da çoğalmaz. Yeni alım da aynı gün puan üretmez. */
+    TradingSystem.log({
+      type: "fire", product: null, qty: 1, price: 0, total: 0,
+      name: emp.name, role: this.roleName(emp.roleId), day: s.day
+    });
+    SaveSystem.save();
+    return { ok: true, employee: emp };
+  },
+
+  /* ---------------- departman aksiyon puanları ---------------- */
+
+  /**
+   * Bugün üretilecek puanlar. Yalnız DÜNDEN ÖNCE işe alınmış çalışanlar sayılır
+   * (hiredDay < day): işe alındığı gün kimse puan üretmez.
+   */
+  buildActions(day) {
+    const out = { day: day, sales: 0, trader: 0, logistics: 0, foundToday: 0 };
+    GameState.data.employees.forEach((e) => {
+      if (e.hiredDay >= day) return;
+      const sd = this.skillDef(e.skill);
+      if (!sd || out[e.roleId] === undefined) return;
+      out[e.roleId] += sd.actions;
+    });
+    return out;
+  },
+
+  ensureActions() {
+    const s = GameState.data;
+    if (!s.departmentActions || s.departmentActions.day !== s.day) {
+      s.departmentActions = this.buildActions(s.day);
+      return true;
+    }
+    return false;
+  },
+
+  actionsLeft(roleId) {
+    const a = GameState.data.departmentActions;
+    if (!a || a.day !== GameState.data.day) return 0;
+    return Math.max(0, a[roleId] || 0);
+  },
+
+  /** Bugün bu departmanın toplam üretilmiş puanı (kullanılan + kalan değil). */
+  spendAction(roleId) {
+    if (this.actionsLeft(roleId) <= 0) return false;
+    GameState.data.departmentActions[roleId] -= 1;
+    // Kullanımı çalışan bazında da say (istatistik).
+    const team = this.byRole(roleId).filter((e) => e.hiredDay < GameState.data.day);
+    if (team.length) {
+      team.sort((a, b) => a.actionsUsed - b.actionsUsed);
+      team[0].actionsUsed += 1;
+    }
+    return true;
+  },
+
+  /* ---------------- gün ilerlemesi ---------------- */
+
+  /**
+   * Gün başında maaş ödenir ve aksiyon puanları YENİDEN kurulur.
+   * Puan devretmez. Maaş bir gün içinde tam bir kez düşer.
+   */
+  tickDay() {
+    const s = GameState.data;
+    const payroll = this.dailyPayroll();
+    if (payroll > 0) {
+      s.cash = Utils.round2(s.cash - payroll);
+      s.stats.payrollPaid = Utils.round2(s.stats.payrollPaid + payroll);
+      s.employees.forEach((e) => {
+        e.totalSalaryPaid = Utils.round2(e.totalSalaryPaid + e.salaryPerDay);
+      });
+    }
+    s.departmentActions = this.buildActions(s.day);
+    // Günü geçen pazarlıklar ve tarihi geçmiş tahminler düşer.
+    s.negotiatedQuotes = s.negotiatedQuotes.filter((q) => q.day === s.day && q.usesLeft > 0);
+    s.logisticsForecasts = s.logisticsForecasts.filter((f) => f.targetDay >= s.day);
+    return payroll;
+  },
+
+  /* ---------------- SATIŞ: müşteri arama ---------------- */
+
+  /** Satış ekibi ekranda tutulabilen fırsat sayısını artırır (tavan +3). */
+  offerBonus() {
+    return Math.min(CONFIG.STAFF.SALES_OFFER_BONUS_MAX, this.countByRole("sales"));
+  },
+
+  /**
+   * Bir aksiyon puanı harcayıp yeni müşteri fırsatı arar. Fırsat çıkmasa bile
+   * puan harcanır — aksi hâlde butona basarak RNG bedavaya ileri sarılırdı.
+   * Sözleşme fiyat algoritmasına DOKUNULMAZ: yalnız ekstra deneme hakkıdır.
+   */
+  searchCustomer() {
+    const s = GameState.data;
+    if (this.countByRole("sales") === 0) return { ok: false, reason: "Satış ekibin yok" };
+    if (this.actionsLeft("sales") <= 0) return { ok: false, reason: "Bugünkü satış aksiyonu bitti" };
+    if (s.offers.length >= ContractSystem.maxOffers()) {
+      return { ok: false, reason: "Fırsat listesi dolu" };
+    }
+    this.spendAction("sales");
+    s.stats.salesSearches += 1;
+    // Deneme başarısız olsa da puan harcanır: aksi hâlde butona basarak
+    // RNG bedavaya ileri sarılırdı.
+    const C = CONFIG.STAFF;
+    const skill = Utils.clamp(this.topSkill("sales"), 1, 3);
+    const found = Math.max(0, (s.departmentActions && s.departmentActions.foundToday) || 0);
+    const chance = Utils.clamp(
+      Utils.lerp(C.SEARCH_SUCCESS[0], C.SEARCH_SUCCESS[1], ReputationSystem.norm()) *
+        (C.SEARCH_SKILL_MUL[skill] || 1), 0, 0.95);
+    let offer = null;
+    if (found < C.SEARCH_MAX_FINDS_PER_DAY && GameState.rand() < chance) {
+      offer = ContractSystem.makeOffer();
+      if (offer) {
+        s.offers.push(offer);
+        if (s.departmentActions) s.departmentActions.foundToday = found + 1;
+      }
+    }
+    SaveSystem.save();
+    return { ok: true, offer: offer };
+  },
+
+  /* ---------------- TİCARET: pazarlık ---------------- */
+
+  negotiationFor(supplierId, productId) {
+    const s = GameState.data;
+    return s.negotiatedQuotes.find((q) => q.day === s.day && q.supplierId === supplierId &&
+      q.productId === productId && q.usesLeft > 0) || null;
+  },
+
+  /** Pazarlık indirimi departmanın en yüksek skill'inden gelir. */
+  negotiate(supplierId, productId) {
+    const s = GameState.data;
+    if (this.countByRole("trader") === 0) return { ok: false, reason: "Ticaret ekibin yok" };
+    if (this.negotiationFor(supplierId, productId)) {
+      return { ok: false, reason: "Bu tedarikçiyle bugün pazarlık zaten yapıldı" };
+    }
+    if (this.actionsLeft("trader") <= 0) return { ok: false, reason: "Bugünkü pazarlık hakkı bitti" };
+    const base = ProcurementSystem.quote(supplierId, productId);
+    if (base === null) return { ok: false, reason: "Bugün için fiyat teklifi yok" };
+
+    const skill = Utils.clamp(this.topSkill("trader"), 1, 3);
+    const band = CONFIG.STAFF.NEGOTIATION[skill];
+    const t = this.hash(s.day, "neg:" + supplierId + ":" + productId + ":" + s.stats.negotiations);
+    const pct = band[0] + t * (band[1] - band[0]);
+    const price = Math.max(0.01, Utils.round2(base * (1 - pct)));
+
+    this.spendAction("trader");
+    s.stats.negotiations += 1;
+    // Tedarikçinin günlük teklifi ASLA mutate edilmez; pazarlık ayrı state.
+    const q = {
+      day: s.day, supplierId: supplierId, productId: productId,
+      basePrice: base, discountPct: Utils.round4(pct), negotiatedPrice: price, usesLeft: 1
+    };
+    s.negotiatedQuotes.push(q);
+    SaveSystem.save();
+    return { ok: true, quote: q };
+  },
+
+  /** Sipariş BAŞARILI olduğunda çağrılır; başarısız siparişte tüketilmez. */
+  consumeNegotiation(supplierId, productId) {
+    const s = GameState.data;
+    const i = s.negotiatedQuotes.findIndex((q) => q.day === s.day && q.supplierId === supplierId &&
+      q.productId === productId && q.usesLeft > 0);
+    if (i < 0) return null;
+    const q = s.negotiatedQuotes[i];
+    s.negotiatedQuotes.splice(i, 1);
+    return q;
+  },
+
+  /* ---------------- LOJİSTİK: nakliye tahmini ---------------- */
+
+  forecastFor(routeId, targetDay) {
+    return GameState.data.logisticsForecasts.find((f) => f.routeId === routeId &&
+      f.targetDay === targetDay) || null;
+  },
+
+  /**
+   * Yarınki (ve kıdemliyse 2 gün sonrasının durumu) nakliye piyasasını OKUR.
+   * FreightMarketSystem saf hash tabanlı olduğu için geleceği hesaplamak
+   * RNG tüketmez ve mevcut piyasayı MUTATE ETMEZ: tahmin geleceği değiştirmez,
+   * yalnız gözlemler. Ertesi gün gerçekleşen piyasa tahminle birebir tutar.
+   */
+  forecastRoute(routeId) {
+    const s = GameState.data;
+    if (this.countByRole("logistics") === 0) return { ok: false, reason: "Lojistik ekibin yok" };
+    const route = ProcurementSystem.route(routeId);
+    if (!route || !(route.baseExternalCapacity > 0)) {
+      return { ok: false, reason: "Bu hat için analiz yapılamıyor" };
+    }
+    const targetDay = s.day + 1;
+    if (this.forecastFor(routeId, targetDay)) {
+      return { ok: false, reason: "Yarınki hat zaten analiz edildi" };
+    }
+    if (this.actionsLeft("logistics") <= 0) return { ok: false, reason: "Bugünkü analiz hakkı bitti" };
+
+    const skill = Utils.clamp(this.topSkill("logistics"), 1, 3);
+    const row = FreightMarketSystem.buildRow(route, targetDay);
+    const f = {
+      routeId: routeId,
+      routeName: (ProcurementSystem.hub(route.origin) ? ProcurementSystem.hub(route.origin).name : route.origin) +
+        " " + (ProcurementSystem.mode(route.mode) ? ProcurementSystem.mode(route.mode).name : route.mode),
+      madeDay: s.day,
+      targetDay: targetDay,
+      skill: skill,
+      state: row.state,
+      // Skill 1 yalnız durumu görür; 2 bandı, 3 kesin değeri.
+      freightLow: skill >= 2 ? Utils.round2(row.freightPerTon * (skill === 2 ? 0.94 : 1)) : 0,
+      freightHigh: skill >= 2 ? Utils.round2(row.freightPerTon * (skill === 2 ? 1.06 : 1)) : 0,
+      capacityLow: skill >= 2 ? Math.round(row.capacity * (skill === 2 ? 0.9 : 1)) : 0,
+      capacityHigh: skill >= 2 ? Math.round(row.capacity * (skill === 2 ? 1.1 : 1)) : 0,
+      exact: skill >= 3,
+      nextState: skill >= 3 ? FreightMarketSystem.buildRow(route, s.day + 2).state : ""
+    };
+    this.spendAction("logistics");
+    s.stats.forecasts += 1;
+    s.logisticsForecasts.push(f);
+    if (s.logisticsForecasts.length > CONFIG.STAFF.ACTION_HISTORY_LEN) {
+      s.logisticsForecasts.splice(0, s.logisticsForecasts.length - CONFIG.STAFF.ACTION_HISTORY_LEN);
+    }
+    SaveSystem.save();
+    return { ok: true, forecast: f };
+  }
+};
+
+/* ===========================================================================
  * SaveSystem — localStorage kalıcılığı
  * =========================================================================*/
 const SaveSystem = {
@@ -3300,6 +3879,10 @@ const SaveSystem = {
     const out = fresh;
     out.version = CONFIG.VERSION;
     out.seed = (typeof d.seed === "number") ? (d.seed >>> 0) : fresh.seed;
+    /* Sabit dünya seed'i: eski kayıtlarda yok, o anki seed'den bir kez
+       türetilir ve bir daha değişmez. Kayıttaki AYNI GÜNE ait nakliye
+       piyasası zaten olduğu gibi korunduğu için oyuncu bir fark görmez. */
+    out.worldSeed = (typeof d.worldSeed === "number") ? (d.worldSeed >>> 0) : out.seed;
     out.day = Math.max(1, Math.floor(d.day));
     out.cash = Utils.round2(d.cash);
     out.warehouseLevel = Utils.clamp(Math.floor(d.warehouseLevel || 1), 1, CONFIG.WAREHOUSE.length);
@@ -3353,7 +3936,7 @@ const SaveSystem = {
 
     out.offers = Array.isArray(d.offers) ? d.offers.filter((o) =>
       o && validProduct(o.product) && o.qty > 0 && o.unitPrice > 0 && o.expiresIn > 0
-    ).slice(0, CONFIG.CONTRACTS.MAX_OFFERS).map((o) => ({
+    ).slice(0, CONFIG.CONTRACTS.MAX_OFFERS + CONFIG.STAFF.SALES_OFFER_BONUS_MAX).map((o) => ({
       id: num(o.id, 0, 0),
       customer: String(o.customer || "Bilinmeyen Müşteri"),
       sector: String(o.sector || ""),
@@ -3475,7 +4058,13 @@ const SaveSystem = {
         legacyFleetAssignment: o.legacyFleetAssignment === true,
         freightMarketDay: fmDay,
         externalBaseFreightPerTon: fmBase,
-        externalFreightMultiplier: fmMult
+        externalFreightMultiplier: fmMult,
+        // V5 Part 1 pazarlık anlık görüntüsü — eski kayıtlarda yok, uydurulmaz.
+        negotiated: o.negotiated === true,
+        negotiationDiscountPct: o.negotiated === true
+          ? Utils.clamp(Utils.round4(num(o.negotiationDiscountPct, 0, 0)), 0, 0.5) : 0,
+        originalSupplierQuote: o.negotiated === true
+          ? Math.max(0, Utils.round2(num(o.originalSupplierQuote, 0, 0))) : 0
       };
     };
 
@@ -3508,6 +4097,9 @@ const SaveSystem = {
       freightMarketDay: base.freightMarketDay,
       externalBaseFreightPerTon: base.externalBaseFreightPerTon,
       externalFreightMultiplier: base.externalFreightMultiplier,
+      negotiated: base.negotiated,
+      negotiationDiscountPct: base.negotiationDiscountPct,
+      originalSupplierQuote: base.originalSupplierQuote,
       orderedDay: base.orderedDay,
       status: base.status,
       legacyLogistics: log.legacyLogistics,
@@ -3881,6 +4473,141 @@ const SaveSystem = {
       if (Object.keys(rows).length) out.freightMarket = { day: out.day, routes: rows };
     }
 
+    /* -----------------------------------------------------------------------
+     * --- V5 Part 1: çalışanlar, departmanlar, günlük aksiyonlar ---
+     * Eski kayıtlarda hiçbiri yoktur; hepsi güvenli boş default'a düşer.
+     * Mevcut PO / filo / nakliye piyasası / sözleşme state'ine dokunulmaz.
+     * ---------------------------------------------------------------------*/
+    out.stats.payrollPaid = Utils.round2((d.stats && d.stats.payrollPaid) || 0);
+    out.stats.employeesHired = Math.max(0, Math.floor((d.stats && d.stats.employeesHired) || 0));
+    out.stats.employeesFired = Math.max(0, Math.floor((d.stats && d.stats.employeesFired) || 0));
+    out.stats.highestStaffCount = Math.max(0, Math.floor((d.stats && d.stats.highestStaffCount) || 0));
+    out.stats.salesSearches = Math.max(0, Math.floor((d.stats && d.stats.salesSearches) || 0));
+    out.stats.negotiations = Math.max(0, Math.floor((d.stats && d.stats.negotiations) || 0));
+    out.stats.forecasts = Math.max(0, Math.floor((d.stats && d.stats.forecasts) || 0));
+
+    // Çalışanlar: bozuk kayıt elenir, olmayan çalışan uydurulmaz.
+    const validRole = (id) => !!EmployeeSystem.role(id);
+    const seenEmp = {};
+    out.employees = Array.isArray(d.employees) ? d.employees.filter((e) => {
+      if (!e || typeof e !== "object") return false;
+      if (!validRole(e.roleId)) return false;
+      const skill = Math.floor(num(e.skill, 1, 0));
+      if (!(skill >= 1 && skill <= 3)) return false;
+      if (!(num(e.salaryPerDay, 0.01, 0) > 0)) return false;
+      if (!(num(e.hiredDay, 1, 0) >= 1)) return false;
+      const id = Math.floor(num(e.id, 0, -1));
+      if (id < 0 || seenEmp[id]) return false;   // bozuk veya çift id
+      seenEmp[id] = true;
+      return true;
+    }).map((e) => ({
+      id: Math.floor(e.id),
+      name: String(e.name || "İsimsiz"),
+      roleId: e.roleId,
+      skill: Math.floor(e.skill),
+      salaryPerDay: Utils.round2(e.salaryPerDay),
+      hiredDay: Math.min(Math.floor(e.hiredDay), out.day),
+      totalSalaryPaid: Math.max(0, Utils.round2(num(e.totalSalaryPaid, 0, 0))),
+      actionsUsed: Math.max(0, Math.floor(num(e.actionsUsed, 0, 0))),
+      status: "active"
+    })) : [];
+
+    let maxEmp = 0;
+    out.employees.forEach((e) => { if (e.id > maxEmp) maxEmp = e.id; });
+    out.employeeSeq = Math.max(Math.floor(num(d.employeeSeq, 1, 1)), maxEmp + 1);
+    out.staffUnlocked = d.staffUnlocked === true || out.employees.length > 0;
+    if (out.employees.length > out.stats.highestStaffCount) {
+      out.stats.highestStaffCount = out.employees.length;
+    }
+
+    /* Aday pazarı ve aksiyon puanları GÜNE AİT state'tir: yalnız aynı güne
+       ait kayıt korunur, aksi hâlde Game.init günün state'ini bir kez kurar.
+       Böylece aynı gün yeniden yükleme kalan aksiyon hakkını değiştirmez. */
+    out.employeeCandidates = null;
+    const ec = d.employeeCandidates;
+    if (ec && typeof ec === "object" && Math.floor(num(ec.day, 0, -1)) === out.day &&
+        Array.isArray(ec.candidates)) {
+      const seenCand = {};
+      const list = ec.candidates.filter((c) => {
+        if (!c || typeof c !== "object" || !validRole(c.roleId)) return false;
+        const skill = Math.floor(num(c.skill, 1, 0));
+        if (!(skill >= 1 && skill <= 3)) return false;
+        if (!(num(c.salaryPerDay, 0.01, 0) > 0)) return false;
+        const id = Math.floor(num(c.id, 0, -1));
+        if (id < 0 || seenCand[id]) return false;
+        seenCand[id] = true;
+        return true;
+      }).slice(0, CONFIG.STAFF.CANDIDATE_COUNT).map((c) => ({
+        id: Math.floor(c.id),
+        name: String(c.name || "İsimsiz"),
+        roleId: c.roleId,
+        roleName: EmployeeSystem.roleName(c.roleId),
+        skill: Math.floor(c.skill),
+        salaryPerDay: Utils.round2(c.salaryPerDay),
+        hireCost: Math.max(0, Utils.round2(num(c.hireCost, 0, EmployeeSystem.hireCost(c.salaryPerDay))))
+      }));
+      out.employeeCandidates = { day: out.day, candidates: list };
+    }
+
+    out.departmentActions = null;
+    const da = d.departmentActions;
+    if (da && typeof da === "object" && Math.floor(num(da.day, 0, -1)) === out.day) {
+      out.departmentActions = {
+        day: out.day,
+        sales: Math.max(0, Math.floor(num(da.sales, 0, 0))),
+        trader: Math.max(0, Math.floor(num(da.trader, 0, 0))),
+        logistics: Math.max(0, Math.floor(num(da.logistics, 0, 0))),
+        foundToday: Math.max(0, Math.floor(num(da.foundToday, 0, 0)))
+      };
+    }
+
+    /* Pazarlıklar tek kullanımlıktır ve yalnız BUGÜNE aittir. Tedarikçinin
+       günlük teklifi hiçbir zaman değiştirilmez; burada da dokunulmaz. */
+    out.negotiatedQuotes = Array.isArray(d.negotiatedQuotes) ? d.negotiatedQuotes.filter((q) => {
+      if (!q || typeof q !== "object") return false;
+      if (Math.floor(num(q.day, 0, -1)) !== out.day) return false;
+      if (!ProcurementSystem.supplier(q.supplierId)) return false;
+      if (!validProduct(q.productId)) return false;
+      const base = num(q.basePrice, 0.01, 0), price = num(q.negotiatedPrice, 0.01, 0);
+      if (!(base > 0) || !(price > 0) || price > base) return false;
+      const pct = num(q.discountPct, 0, -1);
+      if (!(pct >= 0) || pct > 0.5) return false;
+      return Math.floor(num(q.usesLeft, 0, 0)) === 1;
+    }).map((q) => ({
+      day: out.day,
+      supplierId: q.supplierId,
+      productId: q.productId,
+      basePrice: Utils.round2(q.basePrice),
+      discountPct: Utils.round4(q.discountPct),
+      negotiatedPrice: Utils.round2(q.negotiatedPrice),
+      usesLeft: 1
+    })) : [];
+
+    /* Tahminler ekonomik state değil, bilgidir: bozuksa veya rota silinmişse
+       atılabilir; PO gibi legacy koruma gerekmez. */
+    out.logisticsForecasts = Array.isArray(d.logisticsForecasts) ? d.logisticsForecasts.filter((f) => {
+      if (!f || typeof f !== "object") return false;
+      const r = ProcurementSystem.route(f.routeId);
+      if (!r || !(r.baseExternalCapacity > 0)) return false;
+      const target = Math.floor(num(f.targetDay, 1, 0));
+      if (!(target >= out.day)) return false;
+      const skill = Math.floor(num(f.skill, 1, 0));
+      return skill >= 1 && skill <= 3;
+    }).slice(-CONFIG.STAFF.ACTION_HISTORY_LEN).map((f) => ({
+      routeId: f.routeId,
+      routeName: String(f.routeName || f.routeId),
+      madeDay: Math.max(1, Math.floor(num(f.madeDay, 1, out.day))),
+      targetDay: Math.floor(f.targetDay),
+      skill: Math.floor(f.skill),
+      state: (["rahat", "normal", "sikisik"].indexOf(f.state) >= 0) ? f.state : "normal",
+      freightLow: Math.max(0, Utils.round2(num(f.freightLow, 0, 0))),
+      freightHigh: Math.max(0, Utils.round2(num(f.freightHigh, 0, 0))),
+      capacityLow: Math.max(0, Math.floor(num(f.capacityLow, 0, 0))),
+      capacityHigh: Math.max(0, Math.floor(num(f.capacityHigh, 0, 0))),
+      exact: f.exact === true,
+      nextState: (["rahat", "normal", "sikisik"].indexOf(f.nextState) >= 0) ? f.nextState : ""
+    })) : [];
+
     /* --- V3 Part 2: lojistik durumları (eski kayıtlarda yok) --- */
     const validRoute = (id) => !!ProcurementSystem.route(id);
     out.logisticsConditions = Array.isArray(d.logisticsConditions)
@@ -4066,6 +4793,8 @@ const UI = {
       case "poOpen":      Audio_.tap(); this.openPoSheet(ds.sup, ds.id); break;
       case "poDetail":    Audio_.tap(); this.openPoDetail(parseInt(ds.id, 10)); break;
       case "fleetOpen":   Audio_.tap(); this.openFleetSheet(); break;
+      case "staffOpen":   Audio_.tap(); this.openStaffSheet(); break;
+      case "salesSearch": this.doSalesSearch(); break;
       case "offerAccept":    this.acceptOffer(parseInt(ds.id, 10)); break;
       case "offerReject":    this.rejectOffer(parseInt(ds.id, 10)); break;
       case "contractDeliver":this.deliverContract(parseInt(ds.id, 10)); break;
@@ -4193,6 +4922,43 @@ const UI = {
     return '<div class="upgCard">' + inner + '</div>';
   },
 
+  /** Şirket ekranındaki ekip özeti. Kilitliyken ilerleme kartı gösterir. */
+  staffSectionHTML() {
+    const s = GameState.data;
+    if (!EmployeeSystem.isUnlocked()) {
+      const prog = EmployeeSystem.unlockProgress();
+      return '<div class="lockCard">' +
+        '<div class="t">Şirket Ekibi</div>' +
+        '<div class="s">' + Utils.money(CONFIG.STAFF.UNLOCK_VALUE) +
+          ' şirket değerinde açılır · şu an ' + Utils.money(GameState.companyValue()) + '</div>' +
+        '<div class="progWrap"><div class="progFill" style="width:' + (prog * 100).toFixed(1) + '%"></div></div>' +
+      '</div>';
+    }
+
+    const payroll = EmployeeSystem.dailyPayroll();
+    const deptRows = CONFIG.STAFF.ROLES.map((r) => {
+      const n = EmployeeSystem.countByRole(r.id);
+      const left = EmployeeSystem.actionsLeft(r.id);
+      return '<div class="deptRow">' +
+        '<span class="d">' + Utils.escape(r.dept) + '</span>' +
+        '<span class="c num">' + n + ' kişi</span>' +
+        '<span class="a num' + (n && left ? ' on' : '') + '">' + left + ' aksiyon</span>' +
+      '</div>';
+    }).join("");
+
+    return '<div class="upgCard">' +
+      '<div class="rowBetween">' +
+        '<div><div class="muted3">ÇALIŞAN</div>' +
+        '<div class="big num">' + EmployeeSystem.count() + ' <span class="muted">/ ' +
+          EmployeeSystem.capacity() + '</span></div></div>' +
+        '<div style="text-align:right"><div class="muted3">GÜNLÜK MAAŞ</div>' +
+        '<div class="big num' + (payroll > 0 ? ' down' : '') + '">' + Utils.money(payroll) + '</div></div>' +
+      '</div>' +
+      '<div class="deptList">' + deptRows + '</div>' +
+      '<button class="btn primary" style="margin-top:12px" data-action="staffOpen">EKİBİ YÖNET</button>' +
+    '</div>';
+  },
+
   fleetSectionHTML() {
     const s = GameState.data;
     if (!FleetSystem.isUnlocked()) {
@@ -4270,6 +5036,146 @@ const UI = {
     this.renderSheet();
     this.showSheet();
   },
+
+  /* ---------------- V5 Part 1: ekip yönetimi ---------------- */
+
+  openStaffSheet() {
+    EmployeeSystem.ensureCandidates();
+    this.sheet = { open: true, mode: "staff", confirm: null };
+    this.renderSheet();
+    this.showSheet();
+  },
+
+  stars(skill) {
+    return '<span class="stars">' + "★".repeat(skill) +
+      '<span class="off">' + "★".repeat(3 - skill) + '</span></span>';
+  },
+
+  renderStaffSheet() {
+    const s = GameState.data;
+    const cap = EmployeeSystem.capacity();
+    const payroll = EmployeeSystem.dailyPayroll();
+
+    const team = s.employees.length
+      ? s.employees.map((e) => {
+          const sd = EmployeeSystem.skillDef(e.skill);
+          const fresh = e.hiredDay >= s.day;
+          return '<div class="empCard">' +
+            '<div class="empHead">' +
+              '<div style="flex:1;min-width:0">' +
+                '<div class="empName">' + Utils.escape(e.name) + '</div>' +
+                '<div class="empRole">' + Utils.escape(EmployeeSystem.roleName(e.roleId)) + ' · ' +
+                  Utils.escape(sd ? sd.label : "") + ' ' + this.stars(e.skill) + '</div></div>' +
+              '<div style="text-align:right">' +
+                '<div class="empPay num">' + Utils.money(e.salaryPerDay) + '</div>' +
+                '<div class="muted3">/ gün</div></div>' +
+            '</div>' +
+            '<div class="empMeta">' +
+              '<span>Gün ' + e.hiredDay + "'de katıldı</span>" +
+              '<span>Toplam maaş ' + Utils.money(e.totalSalaryPaid) + '</span>' +
+              (fresh ? '<span class="warnTxt">Yarın başlıyor</span>' : '') +
+            '</div>' +
+            '<button class="btn ghost sm" data-sheet="fire" data-emp="' + e.id + '">İŞTEN ÇIKAR</button>' +
+          '</div>';
+        }).join("")
+      : '<div class="allClear">Henüz çalışanın yok</div>';
+
+    const room = EmployeeSystem.hasRoom();
+    const cands = EmployeeSystem.candidates().map((c) => {
+      const sd = EmployeeSystem.skillDef(c.skill);
+      const can = room && s.cash >= c.hireCost;
+      const role = EmployeeSystem.role(c.roleId);
+      return '<div class="empCard">' +
+        '<div class="empHead">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="empName">' + Utils.escape(c.name) + '</div>' +
+            '<div class="empRole">' + Utils.escape(c.roleName) + ' · ' +
+              Utils.escape(sd ? sd.label : "") + ' ' + this.stars(c.skill) + '</div></div>' +
+          '<div style="text-align:right">' +
+            '<div class="empPay num">' + Utils.money(c.salaryPerDay) + '</div>' +
+            '<div class="muted3">/ gün</div></div>' +
+        '</div>' +
+        '<div class="empMeta"><span>' + Utils.escape(role ? role.desc : "") + '</span>' +
+          '<span>İşe alım ' + Utils.money(c.hireCost) + '</span></div>' +
+        '<button class="btn primary sm" data-sheet="hire" data-cand="' + c.id + '"' +
+          (can ? "" : " disabled") + '>' +
+          (!room ? "KAPASİTE DOLU" : (s.cash >= c.hireCost ? "İŞE AL" : "YETERSİZ NAKİT")) + '</button>' +
+      '</div>';
+    }).join("");
+
+    this.el.sheet.innerHTML =
+      '<div class="grabber"></div>' +
+      '<div class="shHead">' +
+        '<div style="flex:1;min-width:0"><div class="shName">Ekibim</div>' +
+        '<div class="shSub num">' + s.employees.length + ' / ' + cap + ' kişi · günlük maaş ' +
+          Utils.money(payroll) + '</div></div>' +
+        '<span class="shTag buy">EKİP</span>' +
+      '</div>' +
+      '<div class="muted3" style="margin-bottom:12px;line-height:1.5">' +
+        'Çalışanlar işi senin yerine yapmaz: her gün departman aksiyon hakkı üretirler, ' +
+        'kararı sen verirsin. İşe alınan çalışan ertesi gün üretmeye başlar.</div>' +
+      team +
+      '<div class="sectionTitle" style="margin:14px 0 8px"><h2>Adaylar</h2>' +
+        '<span class="hint">Her gün yenilenir</span></div>' +
+      (cands || '<div class="allClear">Bugün aday yok</div>') +
+      '<div class="mktBtns" style="margin-top:10px">' +
+        '<button class="btn ghost" data-sheet="close">KAPAT</button>' +
+      '</div>';
+  },
+
+  hireCandidate(candidateId) {
+    const res = EmployeeSystem.hire(candidateId);
+    if (!res.ok) { Audio_.error(); Audio_.haptic(30); this.toast(res.reason, "err"); return; }
+    Audio_.buy(); Audio_.haptic(16);
+    this.toast(res.employee.name + " işe alındı", "ok");
+    this.renderSheet();
+    this.render();
+  },
+
+  fireEmployee(employeeId) {
+    const emp = GameState.data.employees.find((e) => e.id === employeeId);
+    if (!emp) return;
+    this.openConfirm({
+      title: "İşten çıkar",
+      body: Utils.escape(emp.name) + " ekipten ayrılsın mı? Günlük " +
+        Utils.money(emp.salaryPerDay) + " maaş gideri biter, bugünkü aksiyon hakları değişmez.",
+      okLabel: "ÇIKAR",
+      onConfirm: () => {
+        const res = EmployeeSystem.fire(employeeId);
+        if (res.ok) { Audio_.sell(); this.toast(res.employee.name + " ekipten ayrıldı", ""); }
+        this.openStaffSheet();
+        this.render();
+      },
+      onCancel: () => { this.openStaffSheet(); }
+    });
+  },
+
+  doSalesSearch() {
+    const res = EmployeeSystem.searchCustomer();
+    if (!res.ok) { Audio_.error(); Audio_.haptic(30); this.toast(res.reason, "err"); return; }
+    if (res.offer) { Audio_.buy(); this.toast("Yeni müşteri fırsatı bulundu", "ok"); }
+    else { Audio_.tap(); this.toast("Bugün uygun yeni müşteri bulunamadı", ""); }
+    this.render();
+  },
+
+  doNegotiate(supplierId, productId) {
+    const res = EmployeeSystem.negotiate(supplierId, productId);
+    if (!res.ok) { Audio_.error(); Audio_.haptic(30); this.toast(res.reason, "err"); return; }
+    Audio_.buy(); Audio_.haptic(14);
+    this.toast("Pazarlık: %" + (res.quote.discountPct * 100).toFixed(1) + " indirim alındı", "ok");
+    this.renderSheet();
+    this.render();
+  },
+
+  doForecast(routeId) {
+    const res = EmployeeSystem.forecastRoute(routeId);
+    if (!res.ok) { Audio_.error(); Audio_.haptic(30); this.toast(res.reason, "err"); return; }
+    Audio_.tap(); Audio_.haptic(12);
+    this.toast("Yarınki hat analiz edildi", "ok");
+    this.renderSheet();
+    this.render();
+  },
+
 
   renderFleetSheet() {
     const s = GameState.data;
@@ -4755,6 +5661,7 @@ const UI = {
     if (seg === "offers") {
       html += '<div class="sectionTitle"><h2>Gelen Talepler</h2>' +
         '<span class="hint">' + ContractSystem.activeCount() + ' / ' + ContractSystem.maxActive() + ' sözleşme</span></div>';
+      html += this.salesActionHTML();
       html += s.offers.length
         ? s.offers.map((o) => this.offerCardHTML(o)).join("")
         : '<div class="empty"><div class="ic">📨</div>' +
@@ -4789,6 +5696,18 @@ const UI = {
         '<div class="statBox"><div class="k">Tedarikten Alınan</div><div class="v num">' + Utils.qty(s.stats.poTons) + ' ton</div></div>' +
         '<div class="statBox"><div class="k">Tedariğe Harcanan</div><div class="v num">' + Utils.money(s.stats.poSpent) + '</div></div>' +
       '</div>';
+
+      if (s.stats.employeesHired > 0 || s.employees.length > 0) {
+        html += '<div class="sectionTitle" style="margin-top:16px"><h2>Ekip</h2></div>' +
+          '<div class="statGrid">' +
+          '<div class="statBox"><div class="k">Güncel Çalışan</div><div class="v num">' + s.employees.length + '</div></div>' +
+          '<div class="statBox"><div class="k">Toplam İşe Alınan</div><div class="v num">' + s.stats.employeesHired + '</div></div>' +
+          '<div class="statBox"><div class="k">Ödenen Maaş</div><div class="v num down">' + Utils.money(s.stats.payrollPaid) + '</div></div>' +
+          '<div class="statBox"><div class="k">Müşteri Arama</div><div class="v num">' + s.stats.salesSearches + '</div></div>' +
+          '<div class="statBox"><div class="k">Pazarlık</div><div class="v num">' + s.stats.negotiations + '</div></div>' +
+          '<div class="statBox"><div class="k">Hat Analizi</div><div class="v num">' + s.stats.forecasts + '</div></div>' +
+        '</div>';
+      }
 
       if (s.contractLog.length) {
         html += '<div class="sectionTitle" style="margin-top:16px"><h2>Sözleşme Geçmişi</h2></div>';
@@ -4863,6 +5782,77 @@ const UI = {
    * Nakliye piyasası özeti. 8 rotayı kocaman kartlarla yığmak yerine yalnız
    * dikkat gerektirenler (sıkışık hatlar) listelenir; hepsi normalse tek satır.
    */
+  /**
+   * Satış departmanı aksiyonu. Ekip yoksa hiç gösterilmez; V4 davranışı aynen
+   * korunur. Aksiyon fırsat çıkmasa da harcanır (RNG'yi bedava ileri sarmamak
+   * için), bu yüzden buton bunu açıkça söyler.
+   */
+  /**
+   * Sipariş ekranındaki iki departman aksiyonu: ticaret pazarlığı ve lojistik
+   * tahmini. İlgili departmanda çalışan yoksa hiç gösterilmez.
+   */
+  deptActionsHTML(supplierId, productId, routeId) {
+    if (!EmployeeSystem.isUnlocked()) return "";
+    let out = "";
+
+    if (EmployeeSystem.countByRole("trader") > 0) {
+      const nego = EmployeeSystem.negotiationFor(supplierId, productId);
+      const left = EmployeeSystem.actionsLeft("trader");
+      out += '<div class="deptAction">' +
+        '<div class="daInfo">' +
+          '<div class="daT">Ticaret Ekibi</div>' +
+          '<div class="daS num">' + (nego
+            ? 'Bu tedarikçiyle pazarlık yapıldı · %' + (nego.discountPct * 100).toFixed(1) + ' indirim'
+            : 'Bugün ' + left + ' pazarlık hakkı kaldı') + '</div>' +
+        '</div>' +
+        '<button class="btn primary sm daBtn" data-sheet="negotiate"' +
+          (!nego && left > 0 ? "" : " disabled") + '>' +
+          (nego ? "PAZARLIK YAPILDI" : "PAZARLIK YAP") + '</button>' +
+      '</div>';
+    }
+
+    if (EmployeeSystem.countByRole("logistics") > 0 &&
+        FreightMarketSystem.row(routeId)) {
+      const target = GameState.data.day + 1;
+      const f = EmployeeSystem.forecastFor(routeId, target);
+      const left = EmployeeSystem.actionsLeft("logistics");
+      out += '<div class="deptAction">' +
+        '<div class="daInfo">' +
+          '<div class="daT">Lojistik Ekibi</div>' +
+          '<div class="daS num">' + (f
+            ? 'Yarın: ' + FreightMarketSystem.label(f.state) +
+              (f.exact ? ' · ' + Utils.price(f.freightHigh) + '/t · ' + Utils.qty(f.capacityHigh) + ' ton'
+                : f.skill >= 2 ? ' · ' + Utils.price(f.freightLow) + '–' + Utils.price(f.freightHigh) +
+                  '/t · ' + Utils.qty(f.capacityLow) + '–' + Utils.qty(f.capacityHigh) + ' ton' : '')
+            : 'Bugün ' + left + ' analiz hakkı kaldı') + '</div>' +
+          (f && f.nextState
+            ? '<div class="daS num">2 gün sonra: ' + FreightMarketSystem.label(f.nextState) + '</div>' : '') +
+        '</div>' +
+        '<button class="btn primary sm daBtn" data-sheet="forecast"' +
+          (!f && left > 0 ? "" : " disabled") + '>' +
+          (f ? "ANALİZ EDİLDİ" : "YARINI ANALİZ ET") + '</button>' +
+      '</div>';
+    }
+    return out;
+  },
+
+  salesActionHTML() {
+    if (!EmployeeSystem.isUnlocked() || EmployeeSystem.countByRole("sales") === 0) return "";
+    const left = EmployeeSystem.actionsLeft("sales");
+    const s = GameState.data;
+    const full = s.offers.length >= ContractSystem.maxOffers();
+    return '<div class="deptAction">' +
+      '<div class="daInfo">' +
+        '<div class="daT">Satış Ekibi</div>' +
+        '<div class="daS num">Bugün ' + left + ' aksiyon kaldı · fırsat ' +
+          s.offers.length + ' / ' + ContractSystem.maxOffers() + '</div>' +
+      '</div>' +
+      '<button class="btn primary sm daBtn" data-action="salesSearch"' +
+        (left > 0 && !full ? "" : " disabled") + '>' +
+        (full ? "LİSTE DOLU" : "MÜŞTERİ ARA") + '</button>' +
+    '</div>';
+  },
+
   freightMarketHTML() {
     const list = FreightMarketSystem.summary();
     if (!list.length) return "";
@@ -5171,6 +6161,12 @@ const UI = {
       '</div>';
     html += this.fleetSectionHTML();
 
+    html += '<div class="sectionTitle" style="margin-top:18px"><h2>Ekip</h2>' +
+      (EmployeeSystem.isUnlocked()
+        ? '<span class="hint">' + EmployeeSystem.count() + ' / ' + EmployeeSystem.capacity() + ' kişi</span>' : '') +
+      '</div>';
+    html += this.staffSectionHTML();
+
     html += '<div class="sectionTitle" style="margin-top:18px"><h2>İtibar</h2></div>';
     html += this.reputationCardHTML();
 
@@ -5331,6 +6327,18 @@ Object.assign(UI, {
       case "fleetBuy":
         this.buyVehicle(ds.type);
         break;
+      case "hire":
+        Audio_.tap(); this.hireCandidate(parseInt(ds.cand, 10));
+        break;
+      case "fire":
+        Audio_.tap(); this.fireEmployee(parseInt(ds.emp, 10));
+        break;
+      case "negotiate":
+        this.doNegotiate(this.sheet.supplierId, this.sheet.productId);
+        break;
+      case "forecast":
+        this.doForecast(this.sheet.routeId);
+        break;
       case "confirmYes":
         var cb = this.sheet.confirm && this.sheet.confirm.onConfirm;
         this.closeSheet();
@@ -5345,6 +6353,7 @@ Object.assign(UI, {
     if (st.mode === "po") { this.renderPoSheet(); return; }
     if (st.mode === "poDetail") { this.renderPoDetailSheet(); return; }
     if (st.mode === "fleetBuy") { this.renderFleetSheet(); return; }
+    if (st.mode === "staff") { this.renderStaffSheet(); return; }
 
     const p = GameState.product(st.productId);
     if (!p) return;
@@ -5432,7 +6441,8 @@ Object.assign(UI, {
     const p = GameState.product(st.productId);
     if (!sup || !p) return;
 
-    const goodsUnitPrice = ProcurementSystem.quote(sup.id, p.id);
+    const nego = EmployeeSystem.negotiationFor(sup.id, p.id);
+    const goodsUnitPrice = ProcurementSystem.effectiveQuote(sup.id, p.id);
     const market = GameState.price(p.id);
     const origin = ProcurementSystem.origin(sup.id);
     const dest = ProcurementSystem.destinationHub();
@@ -5582,6 +6592,7 @@ Object.assign(UI, {
                   ? ' · ~' + FreightMarketSystem.containers(extRemaining) + ' konteyner slotu' : '')) +
             '</span>' +
           '</div>') +
+      this.deptActionsHTML(sup.id, p.id, route.id) +
       '<div class="qtyChips">' + chips + '</div>' +
       '<div class="stepper">' +
         '<button class="stepBtn" data-sheet="dec"' + (qty <= 0 ? " disabled" : "") + '>−</button>' +
@@ -5591,6 +6602,13 @@ Object.assign(UI, {
       '</div>' +
 
       '<div class="previewBox">' +
+        (nego
+          ? '<div class="pRow"><span class="k">Liste fiyatı</span><span class="v num strike">' +
+              Utils.price(nego.basePrice) + '</span></div>' +
+            '<div class="pRow"><span class="k">Pazarlık sonrası (%' +
+              (nego.discountPct * 100).toFixed(1) + ')</span><span class="v num up">' +
+              Utils.price(nego.negotiatedPrice) + '</span></div>'
+          : "") +
         '<div class="pRow"><span class="k">Mal bedeli</span><span class="v num">' + Utils.money(goodsCost) + '</span></div>' +
         (useFleet
           ? '<div class="pRow"><span class="k">Filo işletme (' + Utils.price(route.fleetCostPerTon) + '/ton)</span>' +
@@ -6034,7 +7052,9 @@ const Game = {
     // sonraki yeniden yükleme aynı fiyatı ve aynı kalan kapasiteyi görür.
     const freshQuotes = ProcurementSystem.ensureQuotes();
     const freshFreight = FreightMarketSystem.ensureMarket();
-    if (freshQuotes || freshFreight || !loaded) SaveSystem.saveNow();
+    const freshCand = EmployeeSystem.ensureCandidates();
+    const freshAct = EmployeeSystem.ensureActions();
+    if (freshQuotes || freshFreight || freshCand || freshAct || !loaded) SaveSystem.saveNow();
     UI.init();
     UI.switchTab("market");
   },
@@ -6049,6 +7069,8 @@ const Game = {
     if (o) GameState.data.offers.push(o);
     ProcurementSystem.ensureQuotes();
     FreightMarketSystem.ensureMarket();
+    EmployeeSystem.ensureCandidates();
+    EmployeeSystem.ensureActions();
     UI.tradeSegment = "offers";
     SaveSystem.saveNow();
     UI.switchTab("market");
@@ -6065,6 +7087,9 @@ const Game = {
     const s = GameState.data;
     s.day += 1;
 
+    // 0) Personel: maaşlar gün başında ödenir, departman aksiyon hakları
+    //    yeniden kurulur. Puan devretmez; dün alınan çalışan bugün üretir.
+    const payroll = EmployeeSystem.tickDay();
     // 1) Haber çıkabilir (aynı gün fiyatı etkiler)
     const news = EventSystem.roll();
     // 2) Fiyatlar güncellenir
@@ -6086,10 +7111,12 @@ const Game = {
     const contractEvents = ContractSystem.tickDay();
     // 8) Yeni teklifler gelir, eskiler düşer
     const offerRoll = ContractSystem.rollOffers();
-    // 9) Günün son state üretimi: yeni tedarikçi teklifleri ve yeni nakliye
-    //    piyasası. Oyuncu o gün sipariş vermeden ÖNCE ikisi de hazır olmalı.
+    // 9) Günün son state üretimi: yeni tedarikçi teklifleri, yeni nakliye
+    //    piyasası ve yeni aday pazarı. Oyuncu o gün karar vermeden ÖNCE
+    //    üçü de hazır olmalı.
     ProcurementSystem.ensureQuotes();
     FreightMarketSystem.ensureMarket();
+    EmployeeSystem.ensureCandidates();
 
     const value = GameState.companyValue();
     if (value > s.stats.peakValue) s.stats.peakValue = Utils.round2(value);
@@ -6097,6 +7124,7 @@ const Game = {
     SaveSystem.save();
 
     Audio_.day(); Audio_.haptic(12);
+    if (payroll > 0) UI.toast("Maaş ödendi · " + Utils.money(payroll), s.cash < 0 ? "warn" : "");
     UI.dayFlash(s.day);
     UI.flashPrices = true;
     UI.render();
@@ -6169,6 +7197,7 @@ window.TradeEmpire = {
   ReputationSystem: ReputationSystem, ContractSystem: ContractSystem,
   ProcurementSystem: ProcurementSystem, LogisticsSystem: LogisticsSystem,
   FleetSystem: FleetSystem, FreightMarketSystem: FreightMarketSystem,
+  EmployeeSystem: EmployeeSystem,
   SaveSystem: SaveSystem, UI: UI, Game: Game
 };
 </script>

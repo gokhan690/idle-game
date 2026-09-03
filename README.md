@@ -1,4 +1,4 @@
-# Trade Empire — V4 (Part 2)
+# Trade Empire — V5 (Part 1)
 
 Mobil öncelikli, tek dosyalık bir ticaret ve şirket büyütme oyunu.
 Tüm oyun `index.html` içindedir: harici backend, framework veya bağımlılık yoktur.
@@ -311,6 +311,85 @@ yavaş tedarikçide sermaye günlerce bağlanır; indirim bu taşıma maliyetini
 karşılayacak kadar derin olmalıdır, aksi hâlde tedarikçiler spot piyasaya
 karşı her zaman zararlı kalır.
 
+## Ekip ve departmanlar (V5 Part 1)
+
+Şirket değeri **$120.000**'i ilk kez geçtiğinde ekip sistemi kalıcı olarak
+açılır. Personel kapasitesi şirketin **gördüğü en yüksek değere** göre artar;
+değer sonradan düşerse kimse kovulmaz, kapasite geri alınmaz.
+
+| Şirket değeri | Personel kapasitesi |
+| --- | --- |
+| $120.000 | 3 |
+| $300.000 | 5 |
+| $750.000 | 8 |
+| $1.500.000 | 12 |
+
+Üç departman vardır ve **hiçbiri işi senin yerine yapmaz**. Tek ürettikleri şey
+günlük *departman aksiyon hakkı*dır; o hakkı sen harcarsın.
+
+| Departman | Çalışan | Aksiyon |
+| --- | --- | --- |
+| Satış | Satış Uzmanı | **MÜŞTERİ ARA** — ekstra sözleşme fırsatı arar |
+| Ticaret | Ticaret Uzmanı | **PAZARLIK YAP** — bir tedarikçi/ürün için tek kullanımlık indirim |
+| Lojistik | Lojistik Uzmanı | **YARINI ANALİZ ET** — yarınki nakliye piyasasını okur |
+
+### Skill, maaş ve aksiyon
+
+| Skill | Ünvan | Günlük maaş | Günlük aksiyon |
+| --- | --- | --- | --- |
+| ★ | Junior | $140 – $220 | 1 |
+| ★★ | Uzman | $240 – $340 | 1 |
+| ★★★ | Kıdemli | $380 – $520 | **2** |
+
+İşe alım gideri = **2 günlük maaş** (tek seferlik, varlık değildir). Maaşlar her
+gün başında nakitten düşer ve şirket değerini gerçekten azaltır — çalışan bir
+şirket varlığı değildir. Bu partta XP, terfi, moral, izin, prim yoktur; skill
+işe alındığı anda sabittir.
+
+İşe alınan çalışan **aynı gün aksiyon üretmez**, ilk tam çalışma günü ertesi
+gündür. Böylece "işe al → aksiyonu kullan → kov" istismarı oluşmaz. Aksiyon
+puanları her gün sıfırdan kurulur, **devretmez**.
+
+### Satış: müşteri arama
+
+Her aksiyon bir **denemedir**, garanti değil. Başarı şansı itibarla ve satış
+ekibinin en yüksek skill'iyle artar (%30–55 × skill çarpanı). Deneme boşa
+çıksa da puan harcanır — aksi hâlde butona basarak RNG bedava ileri sarılırdı.
+
+Bir günde piyasada bulunabilecek yeni müşteri sınırlıdır: kaç satışçın olursa
+olsun **günde en fazla 2 yeni fırsat** çıkar. Satış ekibi ayrıca ekranda
+tutulabilen fırsat sayısını artırır (kişi başı +1, tavan +3). Sözleşme fiyat
+algoritmasına dokunulmaz, itibar etkilenmez.
+
+### Ticaret: pazarlık
+
+Departmanın **en yüksek** skill'i indirimi belirler:
+
+| Skill | İndirim |
+| --- | --- |
+| ★ | %0,7 – %1,1 |
+| ★★ | %1,2 – %1,7 |
+| ★★★ | %1,7 – %2,3 |
+
+Tedarikçinin günlük teklifi **asla değiştirilmez**; pazarlık ayrı state'te
+tek kullanımlık bir teklif olarak durur. Aynı tedarikçi/ürün için stack yoktur.
+Sipariş gerçekten oluşursa tüketilir; nakit, depo veya nakliye kapasitesi
+yüzünden reddedilen sipariş pazarlık hakkını yakmaz. Ertesi gün expire olur.
+
+### Lojistik: nakliye tahmini
+
+Nakliye piyasası saf hash tabanlı olduğu için gelecek gün **RNG tüketmeden**
+okunabilir. Tahmin geleceği değiştirmez, yalnız gözlemler: ertesi gün
+gerçekleşen piyasa tahminle birebir tutar.
+
+| Skill | Gösterdiği |
+| --- | --- |
+| ★ | Yalnız yarınki durum (RAHAT / NORMAL / SIKIŞIK) |
+| ★★ | Durum + yaklaşık navlun bandı + yaklaşık kapasite bandı |
+| ★★★ | Kesin navlun ve kapasite + 2 gün sonrasının durumu |
+
+Aynı rota ve hedef gün için ikinci kez puan harcanmaz.
+
 ## Piyasa modeli
 
 Fiyatlar rastgele zıplamaz. Her ürünün temel fiyatı, volatilitesi ve mantıklı
@@ -348,6 +427,7 @@ Kod, ileride yeni sistemler eklenebilecek şekilde bağımsız modüllere ayrıl
 | `LogisticsSystem` | Rota güvenilirliği, hat durumları, gecikme olayları, ETA yönetimi |
 | `FleetSystem` | Araç tipleri, satın alma, araç atama, sevkiyat/dönüş döngüsü, filo kapasitesi |
 | `FreightMarketSystem` | Günlük harici navlun ve taşıma kapasitesi, rezervasyon, piyasa durumu |
+| `EmployeeSystem` | Aday pazarı, işe alım/çıkarma, maaşlar, departman aksiyon hakları |
 | `SaveSystem` | localStorage kalıcılığı, şema doğrulama/migrasyon |
 | `Audio` | WebAudio geri bildirimi (harici ses dosyası yok) |
 | `UI` | Ekran render'ı, bottom sheet, animasyonlar |
@@ -372,16 +452,21 @@ erişilebilirdir.
   ETA yönetimi ✅
 - **V4 Part 1** — şirket filosu, kamyonlar, lojistik kapasitesi ✅
 - **V4 Part 2** — nakliye piyasası, harici taşıma kapasitesi, konteyner
-  slotları ✅ *(bu sürüm)*
+  slotları ✅
+- **V5 Part 1** — çalışanlar, departmanlar, maaşlar, manuel departman
+  aksiyonları ✅ *(bu sürüm)*
+- **V5 Part 2** — departman politikaları ve otomasyon/delegasyon
 - **Sonrası** — gümrük/vergi, sigorta, gemi/uçak filosu, şoför ve bakım,
-  navlun hedge, yakıt piyasası, birden fazla depo, çalışanlar, banka/kredi,
-  fabrikalar, rakip şirketler
+  navlun hedge, yakıt piyasası, birden fazla depo, banka/kredi, fabrikalar,
+  rakip şirketler
 
-Savaş, yaptırım, siyasi risk, rota kapanması, navlun hedge, uzun dönem taşıyıcı
-kontratı, fiziksel konteyner envanteri ve kiralama, dinamik petrol fiyatı, yakıt
-piyasası, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak/tren filosu, araç
-bakımı, şoför/çalışan, araç satışı ve amortismanı, birden fazla depo, liman
-sahipliği, bankalar, kredi, fabrikalar ve rakip şirketler bu sürümde
+Otomatik sözleşme kabulü, otomatik satın alma/satış, otomatik rota seçimi ve
+filo sevki, departman müdürü / CEO / CFO, çalışan XP ve terfisi, moral,
+hastalık, izin, prim, ofis binası, savaş, yaptırım, siyasi risk, rota kapanması,
+navlun hedge, uzun dönem taşıyıcı kontratı, fiziksel konteyner envanteri,
+yakıt piyasası, gümrük, vergi, sigorta, Incoterms, döviz, gemi/uçak/tren
+filosu, araç bakımı, şoför, araç satışı, birden fazla depo, liman sahipliği,
+bankalar, kredi, fabrikalar ve rakip şirketler bu sürümde
 **bilinçli olarak yoktur**. Tüm oyun USD ile
 çalışır. Sözleşme sistemi, sonradan
 eklenecek geminin/fabrikanın/çalışanın oyunda gerçek bir sebebi olsun diye önce
@@ -389,7 +474,7 @@ kuruldu.
 
 ## Test
 
-Playwright ile on ayrı takım çalışır (toplam 919 kontrol):
+Playwright ile on bir ayrı takım çalışır (toplam 1044 kontrol):
 
 - `test.js` — V1 çekirdeği: alım/satım, ağırlıklı ortalama maliyet, gün
   ilerleme, haber etkisi, depo yükseltme, kayıt/yenileme, mobil yerleşim
@@ -426,3 +511,9 @@ Playwright ile on ayrı takım çalışır (toplam 919 kontrol):
   rezervasyonu ve reddedilen siparişin yan etkisizliği, kendi filonun kapasite
   bağımsızlığı, navlun kilidi, konteyner slotu gösterimi, V1–V4P1 kayıtlarının
   yeniden fiyatlanmaması ve 320–390 px yerleşim
+- `test-v10.js` — ekip: açılma eşiği ve kapasite kademeleri, aday pazarı
+  determinizmi, işe alım/çıkarma, maaş akışı ve negatif nakit davranışı,
+  skill başına aksiyon üretimi, satış aramasının puan tüketmesi, pazarlığın
+  tedarikçi teklifini bozmaması ve tek kullanımlık olması, tahminin piyasayı
+  mutate etmemesi ve ertesi gün tutması, V1–V4P2 kayıtlarının açılması ve
+  320–390 px yerleşim
