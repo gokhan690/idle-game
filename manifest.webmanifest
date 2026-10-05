@@ -1,0 +1,17 @@
+{
+  "name": "Demir Cephe",
+  "short_name": "Demir Cephe",
+  "description": "1936-1945 dönemini konu alan, dünya haritalı mobil büyük strateji oyunu.",
+  "lang": "tr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0f1a24",
+  "theme_color": "#151a16",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
