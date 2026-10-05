@@ -80,6 +80,15 @@
     if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
     const pause = $('btn-pause');
     pause.classList.toggle('paused', !!st.paused);
+    const turn = G.isTurn();
+    document.querySelector('#hud .speed').hidden = turn;
+    const et = $('btn-endturn'); et.hidden = !turn;
+    if (turn) {
+      const busy = st.turnLeft > 0;
+      const lbl = busy ? `Dünya ilerliyor… ${st.turnLeft}` : `Tur ${st.turn || 1} · Turu bitir ▶`;
+      if (et.textContent !== lbl) et.textContent = lbl;
+      et.disabled = busy; et.classList.toggle('busy', busy);
+    }
     document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
     $('btn-mapmode').title = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar' }[R.mode];
   };
@@ -730,6 +739,7 @@
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Tur tabanlı mod (European War tarzı)</h3><p class="small" style="margin:0">Başlangıç ekranında “Tur tabanlı” seçilirse her tur 1 haftadır. Bir yığına dokun: bu tur gidebileceği eyaletler yeşil, saldırabileceği düşmanlar kırmızı yanar. Yeşile dokununca birlik anında gider (piyade 2, hızlı birlikler 3-4 eyalet; düşmana komşu olunca durur). Kırmızıya dokununca saldırı önizlemesi (güç oranı, arazi, tahkimat) çıkar; “Saldır ⚔” ile muharebe hemen çözülür, kayıplar haritada yazılır, düşman çekilirse eyalet alınır. Hareket eden birlik soluklaşır. “Sıradaki” hareket etmemiş yığına götürür, “Turu bitir” ile dünya bir hafta ilerler: yapay zekâ hareket eder, ekonomi ve araştırma işler.</p></section>
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden oluşur. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
   <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
@@ -775,7 +785,7 @@
       sb.hidden = !$('sheet').hidden; return;
     }
     const sel = st.units.filter((u) => R.sel.units.has(u.id));
-    if (!sel.length) { R.sel.units.clear(); R.sel.army = null; $('selbar').hidden = true; return; }
+    if (!sel.length) { R.sel.units.clear(); R.sel.army = null; R.turnHL = null; $('selbar').hidden = true; return; }
     const c0 = me();
     const auto = sel.every((u) => u.auto);
     const locs = new Set(sel.map((u) => u.loc));
@@ -795,13 +805,25 @@
       html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
     } else {
       // ---- Tümen seçimi ----
+      const turnUI = G.playerPhase();
+      if (turnUI) { const key = [...R.sel.units].join(',') + '@' + st.day; const pend = R.turnHL && R.turnHL.key === key ? R.turnHL.pend : null; const mr = G.moveRange(sel); R.turnHL = { key, reach: mr.reach, prev: mr.prev, atk: G.attackTargets(sel), pend }; if (!R.turnHL.atk.has(pend)) R.turnHL.pend = null; } else R.turnHL = null;
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
       const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.' };
       html += `<div class="card-h"><div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
+      const turnUI2 = G.playerPhase();
       html += `<div class="units">${sel.slice(0, 40).map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
-      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
-      html += `<div class="hint small">${auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
+      if (!turnUI2 || UI.selMore) html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      if (turnUI) {
+        const canMove = sel.every((u) => !u.mv && !u.at), canAtk = sel.some((u) => !u.at);
+        html += `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><span class="pill ${canMove ? 'good' : ''}">${canMove ? 'Hareket hazır' : 'Hareket edildi'}</span><span class="pill ${canAtk ? 'war' : ''}">${canAtk ? 'Saldırı hazır' : 'Saldırdı'}</span><span class="grow"></span><button class="btn sm" data-act="selmore" aria-label="Diğer emirler">${UI.selMore ? '▴' : '⋯'}</button><button class="btn sm" data-act="nextunit">Sıradaki ›</button></div>`;
+        const pn = R.turnHL.pend;
+        if (pn != null) {
+          const pv = G.attackPreview(sel, pn);
+          const cls = pv.ratio > 1.1 ? 'good' : pv.ratio > 0.8 ? 'warn' : 'bad';
+          html += `<div class="atkprev"><div class="grow"><div><b>${esc(G.pname(pn))}</b> <span class="muted small">${G.flag(pv.defTag, 18, 12)} ${pv.def} düşman tümeni · ${pv.terrain}${pv.fort ? ' · tahkimat ' + pv.fort : ''}</span></div><div class="small">${pv.att} tümenle saldırı · güç oranı ${r1(pv.ratio)} · <b class="${cls}">${pv.odds}</b></div></div><button class="btn pri" data-act="turnatk" data-v="${pn}">Saldır ⚔</button></div>`;
+        } else html += `<div class="hint small">Yeşil eyalete dokun: anında git. Kırmızıya dokun: saldırı önizlemesi. Uzak hedef: yol emri, tur sonunda yürür.</div>`;
+      } else html += `<div class="hint small">${auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
     }
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
@@ -843,6 +865,25 @@
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
   ACT.pause = () => { G.st.paused = !G.st.paused; UI.hud(); };
+  ACT.turnatk = (d) => { G.turnAttack(+d.v); };
+  ACT.selmore = () => { UI.selMore = !UI.selMore; UI.renderSel(); };
+  ACT.endturn = () => { if (!G.isTurn()) return; G.endTurn(); R.turnHL = null; UI.hud(); UI.renderSel(); R.dirty = 1; };
+  ACT.nextunit = () => {
+    const st = G.st;
+    const locs = [...new Set(st.units.filter((u) => u.t === st.player && u.loc < NP && !u.mv && !u.at && !u.auto && !u.path.length).map((u) => u.loc))];
+    if (!locs.length) { UI.toast('Bu tur hareket etmemiş birlik kalmadı. Turu bitirebilirsin.'); return; }
+    // önce cephedekiler
+    locs.sort((a, b) => (P[b].a.some((j) => G.hostileIn(j, st.player)) ? 1 : 0) - (P[a].a.some((j) => G.hostileIn(j, st.player)) ? 1 : 0));
+    const cur = R.sel.units.size ? st.units.find((u) => R.sel.units.has(u.id))?.loc : -1;
+    const k = locs.indexOf(cur); const n = locs[(k + 1) % locs.length];
+    R.sel.units = new Set(st.units.filter((u) => u.t === st.player && u.loc === n && !u.mv).map((u) => u.id)); R.sel.army = null; R.sel.fleet = null;
+    R.focusOn(n, 2); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
+  };
+  G.onTurn = (n) => {
+    UI.toast(`Tur ${n} başladı · ${G.fmtDate(G.st.day)}`, 'info');
+    if (UI.settings.autosave) G.saveGame('auto');
+    UI.hud(); UI.renderSel(); if (UI.panel) UI.render(false, true); R.dirty = 1;
+  };
   ACT.speed = (d) => { G.st.speed = +d.v; G.st.paused = 0; UI.hud(); };
   ACT.focus = (d) => { UI.fsel = d.v; UI.render(); };
   ACT.focusgo = (d) => {
@@ -1019,7 +1060,7 @@
   // ---------- Başlangıç ekranı ----------
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
-  UI.startOpts = { hist: 1, diff: 1 };
+  UI.startOpts = { hist: 1, diff: 1, turn: 0 };
   UI.showStart = () => {
     $('start').hidden = false;
     ['hud', 'nav', 'map-tools'].forEach((id) => ($(id).hidden = true));
@@ -1041,6 +1082,9 @@
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
+      <div class="seg"><button class="${!UI.startOpts.turn ? 'on' : ''}" data-act="sopt" data-k="turn" data-v="0">Gerçek zamanlı (HOI4)</button><button class="${UI.startOpts.turn ? 'on' : ''}" data-act="sopt" data-k="turn" data-v="1">Tur tabanlı (European War)</button></div>
+      <p class="muted small" style="margin:0">${UI.startOpts.turn ? 'Her tur 1 hafta. Birliğe dokun: gidebileceği yerler yeşil, saldırabileceği düşmanlar kırmızı yanar; hareket ve saldırı anında olur. “Turu bitir” ile dünya ilerler.' : 'Zaman akar; hızı ayarla, ordulara cephe ve taarruz planı ver.'}</p>`;
+    html += `
       <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
       <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
     html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
@@ -1049,10 +1093,11 @@
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
   ACT.begin = () => {
-    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
+    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff, turn: UI.startOpts.turn });
+    if (G.isTurn()) { G.st.turn = 1; G.st.turnLeft = 0; G.turnReset(); }
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => {} }] });
+    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. ${G.isTurn() ? "Tur tabanlı oyundasın: birliklerini hareket ettir, saldır ve hazır olunca “Turu bitir”e bas." : "Hazır olunca zamanı başlat."}`, opts: [{ n: "Göreve başla", fx: () => {} }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
