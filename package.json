@@ -1,0 +1,20 @@
+{
+  "name": "demir-cephe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demir Cephe - mobil büyük strateji oyunu (1936-1945)",
+  "scripts": {
+    "build:map": "node tools/build-map.mjs",
+    "build:bundle": "node tools/bundle.mjs",
+    "build": "npm run build:map && npm run build:bundle",
+    "serve": "npx --yes http-server -c-1 -p 8080 ."
+  },
+  "devDependencies": {
+    "d3-delaunay": "^6.0.4",
+    "d3-geo": "^3.1.1",
+    "polygon-clipping": "^0.15.7",
+    "topojson-client": "^3.1.0",
+    "topojson-simplify": "^3.0.3",
+    "world-atlas": "^2.0.2"
+  }
+}
