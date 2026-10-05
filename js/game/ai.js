@@ -112,12 +112,14 @@
     const st = G.st;
     if ((st.day + i) % 2 === 0) {
       if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
-      // ordular: verilen emre göre komutan yönetir
+      // ordular: cephe ve taarruz planına göre komutan yönetir
+      if ((st.day + i) % 6 === 0 || c._frontsDirty) { G.computeFronts(c); c._frontsDirty = 0; }
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
-        G.aiMilitary(c, (u) => u.army === a.id, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? 0.85 : 1, army: a });
+        G.aiMilitary(c, (u) => u.army === a.id && !u.sr, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
       }
     }
+    G.armyTick(c);
     if ((st.day + i) % 7 === 0) {
       if (c.auto.res) G.aiResearch(c);
       if (c.auto.focus) G.aiFocus(c);
@@ -151,6 +153,7 @@
     if (atWar) {
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+        if (opts.front && !opts.front.has(i)) continue;
         let threat = 0, enemyAdj = [];
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
@@ -173,7 +176,9 @@
       const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack || st.prov[t.e].core === tag).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
+      const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
+      const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
       for (const t of tlist) {
         const te = g.TERRAIN[P[t.e].te];
         const fortMul = 1 + 0.15 * st.prov[t.e].fort;
@@ -212,7 +217,7 @@
         const quota = new Map(fl.map((f) => [f.i, Math.max(1, Math.ceil(((f.threat + 6 + f.push * 4) / totalNeed) * (free.length + mine.length * 0.5)) - Math.round(f.have / 15))]));
         let pending = free.filter((u) => !frontSet.has(u.loc) || (byFront.get(u.loc) || []).length > 3);
         for (let pass = 0; pass < 3 && pending.length; pass++) {
-          const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
+          const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) * (goal != null ? (G.dist(f.i, goal) < d0 + 70 ? 0.5 : 1.6) : 1) }));
           if (!srcs.length) break;
           const ff = G.flowField(tag, srcs, { naval: pass === 2 });
           const rest = [];
@@ -227,11 +232,11 @@
           pending = rest;
         }
       }
-    } else if (atWar) {
+    } else if (atWar && !opts.army) {
       // kara cephesi yok: deniz çıkarması dene
       aiInvasion(c, idle);
     }
-    if (!atWar || !front.length) aiGarrison(c, idle, atWar, opts);
+    if ((!atWar || !front.length) && !(opts.army && atWar)) aiGarrison(c, idle, atWar, opts);
   };
 
   function aiInvasion(c, idle) {

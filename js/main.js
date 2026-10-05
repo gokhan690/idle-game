@@ -167,10 +167,34 @@
       const mine = (G.unitsAt[node] || []).filter((u) => u.t === st.player);
       if (!mine.length) return false;
       R.sel.units = new Set(mine.map((u) => u.id));
-      R.sel.prov = -1;
+      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null;
       UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
       return true;
     };
+    const pc = st.C[st.player];
+    const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
+    const setGoal = (a, node) => {
+      const owner = st.prov[node].c;
+      if (owner === st.player || G.sameFaction(owner, st.player)) return false;
+      a.goal = node; if (a.ord === 'hold') a.ord = 'def';
+      if (!G.atWar(st.player, owner)) a.vs = owner;
+      pc._frontsDirty = 1; G.computeFronts(pc);
+      UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
+      return true;
+    };
+    // taarruz oku modu
+    if (UI.goalMode) {
+      const a = G.armyById(pc, UI.goalMode); UI.goalMode = null;
+      if (a && n >= 0 && n < NP && !setGoal(a, n)) UI.toast('Ok, düşman ya da yabancı bir eyalete çizilmeli.', 'warn');
+      UI.renderSel(); R.dirty = 1; return;
+    }
+    // ordu etiketi
+    if (cnt && cnt.army) { if (R.sel.army === cnt.army) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; } else UI.selectArmy(cnt.army); return; }
+    // muharebe simgesi
+    if (!cnt && !R.sel.fleet && !R.sel.units.size) {
+      const bm = (R.battleMarks || []).find((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
+      if (bm) { UI.panel = 'battle'; UI.sub = null; UI.battleN = bm.b.n; $('card').hidden = true; UI.render(true); return; }
+    }
     // filo seçimi ve hareketi
     if (cnt && cnt.fleet && cnt.tag === st.player) { R.sel.fleet = cnt.fleet; R.sel.units.clear(); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return; }
     if (R.sel.fleet) {
@@ -187,11 +211,19 @@
     if (R.sel.units.size) {
       const sel = st.units.filter((u) => R.sel.units.has(u.id));
       const allHere = sel.length > 0 && sel.every((u) => u.loc === n);
-      if (cnt && cnt.tag === st.player) { if (allHere) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; } else selectAt(cnt.n); return; }
-      if (n < 0 || allHere) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
+      if (cnt && cnt.tag === st.player && !cnt.fleet) {
+        if (allHere && !R.sel.army) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
+        const arm = armyOfCnt(cnt);
+        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else selectAt(cnt.n);
+        return;
+      }
+      if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
+      // ordu seçiliyken düşman eyaleti: taarruz oku (HOI4 savaş planı)
+      const a = R.sel.army ? G.armyById(pc, R.sel.army) : null;
+      if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
       order(sel, n); return;
     }
-    if (cnt && cnt.tag === st.player) { selectAt(cnt.n); return; }
+    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else selectAt(cnt.n); return; }
     if (n < 0) { R.sel.prov = -1; $('card').hidden = true; R.dirty = 1; return; }
     if (n >= NP) { selectAt(n); return; }
     R.sel.prov = n;

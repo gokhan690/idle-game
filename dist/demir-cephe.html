@@ -321,6 +321,37 @@ button.item:active { background: var(--field-3); }
 .restable .rr.neg { border-color: rgba(214,90,67,0.6); background: rgba(214,90,67,0.08); }
 .kv div span.small { font-size: 11px; }
 .item.line { align-items: flex-start; }
+
+/* ---------- Askerî arayüz (HOI4 tarzı) ---------- */
+.selbar { gap: 6px; padding: 8px 10px; }
+.selbar .card-h h3 { font-size: 16px; }
+.selbar .card-h .x { width: 28px; height: 28px; }
+.tbar { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
+.tbar::-webkit-scrollbar { display: none; }
+.tbar .btn { flex: none; white-space: nowrap; }
+.hint.small { font-size: 12px; color: var(--muted); }
+.adot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.selbar .ubox { width: 46px; padding: 3px 3px 2px; }
+.selbar .ubox b { font-size: 11px; }
+canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
+.bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bside { border: 1px solid var(--rule); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 0; background: var(--field-2); }
+.bdivs { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 3px; margin-top: 4px; }
+.bdiv { border: 1px solid var(--rule); border-radius: 3px; padding: 2px; font-size: 10px; text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.bdiv .bar { height: 3px; }
+.bdiv.res { opacity: 0.45; border-style: dashed; }
+.toast { font-size: 13px; padding: 5px 10px; max-width: min(80vw, 380px); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selbar { max-height: 70vh; }
+}
+.mods { display: flex; flex-direction: column; gap: 3px; }
+.mods > div { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.mods b { font-weight: 600; text-align: right; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selbar { left: auto; right: calc(var(--safe-r) + 8px); width: min(360px, 42vw); bottom: calc(var(--safe-b) + 66px); max-height: calc(100vh - 150px); }
+  .selbar .hint.small { display: none; }
+  .selbar .card-h h3 { font-size: 15px; }
+}
 </style>
 </head>
 <body>
@@ -1406,7 +1437,7 @@ window.IDEOLOGIES = {
             const pool = (k % 3 === 0 || !border.length) ? spots.slice(0, Math.max(1, Math.ceil(spots.length / 3))) : border;
             loc = pool[Math.floor(G.rand() * pool.length)];
           }
-          st.units.push(G.makeUnit(tag, type, loc, 1));
+          { const u0 = G.makeUnit(tag, type, loc, 1); u0.xp = 0.25; st.units.push(u0); }
           k++;
         }
       }
@@ -1424,6 +1455,7 @@ window.IDEOLOGIES = {
     G.rebuildUnitIndex();
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); c._mpu = null; G.econCalc(c); }
+    if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
   };
@@ -1431,7 +1463,7 @@ window.IDEOLOGIES = {
   G.makeUnit = (tag, type, loc, str) => {
     const st = G.st;
     const c = st.C[tag];
-    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
+    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, xp: 0.2, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
     u.org = G.unitStats(u).org * (str >= 1 ? 1 : 0.5);
     return u;
   };
@@ -1693,6 +1725,8 @@ window.IDEOLOGIES = {
       if (loc < 0) { c.train.splice(i, 1); i--; continue; }
       const u = G.makeUnit(c.tag, t.u, loc, str);
       u.auto = t.auto != null ? t.auto : u.auto;
+      // oyuncu: yeni tümenler seçili orduya katılır (HOI4 "konuşlandır")
+      if (c.tag === st.player && c.deployArmy && G.armyById(c, c.deployArmy) && G.armyUnits(c, c.deployArmy).length < G.ARMY_MAX) { u.army = c.deployArmy; u.auto = 0; }
       st.units.push(u);
       (G.unitsAt[loc] || (G.unitsAt[loc] = [])).push(u);
       c.train.splice(i, 1); i--;
@@ -1778,6 +1812,7 @@ window.IDEOLOGIES = {
       if (u.ret > 0) u.ret--;
       if (!u.path.length) continue;
       const n = u.path[0];
+      if (u.sr && (n >= NP || G.hostileIn(n, u.t) || !G.canEnter(u.t, n) || G.atWar(u.t, st.prov[n].c))) { u.path = []; u.prog = 0; u.sr = 0; continue; }
       if (n < NP) {
         if (!G.canEnter(u.t, n)) { u.path = []; u.prog = 0; continue; }
         if (G.hostileIn(n, u.t)) {
@@ -1789,7 +1824,8 @@ window.IDEOLOGIES = {
       }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
-      u.prog += seaLeg ? G.SEA_SPEED : stats.spd;
+      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : 1);
+      if (u.sr) u.org = Math.min(u.org, stats.org * 0.1);
       if (seaLeg && u.loc >= NP) {
         // denizde düşman üstünlüğü varsa kayıp
         const sup = G.navalSupremacy(u.t, u.loc);
@@ -1802,6 +1838,7 @@ window.IDEOLOGIES = {
         const L = G.unitsAt[from]; if (L) { const k = L.indexOf(u); if (k >= 0) L.splice(k, 1); }
         (G.unitsAt[n] || (G.unitsAt[n] = [])).push(u);
         if (n < NP) G.capture(n, u.t);
+        if (!u.path.length) u.sr = 0;
       }
     }
     // muharebeler
@@ -1843,6 +1880,7 @@ window.IDEOLOGIES = {
       if (r > 0.001) {
         for (const [e, n] of Object.entries(def.eq)) c.stock[e] -= n * r;
         u.str += r; c.mpAvail -= def.mp * r;
+        if (u.xp > 0.2) u.xp = Math.max(0.2, u.xp - (u.xp - 0.2) * r * 0.6);
       }
     }
   }
@@ -1883,7 +1921,8 @@ window.IDEOLOGIES = {
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
       let tm = (1 + te.atk) * terrainMul(s, te, lat, month);
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
-      if (s.gb && s.gb.plan && u.bd < 8 && u.army) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
+      if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
+      else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
@@ -1914,6 +1953,9 @@ window.IDEOLOGIES = {
       u.org -= ol; const sl = ol * (s.arm > dPrc ? 0.003 : 0.005);
       u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
+    // tümen tecrübesi (muharebede çarpışan tümenler)
+    for (const u of A) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.004 * (st.C[u.t].mods.xpGain ? 1 + st.C[u.t].mods.xpGain : 1));
+    for (const u of D) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.003);
     // komutan tecrübesi
     const gens = new Set();
     for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
@@ -1931,7 +1973,8 @@ window.IDEOLOGIES = {
     if (lost && (defs[0].t === st.player || attTag === st.player)) G.log(`${G.pname(n)}: ${lost} tümen kuşatılarak imha edildi!`, [defs[0].t, attTag], defs[0].t === st.player ? 'bad' : 'good');
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + u.org / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
-    G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining });
+    G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
+      A, D, atts, defs, width, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: st.C[attTag].airMod || 1, dAir: st.C[defs[0].t].airMod || 1 });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
@@ -2456,12 +2499,14 @@ window.IDEOLOGIES = {
     const st = G.st;
     if ((st.day + i) % 2 === 0) {
       if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
-      // ordular: verilen emre göre komutan yönetir
+      // ordular: cephe ve taarruz planına göre komutan yönetir
+      if ((st.day + i) % 6 === 0 || c._frontsDirty) { G.computeFronts(c); c._frontsDirty = 0; }
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
-        G.aiMilitary(c, (u) => u.army === a.id, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? 0.85 : 1, army: a });
+        G.aiMilitary(c, (u) => u.army === a.id && !u.sr, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
       }
     }
+    G.armyTick(c);
     if ((st.day + i) % 7 === 0) {
       if (c.auto.res) G.aiResearch(c);
       if (c.auto.focus) G.aiFocus(c);
@@ -2495,6 +2540,7 @@ window.IDEOLOGIES = {
     if (atWar) {
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+        if (opts.front && !opts.front.has(i)) continue;
         let threat = 0, enemyAdj = [];
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
@@ -2517,7 +2563,9 @@ window.IDEOLOGIES = {
       const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack || st.prov[t.e].core === tag).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
+      const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
+      const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
       for (const t of tlist) {
         const te = g.TERRAIN[P[t.e].te];
         const fortMul = 1 + 0.15 * st.prov[t.e].fort;
@@ -2556,7 +2604,7 @@ window.IDEOLOGIES = {
         const quota = new Map(fl.map((f) => [f.i, Math.max(1, Math.ceil(((f.threat + 6 + f.push * 4) / totalNeed) * (free.length + mine.length * 0.5)) - Math.round(f.have / 15))]));
         let pending = free.filter((u) => !frontSet.has(u.loc) || (byFront.get(u.loc) || []).length > 3);
         for (let pass = 0; pass < 3 && pending.length; pass++) {
-          const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
+          const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) * (goal != null ? (G.dist(f.i, goal) < d0 + 70 ? 0.5 : 1.6) : 1) }));
           if (!srcs.length) break;
           const ff = G.flowField(tag, srcs, { naval: pass === 2 });
           const rest = [];
@@ -2571,11 +2619,11 @@ window.IDEOLOGIES = {
           pending = rest;
         }
       }
-    } else if (atWar) {
+    } else if (atWar && !opts.army) {
       // kara cephesi yok: deniz çıkarması dene
       aiInvasion(c, idle);
     }
-    if (!atWar || !front.length) aiGarrison(c, idle, atWar, opts);
+    if ((!atWar || !front.length) && !(opts.army && atWar)) aiGarrison(c, idle, atWar, opts);
   };
 
   function aiInvasion(c, idle) {
@@ -2875,8 +2923,9 @@ window.IDEOLOGIES = {
     if (u._sd === G.st.day && u._s) return u._s;
     const t = G.T(u.t, u.u), c = G.st.C[u.t], m = c.mods;
     const ls = u.lv ? G.levelStats(t, u.lv) : t;
-    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob);
-    let def = ls.def * (1 + (m.landDef || 0));
+    const xm = G.xpMul(u.xp);
+    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob) * xm;
+    let def = ls.def * (1 + (m.landDef || 0)) * xm;
     const org = t.org * (1 + (m.org || 0));
     let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
     const gen = G.genOf(u);
@@ -2891,13 +2940,19 @@ window.IDEOLOGIES = {
   };
 
   // ---------- Ordular ----------
+  // HOI4 gibi: her ordunun bir komutanı, bir cephesi (düşmanla ortak sınır parçası), isteğe bağlı bir taarruz hedefi (ok)
+  // ve planlama bonusu vardır. "Cepheyi tut" sırasında plan dolar, "Uygula" ile taarruz başlar ve plan harcanır.
+  G.ARMY_COLORS = ['#f2d27a', '#7fc8f8', '#e58fb8', '#9be38a', '#f4a259', '#c39bd3', '#6fd6c4', '#e86a5a'];
+  G.ARMY_MAX = 24;
   G.createArmy = (c, unitIds, genId) => {
     c.armies = c.armies || [];
-    const n = c.armies.length + 1;
-    const a = { id: G.st.nextId++, n: `${n}. Ordu`, gen: genId || null, ord: 'hold', vs: null };
-    if (!a.gen) { const free = c.gens.find((x) => !c.armies.some((y) => y.gen === x.id)); if (free) a.gen = free.id; }
+    const used = new Set(c.armies.map((a) => a.ci));
+    let ci = 0; while (used.has(ci) && ci < 40) ci++;
+    const num = (c.armies.reduce((m, a) => Math.max(m, a.no || 0), 0) || 0) + 1;
+    const a = { id: G.st.nextId++, no: num, n: `${num}. Ordu`, gen: genId || null, ord: 'hold', vs: null, goal: null, plan: 0, front: [], ci };
+    if (!a.gen) { const free = c.gens.filter((x) => !c.armies.some((y) => y.gen === x.id)).sort((x, y) => (y.fm - x.fm) || (y.atk + y.def + y.plan - x.atk - x.def - x.plan))[0]; if (free) a.gen = free.id; }
     c.armies.push(a);
-    for (const u of G.st.units) if (u.t === c.tag && unitIds.includes(u.id)) u.army = a.id;
+    for (const u of G.st.units) if (u.t === c.tag && unitIds.includes(u.id)) { u.army = a.id; u.auto = 0; }
     return a;
   };
   G.disbandArmy = (c, id) => {
@@ -2905,6 +2960,118 @@ window.IDEOLOGIES = {
     for (const u of G.st.units) if (u.t === c.tag && u.army === id) u.army = 0;
   };
   G.armyUnits = (c, id) => G.st.units.filter((u) => u.t === c.tag && u.army === id);
+  G.armyColor = (a) => G.ARMY_COLORS[(a.ci || 0) % G.ARMY_COLORS.length];
+  G.maxPlan = (c, a) => {
+    const gen = a.gen ? G.genById(c, a.gen) : null;
+    return Math.min(0.5, 0.15 + (gen ? 0.025 * gen.plan + (gen.tr.includes('brilliant') ? 0.05 : 0) + (gen.fm ? 0.03 : 0) : 0) + (c.mods.plan || 0));
+  };
+  G.planRate = (c, a) => { const gen = a.gen ? G.genById(c, a.gen) : null; return 0.008 + (gen ? 0.0025 * gen.plan : 0); };
+
+  // Oyun başında tümenleri bölgelere göre ordulara ayır (k-ortalamalar), en iyi komutanları ata
+  G.autoArmies = (c) => {
+    const st = G.st;
+    const us = st.units.filter((u) => u.t === c.tag && u.loc < NP && !u.army);
+    if (us.length < 4) return;
+    const k = Math.max(1, Math.min(Math.ceil(us.length / 20), c.gens.length || 1, 6));
+    const xs = us.map((u) => G.nodeX[u.loc]), ys = us.map((u) => G.nodeY[u.loc]);
+    // ilk merkezler: en uzak noktalar
+    const cen = [[xs[0], ys[0]]];
+    while (cen.length < k) {
+      let bi = 0, bd = -1;
+      for (let i = 0; i < us.length; i++) { const d = Math.min(...cen.map(([x, y]) => Math.hypot(xs[i] - x, ys[i] - y))); if (d > bd) { bd = d; bi = i; } }
+      cen.push([xs[bi], ys[bi]]);
+    }
+    let asg = new Array(us.length).fill(0);
+    for (let it = 0; it < 12; it++) {
+      asg = us.map((_, i) => { let b = 0, bd = Infinity; cen.forEach(([x, y], j) => { const d = Math.hypot(xs[i] - x, ys[i] - y); if (d < bd) { bd = d; b = j; } }); return b; });
+      for (let j = 0; j < k; j++) { const m = us.map((_, i) => i).filter((i) => asg[i] === j); if (m.length) cen[j] = [m.reduce((s, i) => s + xs[i], 0) / m.length, m.reduce((s, i) => s + ys[i], 0) / m.length]; }
+    }
+    // büyük grupları 24'lük ordulara böl; çok küçük grupları (2'den az) ordusuz bırak
+    const groups = [];
+    for (let j = 0; j < k; j++) {
+      const m = us.filter((_, i) => asg[i] === j);
+      for (let o = 0; o < m.length; o += G.ARMY_MAX) groups.push(m.slice(o, o + G.ARMY_MAX));
+    }
+    groups.sort((a, b) => b.length - a.length);
+    for (const grp of groups) {
+      if (grp.length < 2) continue;
+      const a = G.createArmy(c, grp.map((u) => u.id));
+      // bölge adı: en büyük zafer puanlı eyalet
+      const best = grp.reduce((b, u) => (P[u.loc].vp > P[b.loc].vp ? u : b), grp[0]);
+      a.where = G.pname(best.loc);
+    }
+  };
+
+  // Cephe ataması: her ordu, birliklerine en yakın düşman sınırı parçasını alır; ordular cepheyi paylaşır.
+  G.frontier = (tag, vs) => {
+    const st = G.st, out = [];
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i];
+      if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+      for (const j of P[i].a) { const ec = st.prov[j].c; if (vs ? ec === vs : G.atWar(tag, ec)) { out.push(i); break; } }
+    }
+    return out;
+  };
+  G.computeFronts = (c) => {
+    const st = G.st, tag = c.tag;
+    const claimed = new Set();
+    for (const a of c.armies || []) {
+      a.front = [];
+      const vs = a.vs && st.C[a.vs]?.alive ? a.vs : null;
+      if (a.ord === 'hold' || (!vs && !c.enemies.length)) continue;
+      const F = new Set(G.frontier(tag, vs));
+      if (!F.size) continue;
+      const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP);
+      if (!us.length) continue;
+      const want = Math.max(2, Math.ceil(us.length / 1.6));
+      const seen = new Set(); const q = [];
+      for (const u of us) if (!seen.has(u.loc)) { seen.add(u.loc); q.push(u.loc); }
+      // önce boştaki cephe parçaları; hepsi alınmışsa paylaş
+      const free = [...F].some((n) => !claimed.has(n));
+      for (let k = 0; k < q.length && a.front.length < want && k < 4000; k++) {
+        const n = q[k];
+        if (F.has(n) && (!free || !claimed.has(n))) { a.front.push(n); claimed.add(n); }
+        for (const j of P[n].a) {
+          if (seen.has(j)) continue;
+          const pr = st.prov[j];
+          if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+          seen.add(j); q.push(j);
+        }
+      }
+      // kara yoluyla ulaşılamıyorsa (ör. anakaradan kopuk bölge): en yakın cephe parçaları
+      if (!a.front.length) {
+        const u0 = us[Math.floor(us.length / 2)].loc;
+        const near = [...F].filter((n) => !claimed.has(n) || !free).sort((x, y) => G.dist(x, u0) - G.dist(y, u0)).slice(0, want);
+        for (const n of near) { a.front.push(n); claimed.add(n); }
+      }
+      // tek parça kalsın: ilk bulunan cephe eyaletine bağlı olanlar
+      if (a.front.length > 2) {
+        const fs = new Set(a.front), keep = new Set([a.front[0]]), qq = [a.front[0]];
+        for (let k = 0; k < qq.length; k++) for (const j of P[qq[k]].a) if (fs.has(j) && !keep.has(j)) { keep.add(j); qq.push(j); }
+        for (const n of a.front) if (!keep.has(n)) claimed.delete(n);
+        a.front = a.front.filter((n) => keep.has(n));
+      }
+    }
+  };
+  // Günlük ordu güncellemesi: planlama dolar ya da harcanır, hedefe ulaşılınca taarruz biter
+  G.armyTick = (c) => {
+    const st = G.st;
+    for (const a of c.armies || []) {
+      if (a.plan == null) a.plan = 0;
+      const mx = G.maxPlan(c, a);
+      if (a.ord === 'atk') a.plan = Math.max(0, a.plan - (a._fought === st.day ? 0.012 : 0.003));
+      else if (a.ord === 'def' && a.front && a.front.length) a.plan = Math.min(mx, a.plan + G.planRate(c, a));
+      else a.plan = Math.max(0, a.plan - 0.004);
+      if (a.goal != null && st.prov[a.goal].c === c.tag && a.ord === 'atk') {
+        G.log(`${a.n} taarruz hedefine ulaştı: ${G.pname(a.goal)}. Ordu cepheyi tutuyor.`, [c.tag], 'good');
+        a.goal = null; a.ord = 'def';
+      }
+    }
+  };
+  // Tümen tecrübesi (HOI4: Acemi → Kıdemli)
+  G.XP_LV = [[0, 'Acemi'], [0.2, 'Eğitimli'], [0.4, 'Düzenli'], [0.6, 'Tecrübeli'], [0.8, 'Kıdemli']];
+  G.xpName = (x) => { let n = G.XP_LV[0][1]; for (const [t, m] of G.XP_LV) if ((x ?? 0.25) >= t) n = m; return n; };
+  G.xpMul = (x) => 0.9 + 0.4 * (x ?? 0.25);
 })(window);
 
 /* js/game/politics.js */
@@ -3556,7 +3723,8 @@ window.IDEOLOGIES = {
       const retreat = (side, ownP, oppP) => { if (ownP < oppP * 0.35) for (const [c, f] of side) { const p = G.fleetPath(f.loc, f.home); if (p) { f.path = p; f.prog = 0; } } };
       retreat(allies, pa, pb); retreat(enemies, pb, pa);
       const pl = st.player;
-      if ([...allies, ...enemies].some(([c]) => c.tag === pl) && st.day % 3 === 0) G.log(`Deniz muharebesi: ${G.cname(allies[0][0].tag)} - ${G.cname(enemies[0][0].tag)} (${Math.round(pa)} / ${Math.round(pb)})`, [allies[0][0].tag, enemies[0][0].tag], 'warn');
+      G._nbLog = G._nbLog || {};
+      if ([...allies, ...enemies].some(([c]) => c.tag === pl) && !(G._nbLog[zone] > st.day - 10) && (G._nbLog[zone] = st.day)) G.log(`Deniz muharebesi: ${G.cname(allies[0][0].tag)} - ${G.cname(enemies[0][0].tag)} (${Math.round(pa)} / ${Math.round(pb)})`, [allies[0][0].tag, enemies[0][0].tag], 'warn');
     }
     // konvoy akınları
     for (const c of Object.values(st.C)) {
@@ -3909,6 +4077,10 @@ window.IDEOLOGIES = {
   const provRings = P.map((p) => p.p.flat().map(decode));
   const provPath = provRings.map((rings) => { const pa = new Path2D(); for (const r of rings) { pa.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) pa.lineTo(r[i], r[i + 1]); pa.closePath(); } return pa; });
   const borders = M.borders.map(([a, b, e]) => ({ a, b, pts: decode(e) }));
+  // eyalet çifti -> ortak sınır parçaları (cephe çizgileri için)
+  const pairKey = (a, b) => (a < b ? a * 8192 + b : b * 8192 + a);
+  const pairMap = new Map();
+  for (const bd of borders) if (bd.b >= 0) { const k = pairKey(bd.a, bd.b); let L = pairMap.get(k); if (!L) pairMap.set(k, (L = [])); L.push(bd.pts); }
   const coastPath = new Path2D();
   for (const bd of borders) if (bd.b < 0) addLine(coastPath, bd.pts);
   const seaPath = new Path2D();
@@ -4079,6 +4251,7 @@ window.IDEOLOGIES = {
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
+      drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -4092,8 +4265,10 @@ window.IDEOLOGIES = {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawLabels(ctx, z);
     drawPaths(ctx);
+    drawArrows(ctx, z);
     drawBattles(ctx);
     drawUnits(ctx, z);
+    drawArmyTags(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
   };
@@ -4142,6 +4317,100 @@ window.IDEOLOGIES = {
     ctx.closePath();
   }
 
+  // ---------- Ordu cepheleri (HOI4 tarzı) ----------
+  const playerArmies = () => { const c = G.st.C[G.st.player]; return c && c.alive ? c.armies || [] : []; };
+  function frontSegs(a) {
+    const st = G.st, out = [];
+    for (const i of a.front || []) for (const j of P[i].a) {
+      const ec = st.prov[j].c;
+      if (a.vs ? ec !== a.vs : !G.atWar(st.player, ec)) continue;
+      const L = pairMap.get(pairKey(i, j)); if (L) for (const pts of L) out.push(pts);
+    }
+    return out;
+  }
+  function drawFronts(ctx, z) {
+    for (const a of playerArmies()) {
+      if (!a.front || !a.front.length) continue;
+      const segs = frontSegs(a); if (!segs.length) continue;
+      const sel = R.sel.army === a.id;
+      const col = G.armyColor(a);
+      const pa = new Path2D(); for (const pts of segs) addLine(pa, pts);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = (sel ? 8 : 6) / z; ctx.stroke(pa);
+      ctx.strokeStyle = col; ctx.lineWidth = (sel ? 4.5 : 3.2) / z;
+      if (a.ord === 'hold') ctx.setLineDash([6 / z, 4 / z]);
+      ctx.stroke(pa); ctx.setLineDash([]);
+      // taarruz: cephe boyunca kırmızı dişler
+      if (a.ord === 'atk') { ctx.strokeStyle = 'rgba(214,72,52,0.9)'; ctx.lineWidth = 1.6 / z; ctx.setLineDash([2 / z, 5 / z]); ctx.stroke(pa); ctx.setLineDash([]); }
+      ctx.lineCap = 'butt';
+    }
+  }
+  R.armyAnchor = (a) => {
+    // cephenin hedefe en yakın noktası; yoksa birliklerin ağırlık merkezi
+    const st = G.st;
+    if (a.front && a.front.length) {
+      let best = a.front[0];
+      if (a.goal != null) { let bd = Infinity; for (const i of a.front) { const d = G.dist(i, a.goal); if (d < bd) { bd = d; best = i; } } }
+      else { let sx = 0, sy = 0; for (const i of a.front) { sx += R.wrapDx(G.nodeX[i] - G.nodeX[a.front[0]]); sy += G.nodeY[i]; } const cx = G.nodeX[a.front[0]] + sx / a.front.length, cy = sy / a.front.length; let bd = Infinity; for (const i of a.front) { const d = Math.hypot(R.wrapDx(G.nodeX[i] - cx), G.nodeY[i] - cy); if (d < bd) { bd = d; best = i; } } }
+      return best;
+    }
+    const us = st.units.filter((u) => u.t === st.player && u.army === a.id && u.loc < NP);
+    return us.length ? us[Math.floor(us.length / 2)].loc : -1;
+  };
+  function drawArrows(ctx, z) {
+    for (const a of playerArmies()) {
+      if (a.goal == null) continue;
+      const from = R.armyAnchor(a); if (from < 0) continue;
+      const s0 = R.toScreen(G.nodeX[from], G.nodeY[from]), s1 = R.toScreen(G.nodeX[a.goal], G.nodeY[a.goal]);
+      const span = M.W * R.cam.z; while (s1.x - s0.x > span / 2) s1.x -= span; while (s0.x - s1.x > span / 2) s1.x += span;
+      const dx = s1.x - s0.x, dy = s1.y - s0.y, len = Math.hypot(dx, dy); if (len < 6) continue;
+      const nx = -dy / len, ny = dx / len, bend = Math.min(60, len * 0.18);
+      const cx = (s0.x + s1.x) / 2 + nx * bend, cy = (s0.y + s1.y) / 2 + ny * bend;
+      const col = a.ord === 'atk' ? '#d6483a' : G.armyColor(a);
+      const wdt = Math.max(5, Math.min(12, 4 + z * 2));
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = wdt + 3; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke();
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = wdt; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke(); ctx.globalAlpha = 1;
+      const ang = Math.atan2(s1.y - cy, s1.x - cx), hl = wdt * 2.6;
+      ctx.fillStyle = col; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(s1.x + Math.cos(ang) * hl * 0.5, s1.y + Math.sin(ang) * hl * 0.5); ctx.lineTo(s1.x - Math.cos(ang - 0.5) * hl, s1.y - Math.sin(ang - 0.5) * hl); ctx.lineTo(s1.x - Math.cos(ang + 0.5) * hl, s1.y - Math.sin(ang + 0.5) * hl); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  }
+  // Ordu etiketi: komutan, emir ve planlama çubuğu (dokununca ordu seçilir)
+  function drawArmyTags(ctx, z) {
+    const st = G.st, c = st.C[st.player]; if (!c) return;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (const a of playerArmies()) {
+      const n = R.armyAnchor(a); if (n < 0) continue;
+      const s = visible(G.nodeX[n], G.nodeY[n], 80); if (!s) continue;
+      const gen = a.gen ? G.genById(c, a.gen) : null;
+      const label = `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
+      ctx.font = '700 10.5px "Barlow Semi Condensed", sans-serif';
+      const w = Math.max(60, ctx.measureText(label).width + 24), h = 21;
+      const x = s.x - w / 2, y = s.y - 40;
+      const sel = R.sel.army === a.id;
+      ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+      ctx.fillStyle = 'rgba(22,26,20,0.95)'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = G.armyColor(a); ctx.fillRect(x, y, 5, h);
+      ctx.strokeStyle = sel ? '#f2d27a' : 'rgba(200,190,160,0.5)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(x, y, w, h);
+      // emir simgesi
+      const ox = x + 12, oy = y + 9;
+      ctx.fillStyle = a.ord === 'atk' ? '#e0574a' : a.ord === 'def' ? '#7fb069' : '#a9a28a';
+      ctx.beginPath();
+      if (a.ord === 'atk') { ctx.moveTo(ox - 4, oy - 4); ctx.lineTo(ox + 4, oy); ctx.lineTo(ox - 4, oy + 4); }
+      else if (a.ord === 'def') { ctx.moveTo(ox - 4, oy - 4); ctx.lineTo(ox + 4, oy - 4); ctx.lineTo(ox + 4, oy + 1); ctx.lineTo(ox, oy + 5); ctx.lineTo(ox - 4, oy + 1); }
+      else { ctx.rect(ox - 4, oy - 4, 3, 8); ctx.rect(ox + 1, oy - 4, 3, 8); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#efe9d8'; ctx.fillText(label, x + 19, y + 8.5);
+      // planlama çubuğu
+      const mx = G.maxPlan(c, a);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 8, y + h - 6, w - 14, 3);
+      ctx.fillStyle = a.ord === 'atk' ? '#e0574a' : '#7fb069'; ctx.fillRect(x + 8, y + h - 6, (w - 14) * Math.min(1, (a.plan || 0) / Math.max(0.01, mx)), 3);
+      R.counters.push({ x, y, w, h, n, tag: st.player, army: a.id });
+    }
+  }
+
   function drawPaths(ctx) {
     const st = G.st;
     const seen = new Set();
@@ -4179,7 +4448,11 @@ window.IDEOLOGIES = {
       // çapraz kılıçlar
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
       ctx.moveTo(s.x - 5, s.y - 5); ctx.lineTo(s.x + 5, s.y + 5); ctx.moveTo(s.x + 5, s.y - 5); ctx.lineTo(s.x - 5, s.y + 5); ctx.stroke();
-      R.battleMarks.push({ x: s.x - 12, y: s.y - 12, w: 24, h: 24, b });
+      if (mine != null) {
+        ctx.fillStyle = 'rgba(14,14,12,0.9)'; ctx.fillRect(s.x - 15, s.y + 13, 30, 5);
+        ctx.fillStyle = col; ctx.fillRect(s.x - 14, s.y + 14, 28 * Math.max(0.03, Math.min(1, mine)), 3);
+      }
+      R.battleMarks.push({ x: s.x - 16, y: s.y - 16, w: 32, h: 36, b });
     }
   }
 
@@ -4214,13 +4487,57 @@ window.IDEOLOGIES = {
       ctx.strokeStyle = '#7fb3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y + 8, 13 + 2 * Math.sin(R.t / 160), 0, Math.PI * 2); ctx.stroke();
     }
   }
+  // NATO simgesi türü (şablondan)
+  R.kindOf = (u) => {
+    const t = G.T(u.t, u.u);
+    if (t._k) return t._k;
+    return (t._k = t.tanks > 0 ? 'arm' : t.mob > 0.5 ? 'mot' : t.s === 'SÜV' ? 'cav' : t.s === 'DAĞ' ? 'mtn' : t.s === 'DNZ' ? 'mar' : 'inf');
+  };
+  function drawNato(ctx, kind, x, y, w, h, ink) {
+    ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 1.3;
+    ctx.strokeRect(x, y, w, h);
+    ctx.beginPath();
+    if (kind === 'arm') { ctx.ellipse(x + w / 2, y + h / 2, w * 0.32, h * 0.26, 0, 0, Math.PI * 2); ctx.stroke(); return; }
+    if (kind === 'cav') { ctx.moveTo(x, y + h); ctx.lineTo(x + w, y); ctx.stroke(); return; }
+    ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.moveTo(x + w, y); ctx.lineTo(x, y + h); ctx.stroke();
+    if (kind === 'mot') { ctx.beginPath(); ctx.arc(x + w * 0.3, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.arc(x + w * 0.7, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.fill(); }
+    else if (kind === 'mtn') { ctx.beginPath(); ctx.moveTo(x + w / 2, y + h * 0.55); ctx.lineTo(x + w / 2 + 3.5, y + h); ctx.lineTo(x + w / 2 - 3.5, y + h); ctx.closePath(); ctx.fill(); }
+    else if (kind === 'mar') { ctx.beginPath(); ctx.arc(x + w / 2, y + h - 1, 3, 0, Math.PI); ctx.stroke(); }
+  }
+  R.drawNato = drawNato;
+  function drawCounter(ctx, x, y, gl, tag, opts) {
+    const st = G.st, w = 40, h = 22;
+    const col = R.ccolor(tag);
+    const light = luminance(col) > 0.55, ink = light ? '#14160f' : '#f4efe0';
+    const kinds = {}; for (const u of gl) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
+    const kind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0][0];
+    let org = 0, os = 0, str = 0, fighting = false, moving = false;
+    for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += Math.max(0, u.org); os += sOrg; str += u.str; if (G.inBattle && G.inBattle.has(u)) fighting = true; if (u.path.length) moving = true; }
+    ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+    ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + h - 5, w, 5);
+    drawNato(ctx, kind, x + 4, y + 3, 15, 10, ink);
+    ctx.fillStyle = ink; ctx.font = '700 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(gl.length), x + 30, y + 8.5);
+    ctx.fillStyle = '#7fb069'; ctx.fillRect(x + 1, y + h - 5, (w - 2) * Math.max(0, Math.min(1, org / os)), 2);
+    ctx.fillStyle = '#e0c45a'; ctx.fillRect(x + 1, y + h - 2.5, (w - 2) * Math.min(1, str / gl.length), 2);
+    const sel = opts.sel;
+    ctx.strokeStyle = sel ? '#f2d27a' : fighting ? (Math.sin(R.t / 140) > 0 ? '#ff6a50' : '#8a2a1e') : opts.enemy ? '#d4553f' : 'rgba(10,10,8,0.9)';
+    ctx.lineWidth = sel ? 2.6 : fighting ? 2 : 1.3;
+    ctx.strokeRect(x, y, w, h);
+    if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
+    if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
+    if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    return { w, h };
+  }
   function drawUnits(ctx, z) {
     const st = G.st;
     R.counters = [];
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
     const showAll = z > 2.6;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const pc = st.C[st.player];
+    const armyCol = new Map(); for (const a of (pc && pc.armies) || []) armyCol.set(a.id, G.armyColor(a));
     for (const key in G.unitsAt) {
       const L = G.unitsAt[key]; if (!L || !L.length) continue;
       const n = +key;
@@ -4235,26 +4552,11 @@ window.IDEOLOGIES = {
         const mineOrAlly = tag === st.player || G.sameFaction(tag, st.player);
         const enemy = G.atWar(tag, st.player);
         if (!showAll && !mineOrAlly && !enemy) continue;
-        const w = 30, h = 19;
-        const x = s.x - w / 2 + k * 6, y = s.y - h / 2 + 12 + k * 21;
+        if (z < 0.75 && !enemy && tag !== st.player) continue;
+        const x = s.x - 20 + k * 6, y = s.y - 11 + 10 + k * 23;
         const sel = gl.some((u) => R.sel.units.has(u.id));
-        const col = R.ccolor(tag);
-        ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
-        ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x, y + h - 4, w, 4);
-        let org = 0, os = 0, str = 0;
-        for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += u.org; os += sOrg; str += u.str; }
-        ctx.fillStyle = '#7fb069'; ctx.fillRect(x, y + h - 4, w * Math.max(0, Math.min(1, org / os)), 2);
-        ctx.fillStyle = '#e0c45a'; ctx.fillRect(x, y + h - 2, w * Math.min(1, str / gl.length), 2);
-        ctx.strokeStyle = sel ? '#f2d27a' : enemy ? '#d4553f' : 'rgba(10,10,8,0.9)'; ctx.lineWidth = sel ? 2.5 : 1.3;
-        ctx.strokeRect(x, y, w, h);
-        const light = luminance(col) > 0.55;
-        ctx.fillStyle = light ? '#14160f' : '#f4efe0';
-        ctx.font = '700 12px "Barlow Semi Condensed", sans-serif';
-        const arm = gl.some((u) => u.u === 'arm');
-        ctx.fillText(String(gl.length), x + w / 2 + (arm ? 4 : 0), y + h / 2 - 2);
-        if (arm) { ctx.beginPath(); ctx.ellipse(x + 8, y + 7.5, 4.5, 2.6, 0, 0, Math.PI * 2); ctx.strokeStyle = light ? '#14160f' : '#f4efe0'; ctx.lineWidth = 1.2; ctx.stroke(); }
-        if (tag === st.player && gl.some((u) => u.army)) { ctx.fillStyle = '#f2d27a'; ctx.beginPath(); ctx.moveTo(x + w - 7, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 7); ctx.closePath(); ctx.fill(); }
+        const ac = tag === st.player ? gl.find((u) => u.army && armyCol.has(u.army)) : null;
+        const { w, h } = drawCounter(ctx, x, y, gl, tag, { sel, enemy, armyCol: ac ? armyCol.get(ac.army) : null });
         R.counters.push({ x, y, w, h, n, tag, units: gl });
         k++;
       }
@@ -4300,11 +4602,14 @@ window.IDEOLOGIES = {
   // ---------- Bildirim ----------
   UI.toast = (msg, kind = 'info') => {
     const box = $('toasts');
+    const fade = (el) => () => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 400); };
+    for (const el of box.children) if (el.textContent === msg) { clearTimeout(el._t); el._t = setTimeout(fade(el), 3200); return; }
     const el = document.createElement('div');
     el.className = 'toast t-' + kind; el.textContent = msg;
+    el.onclick = () => el.remove();
     box.prepend(el);
-    while (box.children.length > 3) box.lastChild.remove();
-    setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 3800);
+    while (box.children.length > 2) box.lastChild.remove();
+    el._t = setTimeout(fade(el), 3200);
   };
 
   // ---------- Üst şerit ----------
@@ -4384,6 +4689,7 @@ window.IDEOLOGIES = {
       if (ft) { const n = ft.querySelector('.fn.active') || ft.querySelector('.fn.avail'); if (n) { ft.scrollLeft = Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2); ft.scrollTop = Math.max(0, n.offsetTop - 40); } }
     }
     if (ft) ft.onscroll = () => { UI.ftScroll = [ft.scrollLeft, ft.scrollTop]; };
+    for (const cv of body.querySelectorAll('canvas.nato')) { const x = cv.getContext('2d'); x.fillStyle = cv.dataset.c; x.fillRect(0, 0, cv.width, cv.height); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0'); }
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
   };
@@ -4706,7 +5012,8 @@ window.IDEOLOGIES = {
   }
 
   // Ordu
-  const ORD_N = { hold: 'Bekle', def: 'Savun', atk: 'Taarruz' };
+  const ORD_N = { hold: 'Bekle', def: 'Cepheyi tut', atk: 'Uygula ▶' };
+  UI.ORD_N = ORD_N;
   const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · Sv ${gen.lvl}</span>`;
   const genSkills = (gen) => `<span class="skills"><b title="Saldırı">S ${gen.atk}</b><b title="Savunma">Sv ${gen.def}</b><b title="Planlama">P ${gen.plan}</b><b title="Lojistik">L ${gen.log}</b></span>${gen.tr.length ? `<div class="d">${gen.tr.map((t) => g.GEN_TRAITS[t].n).join(' · ')}</div>` : ''}`;
   PANELS.army = () => {
@@ -4714,6 +5021,8 @@ window.IDEOLOGIES = {
     if (UI.sub && UI.sub.startsWith('tpl:')) return templateDesigner(c, UI.sub.slice(4));
     if (UI.sub && UI.sub.startsWith('gen:')) return generalPicker(c, +UI.sub.slice(4));
     if (UI.sub === 'gens') return generalList(c);
+    if (UI.sub && UI.sub.startsWith('div:')) return divisionView(c, +UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('divs:')) return armyDivisions(c, +UI.sub.slice(5));
     const mine = st.units.filter((u) => u.t === c.tag);
     const mp = G.manpower(c);
     let html = kv([['İnsan gücü', G.fmtMP(mp.avail), mp.avail < 30 ? 'bad' : ''], ['Toplam', G.fmtMP(mp.max)], ['Tümen', mine.length], ['Eğitimde', c.train.length], ['Piyade T.', int(c.stock.inf)], ['Topçu', int(c.stock.art)], ['Tank', int(c.stock.tank)], ['Motorlu', int(c.stock.mot)]]);
@@ -4725,14 +5034,17 @@ window.IDEOLOGIES = {
       const gen = a.gen ? G.genById(c, a.gen) : null;
       const str = us.length ? us.reduce((s, u) => s + u.str, 0) / us.length : 0;
       const battle = (G.battles || []).filter((b) => us.some((u) => u.loc === b.n || u.path[0] === b.n)).length;
-      oh += `<div class="item army"><div class="grow">
-        <div class="row" style="gap:8px"><div class="t grow">${esc(a.n)} <span class="muted small">${us.length} tümen${battle ? ` · <span class="bad">${battle} muharebe</span>` : ''}</span></div><button class="btn sm" data-act="armysel" data-v="${a.id}">Seç</button></div>
+      const mx = G.maxPlan(c, a);
+      oh += `<div class="item army" style="border-left:4px solid ${G.armyColor(a)}"><div class="grow">
+        <div class="row" style="gap:8px"><div class="t grow">${esc(a.n)} <span class="muted small">${us.length}/${G.ARMY_MAX} tümen${battle ? ` · <span class="bad">${battle} muharebe</span>` : ''}</span></div><button class="btn sm" data-act="armysel" data-v="${a.id}">Haritada seç</button></div>
         <button class="genrow" data-act="sub" data-v="gen:${a.id}">${gen ? `<div>${genLine(gen)}</div>${genSkills(gen)}` : '<span class="warn">Komutan ata ›</span>'}</button>
+        <div class="small muted">Cephe: ${a.vs ? esc(G.cname(a.vs)) : 'tüm düşmanlar'} · ${a.front && a.front.length ? a.front.length + ' eyaletlik hat' : 'hat yok'}${a.goal != null ? ' · hedef: ' + esc(G.pname(a.goal)) : ''}</div>
+        <div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a.plan || 0) / mx, a.ord === 'atk' ? 'r' : 'g')}</div></div>
         <div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a.id}" data-v="${k}">${n}</button>`).join('')}</div>
-        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="armyvs" data-v="${a.id}">Cephe: ${a.vs ? esc(G.cname(a.vs)) : 'Tüm düşmanlar'}</button><button class="btn sm" data-act="armyadd" data-v="${a.id}" ${R.sel.units.size ? '' : 'disabled'}>Seçilileri ekle</button><button class="btn sm danger" data-act="armydel" data-v="${a.id}">Dağıt</button></div>
-        ${bar(str, 'g')}</div></div>`;
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="armyvs" data-v="${a.id}">Cephe değiştir</button><button class="btn sm" data-act="armygoal" data-v="${a.id}">Taarruz oku çiz</button>${a.goal != null ? `<button class="btn sm" data-act="armygoalclr" data-v="${a.id}">Oku sil</button>` : ''}<button class="btn sm ${c.deployArmy === a.id ? 'pri' : ''}" data-act="armydeploy" data-v="${a.id}">Yeni tümenler buraya</button><button class="btn sm" data-act="armyadd" data-v="${a.id}" ${R.sel.units.size ? '' : 'disabled'}>Seçilileri ekle</button><button class="btn sm danger" data-act="armydel" data-v="${a.id}">Dağıt</button></div>
+        <div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div></div></div></div>`;
     }
-    if (!(c.armies || []).length) oh += '<p class="muted small" style="margin:0">Henüz ordu yok. Tümenleri bir orduda toplayıp komutan atarsan, komutan becerileri muharebeye eklenir ve “Savun” ya da “Taarruz” emriyle cepheyi senin yerine yönetir.</p>';
+    oh += `<p class="muted small" style="margin:0">HOI4'teki gibi: orduya bir <b>cephe</b> ver (“Cepheyi tut”), istersen <b>taarruz oku</b> çiz. Cephede beklerken <b>planlama</b> dolar; hazır olunca <b>Uygula</b> ile taarruz başlar ve plan bonusu saldırıya eklenir. Ordu başına en fazla ${G.ARMY_MAX} tümen.</p>`;
     oh += `</div><div class="btns"><button class="btn pri" data-act="armynew">${R.sel.units.size ? `Seçili ${R.sel.units.size} tümenden ordu kur` : 'Ordusuz tümenlerden ordu kur'}</button><button class="btn" data-act="sub" data-v="gens">Komutanlar (${c.gens.length})</button></div>`;
     html += sec('Ordular', oh, enemies.length ? `${enemies.length} düşman` : 'barış');
     // şablonlar ve eğitim
@@ -4772,6 +5084,72 @@ window.IDEOLOGIES = {
     }
     html += sec('Konuşlanma', gh + '</div>', `${rows.length} konum · yeşil güç, sarı moral`);
     return { title: 'Ordu', html };
+  };
+
+  // Tümen ayrıntısı (HOI4 tümen penceresi)
+  function divisionView(c, id) {
+    const st = G.st, u = st.units.find((x) => x.id === id);
+    if (!u) { UI.sub = null; return PANELS.army(); }
+    const s2 = G.unitStats(u), t = s2.t;
+    const a = u.army ? G.armyById(c, u.army) : null;
+    const gen = G.genOf(u);
+    const sup = G.supplyMul(u);
+    const state = u.sr ? 'Stratejik konuşlanma' : G.inBattle && G.inBattle.has(u) ? 'Muharebede' : u.ret ? 'Geri çekiliyor' : u.path.length ? `${G.pname(u.path[u.path.length - 1])} yönünde ilerliyor` : 'Mevzide';
+    const brk = s2.def * 0.5 + s2.atk * 0.35;
+    const xl = G.xpName(u.xp);
+    let html = `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b></div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
+    html += kv([['Güç', pct(u.str), u.str < 0.5 ? 'bad' : ''], ['Moral', `${Math.round(Math.max(0, u.org))}/${Math.round(s2.org)}`, u.org < s2.org * 0.3 ? 'bad' : ''], ['Tecrübe', xl], ['Saldırı', r1(s2.atk)], ['Savunma', r1(s2.def)], ['Atılım', r1(brk)], ['Zırh', Math.round(s2.arm)], ['Zırh delme', Math.round(s2.prc)], ['Genişlik', t.w], ['Hız', r1(s2.spd / 2.4) + ' km/s'], ['Siper', pct(u.ent || 0)], ['İkmal', pct(sup), sup < 0.8 ? 'bad' : '']]);
+    html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Tecrübe</span><div class="grow">${bar(u.xp ?? 0.25)}</div></div><div class="small muted" style="margin-top:-6px">${G.XP_LV.map(([, n]) => n === xl ? `<b style="color:var(--paper)">${n}</b>` : n).join(' › ')}</div>`;
+    html += sec('Komuta', `<div class="small">${a ? `${esc(a.n)}${gen ? ' · ' + esc(gen.n) : ''}` : 'Ordusuz'}${u.auto ? ' · otomatik kurmay' : ''}</div><div class="small muted">Teçhizat modelleri: piyade ${g.MODEL_N?.inf?.[Math.floor(u.lv?.inf || 1)] || 'Sv ' + r1(u.lv?.inf || 1)}${t.eq.art ? ' · topçu ' + (g.MODEL_N?.art?.[Math.floor(u.lv?.art || 1)] || r1(u.lv?.art || 1)) : ''}${t.eq.tank ? ' · tank ' + (g.MODEL_N?.tank?.[Math.floor(u.lv?.tank || 1)] || r1(u.lv?.tank || 1)) : ''}</div>`);
+    html += `<div class="btns"><button class="btn sm" data-act="divonly" data-v="${u.id}">Yalnız bunu seç</button><button class="btn sm" data-act="divrm" data-v="${u.id}">Seçimden çıkar</button>${(c.armies || []).length ? `<button class="btn sm" data-act="divarmy" data-v="${u.id}">Ordusu: ${a ? esc(a.n) : 'yok'} ›</button>` : ''}</div>`;
+    html += `<p class="muted small" style="margin:0">Atılım saldırırken aldığın hasarı, savunma savunurken aldığın hasarı azaltır. Zırh, düşmanın zırh delmesinden yüksekse tümen çok daha az kayıp verir. Tecrübe muharebede kazanılır; takviye gelen acemi askerler tecrübeyi düşürür.</p>`;
+    return { title: 'Tümen', html };
+  }
+  function armyDivisions(c, id) {
+    const a = G.armyById(c, id); if (!a) { UI.sub = null; return PANELS.army(); }
+    const us = G.armyUnits(c, id);
+    let html = `<div class="list">`;
+    for (const u of us) {
+      const s2 = G.unitStats(u);
+      html += `<button class="item" data-act="divinfo" data-v="${u.id}"><div class="grow"><div class="t">${esc(s2.t.n)} <span class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
+    }
+    return { title: `${a.n} · ${us.length} tümen`, html: html + '</div>' };
+  }
+  // Muharebe ekranı (HOI4 muharebe penceresi)
+  PANELS.battle = () => {
+    const st = G.st, n = UI.battleN;
+    const b = (G.battles || []).find((x) => x.n === n);
+    if (!b) return { title: 'Muharebe', html: `<p class="muted">${n >= 0 ? esc(G.pname(n)) : ''}: muharebe sona erdi.</p>` };
+    const te = g.TERRAIN[P[n].te];
+    const side = (tag, L, used, isAtt) => {
+      const gen = L[0] ? G.genOf(L[0]) : null;
+      const usedSet = new Set(used);
+      const w = used.reduce((s2, u) => s2 + (u._s?.t.w || 15), 0);
+      let h = `<div class="bside"><div class="row" style="gap:6px;align-items:center">${G.flag(tag, 24, 16)}<b>${esc(G.cname(tag))}</b></div><div class="small muted">${isAtt ? 'Saldıran' : 'Savunan'} · ${gen ? esc(gen.n) : 'komutan yok'}</div><div class="small">Cephede ${used.length} tümen (genişlik ${w}/${b.width}) · yedek ${L.length - used.length}</div><div class="bdivs">`;
+      for (const u of L.slice(0, 24)) { const s2 = u._s || G.unitStats(u); h += `<div class="bdiv ${usedSet.has(u) ? '' : 'res'}"><span>${s2.t.s}</span>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</div>`; }
+      return h + '</div></div>';
+    };
+    const mine = b.att === st.player || G.sameFaction(b.att, st.player);
+    const adv = mine ? b.adv : 1 - b.adv;
+    const mods = [];
+    if (te.atk) mods.push([`Arazi: ${te.n}`, `saldırı ${te.atk > 0 ? '+' : ''}${Math.round(te.atk * 100)}%`]);
+    if (b.fort) mods.push(['Tahkimat', `savunma +${b.fort * 15}%`]);
+    const ent = b.D.reduce((s2, u) => s2 + (u.ent || 0), 0) / Math.max(1, b.D.length);
+    if (ent > 0.05) mods.push(['Siper', `savunma +${Math.round(ent * 25)}%`]);
+    if (b.amph) mods.push(['Deniz çıkarması', 'saldırı cezası']);
+    const pc = st.C[b.att]; const ar = b.A[0]?.army && b.att === st.player ? G.armyById(pc, b.A[0].army) : null;
+    if (ar && ar.plan > 0.005) mods.push(['Planlama bonusu', `saldırı +${Math.round(ar.plan * 100)}%`]);
+    if (b.aAir !== 1) mods.push(['Saldıran hava gücü', `${b.aAir > 1 ? '+' : ''}${Math.round((b.aAir - 1) * 100)}%`]);
+    if (b.dAir !== 1) mods.push(['Savunan hava gücü', `${b.dAir > 1 ? '+' : ''}${Math.round((b.dAir - 1) * 100)}%`]);
+    const aArm = b.A.some((u) => u._s && u._s.arm > 0) ? Math.max(...b.A.map((u) => u._s?.arm || 0)) : 0;
+    const dPrc = b.D.reduce((s2, u) => s2 + (u._s?.prc || 0), 0) / Math.max(1, b.D.length);
+    if (aArm > dPrc) mods.push(['Zırh üstünlüğü (saldıran)', 'hasar +25%, kayıp −40%']);
+    let html = `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
+    html += `<div class="row" style="gap:8px;align-items:center"><b class="${adv > 0.55 ? 'good' : adv < 0.45 ? 'bad' : 'warn'}">${adv > 0.6 ? 'Kazanıyoruz' : adv < 0.4 ? 'Kaybediyoruz' : 'Denge'}</b><div class="grow">${bar(adv, adv > 0.55 ? 'g' : adv < 0.45 ? 'r' : '')}</div><span class="small">%${Math.round(adv * 100)}</span></div>`;
+    html += `<div class="bgrid">${side(b.att, b.atts, b.A, true)}${side(b.def, b.defs, b.D, false)}</div>`;
+    html += sec('Etkenler', mods.length ? `<div class="mods">${mods.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Özel etken yok.</p>');
+    html += `<p class="muted small" style="margin:0">Günlük vuruş: saldıran ${r1(b.hitD)} · savunan ${r1(b.hitA)}. Moral ve gücü biten tümenler geri çekilir; çekilecek yeri kalmayan tümenler imha olur.</p>`;
+    return { title: 'Muharebe', html };
   };
 
   function generalList(c) {
@@ -4929,7 +5307,7 @@ window.IDEOLOGIES = {
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
-  <section class="sec"><h3 class="sec-h">Ordular ve komutanlar</h3><p class="small" style="margin:0">Ordu panelinde tümenlerini ordulara topla ve her orduya bir general ya da mareşal ata. Komutanın saldırı, savunma, planlama ve lojistik becerileri ile özellikleri (Panzer Uzmanı, Kış Uzmanı, Çöl Tilkisi…) muharebeye eklenir. “Savun” emri cepheyi tutar, “Taarruz” emri fırsat buldukça saldırır; “Cephe” düğmesiyle hangi ülkeye karşı savaşacağını seçersin. Komutanlar muharebede tecrübe kazanıp seviye atlar.</p></section>
+  <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden oluşur. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
   <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
@@ -4949,7 +5327,7 @@ window.IDEOLOGIES = {
     let html = `<div class="card-h">${G.flag(pr.c, 36, 24)}<div class="grow"><h3>${esc(G.pname(i))}</h3><div class="muted small">${esc(G.cname(pr.c))}${occ ? ` · işgal altında (sahibi ${esc(G.cname(pr.o))})` : ''}</div></div><button class="x" data-act="closecard" aria-label="Kapat">✕</button></div>`;
     html += `<div class="facts"><span>Arazi <b>${te.n}</b></span><span>Zafer puanı <b>${p.vp}</b></span><span>Fabrika <b>S${pr.civ} A${pr.mil} T${pr.dock}</b></span><span>Tahkimat <b>${pr.fort}/5</b></span><span>Nüfus <b>${r1(pr.pop)} M</b></span>${p.st ? `<span>Çelik <b>${p.st}</b></span>` : ''}${p.oil ? `<span>Petrol <b>${p.oil}</b></span>` : ''}${p.c ? '<span><b>Kıyı</b></span>' : ''}</div>`;
     if (units.length) html += `<div class="facts">${Object.entries(byTag).map(([t, n]) => `<span>${G.flag(t, 18, 12)} <b>${n}</b> tümen</span>`).join('')}</div>`;
-    if (battle) html += `<div class="small"><span class="pill war">Muharebe</span> ${esc(G.cname(battle.att))} saldırıyor · üstünlük ${pct(battle.adv)}</div>`;
+    if (battle) html += `<div class="row" style="gap:8px;align-items:center"><div class="small grow"><span class="pill war">Muharebe</span> ${esc(G.cname(battle.att))} saldırıyor · üstünlük ${pct(battle.adv)}</div><button class="btn sm" data-act="battle" data-v="${battle.n}">Ayrıntı</button></div>`;
     const btns = [];
     if (byTag[c.tag]) btns.push(`<button class="btn pri" data-act="selprov" data-v="${i}">Birlikleri seç (${byTag[c.tag]})</button>`);
     if (pr.c === c.tag && pr.o === c.tag) btns.push(`<button class="btn" data-act="quickbuild" data-v="${i}">İnşa et</button>`);
@@ -4974,17 +5352,34 @@ window.IDEOLOGIES = {
       sb.hidden = !$('sheet').hidden; return;
     }
     const sel = st.units.filter((u) => R.sel.units.has(u.id));
-    if (!sel.length) { R.sel.units.clear(); $('selbar').hidden = true; return; }
+    if (!sel.length) { R.sel.units.clear(); R.sel.army = null; $('selbar').hidden = true; return; }
+    const c0 = me();
     const auto = sel.every((u) => u.auto);
     const locs = new Set(sel.map((u) => u.loc));
     const where = locs.size === 1 ? ([...locs][0] < NP ? G.pname([...locs][0]) : 'Denizde') : `${locs.size} konum`;
-    let html = `<div class="card-h"><div class="grow"><h3>${sel.length} tümen seçili</h3><div class="muted small">${esc(where)}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
-    html += `<div class="units">${sel.slice(0, 40).map((u) => { const s = G.unitStats(u); return `<button class="ubox on" data-act="unsel" data-v="${u.id}"><b>${s.t.s}</b>${bar(u.str, 'g')}${bar(u.org / s.org)}</button>`; }).join('')}</div>`;
-    const c0 = me(); const a0 = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
-    if (a0) { const gen = a0.gen ? G.genById(c0, a0.gen) : null; html += `<div class="small muted">${esc(a0.n)} · ${gen ? esc(gen.n) : 'komutansız'} · emir: ${({ hold: 'Bekle', def: 'Savun', atk: 'Taarruz' })[a0.ord]}</div>`; }
-    html += `<div class="hint">${auto ? 'Bu tümenler otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedef eyalete dokun. Düşman eyaleti saldırı başlatır.'}</div>`;
-    if (!sel.length) return;
-    html += `<div class="btns"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto ${auto ? 'açık' : 'kapalı'}</button><button class="btn sm" data-act="selall">Bölgedekilerin tümü</button><button class="btn sm" data-act="selarmy">${a0 ? 'Ordu emirleri' : 'Ordu kur'}</button></div>`;
+    const a0 = R.sel.army ? G.armyById(c0, R.sel.army) : null;
+    const avgStr = sel.reduce((s2, u) => s2 + u.str, 0) / sel.length;
+    const avgOrg = sel.reduce((s2, u) => s2 + Math.max(0, u.org) / G.unitStats(u).org, 0) / sel.length;
+    let html = '';
+    if (a0 && sel.every((u) => u.army === a0.id)) {
+      // ---- Ordu seçimi (HOI4 ordu kartı) ----
+      const gen = a0.gen ? G.genById(c0, a0.gen) : null;
+      const mx = G.maxPlan(c0, a0);
+      html += `<div class="card-h"><div class="grow"><h3><span class="adot" style="background:${G.armyColor(a0)}"></span>${esc(a0.n)} <span class="muted small">${sel.length} tümen</span></h3><div class="muted small">${gen ? esc(gen.n) + ` · S${gen.atk} Sv${gen.def} P${gen.plan} L${gen.log}` : 'Komutansız'} · Cephe: ${a0.vs ? esc(G.cname(a0.vs)) : 'tüm düşmanlar'}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
+      html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a0.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a0.plan || 0) / mx, a0.ord === 'atk' ? 'r' : 'g')}</div><span class="small muted">Güç ${pct(avgStr)}</span></div>`;
+      html += `<div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a0.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a0.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
+      html += UI.goalMode === a0.id ? '<div class="hint">Taarruz hedefi olacak düşman eyaletine dokun.</div>' : '<div class="hint small">Düşman eyaletine dokun: taarruz oku · kendi eyaletine: ordu oraya yürür · sayaca dokun: o yığını seç.</div>';
+      html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
+    } else {
+      // ---- Tümen seçimi ----
+      const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
+      const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.' };
+      html += `<div class="card-h"><div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
+      html += `<div class="units">${sel.slice(0, 40).map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
+      const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
+      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      html += `<div class="hint small">${auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
+    }
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
     sb.hidden = !$('sheet').hidden;
@@ -5092,14 +5487,47 @@ window.IDEOLOGIES = {
   };
   ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; } UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
   ACT.armydel = (d) => { G.disbandArmy(me(), +d.v); UI.render(); };
-  ACT.armyord = (d) => { const a = armyOf(d.k); a.ord = d.v; if (d.v === 'hold') for (const u of G.armyUnits(me(), a.id)) { u.path = []; } UI.toast(`${a.n}: ${({ hold: 'beklemede', def: 'cepheyi savunuyor', atk: 'taarruz emri aldı' })[d.v]}.`, d.v === 'atk' ? 'major' : 'info'); UI.render(); };
+  ACT.armyord = (d) => {
+    const c = me(), a = armyOf(d.k); a.ord = d.v; c._frontsDirty = 1;
+    if (d.v === 'hold') for (const u of G.armyUnits(c, a.id)) { u.path = []; }
+    if (d.v !== 'hold') G.computeFronts(c);
+    const noFront = d.v !== 'hold' && !(a.front || []).length;
+    UI.toast(noFront ? `${a.n}: ${c.enemies.length || a.vs ? 'yakında cephe yok; tümenleri sınıra taşı ya da cephe ülkesini değiştir' : 'savaşta değilsin; “Cephe” ile bir komşu seçersen sınırda hat kurar'}.` : `${a.n}: ${({ hold: 'beklemede', def: 'cepheyi tutuyor, planlama sürüyor', atk: `taarruz başladı (plan bonusu %${Math.round((a.plan || 0) * 100)})` })[d.v]}.`, noFront ? 'warn' : d.v === 'atk' ? 'major' : 'info');
+    UI.render(); UI.renderSel(); R.dirty = 1;
+  };
   ACT.armyvs = (d) => {
     const st = G.st, c = me(), a = armyOf(d.v);
     const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) { const t = st.prov[j].c; if (t !== c.tag) neigh.add(t); }
     const opts = [null, ...new Set([...c.enemies, ...neigh])].filter((t) => t === null || st.C[t]?.alive);
-    const k = opts.indexOf(a.vs); a.vs = opts[(k + 1) % opts.length]; UI.render();
+    const k = opts.indexOf(a.vs); a.vs = opts[(k + 1) % opts.length]; c._frontsDirty = 1; G.computeFronts(c);
+    UI.toast(`${a.n} cephesi: ${a.vs ? G.cname(a.vs) : 'tüm düşmanlar'}${(a.front || []).length ? ` (${a.front.length} eyalet)` : ''}.`);
+    UI.render(); UI.renderSel(); R.dirty = 1;
   };
-  ACT.armysel = (d) => { const c = me(); const us = G.armyUnits(c, +d.v); if (!us.length) { UI.toast('Orduda tümen yok.', 'warn'); return; } R.sel.units = new Set(us.map((u) => u.id)); R.focusOn(us[0].loc, 1.8); UI.close(); UI.renderSel(); R.dirty = 1; };
+  UI.selectArmy = (id, focus) => { const c = me(); const us = G.armyUnits(c, +id); if (!us.length) { UI.toast('Orduda tümen yok.', 'warn'); return false; } R.sel.units = new Set(us.map((u) => u.id)); R.sel.army = +id; R.sel.fleet = null; R.sel.prov = -1; if (focus) { const n = R.armyAnchor(G.armyById(c, +id)); R.focusOn(n >= 0 ? n : us[0].loc, 1.6); } UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return true; };
+  ACT.armysel = (d) => { UI.selectArmy(d.v, true); };
+  ACT.armypick = (d) => { UI.selectArmy(d.v, false); };
+  ACT.armygoal = (d) => {
+    const a = armyOf(d.v); if (!a) return;
+    if (UI.goalMode === a.id) { UI.goalMode = null; UI.renderSel(); return; }
+    if (!UI.selectArmy(a.id, true)) return;
+    UI.goalMode = a.id; UI.renderSel(); UI.toast('Taarruz hedefi olacak eyalete dokun.');
+  };
+  ACT.armygoalclr = (d) => { const a = armyOf(d.v); if (a) { a.goal = null; UI.goalMode = null; } UI.render(); UI.renderSel(); R.dirty = 1; };
+  ACT.armydeploy = (d) => { const c = me(); c.deployArmy = c.deployArmy === +d.v ? null : +d.v; UI.toast(c.deployArmy ? 'Eğitimi biten tümenler bu orduya katılacak.' : 'Yeni tümenler ordusuz konuşlanacak.'); UI.render(); };
+  ACT.armydivs = () => { UI.panel = 'army'; UI.sub = 'divs:' + R.sel.army; UI.render(true); };
+  ACT.sub2 = (d) => { UI.panel = d.p; UI.sub = d.v; UI.render(true); };
+  ACT.divinfo = (d) => { UI.panel = 'army'; UI.sub = 'div:' + d.v; UI.render(true); };
+  ACT.divonly = (d) => { R.sel.units = new Set([+d.v]); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
+  ACT.divrm = (d) => { R.sel.units.delete(+d.v); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
+  ACT.divarmy = (d) => { const c = me(); const u = G.st.units.find((x) => x.id === +d.v); if (!u) return; const L = c.armies || []; const k = L.findIndex((a) => a.id === u.army); const nx = L[k + 1]; u.army = nx ? nx.id : 0; u.auto = 0; u.path = []; UI.render(); R.dirty = 1; };
+  ACT.stratr = () => {
+    const st = G.st; let n = 0;
+    for (const u of st.units) if (R.sel.units.has(u.id) && u.path.length) { if (u.path.some((x) => x >= NP || G.atWar(u.t, st.prov[x]?.c))) continue; u.sr = 1; n++; }
+    UI.toast(n ? `${n} tümen stratejik konuşlanmada: demiryoluyla 4 kat hızlı, varışta moral düşük.` : 'Önce dost topraklarda bir hedef seç, sonra Strat. konuşlan’a bas.', n ? 'info' : 'warn');
+    R.dirty = 1; UI.renderSel();
+  };
+  // muharebe ayrıntısı
+  ACT.battle = (d) => { UI.panel = 'battle'; UI.battleN = +d.v; UI.sub = null; UI.render(true); };
   ACT.setgen = (d) => { const c = me(); for (const a of c.armies) if (a.gen === +d.v) a.gen = null; armyOf(d.k).gen = +d.v; UI.sub = null; UI.render(true); };
   ACT.newgen = () => { const c = me(); if (c.pp < 50) return; c.pp -= 50; const gen = G.newGeneral(c); UI.toast(`${gen.n} göreve başladı.`, 'good'); UI.render(); };
   ACT.tplnew = () => { const c = me(); const tpl = G.templatesOf(c); const id = 't' + G.st.nextId++; tpl[id] = { n: 'Yeni Tümen ' + (Object.keys(tpl).length - 5), b: { inf: 7, art: 2 }, s: {} }; G.invalidateTemplates(c); UI.sub = 'tpl:' + id; UI.render(true); };
@@ -5120,7 +5548,7 @@ window.IDEOLOGIES = {
   ACT.closecard = () => { $('card').hidden = true; R.sel.prov = -1; R.dirty = 1; };
   ACT.opencountry = (d) => { UI.panel = 'dip'; UI.sub = 'c:' + d.v; UI.render(true); };
   ACT.showc = (d) => { const c = G.st.C[d.v]; if (c.cap >= 0) R.focusOn(c.cap, 1.5); UI.close(); };
-  ACT.clearsel = () => { R.sel.fleet = null; R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; };
+  ACT.clearsel = () => { R.sel.fleet = null; R.sel.units.clear(); R.sel.army = null; UI.goalMode = null; $('selbar').hidden = true; R.dirty = 1; };
   ACT.unsel = (d) => { R.sel.units.delete(+d.v); UI.renderSel(); R.dirty = 1; };
   ACT.stop = () => { for (const u of G.st.units) if (R.sel.units.has(u.id)) { u.path = []; u.prog = 0; } R.dirty = 1; UI.toast('Tümenler durduruldu.'); };
   ACT.split = () => { const ids = [...R.sel.units]; const keep = ids.slice(0, Math.ceil(ids.length / 2)); R.sel.units = new Set(keep); UI.renderSel(); R.dirty = 1; };
@@ -5402,10 +5830,34 @@ window.IDEOLOGIES = {
       const mine = (G.unitsAt[node] || []).filter((u) => u.t === st.player);
       if (!mine.length) return false;
       R.sel.units = new Set(mine.map((u) => u.id));
-      R.sel.prov = -1;
+      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null;
       UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
       return true;
     };
+    const pc = st.C[st.player];
+    const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
+    const setGoal = (a, node) => {
+      const owner = st.prov[node].c;
+      if (owner === st.player || G.sameFaction(owner, st.player)) return false;
+      a.goal = node; if (a.ord === 'hold') a.ord = 'def';
+      if (!G.atWar(st.player, owner)) a.vs = owner;
+      pc._frontsDirty = 1; G.computeFronts(pc);
+      UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
+      return true;
+    };
+    // taarruz oku modu
+    if (UI.goalMode) {
+      const a = G.armyById(pc, UI.goalMode); UI.goalMode = null;
+      if (a && n >= 0 && n < NP && !setGoal(a, n)) UI.toast('Ok, düşman ya da yabancı bir eyalete çizilmeli.', 'warn');
+      UI.renderSel(); R.dirty = 1; return;
+    }
+    // ordu etiketi
+    if (cnt && cnt.army) { if (R.sel.army === cnt.army) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; } else UI.selectArmy(cnt.army); return; }
+    // muharebe simgesi
+    if (!cnt && !R.sel.fleet && !R.sel.units.size) {
+      const bm = (R.battleMarks || []).find((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
+      if (bm) { UI.panel = 'battle'; UI.sub = null; UI.battleN = bm.b.n; $('card').hidden = true; UI.render(true); return; }
+    }
     // filo seçimi ve hareketi
     if (cnt && cnt.fleet && cnt.tag === st.player) { R.sel.fleet = cnt.fleet; R.sel.units.clear(); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return; }
     if (R.sel.fleet) {
@@ -5422,11 +5874,19 @@ window.IDEOLOGIES = {
     if (R.sel.units.size) {
       const sel = st.units.filter((u) => R.sel.units.has(u.id));
       const allHere = sel.length > 0 && sel.every((u) => u.loc === n);
-      if (cnt && cnt.tag === st.player) { if (allHere) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; } else selectAt(cnt.n); return; }
-      if (n < 0 || allHere) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
+      if (cnt && cnt.tag === st.player && !cnt.fleet) {
+        if (allHere && !R.sel.army) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
+        const arm = armyOfCnt(cnt);
+        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else selectAt(cnt.n);
+        return;
+      }
+      if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
+      // ordu seçiliyken düşman eyaleti: taarruz oku (HOI4 savaş planı)
+      const a = R.sel.army ? G.armyById(pc, R.sel.army) : null;
+      if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
       order(sel, n); return;
     }
-    if (cnt && cnt.tag === st.player) { selectAt(cnt.n); return; }
+    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else selectAt(cnt.n); return; }
     if (n < 0) { R.sel.prov = -1; $('card').hidden = true; R.dirty = 1; return; }
     if (n >= NP) { selectAt(n); return; }
     R.sel.prov = n;
