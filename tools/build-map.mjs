@@ -10,7 +10,7 @@ import * as topojson from 'topojson-client';
 import * as simp from 'topojson-simplify';
 import { Delaunay } from 'd3-delaunay';
 import pc from 'polygon-clipping';
-import { CITIES } from './cities.mjs';
+import { CITIES, ISLANDS } from './cities.mjs';
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -256,7 +256,18 @@ groups.forEach((g, gi) => {
       return !(a < 40 && d > 70);
     });
     if (!shape.length) return;
-    provinces.push({ tag: g.tag, seed: s, shape });
+    // birbirinden uzak parçaları ayrı eyaletlere böl (ör. uzak adalar)
+    const partInfo = shape.map((poly) => { let mx = 0, my = 0; for (const p of poly[0]) { mx += p[0]; my += p[1]; } return { poly, a: Math.abs(ringArea(poly[0])), x: mx / poly[0].length, y: my / poly[0].length }; });
+    partInfo.sort((a, b) => b.a - a.a);
+    const clusters = [];
+    for (const pt of partInfo) {
+      const cl = clusters.find((c) => Math.hypot(c.x - pt.x, c.y - pt.y) < 30);
+      const arctic = Math.abs(invLat(pt.y)) > 60 && pt.a < 120;
+      if (cl) cl.parts.push(pt.poly);
+      else if ((pt.a >= 4 && !arctic) || !clusters.length) clusters.push({ x: pt.x, y: pt.y, parts: [pt.poly] });
+      else if (arctic) clusters[0].parts.push(pt.poly);
+    }
+    for (const cl of clusters) provinces.push({ tag: g.tag, seed: cl === clusters[0] ? s : [cl.x, cl.y], shape: cl.parts });
   });
 });
 console.log('groups', groups.length, 'provinces', provinces.length);
@@ -274,6 +285,33 @@ for (const p of provinces) {
   const ll = [invLon(p.cx), invLat(p.cy)];
   for (const [from, to, zone] of REASSIGN) if (p.tag === from && pip(ll, zone)) { p.tag = to; break; }
 }
+
+// ---------- 4b. Stratejik adalar ve enklavlar ----------
+const circle = (x, y, r, n = 14) => { const o = []; for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2; o.push([x + Math.cos(a) * r, y + Math.sin(a) * r * 0.9]); } o.push(o[0]); return o; };
+const projPt = (lon, lat) => { const rel = lon - LON0; const sh = rel < -180 ? 360 : rel >= 180 ? -360 : 0; return [projX(lon, sh), projY(lat)]; };
+const insideProv = (pt) => provinces.findIndex((p) => { let ins = false; for (const poly of p.shape) for (const r of poly) if (pip(pt, r)) ins = !ins; return ins; });
+for (const [name, lon, lat, tag, kind, r] of ISLANDS) {
+  const pt = projPt(lon, lat);
+  const at = insideProv(pt);
+  const circ = [circle(pt[0], pt[1], r || 3.4)];
+  if (kind === 'island') {
+    if (at >= 0) { if (provinces[at].tag !== tag) { provinces[at].tag = tag; provinces[at].fixed = 1; } continue; }
+    // komşu kara ile çakışmasın
+    let shape = [circ];
+    for (const p of provinces) { if (Math.hypot(p.cx - pt[0], p.cy - pt[1]) > 120) continue; try { shape = pc.difference(shape, p.shape); } catch (e) { /* */ } }
+    if (!shape.length) continue;
+    provinces.push({ tag, seed: pt, shape, cx: pt[0], cy: pt[1], fixed: 1 });
+  } else {
+    if (at < 0) continue;
+    const host = provinces[at];
+    let part, rest;
+    try { part = pc.intersection(host.shape, [circ]); rest = pc.difference(host.shape, [circ]); } catch (e) { continue; }
+    if (!part.length || !rest.length) continue;
+    host.shape = rest;
+    provinces.push({ tag, seed: pt, shape: part, cx: pt[0], cy: pt[1], fixed: 1 });
+  }
+}
+console.log('provinces after islands', provinces.length);
 
 // ---------- 5. Kenarları paylaşılan köşelerle böl ve yuvarla ----------
 const Q = 4; // 0.25 birim hassasiyet

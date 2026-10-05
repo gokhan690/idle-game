@@ -74,6 +74,7 @@ window.COUNTRY_DEFS = {
   COL: { n: 'Kolombiya', c: '#dcbc45', id: 'dem', l: 'Alfonso López Pumarejo', cap: 'Bogota', civ: 3, mil: 0, dock: 0, pop: 8.7, div: { inf: 4 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   ECU: { n: 'Ekvador', c: '#cdcd62', id: 'neu', l: 'Federico Páez', cap: 'Quito', civ: 1, mil: 0, dock: 0, pop: 2.5, div: { inf: 2 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   // Olaylarla ortaya çıkan devletler
+  SPN: { n: 'Milliyetçi İspanya', c: '#9a7b32', id: 'fas', l: 'Francisco Franco', cap: 'Sevilla', civ: 0, mil: 0, dock: 0, pop: 0, div: {}, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 1, hidden: 1 },
   SLO: { n: 'Slovakya', c: '#5f8fc4', id: 'fas', l: 'Jozef Tiso', cap: 'Bratislava', civ: 0, mil: 0, dock: 0, pop: 0, div: {}, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 1, hidden: 1 },
 };
 

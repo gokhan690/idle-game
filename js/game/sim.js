@@ -6,20 +6,23 @@
   // ---------- Özetler ----------
   G.updateSummaries = () => {
     const st = G.st;
-    for (const c of Object.values(st.C)) c.sum = { civ: 0, mil: 0, dock: 0, steel: 0, oil: 0, pop: 0, vp: 0, provs: 0, slotsFree: 0 };
+    for (const c of Object.values(st.C)) c.sum = { civ: 0, mil: 0, dock: 0, steel: 0, oil: 0, pop: 0, vp: 0, provs: 0, slotsFree: 0, res: { steel: 0, oil: 0, al: 0, rub: 0, tun: 0, chr: 0 } };
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i], c = st.C[pr.c]; if (!c) continue;
       const own = pr.o === pr.c || pr.core === pr.c;
       const k = own ? 1 : 0.4;
       const s = c.sum;
       s.civ += pr.civ * k; s.mil += pr.mil * k; s.dock += pr.dock * k;
-      s.steel += P[i].st * k + (own ? 0.4 : 0.1); s.oil += P[i].oil * k + (own ? 0.15 : 0);
+      const R = G.PR[i], sr = s.res;
+      sr.steel += R.steel * k + (own ? 0.4 : 0.1); sr.oil += R.oil * k + (own ? 0.15 : 0);
+      sr.al += R.al * k; sr.rub += R.rub * k; sr.tun += R.tun * k; sr.chr += R.chr * k + (own ? 0.05 : 0);
       s.pop += pr.pop * (own ? 1 : 0.2); s.vp += P[i].vp; s.provs++;
     }
     for (const c of Object.values(st.C)) {
       const s = c.sum;
       s.civ = Math.floor(s.civ); s.mil = Math.floor(s.mil); s.dock = Math.floor(s.dock);
-      s.steel += c.mods.steel || 0; s.oil += c.mods.oil || 0;
+      for (const r of g.RES_KEYS) s.res[r] += c.mods[r] || 0;
+      s.steel = s.res.steel; s.oil = s.res.oil;
       if (c.alive && s.provs === 0) G.killCountry(c.tag);
     }
   };
@@ -78,34 +81,29 @@
   // Kaynak dengesi ve serbest sivil fabrika hesabı (durumu değiştirmez)
   G.econCalc = (c) => {
     const m = c.mods, s = c.sum;
-    const keep = 1 - (m.resLoss || 0);
-    const haveS = s.steel * keep, haveO = s.oil * keep;
-    let needSteel = 0, needOil = 0;
+    const sold = (G._sold && G._sold[c.tag]) || {};
     let milAssigned = 0, dockAssigned = 0;
     for (const l of c.lines) { const e = g.EQUIP[l.e]; if (e.fac === 'mil') milAssigned += l.f; else dockAssigned += l.f; }
     const milScale = milAssigned > s.mil ? s.mil / milAssigned : 1;
     const dockScale = dockAssigned > s.dock ? s.dock / dockAssigned : 1;
-    for (const l of c.lines) { const e = g.EQUIP[l.e]; const f = l.f * (e.fac === 'mil' ? milScale : dockScale); needSteel += f * e.steel; needOil += f * e.oil; }
-    const civAfterCG = Math.max(0, s.civ * (1 - m.cg));
-    let trade = 0;
-    const defS = Math.max(0, needSteel - haveS), defO = Math.max(0, needOil - haveO);
-    const blockade = c.blockade || 0;
-    const wantTrade = Math.ceil((defS + defO) / 8);
-    trade = Math.min(wantTrade, Math.floor(civAfterCG * 0.6));
-    const imported = trade * 8 * (1 - blockade);
-    const impS = defS + defO > 0 ? imported * defS / (defS + defO) : 0, impO = imported - impS;
-    const rS = needSteel > 0 ? Math.min(1, (haveS + impS) / needSteel) : 1;
-    const rO = needOil > 0 ? Math.min(1, (haveO + impO) / needOil) : 1;
-    c.res = c.res || [];
+    const need = {}, have = {}, ratio = {};
+    for (const r of g.RES_KEYS) need[r] = 0;
+    for (const l of c.lines) { const e = g.EQUIP[l.e]; const f = l.f * (e.fac === 'mil' ? milScale : dockScale); for (const [r, v] of Object.entries(e.res)) need[r] += f * v; }
+    const im = G.importsOf(c);
+    for (const r of g.RES_KEYS) { have[r] = Math.max(0, (s.res ? s.res[r] : 0) - (sold[r] || 0)) + im.imp[r]; ratio[r] = need[r] > 0 ? Math.min(1, have[r] / need[r]) : 1; }
+    const civGross = s.civ + im.expCiv;
+    const civAfterCG = Math.max(0, civGross * (1 - m.cg));
     const stab = c.stab ?? 0.5;
     const stabF = stab < 0.5 ? (stab - 0.5) * 0.5 : (stab - 0.5) * 0.2;
-    c.econ = { civFree: Math.max(0, civAfterCG - trade), trade, needSteel, needOil, haveS, haveO, rS, rO, cg: Math.round(s.civ * m.cg), milScale, dockScale, stabF };
+    c.res = c.res || [];
+    c.econ = { civFree: Math.max(0, civAfterCG - im.civ), civGross, trade: im.civ, expCiv: im.expCiv, need, have, ratio, imp: im.imp, convRatio: im.convRatio,
+      needSteel: need.steel, needOil: need.oil, rS: ratio.steel, rO: ratio.oil, cg: Math.round(civGross * m.cg), milScale, dockScale, stabF };
     c.mpAvail = G.manpower(c).avail;
     return c.econ;
   };
   function economy(c) {
     const st = G.st, m = c.mods, s = c.sum;
-    const { rS, rO, milScale, dockScale, stabF } = G.econCalc(c);
+    const { ratio, milScale, dockScale, stabF } = G.econCalc(c);
     c.ppDay = (2 + (m.pp || 0)) * Math.max(0.2, 1 + (m.ppM || 0) + ((c.stab ?? 0.5) - 0.5) * 0.4);
     c.pp = Math.min(2000, c.pp + c.ppDay);
     // inşaat
@@ -133,12 +131,17 @@
       const f = l.f * (e.fac === 'mil' ? milScale : dockScale);
       if (f <= 0) continue;
       l.eff = Math.min(effCap, l.eff + 0.004 * (effCap - l.eff + 0.05));
-      const rr = Math.min(e.steel ? rS : 1, e.oil ? rO : 1);
+      let rr = 1; for (const r of Object.keys(e.res)) rr = Math.min(rr, ratio[r]);
       const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb);
+      if (e.convoy) { c.ships.conv = (c.ships.conv || 0) + ic / e.cost; continue; }
       if (e.ship) {
         l.acc = (l.acc || 0) + ic;
-        while (l.acc >= e.cost) { l.acc -= e.cost; c.ships[l.e] = (c.ships[l.e] || 0) + 1; if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
-      } else c.stock[l.e] = (c.stock[l.e] || 0) + ic / e.cost;
+        while (l.acc >= e.cost) { l.acc -= e.cost; G.addShip(c, l.e); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
+      } else {
+        const add = ic / e.cost, old = c.stock[l.e] || 0, lv = l.lv || G.bestLevel(c, l.e);
+        c.sl[l.e] = old + add > 0 ? ((c.sl[l.e] || lv) * old + lv * add) / (old + add) : lv;
+        c.stock[l.e] = old + add;
+      }
     }
     // araştırma
     const slots = m.slots;
@@ -227,28 +230,33 @@
   // ---------- Hava / deniz savaşı (soyut) ----------
   function airNaval() {
     const st = G.st;
-    for (const c of Object.values(st.C)) { c.bombed = 0; c.blockade = 0; c.airMod = 1; }
+    for (const c of Object.values(st.C)) { c.bombed = 0; c.airMod = 1; }
+    // stratejik bombardıman: her ülkenin bombardıman uçakları seçtiği (ya da en güçlü) düşmanı vurur
+    const bombIn = {};
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.enemies.length || !(c.stock.bom > 1)) continue;
+      const a = c.air || {};
+      if (a.bomb === 'off') continue;
+      let tgt = a.bomb && a.bomb !== 'auto' && G.atWar(c.tag, a.bomb) ? a.bomb : null;
+      if (!tgt) tgt = c.enemies.reduce((b, t) => ((st.C[t].sum.mil || 0) > (st.C[b]?.sum.mil || -1) ? t : b), c.enemies[0]);
+      bombIn[tgt] = (bombIn[tgt] || 0) + c.stock.bom * G.lvl(c, 'bom');
+      // bombardıman kayıpları hedefin avcılarına göre
+      const tf = (st.C[tgt].stock.fig || 0) * G.lvl(st.C[tgt], 'fig');
+      c.stock.bom = Math.max(0, c.stock.bom * (1 - 0.003 * tf / (tf + c.stock.bom + 1)));
+    }
     for (const c of Object.values(st.C)) {
       if (!c.alive || !c.enemies.length) continue;
-      let eAir = 0, eNavy = 0, eBom = 0;
-      for (const t of c.enemies) { const e = st.C[t]; eAir += G.airPower(e); eNavy += G.navyPower(e); eBom += (e.stock.bom || 0) * e.mods.eq_bom; }
-      const myAir = G.airPower(c), myNavy = G.navyPower(c);
-      // uçak kayıpları
+      let eAir = 0;
+      for (const t of c.enemies) eAir += G.airPower(st.C[t]);
+      const myAir = G.airPower(c);
       const ratio = eAir / (myAir + eAir + 1);
-      for (const k of g.PLANES) c.stock[k] = Math.max(0, c.stock[k] * (1 - 0.0015 - 0.004 * ratio));
-      // stratejik bombardıman
-      c.bombed = Math.min(0.2, (eBom / ((c.stock.fig || 0) * c.mods.eq_fig * 2 + 60)) * 0.06);
-      // deniz yıpranması ve abluka
-      if (eNavy > 0 && myNavy > 0) {
-        const r = eNavy / (myNavy + eNavy);
-        for (const e of g.SHIPS) c.ships[e] = Math.max(0, c.ships[e] - c.ships[e] * 0.0012 * r * (0.5 + G.rand()));
-      }
-      c.blockade = eNavy > myNavy * 1.5 ? Math.min(0.6, 0.15 + 0.1 * (eNavy / (myNavy + 1))) : 0;
-      // hava üstünlüğü: muharebe değiştiricisi
+      for (const k of g.PLANES) c.stock[k] = Math.max(0, c.stock[k] * (1 - 0.0012 - 0.004 * ratio));
+      const eBom = bombIn[c.tag] || 0;
+      c.bombed = Math.min(0.25, (eBom / ((c.stock.fig || 0) * G.lvl(c, 'fig') * 2 + 60)) * 0.06);
+      if (eBom) c.wsX -= 0.0002 * Math.min(1, eBom / 500);
       const s = myAir / (myAir + eAir + 1);
       let aa = 0; for (const t of c.enemies) aa = Math.max(aa, st.C[t].mods.aa || 0);
       c.airMod = 1 + 0.4 * (s - 0.5) * (s > 0.5 ? 1 - aa : 1);
-      c.eNavy = eNavy;
     }
   }
 
@@ -277,9 +285,9 @@
       const seaLeg = n >= NP || u.loc >= NP;
       u.prog += seaLeg ? G.SEA_SPEED : stats.spd;
       if (seaLeg && u.loc >= NP) {
-        // düşman donanması baskınsa denizde kayıp
-        const c = st.C[u.t];
-        if (c.eNavy && c.eNavy > G.navyPower(c) * 1.5) u.str = Math.max(0.05, u.str - 0.012);
+        // denizde düşman üstünlüğü varsa kayıp
+        const sup = G.navalSupremacy(u.t, u.loc);
+        if (sup < 0.4) u.str = Math.max(0.05, u.str - 0.02 * (0.4 - sup) / 0.4);
       }
       const need = G.edgeDays(u.loc, n, 1) * (seaLeg ? G.SEA_SPEED : 1);
       if (u.prog >= need) {
@@ -307,6 +315,19 @@
     const home = pr.c === u.t || G.friendly(u.t, pr.c);
     u.org = Math.min(s.org, u.org + s.org * (home ? 0.08 : 0.04) * G.supplyMul(u));
     u.ent = Math.min(1, u.ent + 0.04 * (1 + (c.mods.entrench || 0) + (s.t.ent || 0) + (s.gb ? s.gb.ent + s.gb.plan : 0)));
+    // modernizasyon: stokta daha yeni model varsa yavaşça değiştir
+    if (home && u.lv && st.day % 2 === 0) {
+      const T = G.T(u.t, u.u);
+      for (const [k, e] of [['inf', 'inf'], ['art', 'art'], ['tank', 'tank']]) {
+        const sl = c.sl[e]; if (!sl || !T.eq[e] || sl <= u.lv[k] + 0.04) continue;
+        const need = T.eq[e] * 0.04;
+        if (c._rf == null || c._rfDay !== st.day) { c._rf = {}; c._rfDay = st.day; }
+        const budget = c._rf[e] ?? ((c.stock[e] || 0) - T.eq[e] * 2) * 0.03;
+        if (budget < need) continue;
+        c._rf[e] = budget - need;
+        c.stock[e] -= need; u.lv[k] = Math.min(sl, u.lv[k] + (sl - u.lv[k]) * 0.08 + 0.005);
+      }
+    }
     if (u.str < 1 && home) {
       const def = G.T(u.t, u.u);
       let r = Math.min(0.05, 1 - u.str);
@@ -357,14 +378,14 @@
       let tm = (1 + te.atk) * terrainMul(s, te, lat, month);
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (s.gb && s.gb.plan && u.bd < 8 && u.army) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u);
+      atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= airAdj(c.airMod || 1, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month);
+      atk *= airAdj(c.airMod || 1, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decrypt && c.decrypt[attTag] > st.day ? 1.12 : 1);
       if (s.arm > aPrc) atk *= 1.25;
       hitA += atk;
     }
@@ -505,6 +526,13 @@
     const msg = full ? `${G.cname(tag)} teslim oldu ve ${G.cname(winner)} tarafından ilhak edildi!` : `${G.cname(tag)} teslim oldu! Kalan toprakları tarafsız bir rejim altında.`;
     G.log(msg, [tag, winner], tag === st.player ? 'bad' : 'major');
     if (G.onCapitulate) G.onCapitulate(tag, winner, full);
+    // barış konferansı: oyuncu kazanansa kukla devlet seçeneği
+    if (winner === st.player && tag !== st.player && G.queuePopup) {
+      G.queuePopup({ title: 'Barış Konferansı', text: `${G.cname(tag)} teslim oldu. İşgal ettiğimiz asli topraklarında ne yapalım?`, opts: [
+        { n: 'Topraklarını ilhak et', fx: () => {} },
+        { n: 'Kukla devlet olarak kur', fx: () => G.makePuppet(st.player, tag) },
+      ] });
+    }
     G.rebuildUnitIndex();
   };
 
@@ -528,7 +556,10 @@
     if (st.over === 1) return;
     st.day++;
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
+    G.precomputeTrade();
     airNaval();
+    G.navalTick();
+    if (st.day % 7 === 3) G.tradeTick();
     precomputeManpower();
     if (st.day % 5 === 0 || G.supDirty) { computeSupply(); G.supDirty = 0; }
     for (const c of Object.values(st.C)) if (c.alive) { G.polTick(c); economy(c); }
@@ -545,6 +576,7 @@
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
+    G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
   };
 })(window);

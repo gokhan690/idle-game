@@ -11,22 +11,51 @@
     { id: 'urban', n: 'Şehir', atk: -0.3, move: 1.0, width: 3, c: '#9c8f86' },
   ];
 
-  // Teçhizat: maliyet (IC), fabrika türü, günlük kaynak ihtiyacı (fabrika başına)
+  // Kaynaklar
+  g.RES = { steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
+  g.RES_KEYS = Object.keys(g.RES);
+  // Bölgesel kaynak yatakları: [kaynak, batı, güney, doğu, kuzey, eyalet başına miktar]
+  g.RES_ZONES = [
+    ['rub', 99, -1, 105, 7, 9], ['rub', 95, -9, 120, 6, 4], ['rub', 102, 8, 110, 16, 3], ['rub', 79, 5, 82, 10, 3], ['rub', -12, 4, -7, 9, 5],
+    ['rub', -72, -12, -45, 2, 2], ['rub', 14, -6, 30, 4, 1], ['rub', 98, 6, 104, 15, 2],
+    ['al', 2, 42, 8, 45, 4], ['al', 16, 45.5, 23, 48.5, 5], ['al', 14, 42, 20, 46, 3], ['al', -60, 2, -53, 8.5, 8], ['al', -95, 32, -89, 36.5, 8],
+    ['al', 29, 55, 62, 62, 1], ['al', 104, -2, 110, 2, 3], ['al', -3, 5, 1, 8, 3], ['al', 21, 37, 24, 39, 2], ['al', 5, 58, 12, 63, 3],
+    ['al', -76, 45.5, -68, 50, 6], ['al', 115, -35, 118, -30, 2], ['al', 9, 46, 17, 48.5, 1],
+    ['tun', 110, 22, 118, 28.5, 8], ['tun', 95, 15, 99, 22, 4], ['tun', -9.5, 39, -6, 42.2, 6], ['tun', -9.5, 41, -5, 44, 3], ['tun', -120, 35, -114, 41.5, 4],
+    ['tun', 125, 35, 130, 40, 4], ['tun', 42, 42, 45, 44, 2], ['tun', -69, -22, -63, -15, 5], ['tun', 98, 13, 101, 19, 2], ['tun', 66, 36, 75, 42, 1],
+    ['chr', 27, 36, 44.5, 41.5, 4], ['chr', 56, 50, 62, 58.5, 5], ['chr', 25, -27, 31.5, -23, 6], ['chr', 27.5, -21, 32.5, -16, 5], ['chr', 19, 41, 22.5, 44, 3],
+    ['chr', 19, 39.8, 21, 42.6, 4], ['chr', 20, 39, 24, 41, 2], ['chr', 119.5, 11, 126.5, 18.5, 3], ['chr', -80, 19.8, -74, 23, 3], ['chr', 84, 19.5, 87.5, 22.5, 3],
+    ['chr', 163.5, -23, 167.5, -20, 3], ['chr', 51, 36, 61, 39, 1],
+    ['steel', 115, 36, 125, 43, 3], ['steel', 74, 36, 90, 52, 1], ['oil', 46, 25, 56, 31, 4], ['oil', -100, 27, -94, 37, 3], ['oil', 105, -5, 120, 6, 2], ['oil', 46, 39, 53, 46, 2], ['oil', 44, 29, 49, 36, 3],
+  ];
+
+  // Teçhizat: maliyet (IC), fabrika türü, fabrika başına günlük kaynak ihtiyacı (res)
   g.EQUIP = {
-    inf: { n: 'Piyade Teçhizatı', s: 'Piyade T.', cost: 0.5, fac: 'mil', steel: 0.4, oil: 0 },
-    art: { n: 'Topçu', s: 'Topçu', cost: 3.5, fac: 'mil', steel: 0.8, oil: 0 },
-    mot: { n: 'Motorlu Araç', s: 'Motorlu', cost: 2.5, fac: 'mil', steel: 0.5, oil: 0.5, req: 'mot1' },
-    tank: { n: 'Tank', s: 'Tank', cost: 8, fac: 'mil', steel: 1, oil: 0.6, req: 'tank1' },
-    fig: { n: 'Savaş Uçağı', s: 'Avcı', cost: 22, fac: 'mil', steel: 0.4, oil: 0.6, air: 1 },
-    cas: { n: 'Yakın Destek Uçağı', s: 'YDU', cost: 24, fac: 'mil', steel: 0.5, oil: 0.6, air: 1 },
-    bom: { n: 'Bombardıman Uçağı', s: 'Bombacı', cost: 35, fac: 'mil', steel: 0.6, oil: 0.8, air: 1 },
-    dd: { n: 'Muhrip', s: 'Muhrip', cost: 1500, fac: 'dock', steel: 1, oil: 0.3, ship: 1, str: 1 },
-    cr: { n: 'Kruvazör', s: 'Kruvazör', cost: 3500, fac: 'dock', steel: 1.2, oil: 0.3, ship: 1, str: 3 },
-    bb: { n: 'Zırhlı Gemi', s: 'Zırhlı', cost: 10000, fac: 'dock', steel: 1.5, oil: 0.4, ship: 1, str: 10 },
-    ss: { n: 'Denizaltı', s: 'Denizaltı', cost: 1000, fac: 'dock', steel: 0.8, oil: 0.2, ship: 1, str: 0.8 },
-    cv: { n: 'Uçak Gemisi', s: 'U. Gemisi', cost: 12000, fac: 'dock', steel: 1.5, oil: 0.5, ship: 1, str: 12, req: 'cv1' },
+    inf: { n: 'Piyade Teçhizatı', s: 'Piyade T.', cost: 0.5, fac: 'mil', res: { steel: 0.5 } },
+    sup: { n: 'Destek Teçhizatı', s: 'Destek T.', cost: 4, fac: 'mil', res: { steel: 0.4 } },
+    art: { n: 'Topçu', s: 'Topçu', cost: 3.5, fac: 'mil', res: { steel: 0.6, tun: 0.3 } },
+    at: { n: 'Tanksavar Topu', s: 'Tanksavar', cost: 4, fac: 'mil', res: { steel: 0.4, tun: 0.4 }, req: 'at1' },
+    aa: { n: 'Uçaksavar Topu', s: 'Uçaksavar', cost: 4, fac: 'mil', res: { steel: 0.4, al: 0.2 }, req: 'aa1' },
+    mot: { n: 'Motorlu Araç', s: 'Motorlu', cost: 2.5, fac: 'mil', res: { oil: 0.4, rub: 0.4 }, req: 'mot1' },
+    tank: { n: 'Tank', s: 'Tank', cost: 8, fac: 'mil', res: { steel: 0.8, chr: 0.5 }, req: 'tank1' },
+    fig: { n: 'Avcı Uçağı', s: 'Avcı', cost: 22, fac: 'mil', res: { al: 0.8, rub: 0.3 }, air: 1 },
+    cas: { n: 'Yakın Destek Uçağı', s: 'YDU', cost: 24, fac: 'mil', res: { al: 0.8, rub: 0.3 }, air: 1 },
+    bom: { n: 'Bombardıman Uçağı', s: 'Bombacı', cost: 35, fac: 'mil', res: { al: 1, rub: 0.4, oil: 0.2 }, air: 1 },
+    dd: { n: 'Muhrip', s: 'Muhrip', cost: 1500, fac: 'dock', res: { steel: 1, chr: 0.3 }, ship: 1, str: 1 },
+    cr: { n: 'Kruvazör', s: 'Kruvazör', cost: 3500, fac: 'dock', res: { steel: 1.2, chr: 0.5 }, ship: 1, str: 3 },
+    bb: { n: 'Zırhlı Gemi', s: 'Zırhlı', cost: 10000, fac: 'dock', res: { steel: 1.5, chr: 0.8 }, ship: 1, str: 10 },
+    ss: { n: 'Denizaltı', s: 'Denizaltı', cost: 1000, fac: 'dock', res: { steel: 0.8 }, ship: 1, str: 0.8 },
+    cv: { n: 'Uçak Gemisi', s: 'U. Gemisi', cost: 12000, fac: 'dock', res: { steel: 1.4, al: 0.6 }, ship: 1, str: 12, req: 'cv1' },
+    conv: { n: 'Konvoy', s: 'Konvoy', cost: 120, fac: 'dock', res: { steel: 0.8 }, convoy: 1 },
+  };
+  // Teçhizat modelleri (araştırılan seviyeye göre ad)
+  g.MODEL_N = {
+    inf: ['', 'Tüfek M1918', 'Yarı Otomatik', 'Taarruz Tüfeği', 'Modern Piyade'], art: ['', 'Sahra Topu', 'Obüs', 'Ağır Topçu', 'Modern Topçu'],
+    tank: ['', 'Hafif Tank', 'Orta Tank', 'Ağır Tank', 'Modern Tank'], fig: ['', 'Çift Kanatlı Avcı', 'Tek Kanatlı Avcı', 'Gelişmiş Avcı', 'Jet Avcı'],
+    cas: ['', 'Pike Bombardıman', 'Gelişmiş YDU', 'YDU III', 'YDU IV'], bom: ['', 'Orta Bombardıman', 'Ağır Bombardıman', 'Stratejik Bombardıman', 'Jet Bombardıman'],
   };
   g.SHIPS = ['dd', 'cr', 'bb', 'ss', 'cv'];
+  g.SHIP_SPEED = 60;
   g.PLANES = ['fig', 'cas', 'bom'];
 
   // Tümen tasarımcısı: taburlar (çizgi birimleri) ve destek bölükleri
@@ -40,13 +69,13 @@
     mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, atk: 1.6, def: 2.8, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, arm: 0, prc: 2, kind: 'inf', amph: 1, req: 'mar1' },
   };
   g.SUPPORTS = {
-    eng: { n: 'İstihkâm', d: '+2 savunma, siper hızı +%30', def: 2, ent: 0.3, mp: 0.3, eq: { inf: 30 } },
-    rec: { n: 'Keşif', d: '+0,8 saldırı, hız +%10', atk: 0.8, spdM: 0.1, mp: 0.2, eq: { inf: 30 } },
+    eng: { n: 'İstihkâm', d: '+2 savunma, siper hızı +%30', def: 2, ent: 0.3, mp: 0.3, eq: { sup: 10 } },
+    rec: { n: 'Keşif', d: '+0,8 saldırı, hız +%10', atk: 0.8, spdM: 0.1, mp: 0.2, eq: { sup: 8, inf: 20 } },
     sart: { n: 'Destek Topçusu', d: '+2,5 saldırı', atk: 2.5, mp: 0.3, eq: { art: 12 }, kind: 'art' },
-    sat: { n: 'Tanksavar', d: '+15 zırh delme', prcAdd: 15, atk: 0.4, mp: 0.3, eq: { art: 10 }, req: 'at1' },
-    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +0,5 savunma', aa: 0.15, def: 0.5, mp: 0.3, eq: { art: 8 }, req: 'aa1' },
-    log: { n: 'Lojistik', d: 'İkmal cezası -%35', sup: 0.35, mp: 0.3, eq: { inf: 20, mot: 10 }, req: 'mot1' },
-    hos: { n: 'Sahra Hastanesi', d: 'Kayıplar -%30', cas: 0.3, mp: 0.3, eq: { inf: 20 }, req: 'sup1' },
+    sat: { n: 'Tanksavar', d: '+15 zırh delme', prcAdd: 15, atk: 0.4, mp: 0.3, eq: { at: 12 }, req: 'at1' },
+    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +0,5 savunma', aa: 0.15, def: 0.5, mp: 0.3, eq: { aa: 12 }, req: 'aa1' },
+    log: { n: 'Lojistik', d: 'İkmal cezası -%35', sup: 0.35, mp: 0.3, eq: { sup: 10, mot: 10 }, req: 'mot1' },
+    hos: { n: 'Sahra Hastanesi', d: 'Kayıplar -%30', cas: 0.3, mp: 0.3, eq: { sup: 8 }, req: 'sup1' },
   };
   g.MAX_BATS = 10; g.MAX_SUP = 5;
   g.DEFAULT_TEMPLATES = {
@@ -148,10 +177,10 @@
       { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
     ] },
     trade: { n: 'Ticaret Yasası', opts: [
-      { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5, yerel kaynak -%30', factory: 0.1, research: 0.05, resLoss: 0.3 },
-      { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2, yerel kaynak -%15', factory: 0.05, research: 0.02, resLoss: 0.15 },
-      { n: 'Sınırlı İhracat', d: 'Yerel kaynak -%5', resLoss: 0.05 },
-      { n: 'Kapalı Ekonomi', d: 'Kaynakların tamamı yurt içinde kalır, fabrika -%5', factory: -0.05, ws: 0.3 },
+      { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5; kaynakların %80\'i satılabilir', factory: 0.1, research: 0.05, exp: 0.8 },
+      { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2; kaynakların %50\'si satılabilir', factory: 0.05, research: 0.02, exp: 0.5 },
+      { n: 'Sınırlı İhracat', d: 'Kaynakların %25\'i satılabilir', exp: 0.25 },
+      { n: 'Kapalı Ekonomi', d: 'Hiç kaynak satılmaz, fabrika -%5', factory: -0.05, exp: 0, ws: 0.3 },
     ] },
   };
   g.LAW_COST = 150;

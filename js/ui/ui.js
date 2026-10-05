@@ -64,6 +64,8 @@
     const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
     if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`]);
     if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
+    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
+    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`]);
     const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
     if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
     if (c.enemies.length) {
@@ -112,9 +114,9 @@
   };
   UI.syncOverlays = () => {
     const sheetOpen = !$('sheet').hidden;
-    $('selbar').hidden = sheetOpen || !R.sel.units.size;
+    $('selbar').hidden = sheetOpen || (!R.sel.units.size && !R.sel.fleet);
     if (!$('selbar').hidden) UI.renderSel();
-    if (sheetOpen || R.sel.units.size) $('card').hidden = true;
+    if (sheetOpen || R.sel.units.size || R.sel.fleet) $('card').hidden = true;
   };
 
   // ---------- Paneller ----------
@@ -220,11 +222,17 @@
       const p = pos(f);
       const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
-      nodes += `<button class="fn ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir. ⇄ işaretli odaklar birbirini dışlar. Bir odağa dokunarak başlat; kilitli odaklarda nedeni görürsün.</p>';
+    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir; ⇄ işaretliler birbirini dışlar. Ağacı parmağınla her yöne kaydır, bir odağa dokunup ayrıntısını gör ve “Başlat” de.</p>';
     html += `<div class="ftree" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    const sf = UI.fsel ? G.focusById(c, UI.fsel) : null;
+    if (sf) {
+      const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
+      const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.` : avail ? `${g.FOCUS_DAYS} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
+      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div><div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
+    }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
 
@@ -285,29 +293,101 @@
     let html = kv([
       ['Askerî fab.', `${milA}/${s.mil}`, milA > s.mil ? 'bad' : ''],
       ['Tersane', `${dockA}/${s.dock}`, dockA > s.dock ? 'bad' : ''],
-      ['Çelik', `${int(s.steel)} / ${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'bad' : 'good'],
-      ['Petrol', `${int(s.oil)} / ${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'bad' : 'good'],
-      ['İthalat', `${e.trade || 0} sivil fab.`],
+      ['Fabrika verimi', (m.factory >= 0 ? '+' : '') + Math.round(((m.factory || 0) + (e.stabF || 0)) * 100) + '%'],
       ['Bombardıman', c.bombed ? '-' + pct(c.bombed) : '—', c.bombed ? 'bad' : ''],
     ]);
-    if ((e.rS ?? 1) < 1 || (e.rO ?? 1) < 1) html += `<p class="small warn" style="margin:0">Kaynak açığı üretimi yavaşlatıyor. Çelik/petrol veren toprakları ele geçir, Sentetik Yakıt araştır veya kararlardan yardım al.</p>`;
+    const short = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 1);
+    if (short.length) html += `<p class="small warn" style="margin:0">Kaynak açığı: ${short.map((r) => g.RES[r]).join(', ')}. Eksik kaynak gerektiren hatlar yavaşlar. Ticaret panelinden satın al.</p>`;
     const effCap = Math.min(1, 0.6 + (m.effCap || 0));
-    const line = (l) => {
+    const line = (l, i) => {
       const eq = g.EQUIP[l.e];
-      const out = eq.ship ? (l.f * 2.5 * (1 + (m.factory || 0))) : (l.f * 4.5 * l.eff * (1 + (m.factory || 0)) / eq.cost);
-      const stock = eq.ship ? `${Math.floor(c.ships[l.e] || 0)} gemi` : `Stok ${int(c.stock[l.e] || 0)}`;
-      const rate = eq.ship ? `${l.f ? Math.ceil((eq.cost - (l.acc || 0)) / Math.max(0.1, out)) + ' günde 1 gemi' : 'durdu'}` : `${r1(out)}/gün`;
-      return `<div class="item"><div class="grow"><div class="t">${eq.n}</div><div class="d">${stock} · ${rate}${eq.ship ? '' : ` · verim ${pct(l.eff)}/${pct(effCap)}`}</div>${eq.ship ? bar((l.acc || 0) / eq.cost) : bar(l.eff / effCap, 'g')}</div><div class="stepper"><button data-act="line" data-e="${l.e}" data-v="-1" aria-label="Azalt">−</button><b>${l.f}</b><button data-act="line" data-e="${l.e}" data-v="1" aria-label="Artır">+</button></div></div>`;
+      const best = G.bestLevel(c, l.e), lv = l.lv || best;
+      const out = eq.ship || eq.convoy ? (l.f * 2.5 * (1 + (m.factory || 0))) : (l.f * 4.5 * l.eff * (1 + (m.factory || 0)) / eq.cost);
+      const stock = eq.convoy ? `${int(c.ships.conv || 0)} konvoy` : eq.ship ? `${Math.round(G.navyCount(c, l.e))} gemi` : `Stok ${int(c.stock[l.e] || 0)}`;
+      const rate = eq.convoy ? `${r1(out / eq.cost)}/gün` : eq.ship ? `${l.f ? Math.ceil((eq.cost - (l.acc || 0)) / Math.max(0.1, out)) + ' günde 1' : 'durdu'}` : `${r1(out)}/gün`;
+      const model = (g.MODEL_N[l.e] || [])[lv];
+      const upg = !eq.ship && !eq.convoy && lv < best;
+      const resTxt = Object.entries(eq.res).map(([r, v]) => `${g.RES[r].slice(0, 3)} ${r1(v * l.f)}`).join(' · ');
+      return `<div class="item line"><div class="grow"><div class="t">${eq.n}${model ? ` <span class="muted small">${model}</span>` : ''}</div><div class="d">${stock} · ${rate}${eq.ship || eq.convoy ? '' : ` · verim ${pct(l.eff)}/${pct(effCap)}`}</div><div class="d">${resTxt}</div>${eq.ship ? bar((l.acc || 0) / eq.cost) : bar(l.eff / effCap, 'g')}
+        <div class="btns" style="margin-top:4px">${upg ? `<button class="btn sm pri" data-act="lineup" data-v="${i}">Yeni modele geç: ${(g.MODEL_N[l.e] || [])[best] || 'Seviye ' + best}</button>` : ''}<button class="btn sm danger" data-act="linedel" data-v="${i}">Hattı sil</button></div></div>
+        <div class="stepper"><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="-1" aria-label="Azalt">−</button><b>${l.f}</b><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="1" aria-label="Artır">+</button></div></div>`;
     };
-    const milLines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'mil'), dockLines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock');
-    const missing = (fac) => Object.entries(g.EQUIP).filter(([k, v]) => v.fac === fac && m.unlockEq[k] && !c.lines.some((l) => l.e === k));
-    html += sec('Kara ve hava üretimi', `<div class="list">${milLines.map(line).join('')}</div>${missing('mil').length ? `<div class="btns">${missing('mil').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>` : ''}`, `${s.mil - milA} boşta`);
-    html += sec('Tersaneler', `<div class="list">${dockLines.map(line).join('') || '<p class="muted small" style="margin:0">Tersane yok. İnşaat panelinden kıyı eyaletlerine tersane kurabilirsin.</p>'}</div>${s.dock && missing('dock').length ? `<div class="btns">${missing('dock').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>` : ''}`, `${s.dock - dockA} boşta`);
-    const ap = G.airPower(c), np = G.navyPower(c);
-    html += sec('Hava kuvvetleri', kv([['Avcı', int(c.stock.fig)], ['Yakın destek', int(c.stock.cas)], ['Bombardıman', int(c.stock.bom)], ['Hava gücü', int(ap)], ['Üstünlük', c.enemies.length ? ((c.airMod || 1) >= 1 ? '+' : '') + Math.round(((c.airMod || 1) - 1) * 100) + '%' : '—', (c.airMod || 1) >= 1 ? 'good' : 'bad']]));
-    html += sec('Donanma', kv([['Muhrip', int(c.ships.dd)], ['Kruvazör', int(c.ships.cr)], ['Zırhlı', int(c.ships.bb)], ['Denizaltı', int(c.ships.ss)], ['U. gemisi', int(c.ships.cv)], ['Deniz gücü', int(np)]]) + `<p class="muted small" style="margin:0">Deniz gücü çıkarma harekâtlarını mümkün kılar ve düşman ablukasını kırar.</p>`);
+    const idx = (fac) => c.lines.map((l, i) => [l, i]).filter(([l]) => g.EQUIP[l.e].fac === fac);
+    const avail = (fac) => Object.entries(g.EQUIP).filter(([k, v]) => v.fac === fac && (m.unlockEq[k] || (!v.req && fac === 'mil') || (v.req && c.tech[v.req]) || k === 'conv' || k === 'sup'));
+    html += sec('Kara ve hava üretimi', `<div class="list">${idx('mil').map(([l, i]) => line(l, i)).join('')}</div><div class="btns">${avail('mil').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>`, `${s.mil - milA} boşta`);
+    html += sec('Tersaneler', `<div class="list">${idx('dock').map(([l, i]) => line(l, i)).join('') || '<p class="muted small" style="margin:0">Tersane hattı yok. İnşaat panelinden kıyı eyaletlerine tersane kurabilirsin.</p>'}</div>${s.dock ? `<div class="btns">${avail('dock').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>` : ''}`, `${s.dock - dockA} boşta`);
+    // teçhizat stoğu ve modeller
+    const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Sv ' + r1(G.lvl(c, k))}</span></div>`).join('');
+    html += sec('Teçhizat deposu', `<div class="kv">${rows}</div><p class="muted small" style="margin:0">Yeni teknoloji araştırınca hatları “Yeni modele geç” ile güncelle. Ordudaki tümenler depodaki yeni modelleri takviye sırasında yavaşça alır.</p>`);
     return { title: 'Üretim', html };
   };
+
+  // Ticaret
+  PANELS.trade = () => {
+    const st = G.st, c = me(), e = c.econ || {};
+    if (UI.sub && UI.sub.startsWith('buy:')) return buyPicker(c, UI.sub.slice(4));
+    let html = kv([['İthalat (fab.)', `${e.trade || 0}`], ['İhracat (fab.)', `+${e.expCiv || 0}`], ['Konvoy', `${int(c.ships.conv || 0)} / ${int(G.convoyNeed(c.tag))}`, (e.convRatio ?? 1) < 1 ? 'bad' : ''], ['Konvoy akını', c.raid ? '-' + pct(c.raid) : '—', c.raid ? 'bad' : ''], ['Ticaret yasası', g.LAWS.trade.opts[c.laws.trade].n]]);
+    html += `<button class="toggle ${c.auto.trade ? 'on' : ''}" data-act="auto" data-v="trade"><span><b>Ticaret bakanı</b><br><span class="muted small">Açıksa eksik kaynakları otomatik satın alır, fazlayı iptal eder.</span></span><i></i></button>`;
+    let rh = '<div class="restable"><div class="rh"><span>Kaynak</span><span>Üretim</span><span>İthal</span><span>Satılan</span><span>İhtiyaç</span><span></span></div>';
+    const sold = (G._sold && G._sold[c.tag]) || {};
+    for (const r of g.RES_KEYS) {
+      const prod = c.sum.res[r] || 0, imp = (e.imp || {})[r] || 0, need = (e.need || {})[r] || 0, bal = (e.have || {})[r] - need;
+      rh += `<div class="rr ${bal < -0.5 ? 'neg' : ''}"><span><b>${g.RES[r]}</b></span><span>${r1(prod)}</span><span>${r1(imp)}</span><span>${r1(sold[r] || 0)}</span><span>${r1(need)}</span><span><button class="btn sm" data-act="sub" data-v="buy:${r}">Al</button></span></div>`;
+    }
+    html += sec('Kaynaklar', rh + '</div>', 'günlük birim');
+    const mine = st.deals.map((d, k) => [d, k]).filter(([d]) => d.i === c.tag);
+    let dh = '<div class="list">';
+    for (const [d, k] of mine) dh += `<div class="item">${G.flag(d.e, 26, 17)}<div class="grow"><div class="t">${g.RES[d.r]} ${int(d.n)}</div><div class="d">${esc(G.cname(d.e))} · ${G.dealCiv(d.n)} sivil fabrika${G.overseas(c.tag, d.e) ? ' · deniz aşırı (konvoy gerekir)' : ' · kara yolu'}</div></div><button class="btn sm" data-act="dealdel" data-v="${k}" aria-label="İptal">✕</button></div>`;
+    if (!mine.length) dh += '<p class="muted small" style="margin:0">İthalat anlaşması yok.</p>';
+    html += sec('İthalat anlaşmaları', dh + '</div>', `${mine.length}`);
+    const out = st.deals.filter((d) => d.e === c.tag);
+    if (out.length) html += sec('İhracat', `<div class="list">${out.map((d) => `<div class="item">${G.flag(d.i, 26, 17)}<div class="grow"><div class="t">${g.RES[d.r]} ${int(d.n)}</div><div class="d">${esc(G.cname(d.i))} · +${G.dealCiv(d.n)} sivil fabrika</div></div></div>`).join('')}</div>`);
+    return { title: 'Ticaret', html };
+  };
+  function buyPicker(c, r) {
+    const st = G.st, comm = G.committed();
+    const list = Object.values(st.C).filter((x) => x.alive && x.tag !== c.tag).map((x) => ({ t: x.tag, free: G.exportFree(x.tag, r, comm), ok: G.canTradeWith(c.tag, x.tag) })).filter((x) => x.free >= 1).sort((a, b) => b.free - a.free);
+    let html = `<p class="muted small" style="margin:0">${g.RES[r]} satan ülkeler. Her 8 birim 1 sivil fabrikaya mal olur. Deniz aşırı anlaşmalar konvoy ister.</p><div class="list">`;
+    for (const x of list.slice(0, 30)) html += `<div class="item">${G.flag(x.t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(x.t))}</div><div class="d">Satılabilir ${r1(x.free)}${G.overseas(c.tag, x.t) ? ' · deniz aşırı' : ' · kara yolu'}${x.ok ? '' : ' · <span class="warn">ticarete kapalı</span>'}</div></div><div class="btns"><button class="btn sm pri" data-act="buy" data-k="${x.t}" data-v="${r}" data-n="8" ${x.ok && x.free >= 4 ? '' : 'disabled'}>+8</button><button class="btn sm" data-act="buy" data-k="${x.t}" data-v="${r}" data-n="${Math.floor(x.free)}" ${x.ok ? '' : 'disabled'}>Tümü</button></div></div>`;
+    if (!list.length) html += '<p class="muted">Şu an satan ülke yok.</p>';
+    return { title: `${g.RES[r]} satın al`, html: html + '</div>' };
+  }
+
+  // Donanma ve hava
+  PANELS.navy = () => {
+    const st = G.st, c = me();
+    let html = kv([['Deniz gücü', int(G.navyPower(c))], ['Konvoy', int(c.ships.conv || 0)], ['Akın kaybı', c.raid ? pct(c.raid) : '—', c.raid ? 'bad' : ''], ['Hava gücü', int(G.airPower(c))], ['Hava üstünlüğü', c.enemies.length ? ((c.airMod || 1) >= 1 ? '+' : '') + Math.round(((c.airMod || 1) - 1) * 100) + '%' : '—', (c.airMod || 1) >= 1 ? 'good' : 'bad']]);
+    let fh = '<div class="list">';
+    for (const f of c.fleets) {
+      const p = G.fleetPower(c, f);
+      const where = SEA_N(f.loc);
+      fh += `<div class="item army"><div class="grow"><div class="row"><div class="t grow">${esc(f.n)} <span class="muted small">${where}${f.path.length ? ' · yolda' : ''}</span></div><button class="btn sm" data-act="fleetsel" data-v="${f.id}">Seç</button></div>
+        <div class="d">${g.SHIPS.filter((e2) => f.sh[e2] >= 0.5).map((e2) => `${Math.round(f.sh[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ') || 'gemi yok'} · güç ${int(p)}</div>
+        <div class="seg sm">${Object.entries(G.MISSIONS).map(([k, n]) => `<button class="${f.mis === k ? 'on' : ''}" data-act="fleetmis" data-k="${f.id}" data-v="${k}">${n}</button>`).join('')}</div>
+        <div class="btns"><button class="btn sm" data-act="fleethome" data-v="${f.id}">Limana dön</button><button class="btn sm" data-act="fleetauto" data-v="${f.id}">${f.auto ? '✓ ' : ''}Yeni gemiler buraya</button>${c.fleets.length > 1 ? `<button class="btn sm danger" data-act="fleetmerge" data-v="${f.id}">Birleştir</button>` : ''}</div></div></div>`;
+    }
+    if (!c.fleets.length) fh += '<p class="muted small" style="margin:0">Filon yok. Tersane kurup gemi üret.</p>';
+    const res = g.SHIPS.filter((e2) => c.ships[e2] >= 1);
+    fh += `</div>${res.length ? `<div class="item"><div class="grow"><div class="t">Yedek gemiler</div><div class="d">${res.map((e2) => `${Math.floor(c.ships[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ')}</div></div><button class="btn sm pri" data-act="fleetnew">Yeni filo kur</button></div>` : ''}`;
+    fh += '<p class="muted small" style="margin:0">Devriye: yakındaki zayıf düşman filolarına saldırır. Saldırı: daha uzağa ve cesurca saldırır. Konvoy akını: düşman ticaretini ve konvoylarını vurur. Refakat: kendi konvoylarını korur. Bir filoyu “Seç”ip haritada bir deniz bölgesine dokunarak elle taşıyabilirsin.</p>';
+    html += sec('Filolar', fh);
+    // hava görevleri
+    const a = c.air || (c.air = { bomb: 'auto', cas: 1 });
+    const tgts = ['auto', 'off', ...c.enemies];
+    html += sec('Hava görevleri', `<div class="list">
+      <button class="toggle ${a.cas ? 'on' : ''}" data-act="aircas"><span><b>Yakın hava desteği</b><br><span class="muted small">Yakın destek uçakları muharebelere katılır (${int(c.stock.cas)} uçak).</span></span><i></i></button>
+      <div class="item"><div class="grow"><div class="t">Stratejik bombardıman</div><div class="d">${int(c.stock.bom)} bombardıman uçağı · hedef: ${a.bomb === 'auto' ? 'otomatik (en güçlü düşman)' : a.bomb === 'off' ? 'kapalı' : esc(G.cname(a.bomb))}</div></div><button class="btn sm" data-act="airbomb">Değiştir</button></div>
+      </div>${kv([['Avcı', int(c.stock.fig)], ['Yakın destek', int(c.stock.cas)], ['Bombardıman', int(c.stock.bom)]])}`);
+    void tgts;
+    return { title: 'Donanma ve hava', html };
+  };
+  const SEA_N = (n) => {
+    if (n < NP) return G.pname(n);
+    const s = G.SEAS[n - NP];
+    const near = s.p.map((i) => P[i]).sort((a, b) => b.vp - a.vp)[0];
+    return near ? `${near.n.startsWith('#') ? 'Açık deniz' : near.n} açıkları` : 'Açık deniz';
+  };
+  G.seaName = SEA_N;
 
   // İnşaat
   PANELS.con = () => {
@@ -493,6 +573,8 @@
     for (const x of list) lh += `<button class="item" data-act="sub" data-v="c:${x.tag}">${G.flag(x.tag, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(x.tag))}</div><div class="d">${g.IDEOLOGIES[x.ideo].n}${x.fac ? ' · ' + esc(st.factions[x.fac]?.n || '') : ''}</div></div>${relPills(c.tag, x.tag)}<span class="muted">›</span></button>`;
     if (!list.length) lh += `<p class="muted small" style="margin:0">${t === 'war' ? 'Şu an kimseyle savaşta değilsin.' : 'Liste boş.'}</p>`;
     html += lh + '</div>';
+    const rel = G.releasable(c.tag);
+    if (rel.length) html += sec('Serbest bırakılabilir uluslar', `<div class="list">${rel.map(({ t, n }) => `<div class="item">${G.flag(t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(t))}</div><div class="d">${n} asli eyaleti elimizde</div></div><button class="btn sm pri" data-act="release" data-v="${t}">Kukla olarak kur</button></div>`).join('')}</div>`);
     return { title: 'Diplomasi', html: kv([['Dünya gerginliği', '%' + Math.round(st.tension)], ['Savaşlar', c.enemies.length], ['Gerekçe', c.just ? `${G.cname(c.just.t)} (${c.just.d} gün)` : '—']]) + html };
   };
   function relPills(a, b) {
@@ -528,6 +610,20 @@
     for (const [k, n, ok, why] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ''}</div><span class="muted">›</span></button>`;
     ah += `<button class="item" data-act="showc" data-v="${tag}"><div class="grow"><div class="t">Haritada göster</div></div><span class="muted">›</span></button></div>`;
     html += sec('Eylemler', ah);
+    // ticaret ve yardım
+    let th = '<div class="list">';
+    const emb = st.embargo[c.tag + '>' + tag];
+    th += `<button class="item" data-act="embargo" data-v="${tag}"><div class="grow"><div class="t">${emb ? 'Ambargoyu kaldır' : 'Ambargo uygula'}</div><div class="d">Ambargo uygulanan ülke senden kaynak alamaz.</div></div><span class="muted">›</span></button>`;
+    if (!atWar) th += `<div class="item"><div class="grow"><div class="t">Ödünç verme-kiralama</div><div class="d">Teçhizat gönder; ilişkiler iyileşir.</div><div class="btns" style="margin-top:6px">${G.LEND.map(([e2, n, nm]) => `<button class="btn sm" data-act="lend" data-k="${tag}" data-e="${e2}" data-v="${n}" ${((e2 === 'conv' ? c.ships.conv : c.stock[e2]) || 0) >= n ? '' : 'disabled'}>${n} ${nm}</button>`).join('')}</div></div></div>`;
+    html += sec('Ticaret ve yardım', th + '</div>');
+    // istihbarat
+    let ih = '<div class="list">';
+    for (const [op, O] of Object.entries(G.OPS)) {
+      const run = st.ops.find((o) => o.a === c.tag && o.t === tag && o.op === op);
+      const r = G.opAllowed(c.tag, tag, op);
+      ih += `<div class="item"><div class="grow"><div class="t">${O.n}</div><div class="d">${O.d} · ${O.cost} SG · ${O.days} gün</div>${run ? `<div class="d good">Sürüyor: ${run.d} gün kaldı</div>` : !r.ok ? `<div class="d warn">${esc(r.why)}</div>` : ''}</div>${run ? '' : `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="op" data-k="${tag}" data-v="${op}" ${r.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
+    }
+    html += sec('İstihbarat operasyonları', ih + '</div>');
     return { title: d.n, html };
   }
 
@@ -592,6 +688,16 @@
   // ---------- Seçim çubuğu ----------
   UI.renderSel = () => {
     const st = G.st;
+    if (R.sel.fleet) {
+      const c = me(); const f = c.fleets.find((x) => x.id === R.sel.fleet);
+      if (!f) { R.sel.fleet = null; $('selbar').hidden = true; return; }
+      const html2 = `<div class="card-h"><div class="grow"><h3>${esc(f.n)}</h3><div class="muted small">${G.seaName(f.loc)}${f.path.length ? ' · yolda' : ''} · güç ${int(G.fleetPower(c, f))}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>
+        <div class="small">${g.SHIPS.filter((e2) => f.sh[e2] >= 0.5).map((e2) => `${Math.round(f.sh[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ')}</div>
+        <div class="hint">Bir deniz bölgesine dokunarak filoyu gönder.</div>
+        <div class="seg sm">${Object.entries(G.MISSIONS).map(([k, n]) => `<button class="${f.mis === k ? 'on' : ''}" data-act="fleetmis" data-k="${f.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
+      const sb = $('selbar'); if (sb.dataset.h !== html2) { sb.innerHTML = html2; sb.dataset.h = html2; }
+      sb.hidden = !$('sheet').hidden; return;
+    }
     const sel = st.units.filter((u) => R.sel.units.has(u.id));
     if (!sel.length) { R.sel.units.clear(); $('selbar').hidden = true; return; }
     const auto = sel.every((u) => u.auto);
@@ -645,17 +751,14 @@
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
   ACT.pause = () => { G.st.paused = !G.st.paused; UI.hud(); };
   ACT.speed = (d) => { G.st.speed = +d.v; G.st.paused = 0; UI.hud(); };
-  ACT.focus = (d) => {
+  ACT.focus = (d) => { UI.fsel = d.v; UI.render(); };
+  ACT.focusgo = (d) => {
     const c = me(); const f = G.focusById(c, d.v);
-    if (c.focus.done[f.id]) { UI.toast(`${f.n}: tamamlandı. ${f.d}`); return; }
-    if (c.focus.cur === f.id) { UI.toast(`${f.n}: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.`); return; }
-    if (!G.focusAvailable(c, f)) {
-      let why = G.focusExcluded(c, f) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, f) ? 'Önce bağlı olduğu odakları tamamla.' : G.focusReq(c, f).why;
-      UI.toast(`${f.n}: ${why}`, 'warn'); return;
-    }
+    if (!G.focusAvailable(c, f)) return;
     if (c.focus.cur && c.focus.p > 5) UI.toast('Önceki odağın ilerlemesi sıfırlandı.', 'warn');
-    c.focus.cur = d.v; c.focus.p = 0; UI.render(); UI.toast('Odak başladı: ' + f.n, 'good');
+    c.focus.cur = d.v; c.focus.p = 0; UI.fsel = null; UI.render(); UI.toast('Odak başladı: ' + f.n, 'good');
   };
+  ACT.focusclose = () => { UI.fsel = null; UI.render(); };
   ACT.hire = (d) => { const c = me(); const r = G.hireAdvisor(c, d.v); UI.toast(r.ok ? `${G.advName(c.tag, d.v)} göreve başladı.` : r.why, r.ok ? 'good' : 'warn'); if (r.ok) UI.sub = null; UI.render(true); UI.hud(); };
   ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
   ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
@@ -664,16 +767,38 @@
   ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
   ACT.line = (d) => {
-    const c = me(); const l = c.lines.find((x) => x.e === d.e); if (!l) return;
-    const fac = g.EQUIP[d.e].fac; const total = fac === 'mil' ? c.sum.mil : c.sum.dock;
-    const used = c.lines.filter((x) => g.EQUIP[x.e].fac === fac).reduce((s, x) => s + x.f, 0);
+    const c = me(); const l = c.lines[+d.i]; if (!l) return;
+    const fac = g.EQUIP[l.e].fac; const total = fac === 'mil' ? c.sum.mil : c.sum.dock;
+    const used = c.lines.filter((x) => g.EQUIP[x.e].fac === fac).reduce((s2, x) => s2 + x.f, 0);
     const v = +d.v;
     if (v > 0 && used >= total) { UI.toast('Boşta fabrika yok. Başka bir hattan azalt.', 'warn'); return; }
     l.f = Math.max(0, l.f + v);
     if (v > 0) l.eff = Math.max(0.1, l.eff * 0.95);
     UI.render();
   };
-  ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0 }); UI.render(); };
+  ACT.lineup = (d) => { const c = me(); const l = c.lines[+d.v]; l.lv = G.bestLevel(c, l.e); l.eff = Math.max(0.1, l.eff * 0.6); UI.toast(`${g.EQUIP[l.e].n} hattı yeni modele geçti (verim düştü).`, 'good'); UI.render(); };
+  ACT.linedel = (d) => { const c = me(); c.lines.splice(+d.v, 1); UI.render(); };
+  ACT.dealdel = (d) => { G.cancelDeal(+d.v); G.refreshTradeCache(); UI.render(); };
+  ACT.buy = (d) => { const c = me(); const n = Math.max(1, Math.min(+d.n, Math.floor(G.exportFree(d.k, d.v)))); G.addDeal(c.tag, d.k, d.v, n); G.refreshTradeCache(); G.econCalc(c); UI.toast(`${G.cname(d.k)} ile ${g.RES[d.v].toLowerCase()} anlaşması: ${n} birim.`, 'good'); UI.render(); };
+  ACT.fleetsel = (d) => { const c = me(); const f = c.fleets.find((x) => x.id === +d.v); R.sel.fleet = f.id; R.sel.units.clear(); R.focusOn(f.loc, 1.4); UI.close(); UI.renderSel(); R.dirty = 1; UI.toast('Filo seçildi: bir deniz bölgesine dokunarak gönder.'); };
+  ACT.fleetmis = (d) => { const f = me().fleets.find((x) => x.id === +d.k); f.mis = d.v; if (d.v === 'hold') f.path = []; UI.render(); UI.renderSel(); };
+  ACT.fleethome = (d) => { const f = me().fleets.find((x) => x.id === +d.v); const p = G.fleetPath(f.loc, f.home); if (p) { f.path = p; f.prog = 0; } f.mis = 'hold'; UI.render(); UI.renderSel(); };
+  ACT.fleetauto = (d) => { for (const f of me().fleets) f.auto = f.id === +d.v ? 1 : 0; UI.render(); };
+  ACT.fleetmerge = (d) => {
+    const c = me(); const f = c.fleets.find((x) => x.id === +d.v); const o = c.fleets.find((x) => x.id !== f.id && x.loc === f.loc);
+    if (!o) { UI.toast('Birleştirmek için başka bir filo aynı deniz bölgesinde olmalı.', 'warn'); return; }
+    for (const e2 of g.SHIPS) { o.sh[e2] = (o.sh[e2] || 0) + (f.sh[e2] || 0); }
+    c.fleets = c.fleets.filter((x) => x !== f); UI.render();
+  };
+  ACT.fleetnew = () => {
+    const c = me(); const home = G.homeZone(c); if (home < 0) return;
+    const sh = {}; for (const e2 of g.SHIPS) { sh[e2] = Math.floor(c.ships[e2] || 0); c.ships[e2] -= sh[e2]; }
+    c.fleets.push({ id: G.st.nextId++, n: `${c.fleets.length + 1}. Filo`, loc: home, home, sh, mis: 'hold', path: [], prog: 0 });
+    UI.render();
+  };
+  ACT.aircas = () => { const a = me().air; a.cas = a.cas ? 0 : 1; UI.render(); };
+  ACT.airbomb = () => { const c = me(); const opts = ['auto', 'off', ...c.enemies]; const k = opts.indexOf(c.air.bomb); c.air.bomb = opts[(k + 1) % opts.length]; UI.render(); };
+  ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0, lv: G.bestLevel(c, d.v) }); UI.toast(`${g.EQUIP[d.v].n} hattı eklendi; + ile fabrika ata.`, 'good'); UI.render(); };
   ACT.cup = (d) => { const c = me(); const i = +d.v; [c.constr[i - 1], c.constr[i]] = [c.constr[i], c.constr[i - 1]]; UI.render(); };
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
   ACT.build = (d) => { const c = me(); c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };
@@ -720,7 +845,7 @@
   ACT.closecard = () => { $('card').hidden = true; R.sel.prov = -1; R.dirty = 1; };
   ACT.opencountry = (d) => { UI.panel = 'dip'; UI.sub = 'c:' + d.v; UI.render(true); };
   ACT.showc = (d) => { const c = G.st.C[d.v]; if (c.cap >= 0) R.focusOn(c.cap, 1.5); UI.close(); };
-  ACT.clearsel = () => { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; };
+  ACT.clearsel = () => { R.sel.fleet = null; R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; };
   ACT.unsel = (d) => { R.sel.units.delete(+d.v); UI.renderSel(); R.dirty = 1; };
   ACT.stop = () => { for (const u of G.st.units) if (R.sel.units.has(u.id)) { u.path = []; u.prog = 0; } R.dirty = 1; UI.toast('Tümenler durduruldu.'); };
   ACT.split = () => { const ids = [...R.sel.units]; const keep = ids.slice(0, Math.ceil(ids.length / 2)); R.sel.units = new Set(keep); UI.renderSel(); R.dirty = 1; };
@@ -743,6 +868,10 @@
     }
     G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud();
   };
+  ACT.embargo = (d) => { const st = G.st, k = me().tag + '>' + d.v; if (st.embargo[k]) delete st.embargo[k]; else { st.embargo[k] = 1; st.deals = st.deals.filter((x) => !(x.e === me().tag && x.i === d.v)); } G.refreshTradeCache(); UI.render(); };
+  ACT.lend = (d) => { const ok = G.lend(me().tag, d.k, d.e, +d.v); UI.toast(ok ? `${G.cname(d.k)} ülkesine gönderildi.` : 'Yeterli stok yok.', ok ? 'good' : 'warn'); UI.render(); };
+  ACT.op = (d) => { const r = G.startOp(me().tag, d.k, d.v); UI.toast(r.ok ? `${G.OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
+  ACT.release = (d) => { const ok = G.makePuppet(me().tag, d.v); UI.toast(ok ? `${G.cname(d.v)} kukla devlet olarak kuruldu.` : 'Kurulamadı.', ok ? 'good' : 'warn'); G.mapDirty = 1; UI.render(); };
   ACT.save = (d) => { const ok = G.saveGame(d.v); UI.toast(ok ? 'Oyun kaydedildi.' : 'Kayıt başarısız: tarayıcı depolaması kullanılamıyor.', ok ? 'good' : 'bad'); UI.render(); };
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   ACT.setmode = (d) => { R.setMode(d.v); UI.render(); UI.hud(); };

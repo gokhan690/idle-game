@@ -15,6 +15,16 @@
   const joinAxis = (t) => { const f = ensureAxis(); if (f && alive(t) && facOf(t) !== f) G.joinFaction(t, f); };
   const war = (a, b) => { if (alive(a) && alive(b) && !G.atWar(a, b) && !G.sameFaction(a, b)) G.declareWar(a, b); };
 
+  function scw(switchSide) {
+    const st = G.st;
+    G.release('SPN', 'SPR', (i) => { const p = P[i]; return (p.lon < -4 && p.lat > 40.0) || (p.lon < -4.6 && p.lat < 38.6) || p.lat < 36.05 || (p.lon >= -4 && p.lon <= -1 && p.lat > 41.6 && p.lat < 42.9); });
+    const spn = st.C.SPN; spn.stock.inf += 4000; spn.stock.art += 120; spn.stock.fig = 60;
+    G.setWar('SPN', 'SPR');
+    for (const t of ['GER', 'ITA']) if (alive(t)) G.lend(t, 'SPN', 'inf', 1000);
+    if (alive('SOV')) G.lend('SOV', 'SPR', 'inf', 1000);
+    if (switchSide && st.player === 'SPR') { st.player = 'SPN'; for (const u of st.units) u.auto = u.t !== 'SPN' ? 1 : 0; if (G.UI) G.UI.hud(); }
+    G.log('İspanya İç Savaşı başladı!', ['SPR', 'SPN'], 'major');
+  }
   // demand: hedefe toprak talebi. Hedef oyuncuysa karar penceresi, değilse YZ kabul eder.
   function demand(actor, target, title, text, onAccept, onRefuse) {
     if (target === G.st.player) {
@@ -34,6 +44,10 @@
       text: 'Pekin yakınlarında Japon ve Çin birlikleri çatıştı. Tokyo\'daki şahinler topyekûn savaş istiyor.',
       cond: () => alive('JAP') && alive('CHI') && !G.atWar('JAP', 'CHI'),
       opts: [{ n: 'Çin\'e savaş ilan et', fx: () => war('JAP', 'CHI') }, { n: 'Barışı koru', fx: () => {} }] },
+    { id: 'scw', date: '1936-07-17', actor: 'SPR', title: 'İspanya İç Savaşı',
+      text: 'General Franco liderliğindeki milliyetçi subaylar Fas\'ta ayaklandı. Ülke ikiye bölündü: Cumhuriyetçiler Madrid ve Barselona\'yı, milliyetçiler kuzeybatıyı, Endülüs\'ü ve Fas\'ı tutuyor.',
+      cond: () => alive('SPR') && !alive('SPN'),
+      opts: [{ n: 'Cumhuriyeti savun', fx: () => scw(false) }, { n: 'Milliyetçilerin tarafına geç', fx: () => scw(true) }] },
     { id: 'ataturk', date: '1938-11-10', actor: 'TUR', title: 'Atatürk\'ün Ölümü',
       text: 'Cumhuriyetin kurucusu Mustafa Kemal Atatürk Dolmabahçe Sarayı\'nda hayatını kaybetti. Millet yasta. Meclis, İsmet İnönü\'yü cumhurbaşkanı seçti.',
       cond: () => alive('TUR') && G.st.C.TUR.leader === 'Mustafa Kemal Atatürk',

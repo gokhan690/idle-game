@@ -55,7 +55,7 @@
     const total = s.mil;
     if (!total) { c.lines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock'); }
     const w = {};
-    const def = c.major ? { inf: 0.32, art: 0.15, mot: 0.08, tank: 0.15, fig: 0.18, cas: 0.07, bom: 0.05 } : { inf: 0.5, art: 0.22, fig: 0.18, cas: 0.1 };
+    const def = c.major ? { inf: 0.3, sup: 0.03, art: 0.14, at: 0.02, mot: 0.08, tank: 0.15, fig: 0.18, cas: 0.06, bom: 0.04 } : { inf: 0.48, sup: 0.02, art: 0.22, fig: 0.18, cas: 0.1 };
     for (const [e, v] of Object.entries(def)) if (c.mods.unlockEq[e]) w[e] = v;
     for (const e of ['inf', 'art', 'mot', 'tank']) if (w[e] != null) {
       const stock = c.stock[e] || 0; const ratio = need[e] > 0 ? need[e] / (stock + 1) : 0;
@@ -68,7 +68,8 @@
       const f = Math.floor((total * v) / sum);
       if (f <= 0) continue;
       const old = c.lines.find((l) => l.e === e);
-      lines.push({ e, f, eff: old ? old.eff : 0.3, acc: 0 }); used += f;
+      const best = G.bestLevel(c, e);
+      lines.push({ e, f, eff: old ? (old.lv && old.lv < best ? old.eff * 0.7 : old.eff) : 0.3, acc: 0, lv: best }); used += f;
     }
     if (total > used) { const l = lines.find((x) => x.e === 'inf'); if (l) l.f += total - used; else lines.push({ e: 'inf', f: total - used, eff: 0.3, acc: 0 }); }
     // tersaneler
@@ -77,7 +78,7 @@
     const dUsed = dl.reduce((a, l) => a + l.f, 0);
     if (docks > 0 && dUsed !== docks) {
       for (const l of dl) lines.splice(lines.indexOf(l), 1);
-      const dw = c.major ? [['dd', 0.3], ['ss', 0.3], ['cr', 0.2], ['bb', 0.2]] : [['dd', 0.5], ['ss', 0.5]];
+      const dw = c.major ? [['dd', 0.25], ['ss', 0.25], ['cr', 0.15], ['bb', 0.15], ['conv', 0.2]] : [['dd', 0.4], ['ss', 0.3], ['conv', 0.3]];
       let du = 0;
       for (const [e, v] of dw) { const f = Math.floor(docks * v); if (f > 0) { const old = dl.find((l) => l.e === e); lines.push({ e, f, eff: 1, acc: old ? old.acc : 0 }); du += f; } }
       if (docks > du) { const l = lines.find((x) => x.e === 'dd'); if (l) l.f += docks - du; else lines.push({ e: 'dd', f: docks - du, eff: 1, acc: 0 }); }
@@ -239,7 +240,10 @@
     if (c.ai.inv && st.day - c.ai.inv < 45) return;
     c.ai.inv = st.day;
     const myNavy = G.navyPower(c);
-    if (myNavy < 10 || myNavy < (c.eNavy || 0) * 0.5) return;
+    let eNavy = 0; for (const t of c.enemies) eNavy += G.navyPower(G.st.C[t]);
+    if (myNavy < 10 || myNavy < eNavy * 0.5) return;
+    const freeConv = (c.ships.conv || 0) - G.convoyNeed(tag);
+    if (freeConv < 15) return;
     // hedef: en zayıf savunulan düşman kıyı eyaleti (birliklerin bulunduğu yere yakın)
     const ux = idle.reduce((s, u) => s + G.nodeX[u.loc], 0) / idle.length, uy = idle.reduce((s, u) => s + G.nodeY[u.loc], 0) / idle.length;
     let best = -1, bv = -Infinity;
@@ -250,7 +254,7 @@
       if (v > bv) { bv = v; best = i; }
     }
     if (best < 0) return;
-    const n = Math.min(idle.length - 1, 8);
+    const n = Math.min(idle.length - 1, 8, Math.floor(freeConv / 5));
     const group = idle.slice().sort((a, b) => G.dist(a.loc, best) - G.dist(b.loc, best)).slice(0, n);
     for (const u of group) {
       const path = G.findPath(u.loc, best, tag, u._s.spd, { naval: true });

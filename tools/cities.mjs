@@ -181,3 +181,23 @@ export const CITIES = [
   ['Bogota', -74.07, 4.71, 20], ['Medellín', -75.56, 6.25, 5], ['Barranquilla', -74.8, 10.97, 3], ['Cali', -76.52, 3.45, 3],
   ['Quito', -78.47, -0.18, 20], ['Guayaquil', -79.89, -2.19, 5],
 ];
+
+// Haritada çok küçük kaldığı için eklenen stratejik adalar ve enklavlar: [ad, boylam, enlem, sahip, tür, yarıçap]
+export const ISLANDS = [
+  ['Midway', -177.37, 28.21, 'USA', 'island'], ['Wake', 166.62, 19.29, 'USA', 'island'], ['Guam', 144.79, 13.44, 'USA', 'island'],
+  ['Johnston', -169.53, 16.73, 'USA', 'island'], ['Dutch Harbor', -166.54, 53.89, 'USA', 'island'], ['Attu', 173.18, 52.9, 'USA', 'island'], ['Kiska', 177.5, 51.97, 'USA', 'island'],
+  ['Saipan', 145.75, 15.18, 'JAP', 'island'], ['Truk', 151.85, 7.42, 'JAP', 'island'], ['Palau', 134.5, 7.45, 'JAP', 'island'], ['Ponape', 158.2, 6.88, 'JAP', 'island'],
+  ['Kwajalein', 167.73, 9.19, 'JAP', 'island'], ['Iwo Jima', 141.32, 24.78, 'JAP', 'island', 2.8], ['Okinawa', 127.85, 26.45, 'JAP', 'island'], ['Chichi Jima', 142.19, 27.07, 'JAP', 'island', 2.6],
+  ['Tarawa', 172.98, 1.42, 'ENG', 'island'], ['Rabaul', 152.2, -4.25, 'AST', 'island', 4.2], ['Samoa', -172.1, -13.75, 'NZL', 'island'], ['Nauru', 166.93, -0.52, 'AST', 'island', 2.6],
+  ['Malta', 14.45, 35.9, 'ENG', 'island', 2.8], ['Azorlar', -27.2, 38.7, 'POR', 'island'], ['Bermuda', -64.75, 32.3, 'ENG', 'island', 2.6], ['Yeşil Burun', -23.6, 15.1, 'POR', 'island'],
+  ['Faroe', -6.9, 62.0, 'DEN', 'island'], ['Mauritius', 57.55, -20.25, 'ENG', 'island'], ['Seyşeller', 55.45, -4.6, 'ENG', 'island', 2.6], ['St. Helena', -5.7, -15.95, 'ENG', 'island', 2.6],
+  ['Rodos', 28.0, 36.2, 'ITA', 'island'], ['Diego Garcia', 72.4, -7.3, 'ENG', 'island', 2.6], ['Ascension', -14.36, -7.95, 'ENG', 'island', 2.6],
+  ['Cebelitarık', -5.35, 36.14, 'ENG', 'enclave', 2.4], ['Hong Kong', 114.17, 22.3, 'ENG', 'enclave', 2.6], ['Port Said', 32.3, 31.26, 'ENG', 'enclave', 0],
+];
+ISLANDS.splice(ISLANDS.findIndex((i) => i[0] === 'Port Said'), 1);
+// adalar için şehir kayıtları (isim ve zafer puanı)
+CITIES.push(['Midway', -177.37, 28.21, 5], ['Wake', 166.62, 19.29, 3], ['Guam', 144.79, 13.44, 5], ['Johnston', -169.53, 16.73, 1], ['Dutch Harbor', -166.54, 53.89, 2], ['Attu', 173.18, 52.9, 1], ['Kiska', 177.5, 51.97, 1],
+  ['Saipan', 145.75, 15.18, 5], ['Truk', 151.85, 7.42, 5], ['Palau', 134.5, 7.45, 3], ['Ponape', 158.2, 6.88, 2], ['Kwajalein', 167.73, 9.19, 3], ['Iwo Jima', 141.32, 24.78, 5], ['Okinawa', 127.85, 26.45, 8], ['Chichi Jima', 142.19, 27.07, 2],
+  ['Tarawa', 172.98, 1.42, 3], ['Rabaul', 152.2, -4.25, 5], ['Apia', -172.1, -13.75, 1], ['Nauru', 166.93, -0.52, 1], ['Guadalcanal', 160.0, -9.45, 3], ['Suva', 178.44, -18.14, 2], ['Pearl Harbor', -157.95, 21.37, 10],
+  ['Valletta', 14.51, 35.9, 10], ['Ponta Delgada', -25.67, 37.74, 2], ['Hamilton', -64.78, 32.29, 2], ['Praia', -23.51, 14.93, 1], ['Tórshavn', -6.77, 62.01, 1], ['Port Louis', 57.5, -20.16, 1], ['Victoria', 55.45, -4.62, 1],
+  ['Jamestown', -5.72, -15.93, 1], ['Diego Garcia', 72.4, -7.3, 1], ['Georgetown (Ascension)', -14.36, -7.95, 1], ['Cebelitarık', -5.35, 36.14, 10], ['Hong Kong', 114.17, 22.3, 10], ['Stanley', -57.85, -51.7, 2], ['Nouméa', 166.45, -22.27, 2]);

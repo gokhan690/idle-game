@@ -171,6 +171,19 @@
       UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
       return true;
     };
+    // filo seçimi ve hareketi
+    if (cnt && cnt.fleet && cnt.tag === st.player) { R.sel.fleet = cnt.fleet; R.sel.units.clear(); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return; }
+    if (R.sel.fleet) {
+      const c = st.C[st.player]; const f = c.fleets.find((x) => x.id === R.sel.fleet);
+      if (f && n >= NP) {
+        const p = G.fleetPath(f.loc, n);
+        if (p) { f.path = p; f.prog = 0; if (f.mis === 'patrol' || f.mis === 'raid') f.mis = 'hold'; UI.toast(`${f.n} yola çıktı (${p.length} bölge).`); }
+        else UI.toast('Bu deniz bölgesine yol yok.', 'warn');
+        UI.renderSel(); R.dirty = 1; return;
+      }
+      R.sel.fleet = null; $('selbar').hidden = true; R.dirty = 1;
+      if (n < 0) return;
+    }
     if (R.sel.units.size) {
       const sel = st.units.filter((u) => R.sel.units.has(u.id));
       const allHere = sel.length > 0 && sel.every((u) => u.loc === n);
@@ -196,10 +209,13 @@
       if (!path) {
         path = G.findPath(u.loc, target, u.t, s.spd, { naval: true });
         if (path && path.some((x) => x >= NP)) {
-          // düşman kıyısına çıkarma: deniz gücü kontrolü
+          // deniz yolu: konvoy ve deniz üstünlüğü kontrolü
           const landing = path[path.length - 1];
+          const lastSea = [...path].reverse().find((x) => x >= NP);
           const hostileLanding = landing < NP && G.atWar(u.t, st.prov[landing].c);
-          if (hostileLanding && (c.eNavy || 0) > G.navyPower(c) * 2) { blocked = 'Düşman donanması çok güçlü: çıkarma yapılamaz.'; path = null; }
+          const freeConv = (c.ships.conv || 0) - G.convoyNeed(u.t) - naval * 5;
+          if (freeConv < 5) { blocked = 'Yeterli konvoy yok: deniz yoluyla taşıma için tümen başına 5 konvoy gerekir.'; path = null; }
+          else if (hostileLanding && lastSea != null && G.navalSupremacy(u.t, lastSea) < 0.35) { blocked = 'Çıkarma bölgesinde düşman donanması üstün: önce deniz üstünlüğü kur.'; path = null; }
           else naval++;
         }
       }

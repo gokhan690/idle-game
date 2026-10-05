@@ -44,7 +44,7 @@
       if (t === a || def.has(t)) continue;
       if (t === st.player) { G.queuePopup({ title: 'Silah Çağrısı', text: `Müttefikimiz ${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti. Savaşa katılalım mı?`, opts: [{ n: 'Savaşa katıl', fx: () => { for (const y of G.sideOf(b)) if (!G.sameFaction(t, y)) G.setWar(t, y); } }, { n: 'Uzak dur', fx: () => {} }] }); continue; }
       const ct = st.C[t];
-      if (ct.ideo === st.C[a].ideo && ct.ideo !== 'neu' && lateWar) att.add(t);
+      if (ct.overlord === a || (ct.ideo === st.C[a].ideo && ct.ideo !== 'neu' && lateWar)) att.add(t);
     }
     for (const t of def) att.delete(t);
     for (const x of att) for (const y of def) {
@@ -171,6 +171,8 @@
     if (st.goals[other + '>' + ai] || o.just?.t === ai) v -= 60;
     for (const e of a.enemies) if (G.atWar(other, e)) v += 40;
     for (const e of o.enemies) if (G.sameFaction(ai, e)) v -= 80;
+    v += (st.rel && st.rel[ai + '>' + other]) || 0;
+    if (a.overlord === other) v += 100;
     return v;
   };
 

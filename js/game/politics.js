@@ -74,7 +74,7 @@
     if (c.ideo === ideo) return;
     const old = c.ideo;
     c.ideo = ideo;
-    c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.PARTY_N[ideo]} Lideri`;
+    c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.IDEOLOGIES[ideo].n} Hükümet`;
     if ((c.pop[ideo] || 0) < 0.55) { c.pop[ideo] = 0.55; normalizePop(c); }
     c.stabX -= 0.1;
     // ittifak lideriyle ideoloji uyuşmazsa ittifaktan çık
@@ -287,5 +287,102 @@
       if (k === 'eco' && nx === 4 && !atWar) continue;
       if (G.lawAllowed(c, k, nx).ok) { c.pp -= g.LAW_COST; c.laws[k] = nx; G.recomputeMods(c); }
     }
+  };
+})(window);
+
+// ---------- Kukla devletler, istihbarat, ödünç verme ----------
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+
+  G.makePuppet = (over, tag) => {
+    const st = G.st, c = st.C[tag], o = st.C[over];
+    let n = 0;
+    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag && pr.o === over) { pr.o = pr.c = pr.core = tag; n++; } }
+    if (!n) return false;
+    for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
+    c.alive = 1; c.overlord = over; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.leader = `${G.cname(over)} yanlısı hükümet`;
+    G.updateSummaries();
+    c.cap = G.anyOwnProvince(tag);
+    const d = g.COUNTRY_DEFS[tag];
+    for (let i = 0; i < NP; i++) if (st.prov[i].o === tag && (P[i].n === d.cap || (P[i].cs || []).includes(d.cap))) c.cap = i;
+    G.cwDirty = 1; c.startW = G.coreWeight(tag, true);
+    if (!o.fac) G.createFaction(over, `${G.cname(over)} İttifakı`);
+    if (c.fac !== o.fac) { if (c.fac) G.leaveFaction(tag); G.joinFaction(tag, o.fac); }
+    for (const t of o.enemies) G.setWar(tag, t);
+    const k = Math.max(1, Math.round(c.sum.provs / 3));
+    for (let i = 0; i < k; i++) st.units.push(G.makeUnit(tag, 'inf', c.cap, 0.7));
+    c.stock.inf = Math.max(c.stock.inf, 2000); c.stock.art = Math.max(c.stock.art, 60);
+    G.defaultLines(c);
+    G.rebuildUnitIndex(); G.refreshEnemies();
+    G.mapDirty = 1; G.needSummary = 1;
+    G.log(`${G.cname(tag)}, ${G.cname(over)} himayesinde kukla devlet olarak yeniden kuruldu.`, [over, tag], 'major');
+    return true;
+  };
+  // Oyuncunun serbest bırakabileceği uluslar: yok olmuş, asli toprakları oyuncunun elinde
+  G.releasable = (tag) => {
+    const st = G.st, out = {};
+    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === tag && pr.oc !== tag && !st.C[pr.oc]?.alive) out[pr.oc] = (out[pr.oc] || 0) + 1; }
+    return Object.entries(out).filter(([t]) => !g.COUNTRY_DEFS[t].hidden || st.C[t]).map(([t, n]) => ({ t, n }));
+  };
+
+  // ---------- İstihbarat ----------
+  G.OPS = {
+    propaganda: { n: 'Propaganda Kampanyası', d: 'Hedefin istikrarı ve savaş desteği -%8', cost: 60, days: 30 },
+    support: { n: 'İdeolojimizi Destekle', d: 'Hedefte ideolojimizin desteği +%12', cost: 75, days: 45 },
+    sabotage: { n: 'Sabotaj', d: 'Hedef 2 askerî fabrika kaybeder', cost: 80, days: 40, war: 1 },
+    decrypt: { n: 'Şifre Çözme', d: 'Hedefe karşı muharebede +%12 (1 yıl)', cost: 100, days: 60 },
+    coup: { n: 'Darbe', d: 'İdeolojimizin desteği %30 üstündeyse hükümeti devirir', cost: 150, days: 90 },
+  };
+  G.opAllowed = (a, t, op) => {
+    const st = G.st, c = st.C[a], x = st.C[t], O = G.OPS[op];
+    if (st.ops.some((o) => o.a === a && o.t === t && o.op === op)) return { ok: false, why: 'Operasyon zaten sürüyor' };
+    if (c.pp < O.cost) return { ok: false, why: `${O.cost} siyasi güç gerekli` };
+    if (O.war && !G.atWar(a, t) && st.tension < 50) return { ok: false, why: 'Savaşta olmalı ya da gerginlik %50 üstünde' };
+    if (op === 'coup') { if (x.major) return { ok: false, why: 'Büyük güçlerde darbe yapılamaz' }; if ((x.pop[c.ideo] || 0) < 0.3) return { ok: false, why: `${g.PARTY_N[c.ideo]} hedefte en az %30 olmalı` }; if (x.ideo === c.ideo) return { ok: false, why: 'Zaten aynı ideoloji' }; }
+    if (op === 'support' && x.ideo === c.ideo) return { ok: false, why: 'Zaten aynı ideoloji' };
+    return { ok: true };
+  };
+  G.startOp = (a, t, op) => {
+    const r = G.opAllowed(a, t, op); if (!r.ok) return r;
+    const c = G.st.C[a]; c.pp -= G.OPS[op].cost;
+    G.st.ops.push({ a, t, op, d: G.OPS[op].days });
+    return { ok: true };
+  };
+  G.opsTick = () => {
+    const st = G.st;
+    for (let k = 0; k < st.ops.length; k++) {
+      const o = st.ops[k];
+      if (--o.d > 0) continue;
+      st.ops.splice(k, 1); k--;
+      const c = st.C[o.a], x = st.C[o.t];
+      if (!c?.alive || !x?.alive) continue;
+      const mine = o.a === st.player || o.t === st.player;
+      switch (o.op) {
+        case 'propaganda': x.stabX -= 0.08; x.wsX -= 0.08; break;
+        case 'support': G.addPop(x, c.ideo, 0.12); break;
+        case 'sabotage': { let n = 2; for (let i = 0; i < NP && n > 0; i++) { const pr = st.prov[i]; if (pr.c === o.t && pr.mil > 0 && G.rand() < 0.3) { pr.mil--; n--; } } G.needSummary = 1; break; }
+        case 'decrypt': c.decrypt = c.decrypt || {}; c.decrypt[o.t] = st.day + 365; break;
+        case 'coup': if ((x.pop[c.ideo] || 0) >= 0.3 && !G.atWar(o.a, o.t)) { G.setIdeology(x, c.ideo); if (c.fac) G.joinFaction(o.t, c.fac); } break;
+      }
+      if (mine) G.log(`İstihbarat: ${G.OPS[o.op].n} (${G.cname(o.a)} → ${G.cname(o.t)}) tamamlandı.`, [o.a, o.t], o.a === st.player ? 'good' : 'bad');
+    }
+    // YZ: faşist/komünist büyük güçler yılda bir yakın komşularda ideoloji desteği
+    if (st.day % 120 === 17) for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player || (c.ideo !== 'fas' && c.ideo !== 'com') || c.pp < 200) continue;
+      const cands = Object.values(st.C).filter((x) => x.alive && !x.major && x.ideo !== c.ideo && G.dist(x.cap, c.cap) < 500);
+      if (cands.length) { const x = cands[Math.floor(G.rand() * cands.length)]; G.startOp(c.tag, x.tag, (x.pop[c.ideo] || 0) >= 0.3 && st.tension > 40 ? 'coup' : 'support'); }
+    }
+  };
+
+  // ---------- Ödünç verme ve ambargo ----------
+  G.LEND = [['inf', 1000, 'piyade teçhizatı'], ['art', 50, 'topçu'], ['tank', 30, 'tank'], ['fig', 50, 'avcı uçağı'], ['conv', 20, 'konvoy']];
+  G.lend = (a, t, e, n) => {
+    const st = G.st, c = st.C[a], x = st.C[t];
+    if (e === 'conv') { if ((c.ships.conv || 0) < n) return false; c.ships.conv -= n; x.ships.conv = (x.ships.conv || 0) + n; }
+    else { if ((c.stock[e] || 0) < n) return false; c.stock[e] -= n; x.stock[e] = (x.stock[e] || 0) + n; }
+    st.rel = st.rel || {}; st.rel[t + '>' + a] = Math.min(60, (st.rel[t + '>' + a] || 0) + 6);
+    return true;
   };
 })(window);

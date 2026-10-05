@@ -25,8 +25,8 @@
       tag, alive: 1, major: d.major || 0, pp: 50, ideo: d.id, fac: null, laws: { mob: 0, eco: 0 },
       tech: {}, res: [], focus: { done: {}, cur: null, p: 0 }, fmods: {}, mods: {},
       lines: [], stock: { inf: 0, art: 0, mot: 0, tank: 0, fig: 0, cas: 0, bom: 0 }, ships: { dd: 0, cr: 0, bb: 0, ss: 0, cv: 0 },
-      constr: [], train: [], dead: 0, just: null, cap: -1, startW: 0, enemies: [], ai: { t: 0 },
-      auto: { res: 0, prod: 0, con: 0, focus: 0 }, sum: {},
+      constr: [], train: [], dead: 0, just: null, cap: -1, startW: 0, enemies: [], ai: { t: 0 }, sl: {}, air: { bomb: 'auto', cas: 1 }, fleets: [], ops: [],
+      auto: { res: 0, prod: 0, con: 0, focus: 0, trade: 1 }, sum: {},
     };
     for (let l = 0; l <= (d.tl || 0); l++) for (const id of g.START_TECHS[l]) c.tech[id] = 1;
     if (d.div.mtn) c.tech.mtn1 = c.tech.sup1 = 1;
@@ -45,14 +45,14 @@
 
   G.newGame = (player, opts) => {
     const st = {
-      v: 3, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
-      prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {},
+      v: 4, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
+      prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {}, deals: [], embargo: {}, ops: [],
       log: [], nextId: 1, over: 0,
     };
     G.st = st;
     for (let i = 0; i < NP; i++) {
       const p = P[i];
-      st.prov.push({ o: p.t, c: p.t, core: p.t, civ: 0, mil: 0, dock: 0, fort: 0, pop: 0 });
+      st.prov.push({ o: p.t, c: p.t, core: p.t, oc: p.t, civ: 0, mil: 0, dock: 0, fort: 0, pop: 0 });
     }
     const byTag = {};
     P.forEach((p, i) => { (byTag[p.t] || (byTag[p.t] = [])).push(i); });
@@ -76,6 +76,8 @@
       prs.forEach((pr) => { pr.pop = (d.pop * (provWeight(P[pr._i]) + P[pr._i].ar / 400)) / totalW; delete pr._i; });
       // donanma ve hava
       g.SHIPS.forEach((e, k) => (c.ships[e] = d.navy[k] || 0));
+      const CONV = { ENG: 450, USA: 320, JAP: 220, FRA: 160, ITA: 130, HOL: 120, GER: 100, SOV: 60, NOR: 60, SPR: 40, CAN: 40, AST: 30 };
+      c.ships.conv = CONV[tag] ?? Math.min(40, d.dock * 10 + 5);
       c.stock.fig = d.air[0]; c.stock.cas = d.air[1]; c.stock.bom = d.air[2];
     }
     // ittifaklar
@@ -113,7 +115,7 @@
         }
       }
       // başlangıç stokları ve üretim hatları
-      c.stock.inf = total * 150 + 300; c.stock.art = total * 6 + 20;
+      c.stock.inf = total * 150 + 300; c.stock.art = total * 6 + 20; c.stock.sup = total * 4 + 30;
       if (c.mods.unlockEq.mot) c.stock.mot = 100;
       if (c.mods.unlockEq.tank) c.stock.tank = 40;
       G.defaultLines(c);
@@ -125,14 +127,15 @@
     st.tension = 8;
     G.rebuildUnitIndex();
     G.updateSummaries();
-    for (const c of Object.values(st.C)) if (c.alive) { c._mpu = null; G.econCalc(c); }
+    for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); c._mpu = null; G.econCalc(c); }
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
   };
 
   G.makeUnit = (tag, type, loc, str) => {
     const st = G.st;
-    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0 };
+    const c = st.C[tag];
+    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
     u.org = G.unitStats(u).org * (str >= 1 ? 1 : 0.5);
     return u;
   };
@@ -149,8 +152,9 @@
     for (const [e, w] of want) {
       if (!c.mods.unlockEq[e]) continue;
       const f = Math.floor(mil * w);
-      if (f > 0) { lines.push({ e, f, eff: 0.3, acc: 0 }); used += f; }
+      if (f > 0) { lines.push({ e, f, eff: 0.3, acc: 0, lv: G.bestLevel(c, e) }); used += f; }
     }
+    if (mil >= 6) { lines.push({ e: 'sup', f: 1, eff: 0.3, acc: 0, lv: 1 }); used += 1; }
     if (mil > used) { const inf = lines.find((l) => l.e === 'inf'); if (inf) inf.f += mil - used; else lines.push({ e: 'inf', f: mil - used, eff: 0.3, acc: 0 }); }
     if (dock > 0) {
       const dw = c.major ? [['dd', 0.3], ['ss', 0.3], ['cr', 0.2], ['bb', 0.2]] : [['dd', 0.5], ['ss', 0.5]];
@@ -187,11 +191,11 @@
   };
 
   // ---------- Kayıt ----------
-  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu']);
+  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu', '_sd', '_rf', '_rfDay']);
   G.serialize = () => JSON.stringify(G.st, (k, v) => (SKIP.has(k) ? undefined : v));
   G.deserialize = (s) => {
     const st = JSON.parse(s);
-    if (!st || st.v !== 3) throw new Error('Kayıt sürümü uyumsuz');
+    if (!st || st.v !== 4) throw new Error('Kayıt sürümü uyumsuz');
     G.st = st;
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
     G.refreshEnemies();

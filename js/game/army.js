@@ -15,19 +15,18 @@
     t = c._tc[id] = G.computeTemplate(c, src);
     return t;
   };
+  // Seviye çarpanları: piyade/topçu %15, tank %25 (model başına)
+  G.lvMul = (kind, l) => (kind === 'tank' ? 1 + 0.25 * (l - 1) : kind === 'art' || kind === 'inf' ? 1 + 0.15 * (l - 1) : 1);
   G.computeTemplate = (c, src) => {
-    const m = c.mods || {};
-    const infL = m.eq_inf || 1, artL = m.eq_art || 1, tankL = m.eq_tank || 1;
-    let atk = 0, def = 0, orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSum = 0, prcMax = 0, tanks = 0, mob = 0, amph = 0;
+    const atkK = { inf: 0, art: 0, tank: 0, flat: 0 }, defK = { inf: 0, art: 0, tank: 0, flat: 0 };
+    let orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSumT = 0, prcMaxT = 0, prcSumO = 0, prcMaxO = 0, tanks = 0, mob = 0, amph = 0;
     const eq = {}, bonusRaw = {};
     for (const [k, cnt] of Object.entries(src.b || {})) {
       const b = g.BATS[k]; if (!b || !cnt) continue;
-      const lv = b.kind === 'tank' ? 1 + 0.25 * (tankL - 1) : b.kind === 'art' ? 1 + 0.15 * (artL - 1) : 1 + 0.15 * (infL - 1);
-      atk += b.atk * lv * cnt; def += b.def * lv * cnt; orgS += b.org * cnt; nb += cnt;
+      atkK[b.kind] += b.atk * cnt; defK[b.kind] += b.def * cnt; orgS += b.org * cnt; nb += cnt;
       spd = Math.min(spd, b.spd); mp += b.mp * cnt; w += b.w * cnt;
-      const ar = b.arm * (b.kind === 'tank' ? lv : 1), pr = b.prc * (b.kind === 'tank' ? lv : 1);
-      armSum += ar * cnt; armMax = Math.max(armMax, ar); prcSum += pr * cnt; prcMax = Math.max(prcMax, pr);
-      if (b.kind === 'tank') tanks += cnt;
+      armSum += b.arm * cnt; armMax = Math.max(armMax, b.arm);
+      if (b.kind === 'tank') { prcSumT += b.prc * cnt; prcMaxT = Math.max(prcMaxT, b.prc); tanks += cnt; } else { prcSumO += b.prc * cnt; prcMaxO = Math.max(prcMaxO, b.prc); }
       if (b.mob) mob += cnt;
       if (b.amph) amph += cnt;
       for (const [e, q] of Object.entries(b.eq)) eq[e] = (eq[e] || 0) + q * cnt;
@@ -36,11 +35,10 @@
     if (!nb) { nb = 1; spd = 4; orgS = 10; }
     let ent = 0, spdM = 0, prcAdd = 0, aa = 0, sup = 0, cas = 0;
     for (const [k, on] of Object.entries(src.s || {})) {
-      const s = g.SUPPORTS[k]; if (!s || !on) continue;
-      const lv = s.kind === 'art' ? 1 + 0.15 * (artL - 1) : 1;
-      atk += (s.atk || 0) * lv; def += s.def || 0; ent += s.ent || 0; spdM += s.spdM || 0; prcAdd += s.prcAdd || 0;
-      aa += s.aa || 0; sup += s.sup || 0; cas += s.cas || 0; mp += s.mp || 0;
-      for (const [e, q] of Object.entries(s.eq)) eq[e] = (eq[e] || 0) + q;
+      const s2 = g.SUPPORTS[k]; if (!s2 || !on) continue;
+      atkK[s2.kind === 'art' ? 'art' : 'flat'] += s2.atk || 0; defK.flat += s2.def || 0; ent += s2.ent || 0; spdM += s2.spdM || 0; prcAdd += s2.prcAdd || 0;
+      aa += s2.aa || 0; sup += s2.sup || 0; cas += s2.cas || 0; mp += s2.mp || 0;
+      for (const [e, q] of Object.entries(s2.eq)) eq[e] = (eq[e] || 0) + q;
     }
     const bonus = {};
     for (const [te, v] of Object.entries(bonusRaw)) bonus[te] = v / nb;
@@ -49,12 +47,23 @@
       for (const [k, cnt] of Object.entries(src.b || {})) if (cnt > bc && k !== 'art') { bc = cnt; best = k; }
       return g.BATS[best]?.s || 'TÜM';
     };
-    return {
+    const tankShare = tanks / nb;
+    const t = {
       n: src.n, s: shortOf(), mp: Math.round(mp * 10) / 10, eq, days: Math.round(30 + 4 * nb + 8 * tanks),
-      atk, def, org: orgS / nb, spd, arm: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
-      prc: 0.4 * prcMax + 0.6 * prcSum / nb + prcAdd, w, bonus, amph: amph / nb, mob: mob / nb, tanks,
-      ent, spdM, aa, sup, cas, nb,
+      atkK, defK, org: orgS / nb, spd, armBase: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
+      prcT: tanks ? (0.4 * prcMaxT + 0.6 * prcSumT / nb) : 0, prcO: (1 - tankShare) * (0.4 * prcMaxO + 0.6 * prcSumO / Math.max(1, nb - tanks)) + prcAdd,
+      w, bonus, amph: amph / nb, mob: mob / nb, tanks, ent, spdM, aa, sup, cas, nb,
     };
+    // ülkenin mevcut teçhizat seviyesiyle gösterim değerleri
+    const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') };
+    Object.assign(t, G.levelStats(t, L));
+    return t;
+  };
+  G.levelStats = (t, L) => {
+    let atk = t.atkK.flat, def = t.defK.flat;
+    for (const k of ['inf', 'art', 'tank']) { const m = G.lvMul(k, L[k] || 1); atk += t.atkK[k] * m; def += t.defK[k] * m; }
+    const tm = G.lvMul('tank', L.tank || 1);
+    return { atk, def, arm: t.armBase * (t.tanks ? tm : 1), prc: t.prcO + t.prcT * tm };
   };
   G.invalidateTemplates = (c) => { c._tc = {}; };
 
@@ -101,7 +110,16 @@
       for (let i = 0; i < n; i++) G.newGeneral(c, { fm: i === 0 && divs > 12 });
     }
   };
+  const gbCache = new WeakMap();
   G.genBonus = (gen) => {
+    const key = gen.atk + ',' + gen.def + ',' + gen.plan + ',' + gen.log + ',' + gen.tr.length + ',' + gen.fm;
+    const hit = gbCache.get(gen);
+    if (hit && hit.k === key) return hit.b;
+    const b = genBonusRaw(gen);
+    gbCache.set(gen, { k: key, b });
+    return b;
+  };
+  const genBonusRaw = (gen) => {
     const extra = gen.tr.includes('brilliant') ? 1 : 0;
     const b = { atk: 0.04 * (gen.atk + extra), def: 0.04 * (gen.def + extra), plan: 0.04 * (gen.plan + extra), sup: 0.07 * (gen.log + extra), armAtk: 0, speed: 0, terrain: {}, winter: 0, amph: 0, cas: 0, ent: 0 };
     for (const t of gen.tr) {
@@ -144,9 +162,11 @@
 
   // ---------- Birim istatistikleri (şablon + ülke + komutan) ----------
   G.unitStats = (u) => {
+    if (u._sd === G.st.day && u._s) return u._s;
     const t = G.T(u.t, u.u), c = G.st.C[u.t], m = c.mods;
-    let atk = t.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob);
-    let def = t.def * (1 + (m.landDef || 0));
+    const ls = u.lv ? G.levelStats(t, u.lv) : t;
+    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob);
+    let def = ls.def * (1 + (m.landDef || 0));
     const org = t.org * (1 + (m.org || 0));
     let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
     const gen = G.genOf(u);
@@ -156,7 +176,8 @@
       const k = u.army ? 1 : 0.35; // YZ komutanı genel etki
       atk *= 1 + k * (gb.atk + gb.armAtk * t.mob); def *= 1 + k * gb.def; spd *= 1 + k * gb.speed;
     }
-    return { atk, def, org, arm: t.arm, prc: t.prc + (m.prc || 0) * (1 - t.mob * 0.6), spd, t, gb };
+    u._sd = G.st.day;
+    return (u._s = { atk, def, org, arm: ls.arm, prc: ls.prc + (m.prc || 0) * (1 - t.mob * 0.6), spd, t, gb });
   };
 
   // ---------- Ordular ----------

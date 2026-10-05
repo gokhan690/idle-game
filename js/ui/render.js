@@ -89,23 +89,26 @@
     const cv = R.cv; R.dpr = Math.min(2, g.devicePixelRatio || 1);
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
-    R.minZ = Math.max(R.w / M.W, R.h / M.H) * 0.98;
+    R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
     R.clamp(); R.dirty = 1;
   };
   R.clamp = () => {
     const c = R.cam;
     c.z = Math.max(R.minZ || 0.1, Math.min(14, c.z));
-    const hw = R.w / 2 / c.z, hh = R.h / 2 / c.z;
-    c.x = Math.max(hw, Math.min(M.W - hw, c.x)); c.y = Math.max(hh * 0.6, Math.min(M.H - hh * 0.6, c.y));
-    if (hw * 2 > M.W) c.x = M.W / 2;
+    const hh = R.h / 2 / c.z;
+    // yatayda döngülü dünya
+    c.x = ((c.x % M.W) + M.W) % M.W;
+    c.y = Math.max(hh * 0.6, Math.min(M.H - hh * 0.6, c.y));
   };
-  R.toWorld = (sx, sy) => ({ x: R.cam.x + (sx - R.w / 2) / R.cam.z, y: R.cam.y + (sy - R.h / 2) / R.cam.z });
-  R.toScreen = (wx, wy) => ({ x: (wx - R.cam.x) * R.cam.z + R.w / 2, y: (wy - R.cam.y) * R.cam.z + R.h / 2 });
+  const HW = M.W / 2;
+  R.wrapDx = (dx) => { while (dx > HW) dx -= M.W; while (dx < -HW) dx += M.W; return dx; };
+  R.toWorld = (sx, sy) => ({ x: (((R.cam.x + (sx - R.w / 2) / R.cam.z) % M.W) + M.W) % M.W, y: R.cam.y + (sy - R.h / 2) / R.cam.z });
+  R.toScreen = (wx, wy) => ({ x: R.wrapDx(wx - R.cam.x) * R.cam.z + R.w / 2, y: (wy - R.cam.y) * R.cam.z + R.h / 2 });
   R.zoomAt = (sx, sy, f) => {
     const before = R.toWorld(sx, sy);
     R.cam.z *= f; R.clamp();
     const after = R.toWorld(sx, sy);
-    R.cam.x += before.x - after.x; R.cam.y += before.y - after.y; R.clamp(); R.dirty = 1;
+    R.cam.x += R.wrapDx(before.x - after.x); R.cam.y += before.y - after.y; R.clamp(); R.dirty = 1;
   };
   R.focusOn = (n, z) => { R.cam.x = G.nodeX[n]; R.cam.y = G.nodeY[n]; if (z) R.cam.z = Math.max(R.cam.z, z); R.clamp(); R.dirty = 1; };
 
@@ -152,43 +155,46 @@
     const grd = ctx.createLinearGradient(0, 0, 0, R.h);
     grd.addColorStop(0, '#16283a'); grd.addColorStop(1, '#10202f');
     ctx.fillStyle = grd; ctx.fillRect(0, 0, R.w, R.h);
-    ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - cam.x * z), dpr * (R.h / 2 - cam.y * z));
-    // deniz bölgeleri
-    ctx.strokeStyle = 'rgba(160,190,215,0.10)'; ctx.lineWidth = 1 / z; ctx.stroke(seaPath);
-    // kıyı ışıması
-    ctx.strokeStyle = 'rgba(120,170,200,0.18)'; ctx.lineWidth = 7 / z; ctx.lineJoin = 'round'; ctx.stroke(coastPath);
-    // kara dolgusu
-    for (const [k, pa] of fillGroups) {
-      let col;
-      if (R.mode === 'terrain') col = g.TERRAIN[+k.slice(2)].c;
-      else if (R.mode === 'ind') col = IND_COLORS[+k.slice(3)];
-      else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
-      else col = R.ccolor(k);
-      if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
-      ctx.fillStyle = col;
-      if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+    const hw = R.w / 2 / z;
+    for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
+      ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
+      // deniz bölgeleri
+      ctx.strokeStyle = 'rgba(160,190,215,0.10)'; ctx.lineWidth = 1 / z; ctx.stroke(seaPath);
+      // kıyı ışıması
+      ctx.strokeStyle = 'rgba(120,170,200,0.18)'; ctx.lineWidth = 7 / z; ctx.lineJoin = 'round'; ctx.stroke(coastPath);
+      // kara dolgusu
+      for (const [k, pa] of fillGroups) {
+        let col;
+        if (R.mode === 'terrain') col = g.TERRAIN[+k.slice(2)].c;
+        else if (R.mode === 'ind') col = IND_COLORS[+k.slice(3)];
+        else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
+        else col = R.ccolor(k);
+        if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
+        ctx.fillStyle = col;
+        if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+      }
+      // işgal çizgileri
+      if (R.mode === 'pol') for (const [owner, pa] of occGroups) {
+        let pat = stripeCache.get(owner);
+        if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
+        pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
+        ctx.globalAlpha = 0.55; ctx.fillStyle = pat;
+        if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+        ctx.globalAlpha = 1;
+      }
+      // hafif rölyef: arazi gölgesi (siyasi modda dağ/tepe koyulaştır)
+      // eyalet sınırları
+      if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
+      ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
+      ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
+      // seçili eyalet
+      if (R.sel.prov >= 0 && R.sel.prov < NP) {
+        ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
+        ctx.fillStyle = 'rgba(242,210,122,0.14)'; ctx.fill(provPath[R.sel.prov], 'evenodd');
+      }
+      // hedef önizleme
+      if (R.hover >= 0 && R.hover < NP && R.sel.units.size) { ctx.strokeStyle = '#ffffff'; ctx.setLineDash([4 / z, 3 / z]); ctx.lineWidth = 1.6 / z; ctx.stroke(provPath[R.hover]); ctx.setLineDash([]); }
     }
-    // işgal çizgileri
-    if (R.mode === 'pol') for (const [owner, pa] of occGroups) {
-      let pat = stripeCache.get(owner);
-      if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
-      pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
-      ctx.globalAlpha = 0.55; ctx.fillStyle = pat;
-      if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
-      ctx.globalAlpha = 1;
-    }
-    // hafif rölyef: arazi gölgesi (siyasi modda dağ/tepe koyulaştır)
-    // eyalet sınırları
-    if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
-    ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
-    ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
-    // seçili eyalet
-    if (R.sel.prov >= 0 && R.sel.prov < NP) {
-      ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
-      ctx.fillStyle = 'rgba(242,210,122,0.14)'; ctx.fill(provPath[R.sel.prov], 'evenodd');
-    }
-    // hedef önizleme
-    if (R.hover >= 0 && R.hover < NP && R.sel.units.size) { ctx.strokeStyle = '#ffffff'; ctx.setLineDash([4 / z, 3 / z]); ctx.lineWidth = 1.6 / z; ctx.stroke(provPath[R.hover]); ctx.setLineDash([]); }
 
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -258,7 +264,7 @@
       ctx.beginPath();
       let s = R.toScreen(G.nodeX[u.loc], G.nodeY[u.loc]); ctx.moveTo(s.x, s.y);
       let prev = s;
-      for (const n of u.path) { const q = R.toScreen(G.nodeX[n], G.nodeY[n]); ctx.lineTo(q.x, q.y); prev = s; s = q; }
+      for (const n of u.path) { const q = R.toScreen(G.nodeX[n], G.nodeY[n]); const span = M.W * R.cam.z; while (q.x - s.x > span / 2) q.x -= span; while (s.x - q.x > span / 2) q.x += span; ctx.lineTo(q.x, q.y); prev = s; s = q; }
       ctx.stroke(); ctx.setLineDash([]);
       // ok ucu
       const a = Math.atan2(s.y - prev.y, s.x - prev.x);
@@ -271,7 +277,7 @@
     const st = G.st;
     R.battleMarks = [];
     for (const b of G.battles || []) {
-      const mx = (G.nodeX[b.n] * 2 + G.nodeX[b.from]) / 3, my = (G.nodeY[b.n] * 2 + G.nodeY[b.from]) / 3;
+      const mx = G.nodeX[b.n] + R.wrapDx(G.nodeX[b.from] - G.nodeX[b.n]) / 3, my = (G.nodeY[b.n] * 2 + G.nodeY[b.from]) / 3;
       const s = visible(mx, my, 30); if (!s) continue;
       const mine = b.att === st.player || G.sameFaction(b.att, st.player) ? b.adv : (b.def === st.player || G.sameFaction(b.def, st.player)) ? 1 - b.adv : null;
       const col = mine == null ? '#d8d0b8' : mine > 0.55 ? '#7fb069' : mine < 0.45 ? '#d4553f' : '#e0a83a';
@@ -285,9 +291,41 @@
     }
   }
 
+  function drawFleets(ctx, z) {
+    const st = G.st;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.fleets || !c.fleets.length) continue;
+      const mine = c.tag === st.player, rel = mine || G.sameFaction(c.tag, st.player), enemy = G.atWar(c.tag, st.player);
+      if (!rel && !enemy && z < 1.6) continue;
+      c.fleets.forEach((f, k) => {
+        let x0 = G.nodeX[f.loc], y0 = G.nodeY[f.loc];
+        if (f.path.length && f.prog > 0) { const n = f.path[0]; const t = Math.min(1, f.prog / Math.max(1, G.dist(f.loc, n))); x0 += R.wrapDx(G.nodeX[n] - x0) * t; y0 += (G.nodeY[n] - y0) * t; }
+        const s = visible(x0, y0, 40); if (!s) return;
+        const w = 34, h = 18, x = s.x - w / 2 + (k % 3) * 8, y = s.y - h / 2 - 14 + (k % 3) * 6;
+        const sel = R.sel.fleet === f.id;
+        ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+        ctx.fillStyle = '#1d3550'; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = R.ccolor(c.tag); ctx.fillRect(x, y, 6, h);
+        ctx.strokeStyle = sel ? '#f2d27a' : enemy ? '#d65a43' : 'rgba(200,220,240,0.7)'; ctx.lineWidth = sel ? 2.5 : 1.2; ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = '#e8eef4'; ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('⚓' + Math.round(G.fleetShips(f)), x + 20, y + h / 2);
+        if (mine && f.path.length) {
+          ctx.strokeStyle = sel ? 'rgba(242,210,122,0.9)' : 'rgba(170,200,230,0.6)'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(s.x, s.y);
+          let px = s.x; for (const n of f.path) { const q = R.toScreen(G.nodeX[n], G.nodeY[n]); const span = M.W * R.cam.z; while (q.x - px > span / 2) q.x -= span; while (px - q.x > span / 2) q.x += span; ctx.lineTo(q.x, q.y); px = q.x; }
+          ctx.stroke(); ctx.setLineDash([]);
+        }
+        R.counters.push({ x, y, w, h, n: f.loc, tag: c.tag, fleet: f.id });
+      });
+    }
+    for (const b of G.navalBattles || []) {
+      const s = visible(G.nodeX[b.loc], G.nodeY[b.loc], 30); if (!s) continue;
+      ctx.strokeStyle = '#7fb3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y + 8, 13 + 2 * Math.sin(R.t / 160), 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   function drawUnits(ctx, z) {
     const st = G.st;
     R.counters = [];
+    drawFleets(ctx, z);
     if (!G.unitsAt) return;
     const showAll = z > 2.6;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

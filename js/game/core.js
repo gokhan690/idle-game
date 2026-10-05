@@ -167,7 +167,7 @@
     const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco], lt = g.LAWS.trade.opts[c.laws.trade ?? 1];
     m.factory = (m.factory || 0) + (lm.factory || 0) + (lt.factory || 0);
     m.research = (m.research || 0) + (lt.research || 0);
-    m.resLoss = lt.resLoss || 0;
+    m.expCap = lt.exp ?? 0.5;
     m.construct = (m.construct || 0) + (le.construct || 0);
     m.mpRate = lm.mp; m.cg = Math.max(0.05, le.cg + (m.cg || 0));
     if (m.unlock.mot) m.unlockEq.mot = 1;
@@ -180,14 +180,21 @@
   };
 
   // ---------- Kuvvet hesapları ----------
+  G.bestLevel = (c, e) => c.mods['eq_' + e] || 1;
+  G.lvl = (c, e) => (c.sl && c.sl[e]) || c.mods['eq_' + e] || 1;
   G.airPower = (c) => {
-    const m = c.mods, s = c.stock;
-    return ((s.fig || 0) * m.eq_fig + (s.cas || 0) * m.eq_cas * 0.6 + (s.bom || 0) * m.eq_bom * 0.3) * (1 + (m.air || 0));
+    const m = c.mods, s = c.stock, casOn = !c.air || c.air.cas !== 0;
+    return ((s.fig || 0) * G.lvl(c, 'fig') + (casOn ? (s.cas || 0) * G.lvl(c, 'cas') * 0.6 : 0) + (s.bom || 0) * G.lvl(c, 'bom') * 0.3) * (1 + (m.air || 0));
+  };
+  G.shipsPower = (c, sh) => {
+    const m = c.mods; let v = 0;
+    for (const e of g.SHIPS) v += (sh[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1);
+    return v * (1 + (m.navy || 0));
   };
   G.navyPower = (c) => {
-    const m = c.mods; let v = 0;
-    for (const e of g.SHIPS) v += (c.ships[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1);
-    return v * (1 + (m.navy || 0));
+    let v = G.shipsPower(c, c.ships);
+    for (const f of c.fleets || []) v += G.shipsPower(c, f.sh);
+    return v;
   };
   G.armyPower = (tag) => { let v = 0; for (const u of G.st.units) if (u.t === tag) v += G.unitPower(u); return v; };
   G.sidePower = (tag, fn) => { const c = G.st.C[tag]; let v = fn(c); if (c.fac) for (const t of G.st.factions[c.fac].members) if (t !== tag && G.st.C[t]?.alive) v += fn(G.st.C[t]); return v; };
