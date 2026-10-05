@@ -110,7 +110,7 @@
             const pool = (k % 3 === 0 || !border.length) ? spots.slice(0, Math.max(1, Math.ceil(spots.length / 3))) : border;
             loc = pool[Math.floor(G.rand() * pool.length)];
           }
-          st.units.push(G.makeUnit(tag, type, loc, 1));
+          { const u0 = G.makeUnit(tag, type, loc, 1); u0.xp = 0.25; st.units.push(u0); }
           k++;
         }
       }
@@ -128,6 +128,7 @@
     G.rebuildUnitIndex();
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); c._mpu = null; G.econCalc(c); }
+    if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
   };
@@ -135,7 +136,7 @@
   G.makeUnit = (tag, type, loc, str) => {
     const st = G.st;
     const c = st.C[tag];
-    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
+    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, xp: 0.2, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
     u.org = G.unitStats(u).org * (str >= 1 ? 1 : 0.5);
     return u;
   };

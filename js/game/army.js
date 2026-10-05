@@ -165,8 +165,9 @@
     if (u._sd === G.st.day && u._s) return u._s;
     const t = G.T(u.t, u.u), c = G.st.C[u.t], m = c.mods;
     const ls = u.lv ? G.levelStats(t, u.lv) : t;
-    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob);
-    let def = ls.def * (1 + (m.landDef || 0));
+    const xm = G.xpMul(u.xp);
+    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob) * xm;
+    let def = ls.def * (1 + (m.landDef || 0)) * xm;
     const org = t.org * (1 + (m.org || 0));
     let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
     const gen = G.genOf(u);
@@ -181,13 +182,19 @@
   };
 
   // ---------- Ordular ----------
+  // HOI4 gibi: her ordunun bir komutanı, bir cephesi (düşmanla ortak sınır parçası), isteğe bağlı bir taarruz hedefi (ok)
+  // ve planlama bonusu vardır. "Cepheyi tut" sırasında plan dolar, "Uygula" ile taarruz başlar ve plan harcanır.
+  G.ARMY_COLORS = ['#f2d27a', '#7fc8f8', '#e58fb8', '#9be38a', '#f4a259', '#c39bd3', '#6fd6c4', '#e86a5a'];
+  G.ARMY_MAX = 24;
   G.createArmy = (c, unitIds, genId) => {
     c.armies = c.armies || [];
-    const n = c.armies.length + 1;
-    const a = { id: G.st.nextId++, n: `${n}. Ordu`, gen: genId || null, ord: 'hold', vs: null };
-    if (!a.gen) { const free = c.gens.find((x) => !c.armies.some((y) => y.gen === x.id)); if (free) a.gen = free.id; }
+    const used = new Set(c.armies.map((a) => a.ci));
+    let ci = 0; while (used.has(ci) && ci < 40) ci++;
+    const num = (c.armies.reduce((m, a) => Math.max(m, a.no || 0), 0) || 0) + 1;
+    const a = { id: G.st.nextId++, no: num, n: `${num}. Ordu`, gen: genId || null, ord: 'hold', vs: null, goal: null, plan: 0, front: [], ci };
+    if (!a.gen) { const free = c.gens.filter((x) => !c.armies.some((y) => y.gen === x.id)).sort((x, y) => (y.fm - x.fm) || (y.atk + y.def + y.plan - x.atk - x.def - x.plan))[0]; if (free) a.gen = free.id; }
     c.armies.push(a);
-    for (const u of G.st.units) if (u.t === c.tag && unitIds.includes(u.id)) u.army = a.id;
+    for (const u of G.st.units) if (u.t === c.tag && unitIds.includes(u.id)) { u.army = a.id; u.auto = 0; }
     return a;
   };
   G.disbandArmy = (c, id) => {
@@ -195,4 +202,116 @@
     for (const u of G.st.units) if (u.t === c.tag && u.army === id) u.army = 0;
   };
   G.armyUnits = (c, id) => G.st.units.filter((u) => u.t === c.tag && u.army === id);
+  G.armyColor = (a) => G.ARMY_COLORS[(a.ci || 0) % G.ARMY_COLORS.length];
+  G.maxPlan = (c, a) => {
+    const gen = a.gen ? G.genById(c, a.gen) : null;
+    return Math.min(0.5, 0.15 + (gen ? 0.025 * gen.plan + (gen.tr.includes('brilliant') ? 0.05 : 0) + (gen.fm ? 0.03 : 0) : 0) + (c.mods.plan || 0));
+  };
+  G.planRate = (c, a) => { const gen = a.gen ? G.genById(c, a.gen) : null; return 0.008 + (gen ? 0.0025 * gen.plan : 0); };
+
+  // Oyun başında tümenleri bölgelere göre ordulara ayır (k-ortalamalar), en iyi komutanları ata
+  G.autoArmies = (c) => {
+    const st = G.st;
+    const us = st.units.filter((u) => u.t === c.tag && u.loc < NP && !u.army);
+    if (us.length < 4) return;
+    const k = Math.max(1, Math.min(Math.ceil(us.length / 20), c.gens.length || 1, 6));
+    const xs = us.map((u) => G.nodeX[u.loc]), ys = us.map((u) => G.nodeY[u.loc]);
+    // ilk merkezler: en uzak noktalar
+    const cen = [[xs[0], ys[0]]];
+    while (cen.length < k) {
+      let bi = 0, bd = -1;
+      for (let i = 0; i < us.length; i++) { const d = Math.min(...cen.map(([x, y]) => Math.hypot(xs[i] - x, ys[i] - y))); if (d > bd) { bd = d; bi = i; } }
+      cen.push([xs[bi], ys[bi]]);
+    }
+    let asg = new Array(us.length).fill(0);
+    for (let it = 0; it < 12; it++) {
+      asg = us.map((_, i) => { let b = 0, bd = Infinity; cen.forEach(([x, y], j) => { const d = Math.hypot(xs[i] - x, ys[i] - y); if (d < bd) { bd = d; b = j; } }); return b; });
+      for (let j = 0; j < k; j++) { const m = us.map((_, i) => i).filter((i) => asg[i] === j); if (m.length) cen[j] = [m.reduce((s, i) => s + xs[i], 0) / m.length, m.reduce((s, i) => s + ys[i], 0) / m.length]; }
+    }
+    // büyük grupları 24'lük ordulara böl; çok küçük grupları (2'den az) ordusuz bırak
+    const groups = [];
+    for (let j = 0; j < k; j++) {
+      const m = us.filter((_, i) => asg[i] === j);
+      for (let o = 0; o < m.length; o += G.ARMY_MAX) groups.push(m.slice(o, o + G.ARMY_MAX));
+    }
+    groups.sort((a, b) => b.length - a.length);
+    for (const grp of groups) {
+      if (grp.length < 2) continue;
+      const a = G.createArmy(c, grp.map((u) => u.id));
+      // bölge adı: en büyük zafer puanlı eyalet
+      const best = grp.reduce((b, u) => (P[u.loc].vp > P[b.loc].vp ? u : b), grp[0]);
+      a.where = G.pname(best.loc);
+    }
+  };
+
+  // Cephe ataması: her ordu, birliklerine en yakın düşman sınırı parçasını alır; ordular cepheyi paylaşır.
+  G.frontier = (tag, vs) => {
+    const st = G.st, out = [];
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i];
+      if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+      for (const j of P[i].a) { const ec = st.prov[j].c; if (vs ? ec === vs : G.atWar(tag, ec)) { out.push(i); break; } }
+    }
+    return out;
+  };
+  G.computeFronts = (c) => {
+    const st = G.st, tag = c.tag;
+    const claimed = new Set();
+    for (const a of c.armies || []) {
+      a.front = [];
+      const vs = a.vs && st.C[a.vs]?.alive ? a.vs : null;
+      if (a.ord === 'hold' || (!vs && !c.enemies.length)) continue;
+      const F = new Set(G.frontier(tag, vs));
+      if (!F.size) continue;
+      const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP);
+      if (!us.length) continue;
+      const want = Math.max(2, Math.ceil(us.length / 1.6));
+      const seen = new Set(); const q = [];
+      for (const u of us) if (!seen.has(u.loc)) { seen.add(u.loc); q.push(u.loc); }
+      // önce boştaki cephe parçaları; hepsi alınmışsa paylaş
+      const free = [...F].some((n) => !claimed.has(n));
+      for (let k = 0; k < q.length && a.front.length < want && k < 4000; k++) {
+        const n = q[k];
+        if (F.has(n) && (!free || !claimed.has(n))) { a.front.push(n); claimed.add(n); }
+        for (const j of P[n].a) {
+          if (seen.has(j)) continue;
+          const pr = st.prov[j];
+          if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
+          seen.add(j); q.push(j);
+        }
+      }
+      // kara yoluyla ulaşılamıyorsa (ör. anakaradan kopuk bölge): en yakın cephe parçaları
+      if (!a.front.length) {
+        const u0 = us[Math.floor(us.length / 2)].loc;
+        const near = [...F].filter((n) => !claimed.has(n) || !free).sort((x, y) => G.dist(x, u0) - G.dist(y, u0)).slice(0, want);
+        for (const n of near) { a.front.push(n); claimed.add(n); }
+      }
+      // tek parça kalsın: ilk bulunan cephe eyaletine bağlı olanlar
+      if (a.front.length > 2) {
+        const fs = new Set(a.front), keep = new Set([a.front[0]]), qq = [a.front[0]];
+        for (let k = 0; k < qq.length; k++) for (const j of P[qq[k]].a) if (fs.has(j) && !keep.has(j)) { keep.add(j); qq.push(j); }
+        for (const n of a.front) if (!keep.has(n)) claimed.delete(n);
+        a.front = a.front.filter((n) => keep.has(n));
+      }
+    }
+  };
+  // Günlük ordu güncellemesi: planlama dolar ya da harcanır, hedefe ulaşılınca taarruz biter
+  G.armyTick = (c) => {
+    const st = G.st;
+    for (const a of c.armies || []) {
+      if (a.plan == null) a.plan = 0;
+      const mx = G.maxPlan(c, a);
+      if (a.ord === 'atk') a.plan = Math.max(0, a.plan - (a._fought === st.day ? 0.012 : 0.003));
+      else if (a.ord === 'def' && a.front && a.front.length) a.plan = Math.min(mx, a.plan + G.planRate(c, a));
+      else a.plan = Math.max(0, a.plan - 0.004);
+      if (a.goal != null && st.prov[a.goal].c === c.tag && a.ord === 'atk') {
+        G.log(`${a.n} taarruz hedefine ulaştı: ${G.pname(a.goal)}. Ordu cepheyi tutuyor.`, [c.tag], 'good');
+        a.goal = null; a.ord = 'def';
+      }
+    }
+  };
+  // Tümen tecrübesi (HOI4: Acemi → Kıdemli)
+  G.XP_LV = [[0, 'Acemi'], [0.2, 'Eğitimli'], [0.4, 'Düzenli'], [0.6, 'Tecrübeli'], [0.8, 'Kıdemli']];
+  G.xpName = (x) => { let n = G.XP_LV[0][1]; for (const [t, m] of G.XP_LV) if ((x ?? 0.25) >= t) n = m; return n; };
+  G.xpMul = (x) => 0.9 + 0.4 * (x ?? 0.25);
 })(window);

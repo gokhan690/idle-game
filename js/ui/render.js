@@ -17,6 +17,10 @@
   const provRings = P.map((p) => p.p.flat().map(decode));
   const provPath = provRings.map((rings) => { const pa = new Path2D(); for (const r of rings) { pa.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) pa.lineTo(r[i], r[i + 1]); pa.closePath(); } return pa; });
   const borders = M.borders.map(([a, b, e]) => ({ a, b, pts: decode(e) }));
+  // eyalet çifti -> ortak sınır parçaları (cephe çizgileri için)
+  const pairKey = (a, b) => (a < b ? a * 8192 + b : b * 8192 + a);
+  const pairMap = new Map();
+  for (const bd of borders) if (bd.b >= 0) { const k = pairKey(bd.a, bd.b); let L = pairMap.get(k); if (!L) pairMap.set(k, (L = [])); L.push(bd.pts); }
   const coastPath = new Path2D();
   for (const bd of borders) if (bd.b < 0) addLine(coastPath, bd.pts);
   const seaPath = new Path2D();
@@ -187,6 +191,7 @@
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
+      drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -200,8 +205,10 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawLabels(ctx, z);
     drawPaths(ctx);
+    drawArrows(ctx, z);
     drawBattles(ctx);
     drawUnits(ctx, z);
+    drawArmyTags(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
   };
@@ -250,6 +257,100 @@
     ctx.closePath();
   }
 
+  // ---------- Ordu cepheleri (HOI4 tarzı) ----------
+  const playerArmies = () => { const c = G.st.C[G.st.player]; return c && c.alive ? c.armies || [] : []; };
+  function frontSegs(a) {
+    const st = G.st, out = [];
+    for (const i of a.front || []) for (const j of P[i].a) {
+      const ec = st.prov[j].c;
+      if (a.vs ? ec !== a.vs : !G.atWar(st.player, ec)) continue;
+      const L = pairMap.get(pairKey(i, j)); if (L) for (const pts of L) out.push(pts);
+    }
+    return out;
+  }
+  function drawFronts(ctx, z) {
+    for (const a of playerArmies()) {
+      if (!a.front || !a.front.length) continue;
+      const segs = frontSegs(a); if (!segs.length) continue;
+      const sel = R.sel.army === a.id;
+      const col = G.armyColor(a);
+      const pa = new Path2D(); for (const pts of segs) addLine(pa, pts);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = (sel ? 8 : 6) / z; ctx.stroke(pa);
+      ctx.strokeStyle = col; ctx.lineWidth = (sel ? 4.5 : 3.2) / z;
+      if (a.ord === 'hold') ctx.setLineDash([6 / z, 4 / z]);
+      ctx.stroke(pa); ctx.setLineDash([]);
+      // taarruz: cephe boyunca kırmızı dişler
+      if (a.ord === 'atk') { ctx.strokeStyle = 'rgba(214,72,52,0.9)'; ctx.lineWidth = 1.6 / z; ctx.setLineDash([2 / z, 5 / z]); ctx.stroke(pa); ctx.setLineDash([]); }
+      ctx.lineCap = 'butt';
+    }
+  }
+  R.armyAnchor = (a) => {
+    // cephenin hedefe en yakın noktası; yoksa birliklerin ağırlık merkezi
+    const st = G.st;
+    if (a.front && a.front.length) {
+      let best = a.front[0];
+      if (a.goal != null) { let bd = Infinity; for (const i of a.front) { const d = G.dist(i, a.goal); if (d < bd) { bd = d; best = i; } } }
+      else { let sx = 0, sy = 0; for (const i of a.front) { sx += R.wrapDx(G.nodeX[i] - G.nodeX[a.front[0]]); sy += G.nodeY[i]; } const cx = G.nodeX[a.front[0]] + sx / a.front.length, cy = sy / a.front.length; let bd = Infinity; for (const i of a.front) { const d = Math.hypot(R.wrapDx(G.nodeX[i] - cx), G.nodeY[i] - cy); if (d < bd) { bd = d; best = i; } } }
+      return best;
+    }
+    const us = st.units.filter((u) => u.t === st.player && u.army === a.id && u.loc < NP);
+    return us.length ? us[Math.floor(us.length / 2)].loc : -1;
+  };
+  function drawArrows(ctx, z) {
+    for (const a of playerArmies()) {
+      if (a.goal == null) continue;
+      const from = R.armyAnchor(a); if (from < 0) continue;
+      const s0 = R.toScreen(G.nodeX[from], G.nodeY[from]), s1 = R.toScreen(G.nodeX[a.goal], G.nodeY[a.goal]);
+      const span = M.W * R.cam.z; while (s1.x - s0.x > span / 2) s1.x -= span; while (s0.x - s1.x > span / 2) s1.x += span;
+      const dx = s1.x - s0.x, dy = s1.y - s0.y, len = Math.hypot(dx, dy); if (len < 6) continue;
+      const nx = -dy / len, ny = dx / len, bend = Math.min(60, len * 0.18);
+      const cx = (s0.x + s1.x) / 2 + nx * bend, cy = (s0.y + s1.y) / 2 + ny * bend;
+      const col = a.ord === 'atk' ? '#d6483a' : G.armyColor(a);
+      const wdt = Math.max(5, Math.min(12, 4 + z * 2));
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = wdt + 3; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke();
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = wdt; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke(); ctx.globalAlpha = 1;
+      const ang = Math.atan2(s1.y - cy, s1.x - cx), hl = wdt * 2.6;
+      ctx.fillStyle = col; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(s1.x + Math.cos(ang) * hl * 0.5, s1.y + Math.sin(ang) * hl * 0.5); ctx.lineTo(s1.x - Math.cos(ang - 0.5) * hl, s1.y - Math.sin(ang - 0.5) * hl); ctx.lineTo(s1.x - Math.cos(ang + 0.5) * hl, s1.y - Math.sin(ang + 0.5) * hl); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+  }
+  // Ordu etiketi: komutan, emir ve planlama çubuğu (dokununca ordu seçilir)
+  function drawArmyTags(ctx, z) {
+    const st = G.st, c = st.C[st.player]; if (!c) return;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (const a of playerArmies()) {
+      const n = R.armyAnchor(a); if (n < 0) continue;
+      const s = visible(G.nodeX[n], G.nodeY[n], 80); if (!s) continue;
+      const gen = a.gen ? G.genById(c, a.gen) : null;
+      const label = `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
+      ctx.font = '700 10.5px "Barlow Semi Condensed", sans-serif';
+      const w = Math.max(60, ctx.measureText(label).width + 24), h = 21;
+      const x = s.x - w / 2, y = s.y - 40;
+      const sel = R.sel.army === a.id;
+      ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+      ctx.fillStyle = 'rgba(22,26,20,0.95)'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = G.armyColor(a); ctx.fillRect(x, y, 5, h);
+      ctx.strokeStyle = sel ? '#f2d27a' : 'rgba(200,190,160,0.5)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(x, y, w, h);
+      // emir simgesi
+      const ox = x + 12, oy = y + 9;
+      ctx.fillStyle = a.ord === 'atk' ? '#e0574a' : a.ord === 'def' ? '#7fb069' : '#a9a28a';
+      ctx.beginPath();
+      if (a.ord === 'atk') { ctx.moveTo(ox - 4, oy - 4); ctx.lineTo(ox + 4, oy); ctx.lineTo(ox - 4, oy + 4); }
+      else if (a.ord === 'def') { ctx.moveTo(ox - 4, oy - 4); ctx.lineTo(ox + 4, oy - 4); ctx.lineTo(ox + 4, oy + 1); ctx.lineTo(ox, oy + 5); ctx.lineTo(ox - 4, oy + 1); }
+      else { ctx.rect(ox - 4, oy - 4, 3, 8); ctx.rect(ox + 1, oy - 4, 3, 8); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#efe9d8'; ctx.fillText(label, x + 19, y + 8.5);
+      // planlama çubuğu
+      const mx = G.maxPlan(c, a);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 8, y + h - 6, w - 14, 3);
+      ctx.fillStyle = a.ord === 'atk' ? '#e0574a' : '#7fb069'; ctx.fillRect(x + 8, y + h - 6, (w - 14) * Math.min(1, (a.plan || 0) / Math.max(0.01, mx)), 3);
+      R.counters.push({ x, y, w, h, n, tag: st.player, army: a.id });
+    }
+  }
+
   function drawPaths(ctx) {
     const st = G.st;
     const seen = new Set();
@@ -287,7 +388,11 @@
       // çapraz kılıçlar
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
       ctx.moveTo(s.x - 5, s.y - 5); ctx.lineTo(s.x + 5, s.y + 5); ctx.moveTo(s.x + 5, s.y - 5); ctx.lineTo(s.x - 5, s.y + 5); ctx.stroke();
-      R.battleMarks.push({ x: s.x - 12, y: s.y - 12, w: 24, h: 24, b });
+      if (mine != null) {
+        ctx.fillStyle = 'rgba(14,14,12,0.9)'; ctx.fillRect(s.x - 15, s.y + 13, 30, 5);
+        ctx.fillStyle = col; ctx.fillRect(s.x - 14, s.y + 14, 28 * Math.max(0.03, Math.min(1, mine)), 3);
+      }
+      R.battleMarks.push({ x: s.x - 16, y: s.y - 16, w: 32, h: 36, b });
     }
   }
 
@@ -322,13 +427,57 @@
       ctx.strokeStyle = '#7fb3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y + 8, 13 + 2 * Math.sin(R.t / 160), 0, Math.PI * 2); ctx.stroke();
     }
   }
+  // NATO simgesi türü (şablondan)
+  R.kindOf = (u) => {
+    const t = G.T(u.t, u.u);
+    if (t._k) return t._k;
+    return (t._k = t.tanks > 0 ? 'arm' : t.mob > 0.5 ? 'mot' : t.s === 'SÜV' ? 'cav' : t.s === 'DAĞ' ? 'mtn' : t.s === 'DNZ' ? 'mar' : 'inf');
+  };
+  function drawNato(ctx, kind, x, y, w, h, ink) {
+    ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 1.3;
+    ctx.strokeRect(x, y, w, h);
+    ctx.beginPath();
+    if (kind === 'arm') { ctx.ellipse(x + w / 2, y + h / 2, w * 0.32, h * 0.26, 0, 0, Math.PI * 2); ctx.stroke(); return; }
+    if (kind === 'cav') { ctx.moveTo(x, y + h); ctx.lineTo(x + w, y); ctx.stroke(); return; }
+    ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.moveTo(x + w, y); ctx.lineTo(x, y + h); ctx.stroke();
+    if (kind === 'mot') { ctx.beginPath(); ctx.arc(x + w * 0.3, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.arc(x + w * 0.7, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.fill(); }
+    else if (kind === 'mtn') { ctx.beginPath(); ctx.moveTo(x + w / 2, y + h * 0.55); ctx.lineTo(x + w / 2 + 3.5, y + h); ctx.lineTo(x + w / 2 - 3.5, y + h); ctx.closePath(); ctx.fill(); }
+    else if (kind === 'mar') { ctx.beginPath(); ctx.arc(x + w / 2, y + h - 1, 3, 0, Math.PI); ctx.stroke(); }
+  }
+  R.drawNato = drawNato;
+  function drawCounter(ctx, x, y, gl, tag, opts) {
+    const st = G.st, w = 40, h = 22;
+    const col = R.ccolor(tag);
+    const light = luminance(col) > 0.55, ink = light ? '#14160f' : '#f4efe0';
+    const kinds = {}; for (const u of gl) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
+    const kind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0][0];
+    let org = 0, os = 0, str = 0, fighting = false, moving = false;
+    for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += Math.max(0, u.org); os += sOrg; str += u.str; if (G.inBattle && G.inBattle.has(u)) fighting = true; if (u.path.length) moving = true; }
+    ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+    ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + h - 5, w, 5);
+    drawNato(ctx, kind, x + 4, y + 3, 15, 10, ink);
+    ctx.fillStyle = ink; ctx.font = '700 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(gl.length), x + 30, y + 8.5);
+    ctx.fillStyle = '#7fb069'; ctx.fillRect(x + 1, y + h - 5, (w - 2) * Math.max(0, Math.min(1, org / os)), 2);
+    ctx.fillStyle = '#e0c45a'; ctx.fillRect(x + 1, y + h - 2.5, (w - 2) * Math.min(1, str / gl.length), 2);
+    const sel = opts.sel;
+    ctx.strokeStyle = sel ? '#f2d27a' : fighting ? (Math.sin(R.t / 140) > 0 ? '#ff6a50' : '#8a2a1e') : opts.enemy ? '#d4553f' : 'rgba(10,10,8,0.9)';
+    ctx.lineWidth = sel ? 2.6 : fighting ? 2 : 1.3;
+    ctx.strokeRect(x, y, w, h);
+    if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
+    if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
+    if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    return { w, h };
+  }
   function drawUnits(ctx, z) {
     const st = G.st;
     R.counters = [];
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
     const showAll = z > 2.6;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const pc = st.C[st.player];
+    const armyCol = new Map(); for (const a of (pc && pc.armies) || []) armyCol.set(a.id, G.armyColor(a));
     for (const key in G.unitsAt) {
       const L = G.unitsAt[key]; if (!L || !L.length) continue;
       const n = +key;
@@ -343,26 +492,11 @@
         const mineOrAlly = tag === st.player || G.sameFaction(tag, st.player);
         const enemy = G.atWar(tag, st.player);
         if (!showAll && !mineOrAlly && !enemy) continue;
-        const w = 30, h = 19;
-        const x = s.x - w / 2 + k * 6, y = s.y - h / 2 + 12 + k * 21;
+        if (z < 0.75 && !enemy && tag !== st.player) continue;
+        const x = s.x - 20 + k * 6, y = s.y - 11 + 10 + k * 23;
         const sel = gl.some((u) => R.sel.units.has(u.id));
-        const col = R.ccolor(tag);
-        ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
-        ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x, y + h - 4, w, 4);
-        let org = 0, os = 0, str = 0;
-        for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += u.org; os += sOrg; str += u.str; }
-        ctx.fillStyle = '#7fb069'; ctx.fillRect(x, y + h - 4, w * Math.max(0, Math.min(1, org / os)), 2);
-        ctx.fillStyle = '#e0c45a'; ctx.fillRect(x, y + h - 2, w * Math.min(1, str / gl.length), 2);
-        ctx.strokeStyle = sel ? '#f2d27a' : enemy ? '#d4553f' : 'rgba(10,10,8,0.9)'; ctx.lineWidth = sel ? 2.5 : 1.3;
-        ctx.strokeRect(x, y, w, h);
-        const light = luminance(col) > 0.55;
-        ctx.fillStyle = light ? '#14160f' : '#f4efe0';
-        ctx.font = '700 12px "Barlow Semi Condensed", sans-serif';
-        const arm = gl.some((u) => u.u === 'arm');
-        ctx.fillText(String(gl.length), x + w / 2 + (arm ? 4 : 0), y + h / 2 - 2);
-        if (arm) { ctx.beginPath(); ctx.ellipse(x + 8, y + 7.5, 4.5, 2.6, 0, 0, Math.PI * 2); ctx.strokeStyle = light ? '#14160f' : '#f4efe0'; ctx.lineWidth = 1.2; ctx.stroke(); }
-        if (tag === st.player && gl.some((u) => u.army)) { ctx.fillStyle = '#f2d27a'; ctx.beginPath(); ctx.moveTo(x + w - 7, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 7); ctx.closePath(); ctx.fill(); }
+        const ac = tag === st.player ? gl.find((u) => u.army && armyCol.has(u.army)) : null;
+        const { w, h } = drawCounter(ctx, x, y, gl, tag, { sel, enemy, armyCol: ac ? armyCol.get(ac.army) : null });
         R.counters.push({ x, y, w, h, n, tag, units: gl });
         k++;
       }

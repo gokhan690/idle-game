@@ -112,7 +112,8 @@
       const retreat = (side, ownP, oppP) => { if (ownP < oppP * 0.35) for (const [c, f] of side) { const p = G.fleetPath(f.loc, f.home); if (p) { f.path = p; f.prog = 0; } } };
       retreat(allies, pa, pb); retreat(enemies, pb, pa);
       const pl = st.player;
-      if ([...allies, ...enemies].some(([c]) => c.tag === pl) && st.day % 3 === 0) G.log(`Deniz muharebesi: ${G.cname(allies[0][0].tag)} - ${G.cname(enemies[0][0].tag)} (${Math.round(pa)} / ${Math.round(pb)})`, [allies[0][0].tag, enemies[0][0].tag], 'warn');
+      G._nbLog = G._nbLog || {};
+      if ([...allies, ...enemies].some(([c]) => c.tag === pl) && !(G._nbLog[zone] > st.day - 10) && (G._nbLog[zone] = st.day)) G.log(`Deniz muharebesi: ${G.cname(allies[0][0].tag)} - ${G.cname(enemies[0][0].tag)} (${Math.round(pa)} / ${Math.round(pb)})`, [allies[0][0].tag, enemies[0][0].tag], 'warn');
     }
     // konvoy akınları
     for (const c of Object.values(st.C)) {

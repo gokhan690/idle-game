@@ -310,3 +310,34 @@ button.item:active { background: var(--field-3); }
 .restable .rr.neg { border-color: rgba(214,90,67,0.6); background: rgba(214,90,67,0.08); }
 .kv div span.small { font-size: 11px; }
 .item.line { align-items: flex-start; }
+
+/* ---------- Askerî arayüz (HOI4 tarzı) ---------- */
+.selbar { gap: 6px; padding: 8px 10px; }
+.selbar .card-h h3 { font-size: 16px; }
+.selbar .card-h .x { width: 28px; height: 28px; }
+.tbar { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }
+.tbar::-webkit-scrollbar { display: none; }
+.tbar .btn { flex: none; white-space: nowrap; }
+.hint.small { font-size: 12px; color: var(--muted); }
+.adot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.selbar .ubox { width: 46px; padding: 3px 3px 2px; }
+.selbar .ubox b { font-size: 11px; }
+canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
+.bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bside { border: 1px solid var(--rule); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 0; background: var(--field-2); }
+.bdivs { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 3px; margin-top: 4px; }
+.bdiv { border: 1px solid var(--rule); border-radius: 3px; padding: 2px; font-size: 10px; text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.bdiv .bar { height: 3px; }
+.bdiv.res { opacity: 0.45; border-style: dashed; }
+.toast { font-size: 13px; padding: 5px 10px; max-width: min(80vw, 380px); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selbar { max-height: 70vh; }
+}
+.mods { display: flex; flex-direction: column; gap: 3px; }
+.mods > div { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.mods b { font-weight: 600; text-align: right; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selbar { left: auto; right: calc(var(--safe-r) + 8px); width: min(360px, 42vw); bottom: calc(var(--safe-b) + 66px); max-height: calc(100vh - 150px); }
+  .selbar .hint.small { display: none; }
+  .selbar .card-h h3 { font-size: 15px; }
+}

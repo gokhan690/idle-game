@@ -187,6 +187,8 @@
       if (loc < 0) { c.train.splice(i, 1); i--; continue; }
       const u = G.makeUnit(c.tag, t.u, loc, str);
       u.auto = t.auto != null ? t.auto : u.auto;
+      // oyuncu: yeni tümenler seçili orduya katılır (HOI4 "konuşlandır")
+      if (c.tag === st.player && c.deployArmy && G.armyById(c, c.deployArmy) && G.armyUnits(c, c.deployArmy).length < G.ARMY_MAX) { u.army = c.deployArmy; u.auto = 0; }
       st.units.push(u);
       (G.unitsAt[loc] || (G.unitsAt[loc] = [])).push(u);
       c.train.splice(i, 1); i--;
@@ -272,6 +274,7 @@
       if (u.ret > 0) u.ret--;
       if (!u.path.length) continue;
       const n = u.path[0];
+      if (u.sr && (n >= NP || G.hostileIn(n, u.t) || !G.canEnter(u.t, n) || G.atWar(u.t, st.prov[n].c))) { u.path = []; u.prog = 0; u.sr = 0; continue; }
       if (n < NP) {
         if (!G.canEnter(u.t, n)) { u.path = []; u.prog = 0; continue; }
         if (G.hostileIn(n, u.t)) {
@@ -283,7 +286,8 @@
       }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
-      u.prog += seaLeg ? G.SEA_SPEED : stats.spd;
+      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : 1);
+      if (u.sr) u.org = Math.min(u.org, stats.org * 0.1);
       if (seaLeg && u.loc >= NP) {
         // denizde düşman üstünlüğü varsa kayıp
         const sup = G.navalSupremacy(u.t, u.loc);
@@ -296,6 +300,7 @@
         const L = G.unitsAt[from]; if (L) { const k = L.indexOf(u); if (k >= 0) L.splice(k, 1); }
         (G.unitsAt[n] || (G.unitsAt[n] = [])).push(u);
         if (n < NP) G.capture(n, u.t);
+        if (!u.path.length) u.sr = 0;
       }
     }
     // muharebeler
@@ -337,6 +342,7 @@
       if (r > 0.001) {
         for (const [e, n] of Object.entries(def.eq)) c.stock[e] -= n * r;
         u.str += r; c.mpAvail -= def.mp * r;
+        if (u.xp > 0.2) u.xp = Math.max(0.2, u.xp - (u.xp - 0.2) * r * 0.6);
       }
     }
   }
@@ -377,7 +383,8 @@
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
       let tm = (1 + te.atk) * terrainMul(s, te, lat, month);
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
-      if (s.gb && s.gb.plan && u.bd < 8 && u.army) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
+      if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
+      else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
@@ -408,6 +415,9 @@
       u.org -= ol; const sl = ol * (s.arm > dPrc ? 0.003 : 0.005);
       u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
+    // tümen tecrübesi (muharebede çarpışan tümenler)
+    for (const u of A) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.004 * (st.C[u.t].mods.xpGain ? 1 + st.C[u.t].mods.xpGain : 1));
+    for (const u of D) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.003);
     // komutan tecrübesi
     const gens = new Set();
     for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
@@ -425,7 +435,8 @@
     if (lost && (defs[0].t === st.player || attTag === st.player)) G.log(`${G.pname(n)}: ${lost} tümen kuşatılarak imha edildi!`, [defs[0].t, attTag], defs[0].t === st.player ? 'bad' : 'good');
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + u.org / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
-    G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining });
+    G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
+      A, D, atts, defs, width, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: st.C[attTag].airMod || 1, dAir: st.C[defs[0].t].airMod || 1 });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
