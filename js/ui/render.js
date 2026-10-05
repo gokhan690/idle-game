@@ -192,6 +192,15 @@
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
       drawFronts(ctx, z);
+      // tur tabanlı mod: gidilebilir (yeşil) ve saldırılabilir (kırmızı) eyaletler
+      if (R.turnHL && R.sel.units.size && G.playerPhase()) {
+        ctx.fillStyle = 'rgba(140,230,110,0.42)'; ctx.strokeStyle = 'rgba(190,255,150,0.95)'; ctx.lineWidth = 2 / z;
+        for (const n of R.turnHL.reach.keys()) { ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
+        const pulse = 0.35 + 0.15 * Math.sin(R.t / 200);
+        ctx.strokeStyle = '#ff5a40'; ctx.lineWidth = 3 / z;
+        for (const n of R.turnHL.atk) { ctx.fillStyle = n === R.turnHL.pend ? `rgba(255,90,60,${pulse + 0.2})` : `rgba(230,60,40,${pulse})`; ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
+        R.dirty = 1;
+      }
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -209,6 +218,7 @@
     drawBattles(ctx);
     drawUnits(ctx, z);
     drawArmyTags(ctx, z);
+    drawFx(ctx);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
   };
@@ -351,6 +361,25 @@
     }
   }
 
+  // Uçan hasar sayıları (European War tarzı)
+  R.fx = [];
+  R.addFx = (n, text, col, delay = 0) => { R.fx.push({ n, text, col, t0: performance.now() + delay * 1000 }); R.dirty = 1; };
+  function drawFx(ctx) {
+    const now = performance.now();
+    R.fx = R.fx.filter((f) => now - f.t0 < 1800);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of R.fx) {
+      const t = (now - f.t0) / 1800; if (t < 0) continue;
+      const s = R.toScreen(G.nodeX[f.n], G.nodeY[f.n]);
+      const y = s.y - 20 - t * 42;
+      ctx.globalAlpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+      ctx.font = '800 17px "Barlow Semi Condensed", sans-serif';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,10,8,0.9)'; ctx.strokeText(f.text, s.x, y);
+      ctx.fillStyle = f.col; ctx.fillText(f.text, s.x, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function drawPaths(ctx) {
     const st = G.st;
     const seen = new Set();
@@ -453,9 +482,11 @@
     const kind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0][0];
     let org = 0, os = 0, str = 0, fighting = false, moving = false;
     for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += Math.max(0, u.org); os += sOrg; str += u.str; if (G.inBattle && G.inBattle.has(u)) fighting = true; if (u.path.length) moving = true; }
+    const done = G.isTurn() && tag === st.player && gl.every((u) => u.mv);
     ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
     ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + h - 5, w, 5);
+    if (done) { ctx.fillStyle = gl.every((u) => u.at) ? 'rgba(20,20,18,0.55)' : 'rgba(20,20,18,0.3)'; ctx.fillRect(x, y, w, h); }
     drawNato(ctx, kind, x + 4, y + 3, 15, 10, ink);
     ctx.fillStyle = ink; ctx.font = '700 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(gl.length), x + 30, y + 8.5);

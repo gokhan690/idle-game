@@ -561,6 +561,7 @@
   };
 
   G._moveAndFight = moveAndFight;
+  G._fight = fight;
   // ---------- Ana gün döngüsü ----------
   G.tick = () => {
     const st = G.st;
