@@ -51,7 +51,7 @@ window.COUNTRY_DEFS = {
   YEM: { n: 'Yemen', c: '#bd7262', id: 'neu', l: 'İmam Yahya', cap: 'Sana', civ: 0, mil: 0, dock: 0, pop: 4, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   OMA: { n: 'Umman', c: '#9e5252', id: 'neu', l: 'Sait bin Teymur', cap: 'Maskat', civ: 0, mil: 0, dock: 0, pop: 0.6, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   AFG: { n: 'Afganistan', c: '#8b7b57', id: 'neu', l: 'Muhammed Zahir Şah', cap: 'Kabil', civ: 1, mil: 0, dock: 0, pop: 7, div: { inf: 4 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
-  ETH: { n: 'Etiyopya', c: '#6a9a3d', id: 'neu', l: 'Haile Selassie', cap: 'Addis Ababa', civ: 1, mil: 0, dock: 0, pop: 10, div: { inf: 10 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
+  ETH: { n: 'Etiyopya', c: '#6a9a3d', id: 'neu', l: 'Haile Selassie', cap: 'Addis Ababa', bonus: { landDef: 0.25 }, civ: 1, mil: 0, dock: 0, pop: 10, div: { inf: 14 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   LIB: { n: 'Liberya', c: '#8a6b9b', id: 'neu', l: 'Edwin Barclay', cap: 'Monrovia', civ: 0, mil: 0, dock: 0, pop: 1, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   MEX: { n: 'Meksika', c: '#4f8d5d', id: 'neu', l: 'Lázaro Cárdenas', cap: 'Meksiko', civ: 6, mil: 1, dock: 1, pop: 19, div: { inf: 8 }, air: [10, 0, 0], navy: [2, 0, 0, 0, 0], tl: 0 },
   GUA: { n: 'Guatemala', c: '#6fa0c4', id: 'neu', l: 'Jorge Ubico', cap: 'Guatemala', civ: 0, mil: 0, dock: 0, pop: 2, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },

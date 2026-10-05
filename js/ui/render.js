@@ -324,6 +324,7 @@
         const arm = gl.some((u) => u.u === 'arm');
         ctx.fillText(String(gl.length), x + w / 2 + (arm ? 4 : 0), y + h / 2 - 2);
         if (arm) { ctx.beginPath(); ctx.ellipse(x + 8, y + 7.5, 4.5, 2.6, 0, 0, Math.PI * 2); ctx.strokeStyle = light ? '#14160f' : '#f4efe0'; ctx.lineWidth = 1.2; ctx.stroke(); }
+        if (tag === st.player && gl.some((u) => u.army)) { ctx.fillStyle = '#f2d27a'; ctx.beginPath(); ctx.moveTo(x + w - 7, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 7); ctx.closePath(); ctx.fill(); }
         R.counters.push({ x, y, w, h, n, tag, units: gl });
         k++;
       }

@@ -15,10 +15,14 @@
 - **Ekonomi:** Sivil/askerî fabrikalar ve tersaneler, inşaat kuyruğu, üretim hatları ve verimlilik, çelik/petrol kaynakları ve ithalat, tüketim malları, abluka ve stratejik bombardıman.
 - **Ordu:** Piyade, dağ, süvari, motorize, zırhlı ve deniz piyadesi tümenleri; insan gücü, teçhizat, moral ve güç; arazi, tahkimat, siper, hava üstünlüğü, zırh/zırh delme ve ikmal mesafesi etkili muharebe; geri çekilme ve kuşatma; deniz yoluyla taşıma ve çıkarma harekâtı.
 - **Araştırma:** Piyade, topçu, zırh, hava, deniz, sanayi ve doktrin dallarında 58 teknoloji; zamanından önce araştırma cezası.
-- **Ulusal odaklar:** Genel odak ağacı + Türkiye, Almanya, SSCB, ABD, Britanya, Fransa, İtalya, Japonya, Çin ve Polonya için özel odaklar.
 - **Siyaset ve diplomasi:** Askerlik ve ekonomi yasaları, kararlar, savaş gerekçesi, savaş ilanı, ittifak kurma/davet/katılma, askerî geçiş izni, saldırmazlık paktı, garanti, beyaz barış, dünya gerginliği, teslim olma ve ilhak.
 - **Tarihî olaylar:** Roma-Berlin Mihveri, Marco Polo Köprüsü, Anschluss, Münih, Çekoslovakya'nın sonu, Molotov-Ribbentrop, Polonya'nın işgali, Kış Savaşı, Weserübung, Fall Gelb, Baltık ilhakı, Barbarossa, Pearl Harbor ve daha fazlası. Oyuncu olayın tarafıysa karar ona kalır. "Serbest dünya" modunda yapay zekâ kendi hedeflerini kovalar.
 - **Yapay zekâ:** Her ülke ekonomisini, araştırmasını, üretimini ve ordusunu yönetir; cepheleri tutar, zayıf noktalara yüklenir, gerekirse çıkarma yapar.
+- **Ordular ve komutanlar:** Tarihî general ve mareşaller (Fevzi Çakmak, Manstein, Rommel, Jukov, Patton…), saldırı/savunma/planlama/lojistik becerileri, özellikler, tecrübe ve terfi; ordulara "Bekle / Savun / Taarruz" emri ve cephe seçimi.
+- **Tümen tasarımcısı:** Taburlar ve destek bölükleriyle kendi tümen şablonlarını tasarla; genişlik, zırh, zırh delme ve hız buna göre hesaplanır.
+- **Siyaset:** İstikrar, savaş desteği, parti destekleri ve hükümet değişikliği, siyasi danışmanlar, askerî komutanlar ve tasarım büroları, ulusal ruhlar, askerlik/ekonomi/ticaret yasaları.
+- **HOI4 tarzı odak ağaçları:** Türkiye, Almanya, SSCB, Britanya, Fransa, İtalya, Japonya ve ABD için birbirini dışlayan yolları olan ulusal ağaçlar; diğer ülkeler için genel ağaç. Ağaç, çizgileriyle kaydırılabilir bir görünümde gösterilir.
+- **Yatay ekran:** Telefon yan çevrildiğinde menü sola, paneller sağa geçer.
 - **Telefona uygun kolaylıklar:** "Otomatik kurmay" ile tümenleri yapay zekâ komutanına devretme, ekonomi için "bakan" otomasyonları, aylık otomatik kayıt, 3 kayıt yuvası.
 
 ## Proje yapısı

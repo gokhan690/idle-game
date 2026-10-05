@@ -10,7 +10,7 @@
       const [a, b] = k.split('|');
       if (st.C[a]?.alive && st.C[b]?.alive) { st.C[a].enemies.push(b); st.C[b].enemies.push(a); } else delete st.wars[k];
     }
-    for (const c of Object.values(st.C)) c.eset = new Set(c.enemies);
+    for (const c of Object.values(st.C)) { c.eset = new Set(c.enemies); if (!c.enemies.length) c.defensive = 0; }
     G._cob.clear();
   };
 
@@ -52,6 +52,7 @@
       G.setWar(x, y);
     }
     delete st.goals[a + '>' + b];
+    for (const t of def) { const ct = st.C[t]; if (!ct) continue; ct.defensive = 1; ct.wsX = (ct.wsX || 0) + (t === b ? 0.2 : 0.1); }
     st.tension = Math.min(100, st.tension + (st.C[b].major ? 12 : 6));
     const msg = `${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti!`;
     G.log(msg, [a, b], 'major');

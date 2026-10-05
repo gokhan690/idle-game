@@ -65,21 +65,7 @@
   };
   G.hostileIn = (n, tag) => { const L = G.unitsAt[n]; if (!L) return false; for (const u of L) if (G.atWar(u.t, tag)) return true; return false; };
 
-  // ---------- Birim istatistikleri ----------
-  G.unitStats = (u) => {
-    const d = g.UNITS[u.u], c = G.st.C[u.t], m = c.mods;
-    const infL = m.eq_inf || 1, artL = m.eq_art || 1, tankL = m.eq_tank || 1;
-    let mult = 1 + 0.15 * (infL - 1) + 0.1 * (artL - 1);
-    const armored = u.u === 'arm' || u.u === 'mot';
-    if (u.u === 'arm') mult = 1 + 0.25 * (tankL - 1) + 0.05 * (infL - 1);
-    const atk = d.atk * mult * (1 + (m.landAtk || 0) + (armored ? m.armAtk || 0 : 0));
-    const def = d.def * mult * (1 + (m.landDef || 0));
-    const org = d.org * (1 + (m.org || 0));
-    const arm = d.arm * (u.u === 'arm' ? 1 + 0.25 * (tankL - 1) : 1);
-    const prc = d.prc * (u.u === 'arm' ? 1 + 0.25 * (tankL - 1) : 1) + (u.u === 'arm' ? 0 : (m.prc || 0));
-    const spd = d.spd * (1 + (m.speed || 0)) * 2.4; // birim/gün
-    return { atk, def, org, arm, prc, spd };
-  };
+  // Birim istatistikleri army.js içinde (şablon + komutan).
   G.unitPower = (u) => { const s = G.unitStats(u); return (s.atk * 0.5 + s.def * 0.5) * u.str * (0.35 + 0.65 * Math.min(1, u.org / s.org)); };
 
   // ---------- Yol bulma (A*) ----------
@@ -176,8 +162,12 @@
     };
     for (const id of Object.keys(c.tech)) add(g.TECH_BY_ID[id].fx);
     add(c.fmods);
-    const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco];
-    m.factory = (m.factory || 0) + (lm.factory || 0);
+    for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
+    for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);
+    const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco], lt = g.LAWS.trade.opts[c.laws.trade ?? 1];
+    m.factory = (m.factory || 0) + (lm.factory || 0) + (lt.factory || 0);
+    m.research = (m.research || 0) + (lt.research || 0);
+    m.resLoss = lt.resLoss || 0;
     m.construct = (m.construct || 0) + (le.construct || 0);
     m.mpRate = lm.mp; m.cg = Math.max(0.05, le.cg + (m.cg || 0));
     if (m.unlock.mot) m.unlockEq.mot = 1;
@@ -186,6 +176,7 @@
     if (m.unlock.arm) m.eq_tank = Math.max(1, m.eq_tank);
     m.slots = (c.major ? 3 : 2) + (m.slots || 0);
     c.mods = m;
+    c._tc = {};
   };
 
   // ---------- Kuvvet hesapları ----------

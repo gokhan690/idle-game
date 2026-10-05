@@ -29,14 +29,33 @@
   g.SHIPS = ['dd', 'cr', 'bb', 'ss', 'cv'];
   g.PLANES = ['fig', 'cas', 'bom'];
 
-  // Tümen tipleri
-  g.UNITS = {
-    inf: { n: 'Piyade Tümeni', s: 'PİY', mp: 10, eq: { inf: 1000, art: 36 }, days: 60, atk: 12, def: 20, org: 60, spd: 4, arm: 0, prc: 6 },
-    mtn: { n: 'Dağ Tümeni', s: 'DAĞ', mp: 10, eq: { inf: 1100, art: 24 }, days: 80, atk: 12, def: 22, org: 70, spd: 4, arm: 0, prc: 5, bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
-    cav: { n: 'Süvari Tümeni', s: 'SÜV', mp: 8, eq: { inf: 900 }, days: 50, atk: 9, def: 15, org: 60, spd: 6, arm: 0, prc: 4 },
-    mot: { n: 'Motorize Tümen', s: 'MOT', mp: 10, eq: { inf: 1000, art: 36, mot: 300 }, days: 90, atk: 14, def: 22, org: 60, spd: 10, arm: 2, prc: 8, req: 'mot1' },
-    arm: { n: 'Zırhlı Tümen', s: 'ZRH', mp: 8, eq: { inf: 500, tank: 120, mot: 200 }, days: 120, atk: 32, def: 14, org: 50, spd: 9, arm: 30, prc: 35, req: 'tank1' },
-    mar: { n: 'Deniz Piyadesi', s: 'DNZ', mp: 8, eq: { inf: 1000, art: 12 }, days: 90, atk: 12, def: 18, org: 65, spd: 4, arm: 0, prc: 5, amph: 1, req: 'mar1' },
+  // Tümen tasarımcısı: taburlar (çizgi birimleri) ve destek bölükleri
+  g.BATS = {
+    inf: { n: 'Piyade', s: 'PİY', w: 2, atk: 1.6, def: 3.0, org: 60, spd: 4, mp: 1.5, eq: { inf: 150 }, arm: 0, prc: 2, kind: 'inf' },
+    art: { n: 'Topçu', s: 'TOP', w: 3, atk: 3.8, def: 0.6, org: 20, spd: 4, mp: 0.5, eq: { inf: 20, art: 18 }, arm: 0, prc: 6, kind: 'art' },
+    mtn: { n: 'Dağ Piyadesi', s: 'DAĞ', w: 2, atk: 1.6, def: 3.3, org: 70, spd: 4, mp: 1.5, eq: { inf: 170 }, arm: 0, prc: 2, kind: 'inf', bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
+    cav: { n: 'Süvari', s: 'SÜV', w: 2, atk: 1.4, def: 2.4, org: 60, spd: 6, mp: 1.2, eq: { inf: 120 }, arm: 0, prc: 1, kind: 'inf' },
+    mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, atk: 1.7, def: 3.0, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, arm: 2, prc: 3, kind: 'inf', mob: 1, req: 'mot1' },
+    arm: { n: 'Tank', s: 'TNK', w: 2, atk: 7.5, def: 2.0, org: 30, spd: 9, mp: 0.6, eq: { tank: 40 }, arm: 30, prc: 35, kind: 'tank', mob: 1, req: 'tank1' },
+    mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, atk: 1.6, def: 2.8, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, arm: 0, prc: 2, kind: 'inf', amph: 1, req: 'mar1' },
+  };
+  g.SUPPORTS = {
+    eng: { n: 'İstihkâm', d: '+2 savunma, siper hızı +%30', def: 2, ent: 0.3, mp: 0.3, eq: { inf: 30 } },
+    rec: { n: 'Keşif', d: '+0,8 saldırı, hız +%10', atk: 0.8, spdM: 0.1, mp: 0.2, eq: { inf: 30 } },
+    sart: { n: 'Destek Topçusu', d: '+2,5 saldırı', atk: 2.5, mp: 0.3, eq: { art: 12 }, kind: 'art' },
+    sat: { n: 'Tanksavar', d: '+15 zırh delme', prcAdd: 15, atk: 0.4, mp: 0.3, eq: { art: 10 }, req: 'at1' },
+    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +0,5 savunma', aa: 0.15, def: 0.5, mp: 0.3, eq: { art: 8 }, req: 'aa1' },
+    log: { n: 'Lojistik', d: 'İkmal cezası -%35', sup: 0.35, mp: 0.3, eq: { inf: 20, mot: 10 }, req: 'mot1' },
+    hos: { n: 'Sahra Hastanesi', d: 'Kayıplar -%30', cas: 0.3, mp: 0.3, eq: { inf: 20 }, req: 'sup1' },
+  };
+  g.MAX_BATS = 10; g.MAX_SUP = 5;
+  g.DEFAULT_TEMPLATES = {
+    inf: { n: 'Piyade Tümeni', b: { inf: 6, art: 1 }, s: {} },
+    mtn: { n: 'Dağ Tümeni', b: { mtn: 6 }, s: { eng: 1 } },
+    cav: { n: 'Süvari Tümeni', b: { cav: 6 }, s: {} },
+    mot: { n: 'Motorize Tümen', b: { mot: 6, art: 1 }, s: {} },
+    arm: { n: 'Zırhlı Tümen', b: { arm: 3, mot: 2 }, s: { rec: 1 } },
+    mar: { n: 'Deniz Piyadesi Tümeni', b: { mar: 5, art: 1 }, s: {} },
   };
 
   // Teknolojiler: cat, year, pre (önkoşul), fx (etkiler)
@@ -110,80 +129,32 @@
     ['eff1', 'doc_mob'],
   ];
 
-  // Ulusal odaklar. x: sütun, y: satır (ağaç görünümü için)
-  const F = (id, n, x, y, pre, fx, d, extra) => Object.assign({ id, n, x, y, pre, fx, d }, extra || {});
-  g.FOCUS_GENERIC = [
-    F('ind_1', 'Sanayi Hamlesi', 0, 0, [], { addCiv: 3 }, '+3 sivil fabrika.'),
-    F('ind_2', 'Altyapı Yatırımı', 0, 1, ['ind_1'], { construct: 0.1 }, 'İnşaat hızı +%10.'),
-    F('ind_3', 'Askerî Sanayi', 0, 2, ['ind_2'], { addMil: 3 }, '+3 askerî fabrika.'),
-    F('ind_4', 'Araştırma Enstitüsü', 0, 3, ['ind_2'], { slots: 1 }, '+1 araştırma yuvası.'),
-    F('ind_5', 'Sanayi Uzmanlığı', 0, 4, ['ind_3'], { factory: 0.1 }, 'Fabrika verimi +%10.'),
-    F('ind_6', 'Çelik Hamlesi', 0, 5, ['ind_5'], { steel: 15 }, 'Günlük +15 çelik.'),
-    F('ind_7', 'Petrol Arama', 0, 6, ['ind_5'], { oil: 15 }, 'Günlük +15 petrol.'),
-    F('ind_8', 'Bilim Akademisi', 0, 7, ['ind_4', 'ind_6'], { slots: 1, research: 0.05 }, '+1 araştırma yuvası, +%5 hız.'),
-    F('army_1', 'Ordu Reformu', 1, 0, [], { landAtk: 0.05, org: 0.05 }, 'Kara birlikleri saldırı ve moral +%5.'),
-    F('army_2', 'Seferberlik Hazırlığı', 1, 1, ['army_1'], { mp: 0.2 }, 'Kullanılabilir insan gücü +%20.'),
-    F('army_3', 'Topçu Okulu', 1, 2, ['army_1'], { landAtk: 0.05 }, 'Saldırı +%5.'),
-    F('army_4', 'Zırhlı Kuvvetler', 1, 3, ['army_3'], { armAtk: 0.1, tech: 'tank1' }, 'Hafif tank teknolojisi ve zırhlı saldırı +%10.'),
-    F('army_5', 'Sınır Tahkimatı', 1, 4, ['army_2'], { forts: 2 }, 'Sınır eyaletlerine 2 kademe tahkimat.'),
-    F('army_6', 'Kurmay Akademisi', 1, 5, ['army_4', 'army_5'], { landDef: 0.1, org: 0.1 }, 'Savunma ve moral +%10.'),
-    F('air_1', 'Hava Kuvvetleri', 2, 0, [], { addPlanes: 150 }, '+150 avcı uçağı.'),
-    F('air_2', 'Havacılık Okulu', 2, 1, ['air_1'], { air: 0.15 }, 'Hava gücü +%15.'),
-    F('air_3', 'Bombardıman Filoları', 2, 2, ['air_2'], { addBombers: 80 }, '+80 bombardıman uçağı.'),
-    F('nav_1', 'Donanma Genişlemesi', 3, 0, [], { addDock: 2 }, '+2 tersane.'),
-    F('nav_2', 'Çıkarma Doktrini', 3, 1, ['nav_1'], { invasion: 0.3, tech: 'mar1' }, 'Deniz piyadesi ve çıkarma cezası -%30.'),
-    F('nav_3', 'Mavi Su Donanması', 3, 2, ['nav_2'], { navy: 0.2 }, 'Deniz gücü +%20.'),
-    F('pol_1', 'Siyasi Etki', 4, 0, [], { pp: 0.5 }, 'Günlük +0.5 siyasi güç.'),
-    F('pol_2', 'Ulusal Birlik', 4, 1, ['pol_1'], { cg: -0.05, pp: 0.25 }, 'Tüketim malları -%5.'),
-    F('pol_3', 'İttifak Arayışı', 4, 2, ['pol_2'], { canFaction: 1 }, 'Kendi ittifakını kurabilirsin.'),
-    F('pol_dem', 'Özgür Dünyanın Savunucusu', 4, 3, ['pol_2'], { ignoreTension: 1, pp: 0.25 }, 'Gerginlik şartı olmadan savaş ekonomisi.', { ideo: 'dem' }),
-    F('pol_fas', 'Yayılmacı Politika', 4, 3, ['pol_2'], { justify: 0.5, pp: 0.25 }, 'Savaş gerekçesi %50 daha ucuz ve hızlı.', { ideo: 'fas' }),
-    F('pol_com', 'Devrim İhracı', 4, 3, ['pol_2'], { justify: 0.4, mp: 0.1 }, 'Savaş gerekçesi daha hızlı, insan gücü +%10.', { ideo: 'com' }),
-    F('pol_neu', 'Silahlı Tarafsızlık', 4, 3, ['pol_2'], { landDef: 0.15, forts: 1 }, 'Savunma +%15 ve sınır tahkimatı.', { ideo: 'neu' }),
-  ];
-  // Ülkeye özel odaklar (genel ağacın başına eklenen sütun)
-  g.FOCUS_SPECIAL = {
-    GER: [F('ger_1', 'Dört Yıllık Plan', 5, 0, [], { addMil: 5, addCiv: 2 }, '+5 askerî, +2 sivil fabrika.'),
-      F('ger_2', 'Luftwaffe', 5, 1, ['ger_1'], { addPlanes: 200, air: 0.1 }, '+200 avcı uçağı, hava +%10.'),
-      F('ger_3', 'Panzer Tümenleri', 5, 2, ['ger_1'], { armAtk: 0.15, tech: 'tank2' }, 'Orta tank teknolojisi, zırhlı +%15.')],
-    SOV: [F('sov_1', 'Beş Yıllık Plan', 5, 0, [], { addCiv: 5, addMil: 5 }, '+5 sivil, +5 askerî fabrika.'),
-      F('sov_2', 'Ural Sanayisi', 5, 1, ['sov_1'], { addMil: 6, steel: 20 }, '+6 askerî fabrika, +20 çelik.'),
-      F('sov_3', 'Kızıl Ordu Reformu', 5, 2, ['sov_2'], { landDef: 0.15, org: 0.1 }, 'Savunma +%15, moral +%10.')],
-    USA: [F('usa_1', 'Yeni Düzen (New Deal)', 5, 0, [], { addCiv: 6 }, '+6 sivil fabrika.'),
-      F('usa_2', 'Demokrasinin Cephaneliği', 5, 1, ['usa_1'], { addMil: 10, ignoreTension: 1 }, '+10 askerî fabrika.'),
-      F('usa_3', 'İki Okyanus Donanması', 5, 2, ['usa_2'], { addDock: 6, navy: 0.15 }, '+6 tersane.')],
-    ENG: [F('eng_1', 'Yeniden Silahlanma', 5, 0, [], { addMil: 4 }, '+4 askerî fabrika.'),
-      F('eng_2', 'Radar Zinciri', 5, 1, ['eng_1'], { air: 0.2, tech: 'radar' }, 'Radar teknolojisi, hava +%20.'),
-      F('eng_3', 'Kraliyet Donanması', 5, 2, ['eng_2'], { navy: 0.25, addDock: 3 }, 'Deniz +%25, +3 tersane.')],
-    FRA: [F('fra_1', 'Maginot Hattı', 5, 0, [], { forts: 3, landDef: 0.1 }, 'Sınırlara ağır tahkimat.'),
-      F('fra_2', 'Sanayi Millîleştirmesi', 5, 1, ['fra_1'], { addMil: 4 }, '+4 askerî fabrika.')],
-    ITA: [F('ita_1', 'Mare Nostrum', 5, 0, [], { navy: 0.2, addDock: 2 }, 'Deniz +%20, +2 tersane.'),
-      F('ita_2', 'Yeni Roma İmparatorluğu', 5, 1, ['ita_1'], { justify: 0.4, addMil: 3 }, '+3 askerî fabrika.')],
-    JAP: [F('jap_1', 'Zaibatsu Seferberliği', 5, 0, [], { addMil: 5 }, '+5 askerî fabrika.'),
-      F('jap_2', 'Kaigun Genişlemesi', 5, 1, ['jap_1'], { addDock: 4, navy: 0.15 }, '+4 tersane, deniz +%15.')],
-    TUR: [F('tur_1', 'Boğazların Tahkimi', 5, 0, [], { forts: 3, landDef: 0.1 }, 'Sınırlara ağır tahkimat, savunma +%10.'),
-      F('tur_2', 'Karabük Demir Çelik', 5, 1, ['tur_1'], { addCiv: 2, steel: 15 }, '+2 sivil fabrika, +15 çelik.'),
-      F('tur_3', 'Millî Sanayi Planı', 5, 2, ['tur_2'], { addMil: 4 }, '+4 askerî fabrika.')],
-    CHI: [F('chi_1', 'Alman Danışmanlar', 5, 0, [], { landAtk: 0.1, org: 0.1 }, 'Saldırı ve moral +%10.'),
-      F('chi_2', 'Birleşik Cephe', 5, 1, ['chi_1'], { mp: 0.3 }, 'İnsan gücü +%30.')],
-    POL: [F('pol_s1', 'Merkezî Sanayi Bölgesi', 5, 0, [], { addCiv: 2, addMil: 2 }, '+2 sivil, +2 askerî fabrika.')],
-  };
   g.FOCUS_DAYS = 70;
 
+  // Yasalar: ws = gereken savaş desteği, war = 2 ise yalnızca savaşta
   g.LAWS = {
     mob: { n: 'Askerlik Yasası', opts: [
       { n: 'Gönüllü Ordu', d: '%2 nüfus askere alınabilir', mp: 0.02 },
-      { n: 'Sınırlı Askerlik', d: '%3.5 nüfus', mp: 0.035 },
-      { n: 'Zorunlu Askerlik', d: '%6 nüfus, -%5 fabrika verimi', mp: 0.06, factory: -0.05, war: 1 },
-      { n: 'Topyekûn Seferberlik', d: '%10 nüfus, -%15 fabrika verimi', mp: 0.10, factory: -0.15, war: 2 },
+      { n: 'Sınırlı Askerlik', d: '%3,5 nüfus', mp: 0.035, ws: 0.05 },
+      { n: 'Kapsamlı Askerlik', d: '%6 nüfus, fabrika verimi -%5', mp: 0.06, factory: -0.05, ws: 0.3 },
+      { n: 'Hizmet Zorunluluğu', d: '%9 nüfus, fabrika verimi -%10', mp: 0.09, factory: -0.1, ws: 0.55, war: 2 },
+      { n: 'Topyekûn Seferberlik', d: '%13 nüfus, fabrika verimi -%20', mp: 0.13, factory: -0.2, ws: 0.75, war: 2 },
     ] },
     eco: { n: 'Ekonomi Yasası', opts: [
       { n: 'Sivil Ekonomi', d: 'Tüketim malları %35', cg: 0.35 },
-      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25', cg: 0.25 },
-      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%10', cg: 0.15, construct: 0.1, war: 1 },
-      { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20', cg: 0.08, construct: 0.2, war: 2 },
+      { n: 'Erken Seferberlik', d: 'Tüketim malları %30, inşaat +%5', cg: 0.3, construct: 0.05, ws: 0.05 },
+      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25, inşaat +%10', cg: 0.25, construct: 0.1, ws: 0.15 },
+      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35 },
+      { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
+    ] },
+    trade: { n: 'Ticaret Yasası', opts: [
+      { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5, yerel kaynak -%30', factory: 0.1, research: 0.05, resLoss: 0.3 },
+      { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2, yerel kaynak -%15', factory: 0.05, research: 0.02, resLoss: 0.15 },
+      { n: 'Sınırlı İhracat', d: 'Yerel kaynak -%5', resLoss: 0.05 },
+      { n: 'Kapalı Ekonomi', d: 'Kaynakların tamamı yurt içinde kalır, fabrika -%5', factory: -0.05, ws: 0.3 },
     ] },
   };
+  g.LAW_COST = 150;
 
   g.BUILDINGS = {
     civ: { n: 'Sivil Fabrika', cost: 10800, s: 'Sivil' },

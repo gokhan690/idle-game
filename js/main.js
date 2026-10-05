@@ -50,7 +50,7 @@
       if (hudT > 0.25) { UI.hud(); hudT = 0; }
       if (panelT > 0.6 && performance.now() - UI.lastTouch > 1500) {
         panelT = 0;
-        if (UI.panel && !UI.sub?.startsWith('build:')) UI.render();
+        if (UI.panel && !UI.sub?.startsWith('build:') && !UI.sub?.startsWith('tpl:')) UI.render(false, true);
         if (!$('selbar').hidden) UI.renderSel();
         if (!$('card').hidden && UI.cardProv >= 0) UI.showCard(UI.cardProv);
       }
@@ -221,6 +221,7 @@
     else if (/^Digit[1-5]$/.test(e.code)) { G.st.speed = +e.code.slice(5); G.st.paused = 0; UI.hud(); }
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
   });
+  g.addEventListener('orientationchange', () => setTimeout(() => R.resize(), 250));
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.st && $('start').hidden && UI.settings.autosave) G.saveGame('auto'); });
 
   // ---------- Başlat ----------

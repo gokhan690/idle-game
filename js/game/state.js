@@ -35,13 +35,17 @@
     if (d.div.mar) c.tech.mar1 = c.tech.sup1 = 1;
     if (d.navy[4]) c.tech.cv1 = 1;
     if (d.bonus) Object.assign(c.fmods, d.bonus);
+    c.tpl = JSON.parse(JSON.stringify(g.DEFAULT_TEMPLATES));
+    c.armies = [];
+    G.initPolitics(c);
     G.recomputeMods(c);
+    G.initGenerals(c);
     return c;
   };
 
   G.newGame = (player, opts) => {
     const st = {
-      v: 2, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
+      v: 3, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {},
       log: [], nextId: 1, over: 0,
     };
@@ -183,11 +187,11 @@
   };
 
   // ---------- Kayıt ----------
-  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies']);
+  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu']);
   G.serialize = () => JSON.stringify(G.st, (k, v) => (SKIP.has(k) ? undefined : v));
   G.deserialize = (s) => {
     const st = JSON.parse(s);
-    if (!st || st.v !== 2) throw new Error('Kayıt sürümü uyumsuz');
+    if (!st || st.v !== 3) throw new Error('Kayıt sürümü uyumsuz');
     G.st = st;
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
     G.refreshEnemies();

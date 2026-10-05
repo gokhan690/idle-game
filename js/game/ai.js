@@ -16,17 +16,8 @@
         pick = id; break;
       }
       if (!pick) break;
-      c.res.push({ id: pick, p: 0 });
+      G.startResearch(c, pick);
     }
-  };
-
-  G.aiFocus = (c) => {
-    if (c.focus.cur) return;
-    const list = G.focusList(c);
-    const special = list.filter((f) => f.x === 5);
-    const order = special.concat(list.filter((f) => f.x !== 5).sort((a, b) => a.y - b.y || a.x - b.x));
-    const f = order.find((f) => G.focusAvailable(c, f));
-    if (f) { c.focus.cur = f.id; c.focus.p = 0; }
   };
 
   G.aiConstruction = (c) => {
@@ -58,8 +49,8 @@
   G.aiProduction = (c) => {
     // eksik teçhizata göre hatları yeniden dağıt
     const need = { inf: 0, art: 0, mot: 0, tank: 0 };
-    for (const u of G.st.units) if (u.t === c.tag) for (const [e, n] of Object.entries(g.UNITS[u.u].eq)) need[e] += n * (1 - u.str) + n * 0.15;
-    for (const t of c.train) for (const [e, n] of Object.entries(g.UNITS[t.u].eq)) need[e] += n;
+    for (const u of G.st.units) if (u.t === c.tag) for (const [e, n] of Object.entries(G.T(u.t, u.u).eq)) need[e] += n * (1 - u.str) + n * 0.15;
+    for (const t of c.train) for (const [e, n] of Object.entries(G.T(c.tag, t.u).eq)) need[e] += n;
     const s = c.sum;
     const total = s.mil;
     if (!total) { c.lines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock'); }
@@ -107,28 +98,25 @@
     if (c.mods.unlock.arm && c.major && r < 0.18 && (c.stock.tank || 0) > 60) type = 'arm';
     else if (c.mods.unlock.mot && c.major && r < 0.28 && (c.stock.mot || 0) > 150) type = 'mot';
     else if (c.mods.unlock.mtn && r > 0.9) type = 'mtn';
-    c.train.push({ u: type, d: g.UNITS[type].days });
+    c.train.push({ u: type, d: G.T(c.tag, type).days });
   };
 
-  G.aiLaws = (c) => {
-    const st = G.st;
-    const atWar = c.enemies.length > 0;
-    const allowed = (opt) => !opt.war || (opt.war === 1 ? (atWar || st.tension >= 50 || c.ideo !== 'dem' || c.mods.ignoreTension) : atWar);
-    for (const k of ['eco', 'mob']) {
-      const L = g.LAWS[k];
-      const want = atWar ? (k === 'mob' && c.mpAvail < 50 ? 3 : 2) : st.tension > 40 ? 1 : 0;
-      const nx = c.laws[k] + 1;
-      if (nx <= want && nx < L.opts.length && allowed(L.opts[nx]) && c.pp >= 100) { c.pp -= 100; c.laws[k] = nx; G.recomputeMods(c); }
-    }
-  };
-
+  const st0 = () => G.st;
   G.aiEconomy = (c) => {
-    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c);
+    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c); G.aiAdvisors(c);
+    if (c.gens.length < Math.min(6, 1 + st0().units.filter((u) => u.t === c.tag).length / 20) && c.pp > 300) { c.pp -= 50; G.newGeneral(c); }
   };
 
   G.playerAuto = (c, i) => {
     const st = G.st;
-    if ((st.day + i) % 2 === 0 && st.units.some((u) => u.t === c.tag && u.auto)) G.aiMilitary(c, (u) => u.auto);
+    if ((st.day + i) % 2 === 0) {
+      if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
+      // ordular: verilen emre göre komutan yönetir
+      for (const a of c.armies || []) {
+        if (a.ord === 'hold') continue;
+        G.aiMilitary(c, (u) => u.army === a.id, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? 0.85 : 1, army: a });
+      }
+    }
     if ((st.day + i) % 7 === 0) {
       if (c.auto.res) G.aiResearch(c);
       if (c.auto.focus) G.aiFocus(c);
@@ -149,7 +137,7 @@
     return v;
   }
 
-  G.aiMilitary = (c, filter) => {
+  G.aiMilitary = (c, filter, opts = {}) => {
     const st = G.st, tag = c.tag;
     filter = filter || (() => true);
     const mine = st.units.filter((u) => u.t === tag && filter(u));
@@ -163,7 +151,7 @@
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
         let threat = 0, enemyAdj = [];
-        for (const j of P[i].a) if (G.atWar(tag, st.prov[j].c)) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; }
+        for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
       }
     }
@@ -181,10 +169,10 @@
       }
       const war0 = Math.min(...c.enemies.map((e) => st.wars[G.pairKey(tag, e)]?.since ?? st.day));
       const stalemate = Math.min(0.25, Math.max(0, (st.day - war0 - 60) / 400));
-      const aggr = (st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate;
+      const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
-      const tlist = [...targets.values()].filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack || st.prov[t.e].core === tag).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
       for (const t of tlist) {
         const te = g.TERRAIN[P[t.e].te];
         const fortMul = 1 + 0.15 * st.prov[t.e].fort;
@@ -242,7 +230,7 @@
       // kara cephesi yok: deniz çıkarması dene
       aiInvasion(c, idle);
     }
-    if (!atWar || !front.length) aiGarrison(c, idle, atWar);
+    if (!atWar || !front.length) aiGarrison(c, idle, atWar, opts);
   };
 
   function aiInvasion(c, idle) {
@@ -270,11 +258,12 @@
     }
   }
 
-  function aiGarrison(c, idle, atWar) {
+  function aiGarrison(c, idle, atWar, opts = {}) {
     const st = G.st, tag = c.tag;
     if (!idle.length) return;
-    if (!atWar && c.ai.gar && st.day - c.ai.gar < 20) return;
-    c.ai.gar = st.day;
+    const gk = opts.army ? 'gar' + opts.army.id : 'gar';
+    if (!atWar && c.ai[gk] && st.day - c.ai[gk] < 20) return;
+    c.ai[gk] = st.day;
     // tehdit puanı: komşu ülke ordusu
     const own = [];
     for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) own.push(i);
@@ -285,6 +274,7 @@
       let w = 0;
       for (const j of P[i].a) {
         const t = st.prov[j].c; if (t === tag || G.sameFaction(tag, t)) continue;
+        if (opts.vs && t !== opts.vs) continue;
         if (threatOf[t] == null) {
           const o = st.C[t]; let th = 0.3;
           if (G.atWar(tag, t)) th = 5;
@@ -297,7 +287,8 @@
       }
       if (w > 0) spots.push({ i, w: w + P[i].vp * 0.05 });
     }
-    spots.push({ i: c.cap, w: 3 });
+    if (!opts.vs) spots.push({ i: c.cap, w: 3 });
+    if (!spots.length) return;
     spots.sort((a, b) => b.w - a.w);
     const top = spots.slice(0, Math.max(3, Math.min(spots.length, Math.ceil(idle.length * 0.8))));
     const totalW = top.reduce((s, x) => s + x.w, 0);

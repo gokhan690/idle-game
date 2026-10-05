@@ -214,6 +214,89 @@ button.item:active { background: var(--field-3); }
 .loading { color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- Uyarılar ---------- */
+.hud-alerts { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -10px; padding: 0 10px; }
+.hud-alerts::-webkit-scrollbar { display: none; }
+.alert { flex: none; padding: 3px 9px 3px 22px; border-radius: 4px; border: 1px solid rgba(227,169,59,0.6); background: rgba(227,169,59,0.13); color: #f3d79a; font-size: 12.5px; font-weight: 600; white-space: nowrap; position: relative; }
+.alert::before { content: "!"; position: absolute; left: 7px; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--warn); color: #1b1a12; font-size: 9px; line-height: 11px; text-align: center; font-weight: 800; }
+
+/* ---------- Siyaset ---------- */
+.party { display: flex; height: 14px; border-radius: 3px; overflow: hidden; border: 1px solid var(--rule); }
+.party i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.legend b { color: var(--paper); font-variant-numeric: tabular-nums; }
+.item.spirit { border-left: 3px solid var(--brass); }
+.advgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.adv { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border-radius: 5px; border: 1px dashed var(--rule); background: rgba(32,39,31,0.5); text-align: left; min-height: 74px; min-width: 0; }
+.adv.on { border-style: solid; background: var(--field-2); }
+.adv small { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brass); }
+.adv b { font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+.adv .d { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
+.adv .x { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; color: var(--muted); font-size: 12px; }
+
+/* ---------- Odak ağacı (HOI4 tarzı) ---------- */
+.ftree { overflow: auto; margin: 0 -14px; padding: 0; max-height: min(62vh, 560px); touch-action: pan-x pan-y; background: radial-gradient(ellipse at 50% 0%, rgba(214,170,76,0.06), transparent 60%), #141813; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); -webkit-overflow-scrolling: touch; }
+.ftree-in { position: relative; }
+.ftree svg { position: absolute; inset: 0; pointer-events: none; }
+.ftree .ln { fill: none; stroke: #4a5444; stroke-width: 2; }
+.ftree .ln.done { stroke: var(--good); }
+.ftree .ln.or { stroke-dasharray: 5 4; }
+.ftree .excl circle { fill: #3a1712; stroke: var(--bad); stroke-width: 1.5; }
+.ftree .excl text { fill: #ffb3a6; font-size: 12px; font-weight: 700; }
+.fn { position: absolute; display: flex; flex-direction: column; gap: 2px; padding: 6px 7px; border-radius: 5px; background: #222a21; border: 1px solid #3f483c; text-align: left; overflow: hidden; box-shadow: 0 3px 8px rgba(0,0,0,0.35); }
+.fn .t { font-weight: 700; font-size: 12.5px; line-height: 1.12; }
+.fn .d { font-size: 10.5px; line-height: 1.15; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fn.avail { border-color: var(--brass); box-shadow: 0 0 0 1px rgba(214,170,76,0.4), 0 3px 10px rgba(0,0,0,0.4); }
+.fn.active { border-color: var(--brass-2); background: #3a3420; }
+.fn.done { background: #233320; border-color: rgba(134,181,110,0.7); }
+.fn.done .d { color: #a9c39b; }
+.fn.locked { opacity: 0.55; }
+.fn.excl { opacity: 0.35; background: #2a1d1a; border-color: #5a3029; }
+.fn .fp { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--brass-2); }
+
+/* ---------- Ordu ---------- */
+.item.army { align-items: stretch; }
+.item.army > .grow { display: flex; flex-direction: column; gap: 6px; }
+.genrow { text-align: left; padding: 6px 8px; border-radius: 4px; background: rgba(0,0,0,0.25); border: 1px solid var(--rule); display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.skills { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.skills b { font-size: 11.5px; padding: 1px 6px; border-radius: 3px; background: var(--field-3); font-variant-numeric: tabular-nums; }
+.seg.sm button { padding: 5px 4px; font-size: 13px; }
+.btns.col { flex-direction: column; align-items: stretch; flex: none; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.field input { font: 600 16px var(--f-ui); color: var(--paper); background: var(--field-2); border: 1px solid var(--rule); border-radius: 5px; padding: 8px 10px; user-select: text; -webkit-user-select: text; }
+.toggle[disabled] { opacity: 0.45; }
+
+/* ---------- Yatay ekran (telefon yan çevrildiğinde) ---------- */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root { --rail: 66px; --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); }
+  #nav { top: 0; bottom: 0; right: auto; width: calc(var(--rail) + var(--safe-l)); grid-template-columns: 1fr; grid-auto-rows: 1fr; padding: calc(var(--safe-t) + 4px) 0 calc(var(--safe-b) + 4px) var(--safe-l); border-top: 0; border-right: 1px solid var(--rule); }
+  #nav button { height: auto; min-height: 0; gap: 2px; }
+  #nav button.on { box-shadow: inset 3px 0 0 var(--brass); }
+  #nav button span { font-size: 9.5px; }
+  .ic { width: 20px; height: 20px; }
+  #hud { left: calc(var(--rail) + var(--safe-l)); padding: calc(var(--safe-t) + 4px) calc(8px + var(--safe-r)) 4px 8px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .hud-row { flex: 0 0 auto; }
+  .hud-res { flex: 1 1 200px; margin: 0; padding: 0; min-width: 0; }
+  .hud-alerts { flex: 1 0 100%; margin: 0; padding: 0; }
+  .hud-country b { display: none; }
+  .chip { padding: 2px 6px; }
+  .chip b { font-size: 13px; }
+  .speed button { height: 28px; }
+  .sheet { left: auto; right: 0; top: 0; bottom: 0; width: min(440px, 52vw); max-height: none; border-top: 0; border-left: 2px solid var(--brass); padding-top: var(--safe-t); padding-right: var(--safe-r); padding-bottom: var(--safe-b); animation: sheetSide 0.2s ease-out; }
+  @keyframes sheetSide { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .ftree { max-height: none; }
+  .card, .selbar { left: calc(var(--rail) + var(--safe-l) + 8px); right: auto; width: min(400px, 46vw); bottom: calc(var(--safe-b) + 8px); max-height: 60vh; overflow-y: auto; }
+  #map-tools { top: auto; bottom: calc(var(--safe-b) + 10px); right: calc(10px + var(--safe-r)); flex-direction: row; }
+  #toasts { left: calc(var(--rail) + var(--safe-l) + 10px); top: calc(var(--safe-t) + 52px); }
+  .start { padding-left: calc(16px + var(--safe-l)); padding-right: calc(16px + var(--safe-r)); }
+  .start h1 { font-size: clamp(48px, 11vw, 96px); }
+  .majors { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .dialog { max-height: calc(100vh - 32px); }
+}
 </style>
 </head>
 <body>
@@ -238,6 +321,7 @@ button.item:active { background: var(--field-3); }
       </div>
     </div>
     <div class="hud-res" id="hud-res"></div>
+    <div class="hud-alerts" id="hud-alerts" hidden></div>
   </header>
 
   <div id="toasts" aria-live="polite"></div>
@@ -343,7 +427,7 @@ window.COUNTRY_DEFS = {
   YEM: { n: 'Yemen', c: '#bd7262', id: 'neu', l: 'İmam Yahya', cap: 'Sana', civ: 0, mil: 0, dock: 0, pop: 4, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   OMA: { n: 'Umman', c: '#9e5252', id: 'neu', l: 'Sait bin Teymur', cap: 'Maskat', civ: 0, mil: 0, dock: 0, pop: 0.6, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   AFG: { n: 'Afganistan', c: '#8b7b57', id: 'neu', l: 'Muhammed Zahir Şah', cap: 'Kabil', civ: 1, mil: 0, dock: 0, pop: 7, div: { inf: 4 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
-  ETH: { n: 'Etiyopya', c: '#6a9a3d', id: 'neu', l: 'Haile Selassie', cap: 'Addis Ababa', civ: 1, mil: 0, dock: 0, pop: 10, div: { inf: 10 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
+  ETH: { n: 'Etiyopya', c: '#6a9a3d', id: 'neu', l: 'Haile Selassie', cap: 'Addis Ababa', bonus: { landDef: 0.25 }, civ: 1, mil: 0, dock: 0, pop: 10, div: { inf: 14 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   LIB: { n: 'Liberya', c: '#8a6b9b', id: 'neu', l: 'Edwin Barclay', cap: 'Monrovia', civ: 0, mil: 0, dock: 0, pop: 1, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
   MEX: { n: 'Meksika', c: '#4f8d5d', id: 'neu', l: 'Lázaro Cárdenas', cap: 'Meksiko', civ: 6, mil: 1, dock: 1, pop: 19, div: { inf: 8 }, air: [10, 0, 0], navy: [2, 0, 0, 0, 0], tl: 0 },
   GUA: { n: 'Guatemala', c: '#6fa0c4', id: 'neu', l: 'Jorge Ubico', cap: 'Guatemala', civ: 0, mil: 0, dock: 0, pop: 2, div: { inf: 1 }, air: [0, 0, 0], navy: [0, 0, 0, 0, 0], tl: 0 },
@@ -414,14 +498,33 @@ window.IDEOLOGIES = {
   g.SHIPS = ['dd', 'cr', 'bb', 'ss', 'cv'];
   g.PLANES = ['fig', 'cas', 'bom'];
 
-  // Tümen tipleri
-  g.UNITS = {
-    inf: { n: 'Piyade Tümeni', s: 'PİY', mp: 10, eq: { inf: 1000, art: 36 }, days: 60, atk: 12, def: 20, org: 60, spd: 4, arm: 0, prc: 6 },
-    mtn: { n: 'Dağ Tümeni', s: 'DAĞ', mp: 10, eq: { inf: 1100, art: 24 }, days: 80, atk: 12, def: 22, org: 70, spd: 4, arm: 0, prc: 5, bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
-    cav: { n: 'Süvari Tümeni', s: 'SÜV', mp: 8, eq: { inf: 900 }, days: 50, atk: 9, def: 15, org: 60, spd: 6, arm: 0, prc: 4 },
-    mot: { n: 'Motorize Tümen', s: 'MOT', mp: 10, eq: { inf: 1000, art: 36, mot: 300 }, days: 90, atk: 14, def: 22, org: 60, spd: 10, arm: 2, prc: 8, req: 'mot1' },
-    arm: { n: 'Zırhlı Tümen', s: 'ZRH', mp: 8, eq: { inf: 500, tank: 120, mot: 200 }, days: 120, atk: 32, def: 14, org: 50, spd: 9, arm: 30, prc: 35, req: 'tank1' },
-    mar: { n: 'Deniz Piyadesi', s: 'DNZ', mp: 8, eq: { inf: 1000, art: 12 }, days: 90, atk: 12, def: 18, org: 65, spd: 4, arm: 0, prc: 5, amph: 1, req: 'mar1' },
+  // Tümen tasarımcısı: taburlar (çizgi birimleri) ve destek bölükleri
+  g.BATS = {
+    inf: { n: 'Piyade', s: 'PİY', w: 2, atk: 1.6, def: 3.0, org: 60, spd: 4, mp: 1.5, eq: { inf: 150 }, arm: 0, prc: 2, kind: 'inf' },
+    art: { n: 'Topçu', s: 'TOP', w: 3, atk: 3.8, def: 0.6, org: 20, spd: 4, mp: 0.5, eq: { inf: 20, art: 18 }, arm: 0, prc: 6, kind: 'art' },
+    mtn: { n: 'Dağ Piyadesi', s: 'DAĞ', w: 2, atk: 1.6, def: 3.3, org: 70, spd: 4, mp: 1.5, eq: { inf: 170 }, arm: 0, prc: 2, kind: 'inf', bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
+    cav: { n: 'Süvari', s: 'SÜV', w: 2, atk: 1.4, def: 2.4, org: 60, spd: 6, mp: 1.2, eq: { inf: 120 }, arm: 0, prc: 1, kind: 'inf' },
+    mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, atk: 1.7, def: 3.0, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, arm: 2, prc: 3, kind: 'inf', mob: 1, req: 'mot1' },
+    arm: { n: 'Tank', s: 'TNK', w: 2, atk: 7.5, def: 2.0, org: 30, spd: 9, mp: 0.6, eq: { tank: 40 }, arm: 30, prc: 35, kind: 'tank', mob: 1, req: 'tank1' },
+    mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, atk: 1.6, def: 2.8, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, arm: 0, prc: 2, kind: 'inf', amph: 1, req: 'mar1' },
+  };
+  g.SUPPORTS = {
+    eng: { n: 'İstihkâm', d: '+2 savunma, siper hızı +%30', def: 2, ent: 0.3, mp: 0.3, eq: { inf: 30 } },
+    rec: { n: 'Keşif', d: '+0,8 saldırı, hız +%10', atk: 0.8, spdM: 0.1, mp: 0.2, eq: { inf: 30 } },
+    sart: { n: 'Destek Topçusu', d: '+2,5 saldırı', atk: 2.5, mp: 0.3, eq: { art: 12 }, kind: 'art' },
+    sat: { n: 'Tanksavar', d: '+15 zırh delme', prcAdd: 15, atk: 0.4, mp: 0.3, eq: { art: 10 }, req: 'at1' },
+    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +0,5 savunma', aa: 0.15, def: 0.5, mp: 0.3, eq: { art: 8 }, req: 'aa1' },
+    log: { n: 'Lojistik', d: 'İkmal cezası -%35', sup: 0.35, mp: 0.3, eq: { inf: 20, mot: 10 }, req: 'mot1' },
+    hos: { n: 'Sahra Hastanesi', d: 'Kayıplar -%30', cas: 0.3, mp: 0.3, eq: { inf: 20 }, req: 'sup1' },
+  };
+  g.MAX_BATS = 10; g.MAX_SUP = 5;
+  g.DEFAULT_TEMPLATES = {
+    inf: { n: 'Piyade Tümeni', b: { inf: 6, art: 1 }, s: {} },
+    mtn: { n: 'Dağ Tümeni', b: { mtn: 6 }, s: { eng: 1 } },
+    cav: { n: 'Süvari Tümeni', b: { cav: 6 }, s: {} },
+    mot: { n: 'Motorize Tümen', b: { mot: 6, art: 1 }, s: {} },
+    arm: { n: 'Zırhlı Tümen', b: { arm: 3, mot: 2 }, s: { rec: 1 } },
+    mar: { n: 'Deniz Piyadesi Tümeni', b: { mar: 5, art: 1 }, s: {} },
   };
 
   // Teknolojiler: cat, year, pre (önkoşul), fx (etkiler)
@@ -495,86 +598,425 @@ window.IDEOLOGIES = {
     ['eff1', 'doc_mob'],
   ];
 
-  // Ulusal odaklar. x: sütun, y: satır (ağaç görünümü için)
-  const F = (id, n, x, y, pre, fx, d, extra) => Object.assign({ id, n, x, y, pre, fx, d }, extra || {});
-  g.FOCUS_GENERIC = [
-    F('ind_1', 'Sanayi Hamlesi', 0, 0, [], { addCiv: 3 }, '+3 sivil fabrika.'),
-    F('ind_2', 'Altyapı Yatırımı', 0, 1, ['ind_1'], { construct: 0.1 }, 'İnşaat hızı +%10.'),
-    F('ind_3', 'Askerî Sanayi', 0, 2, ['ind_2'], { addMil: 3 }, '+3 askerî fabrika.'),
-    F('ind_4', 'Araştırma Enstitüsü', 0, 3, ['ind_2'], { slots: 1 }, '+1 araştırma yuvası.'),
-    F('ind_5', 'Sanayi Uzmanlığı', 0, 4, ['ind_3'], { factory: 0.1 }, 'Fabrika verimi +%10.'),
-    F('ind_6', 'Çelik Hamlesi', 0, 5, ['ind_5'], { steel: 15 }, 'Günlük +15 çelik.'),
-    F('ind_7', 'Petrol Arama', 0, 6, ['ind_5'], { oil: 15 }, 'Günlük +15 petrol.'),
-    F('ind_8', 'Bilim Akademisi', 0, 7, ['ind_4', 'ind_6'], { slots: 1, research: 0.05 }, '+1 araştırma yuvası, +%5 hız.'),
-    F('army_1', 'Ordu Reformu', 1, 0, [], { landAtk: 0.05, org: 0.05 }, 'Kara birlikleri saldırı ve moral +%5.'),
-    F('army_2', 'Seferberlik Hazırlığı', 1, 1, ['army_1'], { mp: 0.2 }, 'Kullanılabilir insan gücü +%20.'),
-    F('army_3', 'Topçu Okulu', 1, 2, ['army_1'], { landAtk: 0.05 }, 'Saldırı +%5.'),
-    F('army_4', 'Zırhlı Kuvvetler', 1, 3, ['army_3'], { armAtk: 0.1, tech: 'tank1' }, 'Hafif tank teknolojisi ve zırhlı saldırı +%10.'),
-    F('army_5', 'Sınır Tahkimatı', 1, 4, ['army_2'], { forts: 2 }, 'Sınır eyaletlerine 2 kademe tahkimat.'),
-    F('army_6', 'Kurmay Akademisi', 1, 5, ['army_4', 'army_5'], { landDef: 0.1, org: 0.1 }, 'Savunma ve moral +%10.'),
-    F('air_1', 'Hava Kuvvetleri', 2, 0, [], { addPlanes: 150 }, '+150 avcı uçağı.'),
-    F('air_2', 'Havacılık Okulu', 2, 1, ['air_1'], { air: 0.15 }, 'Hava gücü +%15.'),
-    F('air_3', 'Bombardıman Filoları', 2, 2, ['air_2'], { addBombers: 80 }, '+80 bombardıman uçağı.'),
-    F('nav_1', 'Donanma Genişlemesi', 3, 0, [], { addDock: 2 }, '+2 tersane.'),
-    F('nav_2', 'Çıkarma Doktrini', 3, 1, ['nav_1'], { invasion: 0.3, tech: 'mar1' }, 'Deniz piyadesi ve çıkarma cezası -%30.'),
-    F('nav_3', 'Mavi Su Donanması', 3, 2, ['nav_2'], { navy: 0.2 }, 'Deniz gücü +%20.'),
-    F('pol_1', 'Siyasi Etki', 4, 0, [], { pp: 0.5 }, 'Günlük +0.5 siyasi güç.'),
-    F('pol_2', 'Ulusal Birlik', 4, 1, ['pol_1'], { cg: -0.05, pp: 0.25 }, 'Tüketim malları -%5.'),
-    F('pol_3', 'İttifak Arayışı', 4, 2, ['pol_2'], { canFaction: 1 }, 'Kendi ittifakını kurabilirsin.'),
-    F('pol_dem', 'Özgür Dünyanın Savunucusu', 4, 3, ['pol_2'], { ignoreTension: 1, pp: 0.25 }, 'Gerginlik şartı olmadan savaş ekonomisi.', { ideo: 'dem' }),
-    F('pol_fas', 'Yayılmacı Politika', 4, 3, ['pol_2'], { justify: 0.5, pp: 0.25 }, 'Savaş gerekçesi %50 daha ucuz ve hızlı.', { ideo: 'fas' }),
-    F('pol_com', 'Devrim İhracı', 4, 3, ['pol_2'], { justify: 0.4, mp: 0.1 }, 'Savaş gerekçesi daha hızlı, insan gücü +%10.', { ideo: 'com' }),
-    F('pol_neu', 'Silahlı Tarafsızlık', 4, 3, ['pol_2'], { landDef: 0.15, forts: 1 }, 'Savunma +%15 ve sınır tahkimatı.', { ideo: 'neu' }),
-  ];
-  // Ülkeye özel odaklar (genel ağacın başına eklenen sütun)
-  g.FOCUS_SPECIAL = {
-    GER: [F('ger_1', 'Dört Yıllık Plan', 5, 0, [], { addMil: 5, addCiv: 2 }, '+5 askerî, +2 sivil fabrika.'),
-      F('ger_2', 'Luftwaffe', 5, 1, ['ger_1'], { addPlanes: 200, air: 0.1 }, '+200 avcı uçağı, hava +%10.'),
-      F('ger_3', 'Panzer Tümenleri', 5, 2, ['ger_1'], { armAtk: 0.15, tech: 'tank2' }, 'Orta tank teknolojisi, zırhlı +%15.')],
-    SOV: [F('sov_1', 'Beş Yıllık Plan', 5, 0, [], { addCiv: 5, addMil: 5 }, '+5 sivil, +5 askerî fabrika.'),
-      F('sov_2', 'Ural Sanayisi', 5, 1, ['sov_1'], { addMil: 6, steel: 20 }, '+6 askerî fabrika, +20 çelik.'),
-      F('sov_3', 'Kızıl Ordu Reformu', 5, 2, ['sov_2'], { landDef: 0.15, org: 0.1 }, 'Savunma +%15, moral +%10.')],
-    USA: [F('usa_1', 'Yeni Düzen (New Deal)', 5, 0, [], { addCiv: 6 }, '+6 sivil fabrika.'),
-      F('usa_2', 'Demokrasinin Cephaneliği', 5, 1, ['usa_1'], { addMil: 10, ignoreTension: 1 }, '+10 askerî fabrika.'),
-      F('usa_3', 'İki Okyanus Donanması', 5, 2, ['usa_2'], { addDock: 6, navy: 0.15 }, '+6 tersane.')],
-    ENG: [F('eng_1', 'Yeniden Silahlanma', 5, 0, [], { addMil: 4 }, '+4 askerî fabrika.'),
-      F('eng_2', 'Radar Zinciri', 5, 1, ['eng_1'], { air: 0.2, tech: 'radar' }, 'Radar teknolojisi, hava +%20.'),
-      F('eng_3', 'Kraliyet Donanması', 5, 2, ['eng_2'], { navy: 0.25, addDock: 3 }, 'Deniz +%25, +3 tersane.')],
-    FRA: [F('fra_1', 'Maginot Hattı', 5, 0, [], { forts: 3, landDef: 0.1 }, 'Sınırlara ağır tahkimat.'),
-      F('fra_2', 'Sanayi Millîleştirmesi', 5, 1, ['fra_1'], { addMil: 4 }, '+4 askerî fabrika.')],
-    ITA: [F('ita_1', 'Mare Nostrum', 5, 0, [], { navy: 0.2, addDock: 2 }, 'Deniz +%20, +2 tersane.'),
-      F('ita_2', 'Yeni Roma İmparatorluğu', 5, 1, ['ita_1'], { justify: 0.4, addMil: 3 }, '+3 askerî fabrika.')],
-    JAP: [F('jap_1', 'Zaibatsu Seferberliği', 5, 0, [], { addMil: 5 }, '+5 askerî fabrika.'),
-      F('jap_2', 'Kaigun Genişlemesi', 5, 1, ['jap_1'], { addDock: 4, navy: 0.15 }, '+4 tersane, deniz +%15.')],
-    TUR: [F('tur_1', 'Boğazların Tahkimi', 5, 0, [], { forts: 3, landDef: 0.1 }, 'Sınırlara ağır tahkimat, savunma +%10.'),
-      F('tur_2', 'Karabük Demir Çelik', 5, 1, ['tur_1'], { addCiv: 2, steel: 15 }, '+2 sivil fabrika, +15 çelik.'),
-      F('tur_3', 'Millî Sanayi Planı', 5, 2, ['tur_2'], { addMil: 4 }, '+4 askerî fabrika.')],
-    CHI: [F('chi_1', 'Alman Danışmanlar', 5, 0, [], { landAtk: 0.1, org: 0.1 }, 'Saldırı ve moral +%10.'),
-      F('chi_2', 'Birleşik Cephe', 5, 1, ['chi_1'], { mp: 0.3 }, 'İnsan gücü +%30.')],
-    POL: [F('pol_s1', 'Merkezî Sanayi Bölgesi', 5, 0, [], { addCiv: 2, addMil: 2 }, '+2 sivil, +2 askerî fabrika.')],
-  };
   g.FOCUS_DAYS = 70;
 
+  // Yasalar: ws = gereken savaş desteği, war = 2 ise yalnızca savaşta
   g.LAWS = {
     mob: { n: 'Askerlik Yasası', opts: [
       { n: 'Gönüllü Ordu', d: '%2 nüfus askere alınabilir', mp: 0.02 },
-      { n: 'Sınırlı Askerlik', d: '%3.5 nüfus', mp: 0.035 },
-      { n: 'Zorunlu Askerlik', d: '%6 nüfus, -%5 fabrika verimi', mp: 0.06, factory: -0.05, war: 1 },
-      { n: 'Topyekûn Seferberlik', d: '%10 nüfus, -%15 fabrika verimi', mp: 0.10, factory: -0.15, war: 2 },
+      { n: 'Sınırlı Askerlik', d: '%3,5 nüfus', mp: 0.035, ws: 0.05 },
+      { n: 'Kapsamlı Askerlik', d: '%6 nüfus, fabrika verimi -%5', mp: 0.06, factory: -0.05, ws: 0.3 },
+      { n: 'Hizmet Zorunluluğu', d: '%9 nüfus, fabrika verimi -%10', mp: 0.09, factory: -0.1, ws: 0.55, war: 2 },
+      { n: 'Topyekûn Seferberlik', d: '%13 nüfus, fabrika verimi -%20', mp: 0.13, factory: -0.2, ws: 0.75, war: 2 },
     ] },
     eco: { n: 'Ekonomi Yasası', opts: [
       { n: 'Sivil Ekonomi', d: 'Tüketim malları %35', cg: 0.35 },
-      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25', cg: 0.25 },
-      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%10', cg: 0.15, construct: 0.1, war: 1 },
-      { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20', cg: 0.08, construct: 0.2, war: 2 },
+      { n: 'Erken Seferberlik', d: 'Tüketim malları %30, inşaat +%5', cg: 0.3, construct: 0.05, ws: 0.05 },
+      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25, inşaat +%10', cg: 0.25, construct: 0.1, ws: 0.15 },
+      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35 },
+      { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
+    ] },
+    trade: { n: 'Ticaret Yasası', opts: [
+      { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5, yerel kaynak -%30', factory: 0.1, research: 0.05, resLoss: 0.3 },
+      { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2, yerel kaynak -%15', factory: 0.05, research: 0.02, resLoss: 0.15 },
+      { n: 'Sınırlı İhracat', d: 'Yerel kaynak -%5', resLoss: 0.05 },
+      { n: 'Kapalı Ekonomi', d: 'Kaynakların tamamı yurt içinde kalır, fabrika -%5', factory: -0.05, ws: 0.3 },
     ] },
   };
+  g.LAW_COST = 150;
 
   g.BUILDINGS = {
     civ: { n: 'Sivil Fabrika', cost: 10800, s: 'Sivil' },
     mil: { n: 'Askerî Fabrika', cost: 7200, s: 'Askerî' },
     dock: { n: 'Tersane', cost: 6400, s: 'Tersane', coastal: 1 },
     fort: { n: 'Kara Tahkimatı', cost: 1800, s: 'Tahkimat', max: 5 },
+  };
+})(window);
+
+/* js/data/leaders.js */
+// Komutanlar, danışmanlar, ulusal ruhlar, alternatif liderler ve başlangıç siyaseti.
+(function (g) {
+  // ---------- Komutan özellikleri ----------
+  g.GEN_TRAITS = {
+    panzer: { n: 'Panzer Uzmanı', d: 'Zırhlı ve motorize saldırısı +%15', fx: { armAtk: 0.15 } },
+    infantry: { n: 'Piyade Subayı', d: 'Savunma +%10', fx: { def: 0.1 } },
+    offensive: { n: 'Saldırgan Taarruzcu', d: 'Saldırı +%12, kayıplar +%10', fx: { atk: 0.12, cas: -0.1 } },
+    defensive: { n: 'Savunma Ustası', d: 'Savunma +%15, siper hızı +%25', fx: { def: 0.15, ent: 0.25 } },
+    logistics: { n: 'Lojistik Dehası', d: 'İkmal cezası -%50', fx: { sup: 0.5 } },
+    desert: { n: 'Çöl Tilkisi', d: 'Çölde saldırı ve savunma +%25', fx: { terrain: { desert: 0.25 } } },
+    mountain: { n: 'Dağ Uzmanı', d: 'Dağ ve tepelerde +%25', fx: { terrain: { mountain: 0.25, hills: 0.2 } } },
+    jungle: { n: 'Cangıl Faresi', d: 'Cangıl ve bataklıkta +%25', fx: { terrain: { jungle: 0.25, marsh: 0.2 } } },
+    winter: { n: 'Kış Uzmanı', d: 'Kuzey cephelerde kışın +%25', fx: { winter: 0.25 } },
+    urban: { n: 'Şehir Muharebesi Uzmanı', d: 'Şehirlerde +%25', fx: { terrain: { urban: 0.25 } } },
+    cavalry: { n: 'Süvari Geleneği', d: 'Hız +%15', fx: { speed: 0.15 } },
+    amphib: { n: 'Çıkarma Uzmanı', d: 'Deniz çıkarmasında ceza -%50', fx: { amph: 0.5 } },
+    planner: { n: 'Usta Planlamacı', d: 'Muharebenin ilk günlerinde +%20', fx: { plan: 0.2 } },
+    brilliant: { n: 'Parlak Stratejist', d: 'Her beceride +1 seviye', fx: {} },
+  };
+  // [ad, mareşal mi, saldırı, savunma, planlama, lojistik, özellikler]
+  g.GENERALS = {
+    GER: [['Erich von Manstein', 1, 5, 4, 6, 3, ['planner', 'brilliant']], ['Gerd von Rundstedt', 1, 4, 4, 4, 3, ['defensive']], ['Fedor von Bock', 1, 4, 3, 3, 3, ['offensive']],
+      ['Erwin Rommel', 0, 6, 2, 4, 2, ['desert', 'panzer', 'offensive']], ['Heinz Guderian', 0, 5, 2, 4, 3, ['panzer']], ['Walter Model', 0, 3, 5, 3, 3, ['defensive', 'winter']],
+      ['Paul von Kleist', 0, 4, 3, 3, 2, ['panzer']], ['Hermann Hoth', 0, 4, 3, 3, 3, ['panzer']], ['Eduard Dietl', 0, 2, 4, 2, 2, ['mountain', 'winter']]],
+    SOV: [['Georgi Jukov', 1, 5, 5, 5, 3, ['brilliant', 'winter']], ['Aleksandr Vasilevski', 1, 3, 4, 6, 4, ['planner']], ['Semyon Timoşenko', 1, 3, 3, 3, 3, []],
+      ['Konstantin Rokossovski', 0, 5, 4, 4, 3, ['panzer', 'winter']], ['İvan Konev', 0, 5, 3, 3, 3, ['offensive']], ['Vasili Çuykov', 0, 3, 5, 2, 2, ['urban', 'defensive']],
+      ['Semyon Budyonni', 0, 2, 2, 1, 2, ['cavalry']], ['Kliment Voroşilov', 0, 1, 2, 1, 2, []]],
+    ENG: [['Alan Brooke', 1, 3, 4, 5, 4, ['planner']], ['Harold Alexander', 1, 4, 4, 4, 3, []], ['Archibald Wavell', 1, 3, 3, 4, 3, ['desert']],
+      ['Bernard Montgomery', 0, 4, 4, 6, 4, ['planner', 'desert']], ['Richard O\'Connor', 0, 5, 2, 3, 3, ['desert', 'panzer']], ['William Slim', 0, 4, 4, 4, 4, ['jungle', 'logistics']],
+      ['Claude Auchinleck', 0, 3, 4, 3, 3, ['defensive']]],
+    FRA: [['Maurice Gamelin', 1, 2, 4, 3, 3, ['defensive']], ['Maxime Weygand', 1, 3, 4, 3, 3, []], ['Charles de Gaulle', 0, 5, 2, 4, 2, ['panzer', 'offensive']],
+      ['Alphonse Juin', 0, 4, 3, 4, 3, ['mountain']], ['Philippe Leclerc', 0, 4, 2, 3, 3, ['desert', 'panzer']], ['Henri Giraud', 0, 3, 3, 2, 3, []]],
+    USA: [['Dwight Eisenhower', 1, 3, 4, 5, 6, ['logistics', 'planner']], ['Douglas MacArthur', 1, 4, 4, 4, 3, ['amphib', 'jungle']], ['George Patton', 0, 6, 2, 3, 3, ['panzer', 'offensive']],
+      ['Omar Bradley', 0, 4, 4, 4, 4, []], ['Mark Clark', 0, 3, 3, 3, 3, ['amphib']], ['Joseph Stilwell', 0, 3, 3, 3, 4, ['jungle']]],
+    ITA: [['Pietro Badoglio', 1, 3, 3, 3, 3, []], ['Rodolfo Graziani', 1, 2, 3, 2, 2, ['desert']], ['Giovanni Messe', 0, 4, 4, 3, 3, ['defensive']],
+      ['Italo Gariboldi', 0, 2, 3, 2, 2, []], ['Ettore Bastico', 0, 3, 3, 3, 2, ['desert']]],
+    JAP: [['Hisaiçi Terauçi', 1, 3, 3, 4, 3, []], ['Yasuji Okamura', 1, 4, 3, 4, 3, []], ['Tomoyuki Yamaşita', 0, 6, 3, 4, 3, ['jungle', 'offensive']],
+      ['Masaharu Homma', 0, 4, 3, 3, 3, ['amphib']], ['İvane Matsui', 0, 3, 3, 3, 2, []], ['Tadamiçi Kuribayaşi', 0, 2, 6, 3, 3, ['defensive']]],
+    TUR: [['Fevzi Çakmak', 1, 4, 5, 5, 3, ['defensive', 'planner']], ['Kâzım Karabekir', 0, 4, 4, 3, 3, ['mountain']], ['Ali Fuat Cebesoy', 0, 3, 4, 3, 3, []],
+      ['Fahrettin Altay', 0, 4, 2, 2, 3, ['cavalry']], ['Asım Gündüz', 0, 3, 4, 3, 3, ['defensive']], ['Salih Omurtak', 0, 3, 3, 3, 3, []], ['İzzettin Çalışlar', 0, 3, 3, 3, 2, ['infantry']]],
+    CHI: [['Chen Cheng', 1, 3, 4, 4, 3, []], ['He Yingqin', 1, 2, 3, 3, 3, []], ['Bai Chongxi', 0, 5, 3, 4, 2, ['offensive']], ['Xue Yue', 0, 3, 5, 3, 3, ['defensive']],
+      ['Li Zongren', 0, 4, 4, 3, 2, []], ['Sun Li-jen', 0, 4, 3, 3, 3, ['jungle']]],
+    POL: [['Edward Rydz-Śmigły', 1, 3, 3, 2, 2, []], ['Władysław Anders', 0, 4, 3, 3, 3, ['cavalry']], ['Tadeusz Kutrzeba', 0, 4, 3, 3, 2, ['offensive']], ['Stanisław Maczek', 0, 4, 2, 3, 3, ['panzer']]],
+    FIN: [['Carl Gustaf Mannerheim', 1, 3, 6, 4, 3, ['winter', 'defensive']], ['Hjalmar Siilasvuo', 0, 4, 3, 3, 2, ['winter']]],
+    ROM: [['Ion Antonescu', 1, 3, 3, 3, 2, []], ['Petre Dumitrescu', 0, 3, 3, 2, 2, []]],
+    HUN: [['Gusztáv Jány', 1, 2, 3, 2, 2, []]],
+    SPR: [['Vicente Rojo', 1, 3, 4, 4, 2, ['defensive']], ['Francisco Franco', 0, 4, 3, 4, 3, ['desert']]],
+    YUG: [['Dušan Simović', 1, 2, 3, 2, 2, ['mountain']]],
+    GRE: [['Alexandros Papagos', 1, 3, 4, 3, 2, ['mountain']]],
+  };
+  g.GENERIC_GEN_NAMES = ['Kurmay', 'Tümgeneral', 'Korgeneral', 'Orgeneral'];
+
+  // ---------- Danışmanlar ----------
+  // rol: pol (siyasi, 3 yuva), army, navy, air (birer), hc (yüksek komuta, 2), tank, plane, ship, ind, theo (tasarım/teorisyen, birer)
+  g.ADV_SLOTS = { pol: 3, army: 1, navy: 1, air: 1, hc: 2, tank: 1, plane: 1, ship: 1, ind: 1, theo: 1 };
+  g.ADV_ROLE_N = { pol: 'Siyasi danışmanlar', army: 'Kara kuvvetleri komutanı', navy: 'Deniz kuvvetleri komutanı', air: 'Hava kuvvetleri komutanı', hc: 'Yüksek komuta', tank: 'Tank tasarımcısı', plane: 'Uçak tasarımcısı', ship: 'Gemi tasarımcısı', ind: 'Sanayi şirketi', theo: 'Askerî teorisyen' };
+  g.ADV_TYPES = {
+    workhorse: { r: 'pol', n: 'Sessiz Çalışkan', d: 'Siyasi güç +%15', fx: { ppM: 0.15 } },
+    captain: { r: 'pol', n: 'Sanayi Kaptanı', d: 'İnşaat +%10, fabrika +%5', fx: { construct: 0.1, factory: 0.05 } },
+    warind: { r: 'pol', n: 'Savaş Sanayii Organizatörü', d: 'Fabrika verimi +%10', fx: { factory: 0.1 } },
+    propaganda: { r: 'pol', n: 'Propaganda Bakanı', d: 'Savaş desteği +%15', fx: { ws: 0.15 } },
+    figurehead: { r: 'pol', n: 'Halkın Sevdiği Önder', d: 'İstikrar +%15', fx: { stab: 0.15 } },
+    recruiter: { r: 'pol', n: 'Askerlik Dairesi Başkanı', d: 'İnsan gücü +%10', fx: { mp: 0.1 } },
+    diplomat: { r: 'pol', n: 'Usta Diplomat', d: 'Savaş gerekçesi -%30, gerginlik etkisi azalır', fx: { justify: 0.3 } },
+    ideologue: { r: 'pol', n: 'İdeolog', d: 'Yönetici ideoloji desteği artar, istikrar +%5', fx: { drift: 0.002, stab: 0.05 } },
+    a_atk: { r: 'army', n: 'Saldırı Doktrini Ustası', d: 'Kara saldırısı +%7', fx: { landAtk: 0.07 } },
+    a_def: { r: 'army', n: 'Savunma Doktrini Ustası', d: 'Kara savunması +%7', fx: { landDef: 0.07 } },
+    a_man: { r: 'army', n: 'Manevra Ustası', d: 'Hız +%10, moral +%5', fx: { speed: 0.1, org: 0.05 } },
+    n_fleet: { r: 'navy', n: 'Filo Amirali', d: 'Deniz gücü +%15', fx: { navy: 0.15 } },
+    n_amph: { r: 'navy', n: 'Çıkarma Uzmanı Amiral', d: 'Çıkarma cezası -%25, deniz +%5', fx: { invasion: 0.25, navy: 0.05 } },
+    air_sup: { r: 'air', n: 'Hava Üstünlüğü Generali', d: 'Hava gücü +%15', fx: { air: 0.15 } },
+    air_cas: { r: 'air', n: 'Yakın Destek Generali', d: 'Hava gücü +%10, kara saldırısı +%3', fx: { air: 0.1, landAtk: 0.03 } },
+    hc_inf: { r: 'hc', n: 'Piyade Uzmanı', d: 'Savunma +%5, moral +%5', fx: { landDef: 0.05, org: 0.05 } },
+    hc_arm: { r: 'hc', n: 'Zırh Uzmanı', d: 'Zırhlı saldırı +%10', fx: { armAtk: 0.1 } },
+    hc_log: { r: 'hc', n: 'Lojistik Uzmanı', d: 'İkmal cezası -%20', fx: { supply: 0.2 } },
+    hc_ent: { r: 'hc', n: 'Tahkimat Uzmanı', d: 'Siper hızı +%50', fx: { entrench: 0.5 } },
+    d_tank: { r: 'tank', n: 'Tank Tasarım Bürosu', d: 'Zırh araştırması +%15, zırhlı +%5', fx: { rc_arm: 0.15, armAtk: 0.05 } },
+    d_plane: { r: 'plane', n: 'Uçak Tasarım Bürosu', d: 'Hava araştırması +%15, hava +%5', fx: { rc_air: 0.15, air: 0.05 } },
+    d_ship: { r: 'ship', n: 'Gemi Tasarım Bürosu', d: 'Deniz araştırması +%15, deniz +%5', fx: { rc_nav: 0.15, navy: 0.05 } },
+    d_ind: { r: 'ind', n: 'Sanayi Şirketi', d: 'Sanayi araştırması +%15', fx: { rc_ind: 0.15 } },
+    d_arms: { r: 'ind', n: 'Silah Üreticisi', d: 'Piyade ve topçu araştırması +%15', fx: { rc_inf: 0.15, rc_art: 0.15 } },
+    theo: { r: 'theo', n: 'Askerî Teorisyen', d: 'Doktrin araştırması +%20', fx: { rc_doc: 0.2 } },
+  };
+  // Ülkeye özel danışman adları: tip -> ad
+  g.ADV_NAMES = {
+    TUR: { workhorse: 'İsmet İnönü', captain: 'Celal Bayar', diplomat: 'Tevfik Rüştü Aras', ideologue: 'Recep Peker', figurehead: 'Refik Saydam', warind: 'Şükrü Saracoğlu', propaganda: 'Falih Rıfkı Atay', recruiter: 'Kâzım Özalp',
+      d_tank: 'MKE Kırıkkale', d_plane: 'Vecihi Hürkuş', d_ship: 'Gölcük Tersanesi', d_ind: 'Karabük Demir Çelik', d_arms: 'Nuri Killigil Fabrikası', theo: 'Fevzi Çakmak' },
+    GER: { propaganda: 'Joseph Goebbels', captain: 'Hjalmar Schacht', warind: 'Albert Speer', workhorse: 'Martin Bormann', diplomat: 'Joachim von Ribbentrop', recruiter: 'Fritz Sauckel', ideologue: 'Alfred Rosenberg', figurehead: 'Fritz Todt',
+      d_tank: 'Henschel', d_plane: 'Messerschmitt', d_ship: 'Blohm & Voss', d_ind: 'IG Farben', d_arms: 'Krupp', theo: 'Heinz Guderian' },
+    SOV: { workhorse: 'Vyaçeslav Molotov', captain: 'Lazar Kaganoviç', warind: 'Nikolai Voznesenski', ideologue: 'Andrei Jdanov', diplomat: 'Maksim Litvinov', propaganda: 'Aleksandr Şçerbakov', figurehead: 'Mihail Kalinin', recruiter: 'Lavrenti Beriya',
+      d_tank: 'Harkov Tasarım Bürosu', d_plane: 'Mikoyan-Gureviç', d_ship: 'Nikolayev Tersanesi', d_ind: 'Uralmaş', d_arms: 'Tula Silah Fabrikası', theo: 'Mihail Tuhaçevski' },
+    ENG: { diplomat: 'Anthony Eden', warind: 'Lord Beaverbrook', figurehead: 'Clement Attlee', captain: 'John Anderson', workhorse: 'Kingsley Wood', propaganda: 'Brendan Bracken', recruiter: 'Ernest Bevin', ideologue: 'Duff Cooper',
+      d_tank: 'Vickers-Armstrong', d_plane: 'Supermarine', d_ship: 'Harland & Wolff', d_ind: 'ICI', d_arms: 'Royal Ordnance', theo: 'J. F. C. Fuller' },
+    FRA: { figurehead: 'Léon Blum', captain: 'Paul Reynaud', diplomat: 'Georges Bonnet', warind: 'Raoul Dautry', workhorse: 'Édouard Daladier', propaganda: 'Jean Giraudoux', d_tank: 'Renault', d_plane: 'Dewoitine', d_ship: 'Penhoët Tezgâhları', d_ind: 'Schneider-Creusot', theo: 'Charles de Gaulle' },
+    USA: { workhorse: 'Harry Hopkins', captain: 'Henry Morgenthau', diplomat: 'Cordell Hull', warind: 'William Knudsen', figurehead: 'Eleanor Roosevelt', propaganda: 'Elmer Davis', d_tank: 'Chrysler', d_plane: 'Boeing', d_ship: 'Newport News', d_ind: 'General Electric', d_arms: 'Springfield Armory', theo: 'George Marshall' },
+    ITA: { diplomat: 'Galeazzo Ciano', captain: 'Alberto Pirelli', propaganda: 'Dino Alfieri', workhorse: 'Achille Starace', warind: 'Carlo Favagrossa', d_tank: 'Ansaldo', d_plane: 'Fiat Aviazione', d_ship: 'Cantieri Riuniti', d_ind: 'Montecatini', theo: 'Pietro Badoglio' },
+    JAP: { workhorse: 'Fumimaro Konoe', warind: 'Nobusuke Kişi', diplomat: 'Yosuke Matsuoka', propaganda: 'Sadao Araki', captain: 'Hideki Tojo', d_tank: 'Mitsubişi Ağır Sanayi', d_plane: 'Nakajima', d_ship: 'Kure Deniz Tersanesi', d_ind: 'Mitsui', theo: 'Kanji Işivara' },
+  };
+  g.ADV_COST = { pol: 150, army: 100, navy: 100, air: 100, hc: 100, tank: 100, plane: 100, ship: 100, ind: 100, theo: 100 };
+
+  // ---------- Ulusal ruhlar ----------
+  g.SPIRITS = {
+    kemalist: { n: 'Kemalist Reformlar', d: 'İstikrar +%10, araştırma +%5', fx: { stab: 0.1, research: 0.05 } },
+    econ_tur: { n: 'Ekonomik Darlık', d: 'Fabrika verimi -%10', fx: { factory: -0.1 } },
+    montreux: { n: 'Montrö Sözleşmesi', d: 'Deniz gücü +%10, savunma +%5', fx: { navy: 0.1, landDef: 0.05 } },
+    inonu: { n: 'Millî Şef', d: 'İstikrar +%10, siyasi güç +%10', fx: { stab: 0.1, ppM: 0.1 } },
+    purge: { n: 'Büyük Temizlik', d: 'Kara saldırısı -%15, moral -%10, istikrar +%10', fx: { landAtk: -0.15, org: -0.1, stab: 0.1 } },
+    gpw: { n: 'Büyük Vatanseverlik Savaşı', d: 'Savaş desteği +%30, savunma +%15, insan gücü +%20', fx: { ws: 0.3, landDef: 0.15, mp: 0.2 } },
+    depression: { n: 'Büyük Buhran', d: 'Fabrika verimi -%20, istikrar -%10', fx: { factory: -0.2, stab: -0.1 } },
+    neutrality_act: { n: 'Tarafsızlık Yasaları', d: 'Savaş desteği -%20', fx: { ws: -0.2 } },
+    arsenal: { n: 'Demokrasinin Cephaneliği', d: 'Fabrika +%15, inşaat +%10', fx: { factory: 0.15, construct: 0.1 } },
+    pacifism: { n: 'Barışçı Kamuoyu', d: 'Savaş desteği -%15', fx: { ws: -0.15 } },
+    never_surrender: { n: 'Asla Teslim Olmayacağız', d: 'Savunma +%15, savaş desteği +%20', fx: { landDef: 0.15, ws: 0.2 } },
+    pol_div: { n: 'Siyasi Bölünme', d: 'İstikrar -%15, siyasi güç -%10', fx: { stab: -0.15, ppM: -0.1 } },
+    maginot: { n: 'Maginot Zihniyeti', d: 'Savunma +%10, saldırı -%10', fx: { landDef: 0.1, landAtk: -0.1 } },
+    autarky: { n: 'Otarşi Programı', d: 'Fabrika +%5, sentetik petrol +10', fx: { factory: 0.05, oil: 10 } },
+    rearm: { n: 'Yeniden Silahlanma', d: 'Savaş desteği +%10, askerî fabrika üretimi +%5', fx: { ws: 0.1, factory: 0.05 } },
+    blitz: { n: 'Yıldırım Savaşı Ruhu', d: 'Zırhlı saldırı +%10, hız +%5', fx: { armAtk: 0.1, speed: 0.05 } },
+    ethiopia: { n: 'Habeşistan Harekâtı', d: 'Savaş desteği +%10, siyasi güç -%10', fx: { ws: 0.1, ppM: -0.1 } },
+    mare_nostrum: { n: 'Mare Nostrum', d: 'Deniz gücü +%15', fx: { navy: 0.15 } },
+    kwantung: { n: 'Kantō Ordusunun Bağımsızlığı', d: 'Saldırı +%5, istikrar -%10', fx: { landAtk: 0.05, stab: -0.1 } },
+    bushido: { n: 'Buşido Ruhu', d: 'Moral +%10, savunma +%5', fx: { org: 0.1, landDef: 0.05 } },
+    warlords: { n: 'Savaş Ağaları', d: 'İstikrar -%20, fabrika -%10', fx: { stab: -0.2, factory: -0.1 } },
+    china_depth: { n: 'Stratejik Derinlik', d: 'Savunma +%10, insan gücü +%20', fx: { landDef: 0.1, mp: 0.2 } },
+    sanacja: { n: 'Sanacja Rejimi', d: 'İstikrar +%5, savaş desteği +%10', fx: { stab: 0.05, ws: 0.1 } },
+    lend_lease: { n: 'Ödünç Verme-Kiralama', d: 'Fabrika verimi +%5, kaynak +10', fx: { factory: 0.05, steel: 10, oil: 10 } },
+    armed_neutrality: { n: 'Silahlı Tarafsızlık', d: 'Savunma +%15', fx: { landDef: 0.15 } },
+    total_war: { n: 'Topyekûn Seferberlik Ruhu', d: 'İnsan gücü +%15, savaş desteği +%10', fx: { mp: 0.15, ws: 0.1 } },
+    resistance: { n: 'Direniş Ruhu', d: 'Savunma +%10, istikrar +%5', fx: { landDef: 0.1, stab: 0.05 } },
+  };
+
+  // ---------- Başlangıç siyaseti ----------
+  // stab, ws, partiler (dem, fas, com, neu), ruhlar, ticaret yasası
+  g.POLITICS = {
+    TUR: { stab: 0.65, ws: 0.2, pop: { dem: 0.1, fas: 0.05, com: 0.05, neu: 0.8 }, sp: ['kemalist', 'econ_tur'] },
+    GER: { stab: 0.6, ws: 0.35, pop: { dem: 0.08, fas: 0.82, com: 0.05, neu: 0.05 }, sp: ['rearm'], trade: 1 },
+    SOV: { stab: 0.5, ws: 0.3, pop: { dem: 0.03, fas: 0.02, com: 0.9, neu: 0.05 }, sp: ['purge'], trade: 3 },
+    ENG: { stab: 0.75, ws: 0.1, pop: { dem: 0.8, fas: 0.04, com: 0.06, neu: 0.1 }, sp: ['pacifism'] },
+    FRA: { stab: 0.45, ws: 0.1, pop: { dem: 0.6, fas: 0.1, com: 0.2, neu: 0.1 }, sp: ['pol_div', 'maginot'] },
+    USA: { stab: 0.6, ws: 0.05, pop: { dem: 0.85, fas: 0.03, com: 0.04, neu: 0.08 }, sp: ['depression', 'neutrality_act'] },
+    ITA: { stab: 0.6, ws: 0.4, pop: { dem: 0.05, fas: 0.75, com: 0.05, neu: 0.15 }, sp: ['ethiopia'] },
+    JAP: { stab: 0.55, ws: 0.45, pop: { dem: 0.15, fas: 0.65, com: 0.02, neu: 0.18 }, sp: ['kwantung', 'bushido'] },
+    CHI: { stab: 0.35, ws: 0.4, pop: { dem: 0.1, fas: 0.05, com: 0.15, neu: 0.7 }, sp: ['warlords', 'china_depth'] },
+    POL: { stab: 0.55, ws: 0.3, pop: { dem: 0.15, fas: 0.05, com: 0.05, neu: 0.75 }, sp: ['sanacja'] },
+  };
+
+  // ---------- Alternatif liderler (ideoloji değişince) ----------
+  g.ALT_LEADERS = {
+    TUR: { dem: 'Celal Bayar', fas: 'Cevat Rıfat Atilhan', com: 'Şefik Hüsnü', neu: 'İsmet İnönü' },
+    GER: { dem: 'Carl Goerdeler', com: 'Ernst Thälmann', neu: 'Ludwig Beck' },
+    SOV: { dem: 'Aleksandr Kerenski', fas: 'Konstantin Rodzayevski', neu: 'Nikolai Buharin' },
+    ENG: { fas: 'Oswald Mosley', com: 'Harry Pollitt', neu: 'VIII. Edward', dem: 'Winston Churchill' },
+    FRA: { fas: 'Jacques Doriot', com: 'Maurice Thorez', neu: 'Philippe Pétain' },
+    USA: { fas: 'William Pelley', com: 'Earl Browder', neu: 'Charles Lindbergh' },
+    ITA: { dem: 'Ivanoe Bonomi', com: 'Palmiro Togliatti', neu: 'III. Vittorio Emanuele' },
+    JAP: { dem: 'Saionji Kinmoçi', com: 'Sanzo Nosaka', neu: 'Kantaro Suzuki' },
+    CHI: { dem: 'Sun Fo', com: 'Mao Zedong', fas: 'Wang Jingwei' },
+  };
+  g.PARTY_N = { dem: 'Demokratlar', fas: 'Faşistler', com: 'Komünistler', neu: 'Bağlantısızlar' };
+})(window);
+
+/* js/data/focus.js */
+// Ulusal odak ağaçları (HOI4 tarzı). pre: ['a', ['b','c']] = a VE (b VEYA c).
+// fx: sayısal kalıcı değiştiriciler + özel anahtarlar; fn: özel etki; req: koşullar; excl: birbirini dışlayan odaklar.
+(function (g) {
+  const F = (id, n, x, y, pre, fx, d, extra) => Object.assign({ id, n, x, y, pre: pre || [], fx: fx || {}, d: d || '' }, extra || {});
+  const rb = (...cats) => ({ rb: cats.map((c) => (Array.isArray(c) ? c : [c, 0.5])) });
+
+  // ---------- Genel ağaç ----------
+  g.FOCUS_GENERIC = [
+    // Ordu
+    F('army_effort', 'Ordu Çalışmaları', 1, 0, [], rb('doc'), 'Doktrin araştırmasına %50 bonus.'),
+    F('equipment_effort', 'Teçhizat Çalışmaları', 0, 1, ['army_effort'], rb('inf'), 'Piyade araştırmasına %50 bonus.'),
+    F('motorization_effort', 'Motorizasyon Çalışmaları', 1, 1, ['army_effort'], Object.assign(rb('arm'), { tech: 'mot1' }), 'Motorizasyon teknolojisi ve zırh araştırma bonusu.'),
+    F('doctrine_effort', 'Doktrin Çalışmaları', 2, 1, ['army_effort'], rb('doc', 'doc'), 'İki doktrin araştırmasına %50 bonus.'),
+    F('equipment_effort_2', 'Teçhizat Çalışmaları II', 0, 2, ['equipment_effort'], rb('inf', 'art'), 'Piyade ve topçu araştırma bonusu.'),
+    F('mechanization_effort', 'Mekanizasyon Çalışmaları', 1, 2, ['motorization_effort'], rb('arm', 'arm'), 'İki zırh araştırmasına bonus.'),
+    F('doctrine_effort_2', 'Doktrin Çalışmaları II', 2, 2, ['doctrine_effort'], Object.assign(rb('doc'), { org: 0.05 }), 'Doktrin bonusu, moral +%5.'),
+    F('equipment_effort_3', 'Teçhizat Çalışmaları III', 0, 3, ['equipment_effort_2'], rb('inf', 'art', 'art'), 'Piyade ve topçu araştırma bonusları.'),
+    F('armor_effort', 'Zırh Çalışmaları', 1, 3, ['mechanization_effort'], Object.assign(rb('arm', 'arm'), { tech: 'tank1', armAtk: 0.05 }), 'Hafif tank teknolojisi, zırhlı saldırı +%5.'),
+    F('special_forces', 'Özel Kuvvetler', 2, 3, ['doctrine_effort_2'], { tech: 'mtn1', tech2: 'mar1', org: 0.05 }, 'Dağ ve deniz piyadesi teknolojileri.'),
+    F('land_doctrine', 'Kara Harp Doktrini', 1, 4, [['equipment_effort_3', 'armor_effort', 'special_forces']], { landAtk: 0.05, landDef: 0.05 }, 'Kara saldırısı ve savunması +%5.'),
+    // Hava
+    F('aviation_effort', 'Havacılık Çalışmaları', 4.5, 0, [], Object.assign(rb('air'), { addPlanes: 50 }), '+50 avcı uçağı, hava araştırma bonusu.'),
+    F('fighter_focus', 'Avcı Odaklı Hava Kuvvetleri', 4, 1, ['aviation_effort'], Object.assign(rb('air', 'air'), { air: 0.05 }), 'Avcı araştırma bonusları, hava +%5.', { excl: ['bomber_focus'] }),
+    F('bomber_focus', 'Bombardıman Odaklı Hava Kuvvetleri', 5, 1, ['aviation_effort'], Object.assign(rb('air'), { addBombers: 60 }), '+60 bombardıman uçağı.', { excl: ['fighter_focus'] }),
+    F('aviation_effort_2', 'Havacılık Çalışmaları II', 4, 2, [['fighter_focus', 'bomber_focus']], { air: 0.1 }, 'Hava gücü +%10.'),
+    F('cas_effort', 'Yakın Destek Çalışmaları', 5, 2, [['fighter_focus', 'bomber_focus']], { addCas: 60, landAtk: 0.02 }, '+60 yakın destek uçağı.'),
+    F('rocket_effort', 'Roket Çalışmaları', 4.5, 3, ['aviation_effort_2'], { research: 0.05, air: 0.05 }, 'Araştırma +%5, hava +%5.'),
+    // Deniz
+    F('naval_effort', 'Deniz Çalışmaları', 6.5, 0, [], Object.assign(rb('nav'), { addDock: 2 }), '+2 tersane.'),
+    F('flexible_navy', 'Esnek Donanma', 6, 1, ['naval_effort'], { ships: { ss: 10 }, navy: 0.05 }, '+10 denizaltı, deniz +%5.', { excl: ['large_navy'] }),
+    F('large_navy', 'Büyük Donanma', 7, 1, ['naval_effort'], { addDock: 2, navy: 0.05 }, '+2 tersane, deniz +%5.', { excl: ['flexible_navy'] }),
+    F('submarine_effort', 'Denizaltı Çalışmaları', 6, 2, [['flexible_navy', 'large_navy']], Object.assign(rb('nav'), { ships: { ss: 10 } }), '+10 denizaltı.'),
+    F('cruiser_effort', 'Kruvazör Çalışmaları', 7, 2, [['flexible_navy', 'large_navy']], Object.assign(rb('nav'), { ships: { cr: 2 } }), '+2 kruvazör.'),
+    F('amphib_effort', 'Çıkarma Çalışmaları', 6.5, 3, [['submarine_effort', 'cruiser_effort']], { tech: 'mar1', invasion: 0.25 }, 'Deniz piyadesi, çıkarma cezası -%25.'),
+    // Sanayi
+    F('industrial_effort', 'Sanayi Çalışmaları', 9.5, 0, [], rb('ind'), 'Sanayi araştırma bonusu.'),
+    F('construction_effort', 'İnşaat Çalışmaları', 8.5, 1, ['industrial_effort'], { addCiv: 1, construct: 0.05 }, '+1 sivil fabrika, inşaat +%5.'),
+    F('production_effort', 'Üretim Çalışmaları', 10.5, 1, ['industrial_effort'], { addMil: 2 }, '+2 askerî fabrika.'),
+    F('construction_effort_2', 'İnşaat Çalışmaları II', 8.5, 2, ['construction_effort'], { addCiv: 2 }, '+2 sivil fabrika.'),
+    F('production_effort_2', 'Üretim Çalışmaları II', 10.5, 2, ['production_effort'], { addMil: 2, effCap: 0.05 }, '+2 askerî fabrika, verim tavanı +%5.'),
+    F('synthetic_effort', 'Sentetik Yakıt', 11.5, 2, ['production_effort'], { oil: 15 }, 'Günlük +15 petrol.'),
+    F('infrastructure_effort', 'Altyapı Çalışmaları', 8, 3, ['construction_effort_2'], { construct: 0.1, supply: 0.1 }, 'İnşaat +%10, ikmal +%10.'),
+    F('construction_effort_3', 'İnşaat Çalışmaları III', 9, 3, ['construction_effort_2'], { addCiv: 2 }, '+2 sivil fabrika.'),
+    F('production_effort_3', 'Üretim Çalışmaları III', 10.5, 3, ['production_effort_2'], { addMil: 3 }, '+3 askerî fabrika.'),
+    F('resource_effort', 'Kaynak Arama', 11.5, 3, ['synthetic_effort'], { steel: 15 }, 'Günlük +15 çelik.'),
+    F('research_1', 'Araştırma Kurumu', 9.5, 4, ['construction_effort_3', 'production_effort_3'], { slots: 1 }, '+1 araştırma yuvası.'),
+    F('research_2', 'Bilim Akademisi', 9.5, 5, ['research_1', 'infrastructure_effort'], { slots: 1, research: 0.05 }, '+1 araştırma yuvası, +%5 hız.'),
+    // Siyaset
+    F('political_effort', 'Siyasi Çalışmalar', 13.5, 0, [], { pp: 0.5 }, 'Günlük +0,5 siyasi güç.', { pol: 1 }),
+    F('collectivist', 'Kolektivist Ahlak', 12, 1, ['political_effort'], { ws: 0.05, pop: 'auth' }, 'Otoriter ideolojiler güçlenir, savaş desteği +%5.', { excl: ['liberty', 'neutrality'], pol: 1 }),
+    F('liberty', 'Özgürlükçü Ahlak', 13.5, 1, ['political_effort'], { stab: 0.1, pop: { dem: 0.1 } }, 'Demokratlar güçlenir, istikrar +%10.', { excl: ['collectivist', 'neutrality'], pol: 1 }),
+    F('neutrality', 'Tarafsızlık', 15, 1, ['political_effort'], { stab: 0.1, pop: { neu: 0.1 } }, 'İstikrar +%10.', { excl: ['collectivist', 'liberty'], pol: 1 }),
+    F('nationalism', 'Ulusçu Söylem', 12, 2, ['collectivist'], { ws: 0.1 }, 'Savaş desteği +%10.', { pol: 1 }),
+    F('commissars', 'Siyasi Komiserler', 12, 3, ['nationalism'], { pp: 0.5, stab: 0.05 }, 'Günlük +0,5 siyasi güç, istikrar +%5.', { pol: 1 }),
+    F('deterrence', 'Caydırıcılık', 13.5, 2, ['liberty'], { ws: 0.1, landDef: 0.05 }, 'Savaş desteği +%10, savunma +%5.', { pol: 1 }),
+    F('why_we_fight', 'Neden Savaşıyoruz', 13.5, 3, ['deterrence'], { ws: 0.15 }, 'Savaş desteği +%15.', { req: 'tension:40', pol: 1 }),
+    F('national_unity', 'Ulusal Birlik', 15, 2, ['neutrality'], { stab: 0.1, pp: 0.25 }, 'İstikrar +%10.', { pol: 1 }),
+    F('armed_neutral', 'Silahlı Tarafsızlık', 15, 3, ['national_unity'], { spirit: 'armed_neutrality', forts: 1 }, 'Savunma +%15, sınır tahkimatı.', { pol: 1 }),
+    F('international', 'Uluslararası Duruş', 13.5, 4, [['commissars', 'why_we_fight', 'armed_neutral']], { canFaction: 1, pp: 0.25 }, 'Kendi ittifakını kurabilirsin.', { pol: 1 }),
+  ];
+
+  // ---------- Ulusal ağaçlar ----------
+  g.FOCUS_NATIONAL = {
+    TUR: [
+      F('tur_legacy', 'Atatürk\'ün Mirası', 3, 0, [], { stab: 0.05, pp: 0.25 }, 'Cumhuriyetin temelleri sağlam. İstikrar +%5.'),
+      F('tur_montreux', 'Montrö Sözleşmesi', 1, 1, ['tur_legacy'], { spirit: 'montreux', fn: ['fortRegion', 'straits', 3] }, 'Boğazlar yeniden Türk egemenliğinde: Boğaz eyaletlerine 3 kademe tahkimat.'),
+      F('tur_six_arrows', 'Altı Ok', 3, 1, ['tur_legacy'], { stab: 0.1, pop: { neu: 0.05 } }, 'Cumhuriyetçilik, milliyetçilik, halkçılık, devletçilik, laiklik, inkılapçılık.'),
+      F('tur_hatay', 'Hatay Meselesi', 5, 1, ['tur_legacy'], { fn: ['demand', 'FRA', 'hatay'] }, 'Fransa\'dan Hatay\'ı talep et. Reddederse savaş gerekçesi kazanılır.', { req: 'alive:FRA' }),
+      F('tur_straits', 'Boğazların Tahkimi', 0, 2, ['tur_montreux'], { forts: 1, landDef: 0.05 }, 'Sınır tahkimatı, savunma +%5.'),
+      F('tur_cakmak', 'Çakmak Hattı', 1, 2, ['tur_montreux'], { fn: ['fortRegion', 'thrace', 3], landDef: 0.05 }, 'Trakya savunma hattı.'),
+      F('tur_etatism', 'Devletçilik', 3, 2, ['tur_six_arrows'], { addCiv: 3, rmSpirit: 'econ_tur' }, '+3 sivil fabrika, Ekonomik Darlık sona erer.'),
+      F('tur_sumerbank', 'Sümerbank ve Etibank', 2, 3, ['tur_etatism'], { addCiv: 2, steel: 8 }, '+2 sivil fabrika, +8 çelik.'),
+      F('tur_karabuk', 'Karabük Demir Çelik', 3, 3, ['tur_etatism'], { addMil: 1, steel: 20 }, '+1 askerî fabrika, +20 çelik.'),
+      F('tur_mke', 'Makine ve Kimya Endüstrisi', 4, 3, ['tur_etatism'], Object.assign(rb('inf', 'art'), { addMil: 2 }), '+2 askerî fabrika, piyade ve topçu araştırma bonusu.'),
+      F('tur_vecihi', 'Kayseri Uçak Fabrikası', 2, 4, ['tur_sumerbank'], Object.assign(rb('air'), { addPlanes: 60 }), '+60 avcı uçağı, hava araştırma bonusu.'),
+      F('tur_army', 'Ordunun Modernizasyonu', 4, 4, ['tur_mke'], Object.assign(rb('arm'), { landAtk: 0.05, units: { inf: 2 } }), '+2 piyade tümeni, kara saldırısı +%5.'),
+      F('tur_harbiye', 'Harbiye Reformu', 3, 5, ['tur_karabuk', 'tur_army'], { org: 0.05, fn: ['general'] }, 'Moral +%5 ve yeni bir komutan.'),
+      F('tur_saadabad', 'Sadabat Paktı', 6, 1, ['tur_legacy'], { fn: ['pact', ['PER', 'IRQ', 'AFG']] }, 'İran, Irak ve Afganistan ile saldırmazlık.'),
+      F('tur_balkan', 'Balkan Antantı', 7, 1, ['tur_legacy'], { fn: ['guar', ['GRE', 'YUG', 'ROM']] }, 'Yunanistan, Yugoslavya ve Romanya\'yı garanti et.'),
+      F('tur_allies', 'Batıyla Yakınlaşma', 5, 2, ['tur_hatay'], { ws: 0.05 }, 'İngiltere ve Fransa ile dostluk.', { excl: ['tur_axis', 'tur_neutral'] }),
+      F('tur_tripartite', 'Üçlü İttifak Antlaşması', 5, 3, ['tur_allies'], { fn: ['joinFac', 'ENG'] }, 'Müttefiklere katıl.', { req: 'tension:40', ai: 0 }),
+      F('tur_lendlease', 'Müttefik Yardımı', 5, 4, ['tur_tripartite'], { spirit: 'lend_lease', stock: { inf: 3000, art: 100 }, addPlanes: 100 }, 'Müttefiklerden teçhizat ve uçak.', { ai: 0 }),
+      F('tur_axis', 'Mihverle Yakınlaşma', 6, 2, ['tur_saadabad'], { ws: 0.1, pop: { fas: 0.15 } }, 'Almanya ile ekonomik ve siyasi yakınlaşma.', { excl: ['tur_allies', 'tur_neutral'], ai: 0 }),
+      F('tur_turan', 'Turan İdeali', 6, 3, ['tur_axis'], { ws: 0.15, fn: ['goal', ['SOV']] }, 'Kafkasya ve Türkistan için Sovyetler Birliği\'ne karşı savaş gerekçesi.', { ai: 0 }),
+      F('tur_join_axis', 'Mihvere Katıl', 6, 4, ['tur_turan'], { fn: ['joinFac', 'GER'] }, 'Mihver ittifakına katıl.', { ai: 0 }),
+      F('tur_neutral', 'Kesin Tarafsızlık', 7, 2, ['tur_balkan'], { spirit: 'armed_neutrality' }, 'Hiçbir bloğa katılma, savunma +%15.', { excl: ['tur_allies', 'tur_axis'] }),
+      F('tur_own_bloc', 'Sadabat Bloku', 7, 3, ['tur_neutral', 'tur_saadabad'], { canFaction: 1, fn: ['mkFac', 'Sadabat Bloku', ['PER', 'IRQ', 'AFG']] }, 'Kendi ittifakını kur ve komşuları davet et.', { ai: 0 }),
+      F('tur_mosul', 'Musul Meselesi', 7, 4, ['tur_own_bloc'], { fn: ['goal', ['IRQ']] }, 'Irak\'a karşı savaş gerekçesi.', { ai: 0 }),
+      F('tur_aegean', 'Oniki Ada', 5, 5, [['tur_lendlease', 'tur_join_axis', 'tur_mosul']], { fn: ['demand', 'ITA', 'dodecanese'] }, 'İtalya\'dan Oniki Adayı talep et.', { ai: 0 }),
+      F('tur_multiparty', 'Çok Partili Hayata Geçiş', 1, 3, ['tur_six_arrows'], { pop: { dem: 0.3 }, stab: -0.05 }, 'Demokratların desteği artar; seçimler yaklaşır.', { excl: ['tur_one_party'], ai: 0 }),
+      F('tur_one_party', 'Millî Şef Dönemi', 0, 3, ['tur_six_arrows'], { spirit: 'inonu' }, 'İstikrar ve siyasi güç +%10.', { excl: ['tur_multiparty'] }),
+    ],
+    GER: [
+      F('ger_rhine', 'Ren Bölgesinin Askerîleştirilmesi', 2, 0, [], { stab: 0.05, ws: 0.05, tension: 3 }, 'İstikrar ve savaş desteği +%5.'),
+      F('ger_fouryear', 'Dört Yıllık Plan', 5, 0, [], { addCiv: 2, addMil: 2, spirit: 'autarky' }, '+2 sivil ve askerî fabrika, otarşi.'),
+      F('ger_rearm', 'Ordunun Yeniden Silahlanması', 4, 1, ['ger_fouryear'], Object.assign(rb('inf', 'art'), { addMil: 3 }), '+3 askerî fabrika.'),
+      F('ger_synth', 'Sentetik Yakıt Tesisleri', 6, 1, ['ger_fouryear'], { oil: 25 }, '+25 petrol.'),
+      F('ger_hg', 'Reichswerke Hermann Göring', 6, 2, ['ger_synth'], { steel: 20, addMil: 2 }, '+20 çelik, +2 askerî fabrika.'),
+      F('ger_panzer', 'Panzer Tümenleri', 4, 2, ['ger_rearm'], Object.assign(rb('arm', 'arm'), { tech: 'tank2', armAtk: 0.1 }), 'Orta tank ve zırhlı saldırı +%10.'),
+      F('ger_blitz', 'Yıldırım Savaşı', 4, 3, ['ger_panzer'], Object.assign(rb('doc'), { spirit: 'blitz' }), 'Yıldırım Savaşı ruhu.'),
+      F('ger_luftwaffe', 'Luftwaffe', 7, 1, ['ger_fouryear'], Object.assign(rb('air'), { addPlanes: 200, addCas: 80 }), '+200 avcı, +80 yakın destek uçağı.'),
+      F('ger_planz', 'Z Planı', 7, 2, ['ger_luftwaffe'], { addDock: 3, ships: { ss: 20 }, navy: 0.1 }, '+3 tersane, +20 denizaltı.'),
+      F('ger_anschluss', 'Anschluss', 1, 1, ['ger_rhine'], { fn: ['demand', 'AUS'] }, 'Avusturya\'nın Reich\'a katılmasını talep et.', { req: 'alive:AUS', ai: 0 }),
+      F('ger_axis', 'Roma-Berlin Mihveri', 3, 1, ['ger_rhine'], { fn: ['mkFac', 'Mihver', ['ITA']] }, 'Mihver ittifakını kur ve İtalya\'yı davet et.', { ai: 0 }),
+      F('ger_sudeten', 'Südet Bölgesi', 1, 2, ['ger_anschluss'], { fn: ['demand', 'CZE', 'sudeten'] }, 'Südetleri talep et.', { req: 'alive:CZE', ai: 0 }),
+      F('ger_anticomintern', 'Anti-Komintern Paktı', 3, 2, ['ger_axis'], { fn: ['invite', ['JAP', 'HUN']] }, 'Japonya ve Macaristan\'ı ittifaka davet et.', { ai: 0 }),
+      F('ger_czech', 'Bohemya ve Moravya', 1, 3, ['ger_sudeten'], { fn: ['demand', 'CZE'] }, 'Kalan Çek topraklarını talep et.', { req: 'alive:CZE', ai: 0 }),
+      F('ger_danzig', 'Danzig ya da Savaş', 1, 4, ['ger_czech'], { fn: ['goal', ['POL']] }, 'Polonya\'ya karşı savaş gerekçesi.', { ai: 0 }),
+      F('ger_mr', 'Molotov-Ribbentrop Paktı', 2, 4, ['ger_czech'], { fn: ['pact', ['SOV']] }, 'Sovyetler Birliği ile saldırmazlık paktı.', { ai: 0, excl: ['ger_anti_sov'] }),
+      F('ger_anti_sov', 'Doğu\'ya Haçlı Seferi', 3, 4, ['ger_anticomintern'], { fn: ['goal', ['SOV']], ws: 0.1 }, 'Sovyetler Birliği\'ne karşı erken savaş gerekçesi.', { ai: 0, excl: ['ger_mr'] }),
+      F('ger_west', 'Batı Taarruzu', 1, 5, ['ger_danzig'], { fn: ['goal', ['BEL', 'HOL', 'LUX', 'FRA']] }, 'Benelüks ve Fransa\'ya karşı savaş gerekçeleri.', { ai: 0 }),
+      F('ger_weser', 'Weserübung', 0, 5, ['ger_danzig'], { fn: ['goal', ['DEN', 'NOR']] }, 'Danimarka ve Norveç\'e karşı savaş gerekçesi.', { ai: 0 }),
+      F('ger_balkans', 'Balkan Paktları', 3, 5, ['ger_anticomintern'], { fn: ['invite', ['ROM', 'BUL', 'YUG']] }, 'Balkan ülkelerini ittifaka davet et.', { ai: 0 }),
+      F('ger_barbarossa', 'Barbarossa', 2, 6, [['ger_west', 'ger_anti_sov']], { fn: ['goal', ['SOV']], landAtk: 0.05 }, 'Sovyetler Birliği\'ne karşı savaş gerekçesi, kara saldırısı +%5.', { req: 'year:1940', ai: 0 }),
+      F('ger_total', 'Topyekûn Savaş', 4, 6, ['ger_blitz'], { spirit: 'total_war' }, 'İnsan gücü ve savaş desteği artar.', { req: 'war' }),
+      F('ger_generals', 'Generallerin Komplosu', 0, 1, ['ger_rhine'], { fn: ['leader', 'neu'], stab: -0.1 }, 'Ordu Hitler\'i devirir. Ülke bağlantısız olur.', { excl: ['ger_anschluss'], ai: 0 }),
+      F('ger_kaiser', 'Monarşinin İadesi', 0, 2, ['ger_generals'], { stab: 0.15, pp: 0.5 }, 'Kayzer döner; istikrar +%15.', { ai: 0 }),
+    ],
+    SOV: [
+      F('sov_plan', 'Üçüncü Beş Yıllık Plan', 4, 0, [], { addCiv: 3, addMil: 3 }, '+3 sivil, +3 askerî fabrika.'),
+      F('sov_ural', 'Ural Sanayisi', 3, 1, ['sov_plan'], { addMil: 4, steel: 20 }, '+4 askerî fabrika, +20 çelik.'),
+      F('sov_baku', 'Bakü Petrolü', 5, 1, ['sov_plan'], { oil: 20, addCiv: 1 }, '+20 petrol.'),
+      F('sov_evac', 'Fabrikaları Doğuya Taşı', 3, 2, ['sov_ural'], { addMil: 3, factory: 0.05 }, '+3 askerî fabrika.'),
+      F('sov_t34', 'T-34 Projesi', 4, 2, ['sov_ural'], Object.assign(rb('arm', 'arm'), { tech: 'tank2' }), 'Orta tank ve zırh araştırma bonusu.'),
+      F('sov_vvs', 'Kızıl Hava Kuvvetleri', 5, 2, ['sov_baku'], Object.assign(rb('air'), { addPlanes: 200 }), '+200 avcı uçağı.'),
+      F('sov_purge_end', 'Temizliği Sona Erdir', 1, 0, [], { rmSpirit: 'purge', stab: -0.05 }, 'Büyük Temizlik ruhu kaldırılır.', { req: 'year:1938' }),
+      F('sov_reform', 'Kızıl Ordu Reformu', 1, 1, ['sov_purge_end'], { org: 0.1, fn: ['general'] }, 'Moral +%10 ve yeni komutan.'),
+      F('sov_deep', 'Derin Harekât', 1, 2, ['sov_reform'], Object.assign(rb('doc', 'doc'), { armAtk: 0.1 }), 'Doktrin bonusları, zırhlı saldırı +%10.'),
+      F('sov_mr', 'Molotov-Ribbentrop Paktı', 7, 1, [], { fn: ['pact', ['GER']] }, 'Almanya ile saldırmazlık paktı.', { ai: 0, excl: ['sov_popfront'] }),
+      F('sov_popfront', 'Halk Cephesi', 8, 1, [], { fn: ['pact', ['FRA', 'ENG']], ws: 0.05 }, 'Batı demokrasileriyle yakınlaşma.', { ai: 0, excl: ['sov_mr'] }),
+      F('sov_winter', 'Kış Savaşı', 7, 2, ['sov_mr'], { fn: ['goal', ['FIN']] }, 'Finlandiya\'ya karşı savaş gerekçesi.', { ai: 0 }),
+      F('sov_baltic', 'Baltık Devletleri', 7, 3, ['sov_winter'], { fn: ['demandMany', ['EST', 'LAT', 'LIT']] }, 'Baltık ülkelerinin Birliğe katılmasını talep et.', { ai: 0 }),
+      F('sov_bessarabia', 'Besarabya', 8, 3, ['sov_winter'], { fn: ['demand', 'ROM', 'bessarabia'] }, 'Romanya\'dan Besarabya\'yı talep et.', { ai: 0 }),
+      F('sov_comintern', 'Komintern\'i Güçlendir', 8, 2, ['sov_popfront'], { fn: ['invite', ['PRC', 'MON']], pp: 0.5 }, 'Komünist hareketleri ittifaka çağır.', { ai: 0 }),
+      F('sov_gpw', 'Büyük Vatanseverlik Savaşı', 3, 3, ['sov_evac'], { spirit: 'gpw' }, 'Savaş desteği, savunma ve insan gücü büyük ölçüde artar.', { req: 'warWith:GER' }),
+      F('sov_navy', 'Kızıl Donanma', 6, 1, ['sov_plan'], { addDock: 3, ships: { ss: 15 } }, '+3 tersane, +15 denizaltı.'),
+      F('sov_world', 'Dünya Devrimi', 7.5, 4, [['sov_baltic', 'sov_bessarabia', 'sov_comintern']], { justify: 0.3, ws: 0.1 }, 'Savaş gerekçeleri daha ucuz.', { ai: 0 }),
+    ],
+    ENG: [
+      F('eng_rearm', 'Yeniden Silahlanma', 3, 0, [], { addMil: 3, ws: 0.05 }, '+3 askerî fabrika.'),
+      F('eng_radar', 'Radar Zinciri', 2, 1, ['eng_rearm'], { tech: 'radar', air: 0.1 }, 'Radar, hava +%10.'),
+      F('eng_spitfire', 'Spitfire Programı', 2, 2, ['eng_radar'], Object.assign(rb('air', 'air'), { addPlanes: 150 }), '+150 avcı uçağı.'),
+      F('eng_navy', 'Kraliyet Donanması', 4, 1, ['eng_rearm'], { navy: 0.15, addDock: 2 }, 'Deniz +%15, +2 tersane.'),
+      F('eng_convoy', 'Atlantik Konvoyları', 4, 2, ['eng_navy'], { navy: 0.1, ships: { dd: 10 } }, '+10 muhrip.'),
+      F('eng_opinion', 'Kamuoyunu Hazırla', 0, 0, [], { rmSpirit: 'pacifism', ws: 0.1 }, 'Barışçı kamuoyu sona erer.'),
+      F('eng_churchill', 'Churchill Hükümeti', 0, 1, ['eng_opinion'], { fn: ['leaderName', 'Winston Churchill'], ws: 0.1, stab: 0.05 }, 'Churchill başbakan olur.', { excl: ['eng_edward'], req: 'year:1940' }),
+      F('eng_guarantee', 'Polonya\'yı Garanti Et', 1, 1, ['eng_opinion'], { fn: ['guar', ['POL', 'BEL', 'HOL']] }, 'Polonya ve Alçak Ülkeleri garanti et.'),
+      F('eng_never', 'Asla Teslim Olmayacağız', 0, 2, ['eng_churchill'], { spirit: 'never_surrender' }, 'Savunma ve savaş desteği artar.', { req: 'war' }),
+      F('eng_empire', 'İmparatorluk Konferansı', 1, 2, ['eng_guarantee'], { mp: 0.15, units: { inf: 4 } }, 'Sömürge birlikleri: +4 tümen, insan gücü +%15.'),
+      F('eng_lendlease', 'Amerika ile Yakınlık', 1, 3, ['eng_empire'], { spirit: 'lend_lease' }, 'Amerikan yardımı.', { req: 'war' }),
+      F('eng_edward', 'Kralın Partisi', 5, 1, ['eng_opinion'], { fn: ['leader', 'neu'] }, 'VIII. Edward tahtı korur ve yönetimi devralır.', { excl: ['eng_churchill'], ai: 0 }),
+      F('eng_mosley', 'Mosley\'in Yükselişi', 5, 2, ['eng_edward'], { pop: { fas: 0.4 } }, 'Faşistlerin desteği artar.', { ai: 0 }),
+      F('eng_europe', 'Avrupa\'yı Kurtar', 3, 3, ['eng_convoy', 'eng_spitfire'], Object.assign(rb('doc'), { invasion: 0.25, landAtk: 0.05 }), 'Çıkarma ve saldırı bonusları.', { req: 'war' }),
+    ],
+    FRA: [
+      F('fra_maginot', 'Maginot Hattını Uzat', 0, 0, [], { forts: 2 }, 'Sınırlara 2 kademe tahkimat.'),
+      F('fra_ardennes', 'Ardenler Savunması', 0, 1, ['fra_maginot'], { fn: ['fortRegion', 'ardennes', 3] }, 'Belçika sınırını tahkim et.'),
+      F('fra_nationalize', 'Sanayiyi Millîleştir', 2, 0, [], { addMil: 3 }, '+3 askerî fabrika.'),
+      F('fra_charb1', 'Char B1 Programı', 2, 1, ['fra_nationalize'], Object.assign(rb('arm', 'arm'), { armAtk: 0.05 }), 'Zırh araştırma bonusu.'),
+      F('fra_degaulle', 'De Gaulle\'ün Fikirleri', 2, 2, ['fra_charb1'], { rmSpirit: 'maginot', armAtk: 0.1, fn: ['general'] }, 'Maginot zihniyeti sona erer, yeni komutan.'),
+      F('fra_unity', 'Siyasi Bölünmeyi Aş', 4, 0, [], { rmSpirit: 'pol_div', stab: 0.05 }, 'Siyasi Bölünme sona erer.'),
+      F('fra_entente', 'Küçük Antantı Canlandır', 4, 1, ['fra_unity'], { fn: ['guar', ['CZE', 'ROM', 'YUG']] }, 'Çekoslovakya, Romanya ve Yugoslavya\'yı garanti et.'),
+      F('fra_ussr', 'Sovyetlerle Pakt', 5, 1, ['fra_unity'], { fn: ['pact', ['SOV']] }, 'Sovyetler ile saldırmazlık.', { ai: 0 }),
+      F('fra_colonial', 'Sömürge Kuvvetleri', 4, 2, ['fra_entente'], { units: { inf: 4 }, mp: 0.1 }, '+4 piyade tümeni.'),
+      F('fra_armee', 'Armée de l\'Air', 3, 1, ['fra_nationalize'], Object.assign(rb('air'), { addPlanes: 120 }), '+120 avcı uçağı.'),
+      F('fra_free', 'Hür Fransa', 4, 3, ['fra_colonial'], { spirit: 'resistance', ws: 0.1 }, 'Direniş ruhu.', { req: 'war' }),
+      F('fra_petain', 'Pétain\'in Yolu', 6, 1, ['fra_unity'], { fn: ['leader', 'neu'] }, 'Otoriter bir rejim kurulur.', { excl: ['fra_entente'], ai: 0 }),
+    ],
+    ITA: [
+      F('ita_ethiopia', 'Habeşistan Zaferi', 2, 0, [], { rmSpirit: 'ethiopia', stab: 0.05, ws: 0.05 }, 'Habeşistan harekâtı biter.'),
+      F('ita_albania', 'Arnavutluk', 1, 1, ['ita_ethiopia'], { fn: ['demand', 'ALB'] }, 'Arnavutluk\'u talep et.', { req: 'alive:ALB', ai: 0 }),
+      F('ita_axis', 'Çelik Paktı', 3, 1, ['ita_ethiopia'], { fn: ['joinFac', 'GER'] }, 'Almanya\'nın ittifakına katıl.', { ai: 0, excl: ['ita_king'] }),
+      F('ita_greece', 'Yunanistan Hedefi', 1, 2, ['ita_albania'], { fn: ['goal', ['GRE']] }, 'Yunanistan\'a karşı savaş gerekçesi.', { ai: 0 }),
+      F('ita_egypt', 'Mısır Harekâtı', 2, 2, ['ita_axis'], { fn: ['goal', ['ENG']] }, 'Britanya\'ya karşı savaş gerekçesi.', { ai: 0, req: 'year:1939' }),
+      F('ita_mare', 'Mare Nostrum', 5, 0, [], { spirit: 'mare_nostrum', addDock: 2 }, 'Deniz +%15, +2 tersane.'),
+      F('ita_ansaldo', 'Ansaldo Tankları', 4, 1, ['ita_mare'], Object.assign(rb('arm', 'arm'), { addMil: 2 }), '+2 askerî fabrika.'),
+      F('ita_regia', 'Regia Aeronautica', 5, 1, ['ita_mare'], Object.assign(rb('air'), { addPlanes: 100 }), '+100 avcı uçağı.'),
+      F('ita_libya', 'Libya Yolları', 4, 2, ['ita_ansaldo'], { supply: 0.2, speed: 0.05 }, 'İkmal +%20.'),
+      F('ita_king', 'Kralcı Darbe', 3, 2, ['ita_ethiopia'], { fn: ['leader', 'neu'] }, 'Kral Mussolini\'yi görevden alır.', { excl: ['ita_axis'], ai: 0 }),
+      F('ita_balkans', 'Balkan Hâkimiyeti', 1, 3, ['ita_greece'], { fn: ['goal', ['YUG']] }, 'Yugoslavya\'ya karşı savaş gerekçesi.', { ai: 0 }),
+    ],
+    JAP: [
+      F('jap_kwantung', 'Kantō Ordusunu Dizginle', 2, 0, [], { rmSpirit: 'kwantung', stab: 0.05 }, 'Kantō Ordusunun bağımsızlığı sona erer.'),
+      F('jap_china', 'Çin Meselesi', 2, 1, ['jap_kwantung'], { fn: ['goal', ['CHI']] }, 'Çin\'e karşı savaş gerekçesi.', { ai: 0 }),
+      F('jap_cps', 'Doğu Asya Refah Alanı', 1, 2, ['jap_china'], { fn: ['invite', ['SIA']], pp: 0.25 }, 'Siyam\'ı ittifaka davet et.', { ai: 0 }),
+      F('jap_north', 'Kuzey Doktrini', 2, 2, ['jap_china'], { fn: ['goal', ['SOV', 'MON']] }, 'Sovyetler ve Moğolistan\'a karşı.', { excl: ['jap_south'], ai: 0 }),
+      F('jap_south', 'Güney Doktrini', 3, 2, ['jap_china'], { fn: ['goal', ['HOL', 'ENG']] }, 'Hollanda ve Britanya\'nın Asya sömürgelerine karşı.', { excl: ['jap_north'], ai: 0 }),
+      F('jap_pearl', 'Pasifik Taarruzu', 3, 3, ['jap_south'], { fn: ['goal', ['USA']], invasion: 0.2 }, 'ABD\'ye karşı savaş gerekçesi, çıkarma +%20.', { ai: 0 }),
+      F('jap_zaibatsu', 'Zaibatsu Seferberliği', 5, 0, [], { addMil: 4 }, '+4 askerî fabrika.'),
+      F('jap_kaigun', 'Kaigun Genişlemesi', 5, 1, ['jap_zaibatsu'], { addDock: 3, ships: { cv: 1 }, navy: 0.1 }, '+3 tersane, +1 uçak gemisi.'),
+      F('jap_zero', 'Sıfır Avcısı', 6, 1, ['jap_zaibatsu'], Object.assign(rb('air', 'air'), { addPlanes: 150 }), '+150 avcı uçağı.'),
+      F('jap_manchuria', 'Mançurya Sanayisi', 4, 1, ['jap_zaibatsu'], { addMil: 2, steel: 15 }, '+2 askerî fabrika, +15 çelik.'),
+      F('jap_jungle', 'Cangıl Harbi', 4, 2, ['jap_manchuria'], { landAtk: 0.05, fn: ['general'] }, 'Saldırı +%5, yeni komutan.'),
+      F('jap_democracy', 'Taişo Demokrasisine Dönüş', 0, 1, ['jap_kwantung'], { fn: ['leader', 'dem'] }, 'Demokratik hükümet kurulur.', { excl: ['jap_china'], ai: 0 }),
+    ],
+    USA: [
+      F('usa_newdeal', 'Yeni Düzen', 1, 0, [], { addCiv: 4, rmSpirit: 'depression' }, '+4 sivil fabrika, Büyük Buhran sona erer.'),
+      F('usa_tva', 'Tennessee Vadisi İdaresi', 0, 1, ['usa_newdeal'], { addCiv: 3, construct: 0.05 }, '+3 sivil fabrika.'),
+      F('usa_arsenal', 'Demokrasinin Cephaneliği', 1, 2, ['usa_tva', 'usa_neutral'], { spirit: 'arsenal', addMil: 6 }, '+6 askerî fabrika ve üretim ruhu.'),
+      F('usa_neutral', 'Tarafsızlık Yasasını Gevşet', 2, 1, ['usa_newdeal'], { rmSpirit: 'neutrality_act', ws: 0.05 }, 'Tarafsızlık Yasaları sona erer.'),
+      F('usa_lendlease', 'Ödünç Verme-Kiralama', 2, 2, ['usa_neutral'], { fn: ['gift', ['ENG', 'FRA', 'CHI', 'SOV'], { inf: 2000, art: 60 }] }, 'Müttefiklere teçhizat gönder.', { excl: ['usa_first'] }),
+      F('usa_join', 'Müttefiklere Katıl', 2, 3, ['usa_lendlease'], { fn: ['joinFac', 'ENG'], ws: 0.15 }, 'Müttefiklere katıl.', { req: 'tension:70', ai: 0 }),
+      F('usa_navy', 'İki Okyanus Donanması', 4, 1, ['usa_newdeal'], { addDock: 6, navy: 0.1 }, '+6 tersane.'),
+      F('usa_carriers', 'Uçak Gemisi Görev Grupları', 4, 2, ['usa_navy'], { tech: 'cv1', ships: { cv: 2 } }, '+2 uçak gemisi.'),
+      F('usa_b17', 'B-17 Programı', 3, 2, ['usa_navy'], Object.assign(rb('air'), { addBombers: 150 }), '+150 bombardıman uçağı.'),
+      F('usa_manhattan', 'Manhattan Projesi', 3, 3, ['usa_b17'], { research: 0.1 }, 'Araştırma +%10.', { req: 'year:1941' }),
+      F('usa_first', 'Amerika Önce Gelir', 0, 2, ['usa_newdeal'], { fn: ['leader', 'neu'], ws: -0.05 }, 'Yalnızcılar yönetimi alır.', { excl: ['usa_lendlease'], ai: 0 }),
+    ],
+  };
+
+  // Odaklara özel bölge seçicileri (eyalet merkezinin boylam/enlemine göre)
+  const box = (a, b, c, d) => (p) => p.lon >= a && p.lon <= c && p.lat >= b && p.lat <= d;
+  g.FOCUS_REGIONS = {
+    hatay: box(35.6, 35.7, 36.8, 37.1),
+    straits: box(25.8, 39.8, 30.2, 41.6),
+    thrace: box(25.8, 40.4, 28.4, 42.2),
+    dodecanese: box(26.6, 35.2, 28.5, 37.3),
+    sudeten: (p) => p.lon < 18.2,
+    bessarabia: (p) => p.lon > 26.6 && p.lat > 45.2,
+    ardennes: box(1.5, 48.5, 6.5, 51.2),
+    mosul: (p) => p.lat > 35.3,
   };
 })(window);
 
@@ -646,21 +1088,7 @@ window.IDEOLOGIES = {
   };
   G.hostileIn = (n, tag) => { const L = G.unitsAt[n]; if (!L) return false; for (const u of L) if (G.atWar(u.t, tag)) return true; return false; };
 
-  // ---------- Birim istatistikleri ----------
-  G.unitStats = (u) => {
-    const d = g.UNITS[u.u], c = G.st.C[u.t], m = c.mods;
-    const infL = m.eq_inf || 1, artL = m.eq_art || 1, tankL = m.eq_tank || 1;
-    let mult = 1 + 0.15 * (infL - 1) + 0.1 * (artL - 1);
-    const armored = u.u === 'arm' || u.u === 'mot';
-    if (u.u === 'arm') mult = 1 + 0.25 * (tankL - 1) + 0.05 * (infL - 1);
-    const atk = d.atk * mult * (1 + (m.landAtk || 0) + (armored ? m.armAtk || 0 : 0));
-    const def = d.def * mult * (1 + (m.landDef || 0));
-    const org = d.org * (1 + (m.org || 0));
-    const arm = d.arm * (u.u === 'arm' ? 1 + 0.25 * (tankL - 1) : 1);
-    const prc = d.prc * (u.u === 'arm' ? 1 + 0.25 * (tankL - 1) : 1) + (u.u === 'arm' ? 0 : (m.prc || 0));
-    const spd = d.spd * (1 + (m.speed || 0)) * 2.4; // birim/gün
-    return { atk, def, org, arm, prc, spd };
-  };
+  // Birim istatistikleri army.js içinde (şablon + komutan).
   G.unitPower = (u) => { const s = G.unitStats(u); return (s.atk * 0.5 + s.def * 0.5) * u.str * (0.35 + 0.65 * Math.min(1, u.org / s.org)); };
 
   // ---------- Yol bulma (A*) ----------
@@ -757,8 +1185,12 @@ window.IDEOLOGIES = {
     };
     for (const id of Object.keys(c.tech)) add(g.TECH_BY_ID[id].fx);
     add(c.fmods);
-    const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco];
-    m.factory = (m.factory || 0) + (lm.factory || 0);
+    for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
+    for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);
+    const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco], lt = g.LAWS.trade.opts[c.laws.trade ?? 1];
+    m.factory = (m.factory || 0) + (lm.factory || 0) + (lt.factory || 0);
+    m.research = (m.research || 0) + (lt.research || 0);
+    m.resLoss = lt.resLoss || 0;
     m.construct = (m.construct || 0) + (le.construct || 0);
     m.mpRate = lm.mp; m.cg = Math.max(0.05, le.cg + (m.cg || 0));
     if (m.unlock.mot) m.unlockEq.mot = 1;
@@ -767,6 +1199,7 @@ window.IDEOLOGIES = {
     if (m.unlock.arm) m.eq_tank = Math.max(1, m.eq_tank);
     m.slots = (c.major ? 3 : 2) + (m.slots || 0);
     c.mods = m;
+    c._tc = {};
   };
 
   // ---------- Kuvvet hesapları ----------
@@ -835,13 +1268,17 @@ window.IDEOLOGIES = {
     if (d.div.mar) c.tech.mar1 = c.tech.sup1 = 1;
     if (d.navy[4]) c.tech.cv1 = 1;
     if (d.bonus) Object.assign(c.fmods, d.bonus);
+    c.tpl = JSON.parse(JSON.stringify(g.DEFAULT_TEMPLATES));
+    c.armies = [];
+    G.initPolitics(c);
     G.recomputeMods(c);
+    G.initGenerals(c);
     return c;
   };
 
   G.newGame = (player, opts) => {
     const st = {
-      v: 2, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
+      v: 3, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {},
       log: [], nextId: 1, over: 0,
     };
@@ -983,11 +1420,11 @@ window.IDEOLOGIES = {
   };
 
   // ---------- Kayıt ----------
-  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies']);
+  const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu']);
   G.serialize = () => JSON.stringify(G.st, (k, v) => (SKIP.has(k) ? undefined : v));
   G.deserialize = (s) => {
     const st = JSON.parse(s);
-    if (!st || st.v !== 2) throw new Error('Kayıt sürümü uyumsuz');
+    if (!st || st.v !== 3) throw new Error('Kayıt sürümü uyumsuz');
     G.st = st;
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
     G.refreshEnemies();
@@ -1029,15 +1466,15 @@ window.IDEOLOGIES = {
   G.manpower = (c, fresh) => {
     const max = c.sum.pop * 1000 * c.mods.mpRate * (1 + (c.mods.mp || 0));
     let used = c.dead;
-    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if (u.t === c.tag) v += g.UNITS[u.u].mp * u.str; c._mpu = v; }
+    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if (u.t === c.tag) v += G.T(u.t, u.u).mp * u.str; c._mpu = v; }
     used += c._mpu;
-    for (const t of c.train) used += g.UNITS[t.u].mp;
+    for (const t of c.train) used += G.T(c.tag, t.u).mp;
     return { max, used, avail: Math.max(0, max - used) };
   };
   function precomputeManpower() {
     const st = G.st;
     for (const c of Object.values(st.C)) c._mpu = 0;
-    for (const u of st.units) st.C[u.t]._mpu += g.UNITS[u.u].mp * u.str;
+    for (const u of st.units) st.C[u.t]._mpu += G.T(u.t, u.u).mp * u.str;
   }
 
   // ---------- İkmal: dost çekirdek topraklardan eyalet sayısı ----------
@@ -1069,14 +1506,19 @@ window.IDEOLOGIES = {
     if (u.loc >= NP) return 1;
     const d = G.sup[u.t]; if (!d) return 1;
     const h = d[u.loc];
-    if (h === 255) return 0.55;
-    return h <= 4 ? 1 : Math.max(0.6, 1 - 0.06 * (h - 4));
+    let pen = h === 255 ? 0.45 : h <= 4 ? 0 : Math.min(0.4, 0.06 * (h - 4));
+    if (!pen) return 1;
+    const s = u._s || G.unitStats(u);
+    const red = Math.min(0.8, (s.t.sup || 0) + (s.gb ? s.gb.sup : 0) + (G.st.C[u.t].mods.supply || 0));
+    return 1 - pen * (1 - red);
   };
 
   // ---------- Ekonomi ----------
   // Kaynak dengesi ve serbest sivil fabrika hesabı (durumu değiştirmez)
   G.econCalc = (c) => {
     const m = c.mods, s = c.sum;
+    const keep = 1 - (m.resLoss || 0);
+    const haveS = s.steel * keep, haveO = s.oil * keep;
     let needSteel = 0, needOil = 0;
     let milAssigned = 0, dockAssigned = 0;
     for (const l of c.lines) { const e = g.EQUIP[l.e]; if (e.fac === 'mil') milAssigned += l.f; else dockAssigned += l.f; }
@@ -1085,23 +1527,26 @@ window.IDEOLOGIES = {
     for (const l of c.lines) { const e = g.EQUIP[l.e]; const f = l.f * (e.fac === 'mil' ? milScale : dockScale); needSteel += f * e.steel; needOil += f * e.oil; }
     const civAfterCG = Math.max(0, s.civ * (1 - m.cg));
     let trade = 0;
-    const defS = Math.max(0, needSteel - s.steel), defO = Math.max(0, needOil - s.oil);
+    const defS = Math.max(0, needSteel - haveS), defO = Math.max(0, needOil - haveO);
     const blockade = c.blockade || 0;
     const wantTrade = Math.ceil((defS + defO) / 8);
     trade = Math.min(wantTrade, Math.floor(civAfterCG * 0.6));
     const imported = trade * 8 * (1 - blockade);
     const impS = defS + defO > 0 ? imported * defS / (defS + defO) : 0, impO = imported - impS;
-    const rS = needSteel > 0 ? Math.min(1, (s.steel + impS) / needSteel) : 1;
-    const rO = needOil > 0 ? Math.min(1, (s.oil + impO) / needOil) : 1;
+    const rS = needSteel > 0 ? Math.min(1, (haveS + impS) / needSteel) : 1;
+    const rO = needOil > 0 ? Math.min(1, (haveO + impO) / needOil) : 1;
     c.res = c.res || [];
-    c.econ = { civFree: Math.max(0, civAfterCG - trade), trade, needSteel, needOil, rS, rO, cg: Math.round(s.civ * m.cg), milScale, dockScale };
+    const stab = c.stab ?? 0.5;
+    const stabF = stab < 0.5 ? (stab - 0.5) * 0.5 : (stab - 0.5) * 0.2;
+    c.econ = { civFree: Math.max(0, civAfterCG - trade), trade, needSteel, needOil, haveS, haveO, rS, rO, cg: Math.round(s.civ * m.cg), milScale, dockScale, stabF };
     c.mpAvail = G.manpower(c).avail;
     return c.econ;
   };
   function economy(c) {
     const st = G.st, m = c.mods, s = c.sum;
-    c.pp = Math.min(2000, c.pp + 2 + (m.pp || 0));
-    const { rS, rO, milScale, dockScale } = G.econCalc(c);
+    const { rS, rO, milScale, dockScale, stabF } = G.econCalc(c);
+    c.ppDay = (2 + (m.pp || 0)) * Math.max(0.2, 1 + (m.ppM || 0) + ((c.stab ?? 0.5) - 0.5) * 0.4);
+    c.pp = Math.min(2000, c.pp + c.ppDay);
     // inşaat
     let civ = c.econ.civFree;
     for (let i = 0; i < c.constr.length && civ > 0; i++) {
@@ -1109,7 +1554,7 @@ window.IDEOLOGIES = {
       const pr = st.prov[q.p];
       if (pr.c !== c.tag) { c.constr.splice(i, 1); i--; continue; }
       const n = Math.min(15, civ); civ -= n;
-      q.prog += n * 5 * (1 + (m.construct || 0));
+      q.prog += n * 5 * (1 + (m.construct || 0) + stabF);
       const b = g.BUILDINGS[q.b];
       if (q.prog >= b.cost) {
         if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else pr[q.b]++;
@@ -1128,7 +1573,7 @@ window.IDEOLOGIES = {
       if (f <= 0) continue;
       l.eff = Math.min(effCap, l.eff + 0.004 * (effCap - l.eff + 0.05));
       const rr = Math.min(e.steel ? rS : 1, e.oil ? rO : 1);
-      const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * (1 + (m.factory || 0)) * (0.25 + 0.75 * rr) * (1 - bomb);
+      const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb);
       if (e.ship) {
         l.acc = (l.acc || 0) + ic;
         while (l.acc >= e.cost) { l.acc -= e.cost; c.ships[l.e] = (c.ships[l.e] || 0) + 1; if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
@@ -1140,7 +1585,7 @@ window.IDEOLOGIES = {
     for (let i = 0; i < c.res.length; i++) {
       const r = c.res[i];
       if (c.tech[r.id]) { c.res.splice(i, 1); i--; continue; }
-      r.p += 1 * (1 + (m.research || 0));
+      r.p += G.resSpeed(c, r.id) * (1 + (r.b || 0));
       if (r.p >= G.techCost(c, r.id)) {
         c.tech[r.id] = 1; c.res.splice(i, 1); i--;
         G.recomputeMods(c);
@@ -1167,7 +1612,7 @@ window.IDEOLOGIES = {
     for (let i = 0; i < c.train.length; i++) {
       const t = c.train[i];
       if (t.d > 0) { t.d--; continue; }
-      const def = g.UNITS[t.u];
+      const def = G.T(c.tag, t.u);
       let ratio = 1;
       for (const [e, n] of Object.entries(def.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
       if (ratio < 0.25) continue; // teçhizat bekleniyor
@@ -1200,30 +1645,6 @@ window.IDEOLOGIES = {
   G.techAvailable = (c, id) => {
     const t = g.TECH_BY_ID[id];
     return !c.tech[id] && t.pre.every((p) => c.tech[p]) && !c.res.some((r) => r.id === id);
-  };
-
-  G.focusList = (c) => {
-    const special = g.FOCUS_SPECIAL[c.tag] || [];
-    return g.FOCUS_GENERIC.filter((f) => !f.ideo || f.ideo === c.ideo).concat(special);
-  };
-  G.focusById = (c, id) => G.focusList(c).find((f) => f.id === id);
-  G.focusAvailable = (c, f) => !c.focus.done[f.id] && c.focus.cur !== f.id && f.pre.every((p) => c.focus.done[p]);
-
-  G.completeFocus = (c, id) => {
-    const st = G.st; const f = G.focusById(c, id);
-    c.focus.done[id] = 1; c.focus.cur = null; c.focus.p = 0;
-    const fx = f.fx;
-    for (const [k, v] of Object.entries(fx)) {
-      if (k === 'addCiv' || k === 'addMil' || k === 'addDock') G.addFactories(c.tag, k === 'addCiv' ? 'civ' : k === 'addMil' ? 'mil' : 'dock', v);
-      else if (k === 'addPlanes') c.stock.fig += v;
-      else if (k === 'addBombers') c.stock.bom += v;
-      else if (k === 'forts') G.borderForts(c.tag, v);
-      else if (k === 'tech') c.tech[v] = 1;
-      else if (typeof v === 'number') c.fmods[k] = (c.fmods[k] || 0) + v;
-    }
-    G.recomputeMods(c);
-    G.needSummary = 1;
-    if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
   };
 
   G.addFactories = (tag, type, n) => {
@@ -1324,9 +1745,9 @@ window.IDEOLOGIES = {
     const pr = st.prov[u.loc];
     const home = pr.c === u.t || G.friendly(u.t, pr.c);
     u.org = Math.min(s.org, u.org + s.org * (home ? 0.08 : 0.04) * G.supplyMul(u));
-    u.ent = Math.min(1, u.ent + 0.04 * (1 + (c.mods.entrench || 0)));
+    u.ent = Math.min(1, u.ent + 0.04 * (1 + (c.mods.entrench || 0) + (s.t.ent || 0) + (s.gb ? s.gb.ent + s.gb.plan : 0)));
     if (u.str < 1 && home) {
-      const def = g.UNITS[u.u];
+      const def = G.T(u.t, u.u);
       let r = Math.min(0.05, 1 - u.str);
       const mpNeed = def.mp * r;
       if ((c.mpAvail || 0) < mpNeed) r = Math.max(0, (c.mpAvail || 0) / def.mp);
@@ -1338,6 +1759,15 @@ window.IDEOLOGIES = {
     }
   }
 
+  // Komutan/şablon arazi bonusu
+  function terrainMul(s, te, lat, month) {
+    let v = 1 + ((s.t.bonus || {})[te.id] || 0);
+    if (s.gb) {
+      v += s.gb.terrain[te.id] || 0;
+      if (s.gb.winter && lat > 42 && (month >= 10 || month <= 2)) v += s.gb.winter;
+    }
+    return v;
+  }
   function fight(b) {
     const st = G.st;
     const n = b.n, te = g.TERRAIN[P[n].te], pr = st.prov[n];
@@ -1345,40 +1775,48 @@ window.IDEOLOGIES = {
     const defs = (G.unitsAt[n] || []).filter((u) => !u.dead && G.atWar(u.t, attTag));
     const atts = b.att.filter((u) => !u.dead && defs.some((d) => G.atWar(u.t, d.t)));
     if (!defs.length || !atts.length) return;
-    const width = te.width + (P[n].ar > 1500 ? 1 : 0);
+    const width = (te.width + (P[n].ar > 1500 ? 1 : 0)) * 20;
     atts.sort((a, b2) => b2.org - a.org); defs.sort((a, b2) => b2.org - a.org);
-    const A = atts.slice(0, width), D = defs.slice(0, width);
+    const fit = (L) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > width) break; out.push(u); w += uw; } return out; };
+    const A = fit(atts), D = fit(defs);
     for (const u of defs) G.inBattle.add(u);
-    for (const u of atts) G.inBattle.add(u);
+    for (const u of atts) { G.inBattle.add(u); u.bd = u.bt === n ? (u.bd || 0) + 1 : 0; u.bt = n; }
     const avgPrc = (L) => L.reduce((s, u) => s + u._s.prc, 0) / L.length;
     const dPrc = avgPrc(D), aPrc = avgPrc(A);
     const diffMul = (tag) => (tag === st.player ? 1 : [1.15, 1, 0.9][st.opts.diff] || 1);
+    const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
+    // uçaksavar: düşman hava üstünlüğünü azaltır
+    const aaOf = (L) => Math.min(0.5, L.reduce((s, u) => s + (u._s.t.aa || 0), 0) / L.length * 2);
+    const airAdj = (mod, enemyAA) => (mod > 1 ? 1 + (mod - 1) * (1 - enemyAA) : mod);
+    const aAA = aaOf(A), dAA = aaOf(D);
     let hitD = 0, hitA = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      let tm = 1 + te.atk + ((g.UNITS[u.u].bonus || {})[te.id] || 0);
-      if (b.amph && u.loc >= NP) tm *= g.UNITS[u.u].amph ? 0.85 : Math.min(0.9, 0.5 + (c.mods.invasion || 0));
-      atk *= Math.max(0.3, tm) * (c.airMod || 1) * diffMul(u.t) * G.supplyMul(u);
+      let tm = (1 + te.atk) * terrainMul(s, te, lat, month);
+      if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
+      if (s.gb && s.gb.plan && u.bd < 8 && u.army) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
+      atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= (c.airMod || 1) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u);
+      atk *= airAdj(c.airMod || 1, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month);
       if (s.arm > aPrc) atk *= 1.25;
       hitA += atk;
     }
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
     const perD = (hitD * 0.9 * rD) / D.length, perA = (hitA * 0.9 * rA) / A.length;
+    const casMul = (s) => Math.max(0.4, 1 - (s.t.cas || 0) - (s.gb ? s.gb.cas : 0));
     for (const u of D) {
       const s = u._s;
-      const def = s.def * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * ((g.UNITS[u.u].bonus || {})[te.id] ? 1.2 : 1);
+      const def = s.def * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month);
       let ol = perD * 20 / (20 + def);
       if (s.arm > aPrc) ol *= 0.6;
       u.org -= ol; const sl = ol * (s.arm > aPrc ? 0.0025 : 0.004);
-      u.str -= sl; st.C[u.t].dead += sl * g.UNITS[u.u].mp;
+      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
     for (const u of A) {
       const s = u._s;
@@ -1386,8 +1824,12 @@ window.IDEOLOGIES = {
       let ol = perA * 20 / (20 + brk);
       if (s.arm > dPrc) ol *= 0.6;
       u.org -= ol; const sl = ol * (s.arm > dPrc ? 0.003 : 0.005);
-      u.str -= sl; st.C[u.t].dead += sl * g.UNITS[u.u].mp;
+      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
+    // komutan tecrübesi
+    const gens = new Set();
+    for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
+    for (const [tag, gen] of gens) if (G.genXP(gen, 1) && tag === st.player) G.log(`${gen.n} terfi etti (seviye ${gen.lvl}).`, [tag], 'good');
     // sonuçlar
     let lost = 0;
     for (const u of defs) {
@@ -1456,7 +1898,7 @@ window.IDEOLOGIES = {
         for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].vp > bv) { bv = P[i].vp; best = i; }
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
-      const th = c.tag === 'SOV' ? 0.85 : c.tag === 'CHI' ? 0.92 : c.major ? 0.68 : 0.58;
+      const th = Math.min(0.95, (c.tag === 'SOV' ? 0.85 : c.tag === 'CHI' ? 0.92 : c.major ? 0.68 : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
       c.surrender = lost / th;
       if (lost >= th) G.capitulate(c.tag);
     }
@@ -1528,7 +1970,7 @@ window.IDEOLOGIES = {
     airNaval();
     precomputeManpower();
     if (st.day % 5 === 0 || G.supDirty) { computeSupply(); G.supDirty = 0; }
-    for (const c of Object.values(st.C)) if (c.alive) economy(c);
+    for (const c of Object.values(st.C)) if (c.alive) { G.polTick(c); economy(c); }
     // yapay zekâ
     const tags = Object.keys(st.C);
     for (let i = 0; i < tags.length; i++) {
@@ -1559,7 +2001,7 @@ window.IDEOLOGIES = {
       const [a, b] = k.split('|');
       if (st.C[a]?.alive && st.C[b]?.alive) { st.C[a].enemies.push(b); st.C[b].enemies.push(a); } else delete st.wars[k];
     }
-    for (const c of Object.values(st.C)) c.eset = new Set(c.enemies);
+    for (const c of Object.values(st.C)) { c.eset = new Set(c.enemies); if (!c.enemies.length) c.defensive = 0; }
     G._cob.clear();
   };
 
@@ -1601,6 +2043,7 @@ window.IDEOLOGIES = {
       G.setWar(x, y);
     }
     delete st.goals[a + '>' + b];
+    for (const t of def) { const ct = st.C[t]; if (!ct) continue; ct.defensive = 1; ct.wsX = (ct.wsX || 0) + (t === b ? 0.2 : 0.1); }
     st.tension = Math.min(100, st.tension + (st.C[b].major ? 12 : 6));
     const msg = `${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti!`;
     G.log(msg, [a, b], 'major');
@@ -1816,17 +2259,8 @@ window.IDEOLOGIES = {
         pick = id; break;
       }
       if (!pick) break;
-      c.res.push({ id: pick, p: 0 });
+      G.startResearch(c, pick);
     }
-  };
-
-  G.aiFocus = (c) => {
-    if (c.focus.cur) return;
-    const list = G.focusList(c);
-    const special = list.filter((f) => f.x === 5);
-    const order = special.concat(list.filter((f) => f.x !== 5).sort((a, b) => a.y - b.y || a.x - b.x));
-    const f = order.find((f) => G.focusAvailable(c, f));
-    if (f) { c.focus.cur = f.id; c.focus.p = 0; }
   };
 
   G.aiConstruction = (c) => {
@@ -1858,8 +2292,8 @@ window.IDEOLOGIES = {
   G.aiProduction = (c) => {
     // eksik teçhizata göre hatları yeniden dağıt
     const need = { inf: 0, art: 0, mot: 0, tank: 0 };
-    for (const u of G.st.units) if (u.t === c.tag) for (const [e, n] of Object.entries(g.UNITS[u.u].eq)) need[e] += n * (1 - u.str) + n * 0.15;
-    for (const t of c.train) for (const [e, n] of Object.entries(g.UNITS[t.u].eq)) need[e] += n;
+    for (const u of G.st.units) if (u.t === c.tag) for (const [e, n] of Object.entries(G.T(u.t, u.u).eq)) need[e] += n * (1 - u.str) + n * 0.15;
+    for (const t of c.train) for (const [e, n] of Object.entries(G.T(c.tag, t.u).eq)) need[e] += n;
     const s = c.sum;
     const total = s.mil;
     if (!total) { c.lines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock'); }
@@ -1907,28 +2341,25 @@ window.IDEOLOGIES = {
     if (c.mods.unlock.arm && c.major && r < 0.18 && (c.stock.tank || 0) > 60) type = 'arm';
     else if (c.mods.unlock.mot && c.major && r < 0.28 && (c.stock.mot || 0) > 150) type = 'mot';
     else if (c.mods.unlock.mtn && r > 0.9) type = 'mtn';
-    c.train.push({ u: type, d: g.UNITS[type].days });
+    c.train.push({ u: type, d: G.T(c.tag, type).days });
   };
 
-  G.aiLaws = (c) => {
-    const st = G.st;
-    const atWar = c.enemies.length > 0;
-    const allowed = (opt) => !opt.war || (opt.war === 1 ? (atWar || st.tension >= 50 || c.ideo !== 'dem' || c.mods.ignoreTension) : atWar);
-    for (const k of ['eco', 'mob']) {
-      const L = g.LAWS[k];
-      const want = atWar ? (k === 'mob' && c.mpAvail < 50 ? 3 : 2) : st.tension > 40 ? 1 : 0;
-      const nx = c.laws[k] + 1;
-      if (nx <= want && nx < L.opts.length && allowed(L.opts[nx]) && c.pp >= 100) { c.pp -= 100; c.laws[k] = nx; G.recomputeMods(c); }
-    }
-  };
-
+  const st0 = () => G.st;
   G.aiEconomy = (c) => {
-    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c);
+    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c); G.aiAdvisors(c);
+    if (c.gens.length < Math.min(6, 1 + st0().units.filter((u) => u.t === c.tag).length / 20) && c.pp > 300) { c.pp -= 50; G.newGeneral(c); }
   };
 
   G.playerAuto = (c, i) => {
     const st = G.st;
-    if ((st.day + i) % 2 === 0 && st.units.some((u) => u.t === c.tag && u.auto)) G.aiMilitary(c, (u) => u.auto);
+    if ((st.day + i) % 2 === 0) {
+      if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
+      // ordular: verilen emre göre komutan yönetir
+      for (const a of c.armies || []) {
+        if (a.ord === 'hold') continue;
+        G.aiMilitary(c, (u) => u.army === a.id, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? 0.85 : 1, army: a });
+      }
+    }
     if ((st.day + i) % 7 === 0) {
       if (c.auto.res) G.aiResearch(c);
       if (c.auto.focus) G.aiFocus(c);
@@ -1949,7 +2380,7 @@ window.IDEOLOGIES = {
     return v;
   }
 
-  G.aiMilitary = (c, filter) => {
+  G.aiMilitary = (c, filter, opts = {}) => {
     const st = G.st, tag = c.tag;
     filter = filter || (() => true);
     const mine = st.units.filter((u) => u.t === tag && filter(u));
@@ -1963,7 +2394,7 @@ window.IDEOLOGIES = {
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
         let threat = 0, enemyAdj = [];
-        for (const j of P[i].a) if (G.atWar(tag, st.prov[j].c)) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; }
+        for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
       }
     }
@@ -1981,10 +2412,10 @@ window.IDEOLOGIES = {
       }
       const war0 = Math.min(...c.enemies.map((e) => st.wars[G.pairKey(tag, e)]?.since ?? st.day));
       const stalemate = Math.min(0.25, Math.max(0, (st.day - war0 - 60) / 400));
-      const aggr = (st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate;
+      const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
-      const tlist = [...targets.values()].filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack || st.prov[t.e].core === tag).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp })).sort((a, b) => (a.def - b.def) || (b.vp - a.vp));
       for (const t of tlist) {
         const te = g.TERRAIN[P[t.e].te];
         const fortMul = 1 + 0.15 * st.prov[t.e].fort;
@@ -2042,7 +2473,7 @@ window.IDEOLOGIES = {
       // kara cephesi yok: deniz çıkarması dene
       aiInvasion(c, idle);
     }
-    if (!atWar || !front.length) aiGarrison(c, idle, atWar);
+    if (!atWar || !front.length) aiGarrison(c, idle, atWar, opts);
   };
 
   function aiInvasion(c, idle) {
@@ -2070,11 +2501,12 @@ window.IDEOLOGIES = {
     }
   }
 
-  function aiGarrison(c, idle, atWar) {
+  function aiGarrison(c, idle, atWar, opts = {}) {
     const st = G.st, tag = c.tag;
     if (!idle.length) return;
-    if (!atWar && c.ai.gar && st.day - c.ai.gar < 20) return;
-    c.ai.gar = st.day;
+    const gk = opts.army ? 'gar' + opts.army.id : 'gar';
+    if (!atWar && c.ai[gk] && st.day - c.ai[gk] < 20) return;
+    c.ai[gk] = st.day;
     // tehdit puanı: komşu ülke ordusu
     const own = [];
     for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) own.push(i);
@@ -2085,6 +2517,7 @@ window.IDEOLOGIES = {
       let w = 0;
       for (const j of P[i].a) {
         const t = st.prov[j].c; if (t === tag || G.sameFaction(tag, t)) continue;
+        if (opts.vs && t !== opts.vs) continue;
         if (threatOf[t] == null) {
           const o = st.C[t]; let th = 0.3;
           if (G.atWar(tag, t)) th = 5;
@@ -2097,7 +2530,8 @@ window.IDEOLOGIES = {
       }
       if (w > 0) spots.push({ i, w: w + P[i].vp * 0.05 });
     }
-    spots.push({ i: c.cap, w: 3 });
+    if (!opts.vs) spots.push({ i: c.cap, w: 3 });
+    if (!spots.length) return;
     spots.sort((a, b) => b.w - a.w);
     const top = spots.slice(0, Math.max(3, Math.min(spots.length, Math.ceil(idle.length * 0.8))));
     const totalW = top.reduce((s, x) => s + x.w, 0);
@@ -2168,6 +2602,478 @@ window.IDEOLOGIES = {
   };
 })(window);
 
+/* js/game/army.js */
+// Tümen şablonları (tümen tasarımcısı), komutanlar ve ordular.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+
+  // ---------- Şablonlar ----------
+  G.templatesOf = (c) => { if (!c.tpl) c.tpl = JSON.parse(JSON.stringify(g.DEFAULT_TEMPLATES)); return c.tpl; };
+  G.T = (tag, id) => {
+    const c = G.st.C[tag];
+    if (!c._tc) c._tc = {};
+    let t = c._tc[id];
+    if (t) return t;
+    const tpl = G.templatesOf(c);
+    const src = tpl[id] || g.DEFAULT_TEMPLATES[id] || tpl.inf || g.DEFAULT_TEMPLATES.inf;
+    t = c._tc[id] = G.computeTemplate(c, src);
+    return t;
+  };
+  G.computeTemplate = (c, src) => {
+    const m = c.mods || {};
+    const infL = m.eq_inf || 1, artL = m.eq_art || 1, tankL = m.eq_tank || 1;
+    let atk = 0, def = 0, orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSum = 0, prcMax = 0, tanks = 0, mob = 0, amph = 0;
+    const eq = {}, bonusRaw = {};
+    for (const [k, cnt] of Object.entries(src.b || {})) {
+      const b = g.BATS[k]; if (!b || !cnt) continue;
+      const lv = b.kind === 'tank' ? 1 + 0.25 * (tankL - 1) : b.kind === 'art' ? 1 + 0.15 * (artL - 1) : 1 + 0.15 * (infL - 1);
+      atk += b.atk * lv * cnt; def += b.def * lv * cnt; orgS += b.org * cnt; nb += cnt;
+      spd = Math.min(spd, b.spd); mp += b.mp * cnt; w += b.w * cnt;
+      const ar = b.arm * (b.kind === 'tank' ? lv : 1), pr = b.prc * (b.kind === 'tank' ? lv : 1);
+      armSum += ar * cnt; armMax = Math.max(armMax, ar); prcSum += pr * cnt; prcMax = Math.max(prcMax, pr);
+      if (b.kind === 'tank') tanks += cnt;
+      if (b.mob) mob += cnt;
+      if (b.amph) amph += cnt;
+      for (const [e, q] of Object.entries(b.eq)) eq[e] = (eq[e] || 0) + q * cnt;
+      if (b.bonus) for (const [te, v] of Object.entries(b.bonus)) bonusRaw[te] = (bonusRaw[te] || 0) + v * cnt;
+    }
+    if (!nb) { nb = 1; spd = 4; orgS = 10; }
+    let ent = 0, spdM = 0, prcAdd = 0, aa = 0, sup = 0, cas = 0;
+    for (const [k, on] of Object.entries(src.s || {})) {
+      const s = g.SUPPORTS[k]; if (!s || !on) continue;
+      const lv = s.kind === 'art' ? 1 + 0.15 * (artL - 1) : 1;
+      atk += (s.atk || 0) * lv; def += s.def || 0; ent += s.ent || 0; spdM += s.spdM || 0; prcAdd += s.prcAdd || 0;
+      aa += s.aa || 0; sup += s.sup || 0; cas += s.cas || 0; mp += s.mp || 0;
+      for (const [e, q] of Object.entries(s.eq)) eq[e] = (eq[e] || 0) + q;
+    }
+    const bonus = {};
+    for (const [te, v] of Object.entries(bonusRaw)) bonus[te] = v / nb;
+    const shortOf = () => {
+      let best = 'inf', bc = -1;
+      for (const [k, cnt] of Object.entries(src.b || {})) if (cnt > bc && k !== 'art') { bc = cnt; best = k; }
+      return g.BATS[best]?.s || 'TÜM';
+    };
+    return {
+      n: src.n, s: shortOf(), mp: Math.round(mp * 10) / 10, eq, days: Math.round(30 + 4 * nb + 8 * tanks),
+      atk, def, org: orgS / nb, spd, arm: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
+      prc: 0.4 * prcMax + 0.6 * prcSum / nb + prcAdd, w, bonus, amph: amph / nb, mob: mob / nb, tanks,
+      ent, spdM, aa, sup, cas, nb,
+    };
+  };
+  G.invalidateTemplates = (c) => { c._tc = {}; };
+
+  // ---------- Komutanlar ----------
+  const SURNAMES = {
+    tr: ['Yıldırım', 'Kaya', 'Demir', 'Aydın', 'Öztürk', 'Şahin', 'Arslan', 'Doğan', 'Kılıç', 'Çelik', 'Koç', 'Kurt', 'Aksoy', 'Tekin', 'Ergin', 'Ateş', 'Yalçın', 'Karaca'],
+    de: ['Weber', 'Hoffmann', 'Schulz', 'Keller', 'Brandt', 'Vogel', 'Krüger', 'Richter', 'Lange', 'Wolff', 'Schröder', 'Neumann'],
+    ru: ['İvanov', 'Petrov', 'Sokolov', 'Popov', 'Kuznetsov', 'Volkov', 'Morozov', 'Pavlov', 'Orlov', 'Smirnov', 'Fyodorov'],
+    sl: ['Nowak', 'Kowalski', 'Novák', 'Petrović', 'Horvat', 'Dvořák', 'Jovanović', 'Wiśniewski', 'Popescu', 'Nagy', 'Georgiev'],
+    en: ['Harris', 'Clarke', 'Wright', 'Turner', 'Baker', 'Hughes', 'Foster', 'Bennett', 'Graham', 'Hayes', 'Mitchell', 'Carter'],
+    fr: ['Dubois', 'Lefèvre', 'Moreau', 'Laurent', 'Girard', 'Bonnet', 'Mercier', 'Fournier', 'Rousseau', 'Blanc'],
+    it: ['Rossi', 'Bianchi', 'Romano', 'Gallo', 'Conti', 'Greco', 'Marino', 'Ferrari', 'Bruno', 'Costa'],
+    ja: ['Tanaka', 'Suzuki', 'Takahaşi', 'Watanabe', 'İto', 'Nakamura', 'Kobayaşi', 'Yamamoto', 'Kato', 'Saito'],
+    zh: ['Wang', 'Li', 'Zhang', 'Liu', 'Chen', 'Yang', 'Huang', 'Zhao', 'Zhou', 'Wu'],
+    es: ['García', 'Martínez', 'López', 'Sánchez', 'Pérez', 'Gómez', 'Ruiz', 'Díaz', 'Moreno', 'Álvarez'],
+    ar: ['Hasan', 'Halil', 'Said', 'Abbas', 'Rahimi', 'Kerimi', 'Nuri', 'Haddad', 'Mansur', 'Farukî'],
+    no: ['Hansen', 'Johansson', 'Nielsen', 'Larsen', 'Virtanen', 'Andersson', 'Berg', 'Lindqvist'],
+  };
+  const LANG = { TUR: 'tr', GER: 'de', AUS: 'de', SWI: 'de', LUX: 'fr', SOV: 'ru', MON: 'ru', POL: 'sl', CZE: 'sl', SLO: 'sl', YUG: 'sl', BUL: 'sl', ROM: 'sl', HUN: 'sl', ALB: 'sl', GRE: 'sl',
+    FRA: 'fr', BEL: 'fr', ITA: 'it', JAP: 'ja', MAN: 'ja', CHI: 'zh', PRC: 'zh', TIB: 'zh', SIK: 'zh', SIA: 'zh', SPR: 'es', POR: 'es', MEX: 'es', ARG: 'es', CHL: 'es', PRU: 'es', BOL: 'es', PAR: 'es', URU: 'es', VEN: 'es', COL: 'es', ECU: 'es',
+    GUA: 'es', HON: 'es', ELS: 'es', NIC: 'es', COS: 'es', PAN: 'es', CUB: 'es', DOM: 'es', BRA: 'es', PER: 'ar', IRQ: 'ar', SAU: 'ar', YEM: 'ar', OMA: 'ar', AFG: 'ar', ETH: 'ar',
+    NOR: 'no', SWE: 'no', DEN: 'no', FIN: 'no', EST: 'no', LAT: 'no', LIT: 'sl', HOL: 'no' };
+  G.newGeneral = (c, opts = {}) => {
+    const st = G.st;
+    const pool = SURNAMES[LANG[c.tag] || 'en'];
+    const used = new Set(c.gens.map((x) => x.n));
+    let name = '';
+    for (let k = 0; k < 20 && (!name || used.has(name)); k++) name = 'Gen. ' + pool[Math.floor(G.rand() * pool.length)];
+    if (used.has(name)) name += ' ' + (c.gens.length + 1);
+    const r = () => 1 + Math.floor(G.rand() * (opts.good ? 3 : 2)) + (opts.good ? 1 : 0);
+    const gen = { id: st.nextId++, n: name, fm: opts.fm ? 1 : 0, atk: r(), def: r(), plan: r(), log: r(), xp: 0, lvl: 1, tr: [] };
+    const traits = Object.keys(g.GEN_TRAITS).filter((t) => t !== 'brilliant');
+    if (G.rand() < 0.5) gen.tr.push(traits[Math.floor(G.rand() * traits.length)]);
+    c.gens.push(gen);
+    return gen;
+  };
+  G.initGenerals = (c) => {
+    c.gens = [];
+    const list = g.GENERALS[c.tag];
+    if (list) for (const [n, fm, atk, def, plan, log, tr] of list) c.gens.push({ id: G.st.nextId++, n, fm, atk, def, plan, log, xp: 0, lvl: fm ? 3 : 2, tr: tr.slice(), hist: 1 });
+    else {
+      const divs = Object.values(g.COUNTRY_DEFS[c.tag].div).reduce((a, b) => a + b, 0);
+      const n = divs > 20 ? 3 : divs > 6 ? 2 : 1;
+      for (let i = 0; i < n; i++) G.newGeneral(c, { fm: i === 0 && divs > 12 });
+    }
+  };
+  G.genBonus = (gen) => {
+    const extra = gen.tr.includes('brilliant') ? 1 : 0;
+    const b = { atk: 0.04 * (gen.atk + extra), def: 0.04 * (gen.def + extra), plan: 0.04 * (gen.plan + extra), sup: 0.07 * (gen.log + extra), armAtk: 0, speed: 0, terrain: {}, winter: 0, amph: 0, cas: 0, ent: 0 };
+    for (const t of gen.tr) {
+      const fx = g.GEN_TRAITS[t]?.fx || {};
+      for (const [k, v] of Object.entries(fx)) {
+        if (k === 'terrain') for (const [te, x] of Object.entries(v)) b.terrain[te] = (b.terrain[te] || 0) + x;
+        else b[k] = (b[k] || 0) + v;
+      }
+    }
+    if (gen.fm) { b.plan += 0.05; b.sup += 0.05; }
+    return b;
+  };
+  G.genById = (c, id) => c.gens.find((x) => x.id === id);
+  G.armyById = (c, id) => (c.armies || []).find((a) => a.id === id);
+  // Birimin komutanı: oyuncuda ordusunun komutanı; YZ'de en iyi komutanın etkisi herkese
+  G.genOf = (u) => {
+    const c = G.st.C[u.t];
+    if (u.army) { const a = G.armyById(c, u.army); if (a && a.gen) return G.genById(c, a.gen); return null; }
+    if (u.t !== G.st.player && c.gens && c.gens.length) {
+      if (!c._best || c._bestDay !== G.st.day >> 5) { c._best = c.gens.reduce((b, x) => (x.atk + x.def + x.plan > b.atk + b.def + b.plan ? x : b), c.gens[0]); c._bestDay = G.st.day >> 5; }
+      return c._best;
+    }
+    return null;
+  };
+  G.genXP = (gen, v) => {
+    gen.xp += v;
+    const need = 40 * gen.lvl;
+    if (gen.xp >= need && gen.lvl < 9) {
+      gen.xp -= need; gen.lvl++;
+      const k = ['atk', 'def', 'plan', 'log'][Math.floor(G.rand() * 4)];
+      gen[k] = Math.min(9, gen[k] + 1);
+      if ((gen.lvl === 3 || gen.lvl === 5 || gen.lvl === 7) && gen.tr.length < 4) {
+        const pool = Object.keys(g.GEN_TRAITS).filter((t) => !gen.tr.includes(t) && t !== 'brilliant');
+        gen.tr.push(pool[Math.floor(G.rand() * pool.length)]);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // ---------- Birim istatistikleri (şablon + ülke + komutan) ----------
+  G.unitStats = (u) => {
+    const t = G.T(u.t, u.u), c = G.st.C[u.t], m = c.mods;
+    let atk = t.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob);
+    let def = t.def * (1 + (m.landDef || 0));
+    const org = t.org * (1 + (m.org || 0));
+    let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
+    const gen = G.genOf(u);
+    let gb = null;
+    if (gen) {
+      gb = G.genBonus(gen);
+      const k = u.army ? 1 : 0.35; // YZ komutanı genel etki
+      atk *= 1 + k * (gb.atk + gb.armAtk * t.mob); def *= 1 + k * gb.def; spd *= 1 + k * gb.speed;
+    }
+    return { atk, def, org, arm: t.arm, prc: t.prc + (m.prc || 0) * (1 - t.mob * 0.6), spd, t, gb };
+  };
+
+  // ---------- Ordular ----------
+  G.createArmy = (c, unitIds, genId) => {
+    c.armies = c.armies || [];
+    const n = c.armies.length + 1;
+    const a = { id: G.st.nextId++, n: `${n}. Ordu`, gen: genId || null, ord: 'hold', vs: null };
+    if (!a.gen) { const free = c.gens.find((x) => !c.armies.some((y) => y.gen === x.id)); if (free) a.gen = free.id; }
+    c.armies.push(a);
+    for (const u of G.st.units) if (u.t === c.tag && unitIds.includes(u.id)) u.army = a.id;
+    return a;
+  };
+  G.disbandArmy = (c, id) => {
+    c.armies = (c.armies || []).filter((a) => a.id !== id);
+    for (const u of G.st.units) if (u.t === c.tag && u.army === id) u.army = 0;
+  };
+  G.armyUnits = (c, id) => G.st.units.filter((u) => u.t === c.tag && u.army === id);
+})(window);
+
+/* js/game/politics.js */
+// Siyaset: istikrar, savaş desteği, parti desteği, hükümet değişimi, danışmanlar,
+// ulusal odak motoru ve odak özel etkileri.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+  const IDEOS = ['dem', 'fas', 'com', 'neu'];
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+
+  // ---------- Başlangıç ----------
+  G.initPolitics = (c) => {
+    const d = g.COUNTRY_DEFS[c.tag];
+    const p = g.POLITICS[c.tag] || {};
+    c.leader = d.l;
+    c.stab0 = p.stab ?? (c.ideo === 'dem' ? 0.6 : 0.5);
+    c.ws0 = p.ws ?? (c.ideo === 'fas' ? 0.35 : c.ideo === 'com' ? 0.3 : 0.15);
+    c.stabX = 0; c.wsX = 0;
+    if (p.pop) c.pop = Object.assign({}, p.pop);
+    else { c.pop = { dem: 0.1, fas: 0.1, com: 0.1, neu: 0.1 }; c.pop[c.ideo] = 0.7; }
+    c.spirits = (p.sp || []).slice();
+    c.laws.trade = p.trade ?? 1;
+    c.adv = {};
+    c.rb = [];
+    c.stab = c.stab0; c.ws = c.ws0;
+  };
+
+  // ---------- Günlük siyaset ----------
+  G.polTick = (c) => {
+    const st = G.st, m = c.mods;
+    const atWar = c.enemies.length > 0;
+    // savaşın etkileri
+    let wsWar = 0, stabWar = 0;
+    if (atWar) { wsWar += c.defensive ? 0.15 : 0.05; stabWar -= 0.05; }
+    wsWar += (st.tension / 100) * (c.ideo === 'dem' ? 0.15 : 0.08);
+    const lost = Math.max(0, Math.min(1, (c.surrender || 0)));
+    stabWar -= lost * 0.25; wsWar -= lost * 0.1;
+    const cas = c.dead / Math.max(50, c.sum.pop * 20);
+    wsWar -= Math.min(0.15, cas * 0.3);
+    // yönetici ideoloji desteği istikrarı etkiler
+    const ruling = c.pop[c.ideo] || 0;
+    const popStab = ruling < 0.4 ? (ruling - 0.4) * 0.5 : 0;
+    const lawStab = g.LAWS.eco.opts[c.laws.eco].stab || 0;
+    c.stab = clamp(c.stab0 + (m.stab || 0) + c.stabX + stabWar + popStab + lawStab);
+    c.ws = clamp(c.ws0 + (m.ws || 0) + c.wsX + wsWar);
+    c.stabX *= 0.998; c.wsX *= 0.998;
+    // parti kayması
+    const drift = 0.0004 * (c.stab - 0.45) + (m.drift || 0);
+    c.pop[c.ideo] = clamp(c.pop[c.ideo] + drift, 0.05, 0.98);
+    normalizePop(c);
+    // hükümet değişikliği
+    if (st.day % 7 === 0) {
+      for (const k of IDEOS) {
+        if (k === c.ideo || c.pop[k] < 0.5) continue;
+        if (c.tag === st.player) {
+          if (c._govPrompt && st.day - c._govPrompt < 120) break;
+          c._govPrompt = st.day;
+          G.queuePopup({ title: `${g.PARTY_N[k]} yükselişte`, text: `Halkın yarısından fazlası ${g.IDEOLOGIES[k].n.toLowerCase()} bir yönetim istiyor. Hükümeti devredebilir ya da hareketi bastırabilirsin (istikrar -%15, 50 siyasi güç).`, opts: [
+            { n: 'Hükümeti devret', fx: () => G.setIdeology(c, k) },
+            { n: 'Hareketi bastır', fx: () => { c.pop[k] -= 0.2; normalizePop(c); c.stabX -= 0.15; c.pp = Math.max(0, c.pp - 50); } },
+          ] });
+        } else G.setIdeology(c, k);
+        break;
+      }
+    }
+  };
+  function normalizePop(c) {
+    const s = IDEOS.reduce((a, k) => a + (c.pop[k] || 0), 0) || 1;
+    for (const k of IDEOS) c.pop[k] = (c.pop[k] || 0) / s;
+  }
+  G.normalizePop = normalizePop;
+  G.addPop = (c, k, v) => { c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
+
+  G.setIdeology = (c, ideo) => {
+    const st = G.st;
+    if (c.ideo === ideo) return;
+    const old = c.ideo;
+    c.ideo = ideo;
+    c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.PARTY_N[ideo]} Lideri`;
+    if ((c.pop[ideo] || 0) < 0.55) { c.pop[ideo] = 0.55; normalizePop(c); }
+    c.stabX -= 0.1;
+    // ittifak lideriyle ideoloji uyuşmazsa ittifaktan çık
+    if (c.fac) { const f = st.factions[c.fac]; if (f && f.leader !== c.tag && st.C[f.leader].ideo !== ideo && !c.enemies.length) G.leaveFaction(c.tag); }
+    G.recomputeMods(c);
+    G.log(`${G.cname(c.tag)} hükümeti değişti: ${c.leader} (${g.IDEOLOGIES[ideo].n}).`, [c.tag], 'major');
+    G.mapDirty = 1;
+  };
+
+  // ---------- Yasalar ----------
+  G.lawAllowed = (c, k, i) => {
+    const o = g.LAWS[k].opts[i];
+    if (o.war === 2 && !c.enemies.length) return { ok: false, why: 'Yalnızca savaşta' };
+    if ((o.ws || 0) > (c.ws ?? 0) + 1e-9) return { ok: false, why: `%${Math.round(o.ws * 100)} savaş desteği gerekir` };
+    return { ok: true };
+  };
+
+  // ---------- Danışmanlar ----------
+  G.advName = (tag, type) => (g.ADV_NAMES[tag] || {})[type] || g.ADV_TYPES[type].n;
+  G.advCost = (c, type) => {
+    const r = g.ADV_TYPES[type].r;
+    return Math.round(g.ADV_COST[r] * (c.adv && Object.values(c.adv).flat().length > 4 ? 1.2 : 1));
+  };
+  G.canHire = (c, type) => {
+    const r = g.ADV_TYPES[type].r;
+    const cur = (c.adv[r] || []);
+    if (cur.includes(type)) return { ok: false, why: 'Zaten görevde' };
+    if (cur.length >= g.ADV_SLOTS[r]) return { ok: false, why: 'Yuvalar dolu' };
+    if (c.pp < G.advCost(c, type)) return { ok: false, why: `${G.advCost(c, type)} siyasi güç gerekli` };
+    return { ok: true };
+  };
+  G.hireAdvisor = (c, type) => {
+    const r = G.canHire(c, type); if (!r.ok) return r;
+    c.pp -= G.advCost(c, type);
+    const role = g.ADV_TYPES[type].r;
+    (c.adv[role] || (c.adv[role] = [])).push(type);
+    G.recomputeMods(c);
+    return { ok: true };
+  };
+  G.fireAdvisor = (c, type) => {
+    const role = g.ADV_TYPES[type].r;
+    c.adv[role] = (c.adv[role] || []).filter((t) => t !== type);
+    G.recomputeMods(c);
+  };
+
+  // ---------- Araştırma bonusu ----------
+  G.startResearch = (c, id) => {
+    const t = g.TECH_BY_ID[id];
+    const r = { id, p: 0, b: 0 };
+    const k = (c.rb || []).findIndex((x) => x[0] === t.cat);
+    if (k >= 0) { r.b = c.rb[k][1]; c.rb.splice(k, 1); }
+    c.res.push(r);
+    return r;
+  };
+  G.resSpeed = (c, id) => {
+    const t = g.TECH_BY_ID[id], m = c.mods;
+    return 1 + (m.research || 0) + (m['rc_' + t.cat] || 0);
+  };
+
+  // ---------- Odak motoru ----------
+  const flCache = {};
+  G.focusList = (c) => {
+    const key = c.tag;
+    if (flCache[key]) return flCache[key];
+    const nat = g.FOCUS_NATIONAL[c.tag];
+    let list;
+    if (nat) {
+      const off = Math.max(...nat.map((f) => f.x)) + 1.5;
+      list = nat.concat(g.FOCUS_GENERIC.filter((f) => !f.pol).map((f) => Object.assign({}, f, { x: f.x + off })));
+    } else list = g.FOCUS_GENERIC;
+    return (flCache[key] = list);
+  };
+  G.focusById = (c, id) => G.focusList(c).find((f) => f.id === id);
+  G.focusReq = (c, f) => {
+    if (!f.req) return { ok: true };
+    const st = G.st;
+    const [k, v] = f.req.split(':');
+    switch (k) {
+      case 'war': return { ok: c.enemies.length > 0, why: 'Savaşta olmalısın' };
+      case 'peace': return { ok: !c.enemies.length, why: 'Barışta olmalısın' };
+      case 'year': return { ok: G.year(st.day) >= +v, why: `${v} yılından itibaren` };
+      case 'alive': return { ok: !!st.C[v]?.alive, why: `${G.cname(v)} var olmalı` };
+      case 'warWith': return { ok: G.atWar(c.tag, v), why: `${G.cname(v)} ile savaşta olmalısın` };
+      case 'tension': return { ok: st.tension >= +v, why: `Dünya gerginliği en az %${v}` };
+    }
+    return { ok: true };
+  };
+  G.focusPreOk = (c, f) => f.pre.every((p) => (Array.isArray(p) ? p.some((q) => c.focus.done[q]) : c.focus.done[p]));
+  G.focusExcluded = (c, f) => (f.excl || []).some((x) => c.focus.done[x] || c.focus.cur === x);
+  G.focusAvailable = (c, f) => !c.focus.done[f.id] && c.focus.cur !== f.id && G.focusPreOk(c, f) && !G.focusExcluded(c, f) && G.focusReq(c, f).ok;
+
+  G.completeFocus = (c, id) => {
+    const st = G.st; const f = G.focusById(c, id);
+    c.focus.done[id] = 1; c.focus.cur = null; c.focus.p = 0;
+    if (!f) return;
+    const SPECIAL = new Set(['addCiv', 'addMil', 'addDock', 'addPlanes', 'addBombers', 'addCas', 'forts', 'tech', 'tech2', 'spirit', 'rmSpirit', 'pop', 'rb', 'tension', 'fn', 'ships', 'stock', 'units']);
+    for (const [k, v] of Object.entries(f.fx)) {
+      if (!SPECIAL.has(k)) { if (typeof v === 'number') c.fmods[k] = (c.fmods[k] || 0) + v; continue; }
+      switch (k) {
+        case 'addCiv': G.addFactories(c.tag, 'civ', v); break;
+        case 'addMil': G.addFactories(c.tag, 'mil', v); break;
+        case 'addDock': G.addFactories(c.tag, 'dock', v); break;
+        case 'addPlanes': c.stock.fig += v; break;
+        case 'addBombers': c.stock.bom += v; break;
+        case 'addCas': c.stock.cas += v; break;
+        case 'forts': G.borderForts(c.tag, v); break;
+        case 'tech': case 'tech2': c.tech[v] = 1; break;
+        case 'spirit': if (!c.spirits.includes(v)) c.spirits.push(v); break;
+        case 'rmSpirit': c.spirits = c.spirits.filter((s) => s !== v); break;
+        case 'pop': if (v === 'auth') G.addPop(c, c.ideo === 'com' ? 'com' : 'fas', 0.1); else for (const [ik, x] of Object.entries(v)) G.addPop(c, ik, x); break;
+        case 'rb': for (const r of v) c.rb.push(r); break;
+        case 'tension': st.tension = Math.min(100, st.tension + v); break;
+        case 'ships': for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break;
+        case 'stock': for (const [e, n] of Object.entries(v)) c.stock[e] = (c.stock[e] || 0) + n; break;
+        case 'units': for (const [t, n] of Object.entries(v)) for (let i = 0; i < n; i++) { const u = G.makeUnit(c.tag, t, c.cap, 1); st.units.push(u); } G.rebuildUnitIndex(); break;
+        case 'fn': try { G.FX[v[0]](c, ...v.slice(1)); } catch (e) { console.error('focus fx', id, e); } break;
+      }
+    }
+    G.recomputeMods(c);
+    G.needSummary = 1;
+    if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
+    else if (f.fx.fn && g.FOCUS_NATIONAL[c.tag]) G.log(`${G.cname(c.tag)} ulusal odağını tamamladı: ${f.n}`, [c.tag], 'info');
+  };
+
+  // ---------- Odak özel etkileri ----------
+  const alive = (t) => G.st.C[t]?.alive;
+  const regionFilter = (region, target) => (i) => G.st.prov[i].o === target && (!region || g.FOCUS_REGIONS[region](P[i]));
+  G.FX = {
+    demand(c, target, region) {
+      const st = G.st;
+      if (!alive(target) || G.atWar(c.tag, target) || G.sameFaction(c.tag, target)) return;
+      const has = (() => { for (let i = 0; i < NP; i++) if (regionFilter(region, target)(i)) return true; return false; })();
+      if (!has) return;
+      const label = region ? 'toprak talebi' : 'ilhak talebi';
+      const accept = () => {
+        G.annex(c.tag, target, regionFilter(region, target));
+        G.log(`${G.cname(target)}, ${G.cname(c.tag)}'${G.ek(c.tag)} boyun eğdi (${label}).`, [c.tag, target], 'major');
+        st.tension = Math.min(100, st.tension + 5);
+      };
+      const refuse = () => {
+        st.goals[c.tag + '>' + target] = st.day;
+        G.log(`${G.cname(target)} talebi reddetti. ${G.cname(c.tag)} savaş gerekçesi kazandı.`, [c.tag, target], 'warn');
+      };
+      if (target === st.player) {
+        G.queuePopup({ title: `${G.cname(c.tag)}: ${label}`, text: `${G.cname(c.tag)} ${region ? 'bazı topraklarımızı' : 'ülkemizin tamamını'} talep ediyor. Reddedersek savaş çıkabilir.`, opts: [{ n: 'Kabul et', fx: accept }, { n: 'Reddet', fx: refuse }] });
+        return;
+      }
+      const ratio = G.armyPower(c.tag) / (G.sidePower(target, (x) => G.armyPower(x.tag)) + 1);
+      const ok = region ? ratio > 1.4 || (ratio > 1 && G.rand() < 0.5) : ratio > 2.5 || (ratio > 1.8 && !st.C[target].fac);
+      if (ok && !st.C[target].fac) accept(); else refuse();
+    },
+    demandMany(c, list) { for (const t of list) G.FX.demand(c, t); },
+    goal(c, list) {
+      const st = G.st;
+      for (const t of list) if (alive(t) && !G.atWar(c.tag, t) && !G.sameFaction(c.tag, t)) st.goals[c.tag + '>' + t] = st.day;
+      if (c.tag === st.player) G.log(`Savaş gerekçesi kazanıldı: ${list.filter(alive).map(G.cname).join(', ')}`, [c.tag], 'warn');
+    },
+    pact(c, list) {
+      for (const t of list) {
+        if (!alive(t) || t === G.st.player) continue;
+        const ok = G.proposePact(c.tag, t);
+        if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} pakt önerisini reddetti.`, [c.tag], 'warn');
+      }
+    },
+    guar(c, list) { for (const t of list) if (alive(t)) G.guarantee(c.tag, t); },
+    joinFac(c, leader) {
+      const st = G.st;
+      if (!alive(leader)) return;
+      let fid = st.C[leader].fac;
+      if (!fid) fid = G.createFaction(leader, leader === 'GER' ? 'Mihver' : `${G.cname(leader)} İttifakı`);
+      if (st.factions[fid].leader !== leader && st.factions[fid].leader === st.player) { G.log('İttifak lideri oyuncu: katılım isteği gönderildi.', [c.tag], 'info'); }
+      G.joinFaction(c.tag, fid);
+    },
+    mkFac(c, name, invites) {
+      if (!c.fac) G.createFaction(c.tag, name);
+      for (const t of invites || []) if (alive(t) && t !== G.st.player) { const ok = G.inviteToFaction(c.tag, t); if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} ittifak davetini reddetti.`, [c.tag], 'warn'); }
+    },
+    invite(c, list) { G.FX.mkFac(c, `${G.cname(c.tag)} İttifakı`, list); },
+    leader(c, ideo) { G.setIdeology(c, ideo); },
+    leaderName(c, name) { c.leader = name; G.log(`${G.cname(c.tag)}: ${name} yönetimi devraldı.`, [c.tag], 'major'); },
+    gift(c, list, eq) { for (const t of list) if (alive(t)) for (const [e, n] of Object.entries(eq)) G.st.C[t].stock[e] = (G.st.C[t].stock[e] || 0) + n; },
+    general(c) { const gen = G.newGeneral(c, { good: 1 }); if (c.tag === G.st.player) G.log(`Yeni komutan: ${gen.n}`, [c.tag], 'good'); },
+    fortRegion(c, region, lv) {
+      const st = G.st;
+      for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && g.FOCUS_REGIONS[region](P[i])) st.prov[i].fort = Math.min(5, st.prov[i].fort + lv);
+    },
+  };
+
+  // ---------- YZ: odak, danışman, yasa ----------
+  G.aiFocus = (c) => {
+    if (c.focus.cur) return;
+    const list = G.focusList(c);
+    const f = list.find((x) => x.ai !== 0 && G.focusAvailable(c, x));
+    if (f) { c.focus.cur = f.id; c.focus.p = 0; }
+  };
+  const ADV_PRIORITY = ['captain', 'warind', 'd_ind', 'a_atk', 'workhorse', 'hc_inf', 'propaganda', 'd_tank', 'air_sup', 'theo', 'a_def', 'figurehead', 'n_fleet', 'recruiter', 'd_plane', 'hc_arm'];
+  G.aiAdvisors = (c) => {
+    if (c.pp < 220) return;
+    for (const t of ADV_PRIORITY) {
+      const r = g.ADV_TYPES[t].r;
+      if ((r === 'navy' || r === 'ship' || t === 'n_fleet') && (c.sum.dock || 0) < 3) continue;
+      if (G.canHire(c, t).ok) { G.hireAdvisor(c, t); return; }
+    }
+  };
+  G.aiLaws = (c) => {
+    const atWar = c.enemies.length > 0;
+    for (const k of ['eco', 'mob']) {
+      const nx = c.laws[k] + 1;
+      if (nx >= g.LAWS[k].opts.length || c.pp < g.LAW_COST + 30) continue;
+      if (k === 'eco' && nx === 4 && !atWar) continue;
+      if (G.lawAllowed(c, k, nx).ok) { c.pp -= g.LAW_COST; c.laws[k] = nx; G.recomputeMods(c); }
+    }
+  };
+})(window);
+
 /* js/game/events.js */
 // Tarihî olaylar. Oyuncu olayın aktörü ya da hedefi olduğunda seçim penceresi açılır.
 (function (g) {
@@ -2205,6 +3111,10 @@ window.IDEOLOGIES = {
       text: 'Pekin yakınlarında Japon ve Çin birlikleri çatıştı. Tokyo\'daki şahinler topyekûn savaş istiyor.',
       cond: () => alive('JAP') && alive('CHI') && !G.atWar('JAP', 'CHI'),
       opts: [{ n: 'Çin\'e savaş ilan et', fx: () => war('JAP', 'CHI') }, { n: 'Barışı koru', fx: () => {} }] },
+    { id: 'ataturk', date: '1938-11-10', actor: 'TUR', title: 'Atatürk\'ün Ölümü',
+      text: 'Cumhuriyetin kurucusu Mustafa Kemal Atatürk Dolmabahçe Sarayı\'nda hayatını kaybetti. Millet yasta. Meclis, İsmet İnönü\'yü cumhurbaşkanı seçti.',
+      cond: () => alive('TUR') && G.st.C.TUR.leader === 'Mustafa Kemal Atatürk',
+      opts: [{ n: 'Millî Şef İsmet İnönü', fx: () => { const c = G.st.C.TUR; c.leader = 'İsmet İnönü'; if (!c.spirits.includes('inonu')) c.spirits.push('inonu'); c.stabX -= 0.05; G.recomputeMods(c); G.log('İsmet İnönü cumhurbaşkanı seçildi.', ['TUR'], 'major'); } }] },
     { id: 'anschluss', date: '1938-03-12', actor: 'GER', title: 'Anschluss',
       text: 'Almanya, Avusturya\'nın Reich\'a katılmasını talep ediyor.',
       cond: () => alive('GER') && alive('AUS') && !G.atWar('GER', 'AUS'),
@@ -2748,6 +3658,7 @@ window.IDEOLOGIES = {
         const arm = gl.some((u) => u.u === 'arm');
         ctx.fillText(String(gl.length), x + w / 2 + (arm ? 4 : 0), y + h / 2 - 2);
         if (arm) { ctx.beginPath(); ctx.ellipse(x + 8, y + 7.5, 4.5, 2.6, 0, 0, Math.PI * 2); ctx.strokeStyle = light ? '#14160f' : '#f4efe0'; ctx.lineWidth = 1.2; ctx.stroke(); }
+        if (tag === st.player && gl.some((u) => u.army)) { ctx.fillStyle = '#f2d27a'; ctx.beginPath(); ctx.moveTo(x + w - 7, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 7); ctx.closePath(); ctx.fill(); }
         R.counters.push({ x, y, w, h, n, tag, units: gl });
         k++;
       }
@@ -2789,7 +3700,6 @@ window.IDEOLOGIES = {
     { id: 'sci', n: 'Bilim İnsanı Transferi', d: 'Süren araştırmalara +25 gün ilerleme', cost: 150, cd: 180, fx: (c) => { for (const r of c.res) r.p += 25; } },
     { id: 'fort', n: 'Sınır Tahkimatı', d: 'Düşman sınırındaki eyaletlere +1 tahkimat', cost: 120, cd: 180, fx: (c) => { const st = G.st; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === c.tag && P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c))) pr.fort = Math.min(5, pr.fort + 1); } } },
   ];
-  const BRANCH = ['Sanayi', 'Ordu', 'Hava', 'Deniz', 'Siyaset', 'Ulusal'];
 
   // ---------- Bildirim ----------
   UI.toast = (msg, kind = 'info') => {
@@ -2813,6 +3723,8 @@ window.IDEOLOGIES = {
     const divs = st.units.reduce((n, u) => n + (u.t === c.tag), 0);
     const chips = [
       ['Siyasi güç', int(c.pp), ''],
+      ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : ''],
+      ['Savaş desteği', pct(c.ws ?? 0.2), ''],
       ['İnsan gücü', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : ''],
       ['Sivil', s.civ, ''],
       ['Askerî', s.mil, ''],
@@ -2822,7 +3734,24 @@ window.IDEOLOGIES = {
       ['Tümen', divs + (c.train.length ? `+${c.train.length}` : ''), ''],
     ];
     if (c.enemies.length) chips.push(['Savaş', c.enemies.length + ' düşman', 'neg']);
-    $('hud-res').innerHTML = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    const hr = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
+    // HOI4 tarzı uyarılar
+    const al = [];
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`]);
+    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
+    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
+    if (c.enemies.length) {
+      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`]);
+    }
+    const ah = al.map(([p, sub, n]) => `<button class="alert" data-act="alert" data-p="${p}" data-s="${sub}">${n}</button>`).join('');
+    const box = $('hud-alerts');
+    if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
     const pause = $('btn-pause');
     pause.classList.toggle('paused', !!st.paused);
     document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
@@ -2837,21 +3766,26 @@ window.IDEOLOGIES = {
     UI.render(true);
   };
   UI.close = () => { UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
-  UI.render = (reset) => {
+  UI.render = (reset, auto) => {
     if (!UI.panel) return;
     const sheet = $('sheet'), body = $('sheet-body');
     const scroll = body.scrollTop;
-    const tree = body.querySelector('.tree'); const tScroll = tree ? tree.scrollLeft : 0;
     // Dokunma sırasında içerik değiştirilmez; aynı içerik yeniden yazılmaz.
-    if (!reset && (performance.now() - UI.lastTouch < 1500)) return;
+    if (auto && (performance.now() - UI.lastTouch < 1500)) return;
     const out = PANELS[UI.panel]();
-    if (!reset && out.html === UI.lastHtml && !sheet.hidden) return;
+    if (auto && out.html === UI.lastHtml && !sheet.hidden) return;
     UI.lastHtml = out.html;
     $('sheet-title').textContent = out.title;
     $('sheet-back').hidden = !UI.sub;
     body.innerHTML = out.html;
     sheet.hidden = false;
-    if (!reset) { body.scrollTop = scroll; const t2 = body.querySelector('.tree'); if (t2) t2.scrollLeft = tScroll; } else body.scrollTop = 0;
+    const ft = body.querySelector('.ftree');
+    if (!reset) { body.scrollTop = scroll; if (ft && UI.ftScroll) { ft.scrollLeft = UI.ftScroll[0]; ft.scrollTop = UI.ftScroll[1]; } }
+    else {
+      body.scrollTop = 0;
+      if (ft) { const n = ft.querySelector('.fn.active') || ft.querySelector('.fn.avail'); if (n) { ft.scrollLeft = Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2); ft.scrollTop = Math.max(0, n.offsetTop - 40); } }
+    }
+    if (ft) ft.onscroll = () => { UI.ftScroll = [ft.scrollLeft, ft.scrollTop]; };
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
   };
@@ -2872,15 +3806,36 @@ window.IDEOLOGIES = {
     const st = G.st, c = me(), d = G.def(c.tag);
     if (UI.sub === 'tree') return focusTree(c);
     if (UI.sub && UI.sub.startsWith('law:')) return lawPicker(c, UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('adv:')) return advPicker(c, UI.sub.slice(4));
     const id = g.IDEOLOGIES[c.ideo];
     const fac = c.fac ? st.factions[c.fac] : null;
-    let html = `<div class="row">${G.flag(c.tag, 54, 36)}<div class="grow"><div style="font-size:20px;font-weight:700">${esc(d.n)}</div><div class="muted small">${esc(d.l)} · <span style="color:${id.c}">${id.n}</span>${fac ? ' · ' + esc(fac.n) : ''}</div></div></div>`;
-    html += kv([['Siyasi güç', int(c.pp)], ['Günlük', '+' + r1(2 + (c.mods.pp || 0))], ['Gerginlik', '%' + Math.round(st.tension)], ['Teslim riski', c.enemies.length ? pct(Math.max(0, Math.min(1, c.surrender || 0))) : '—', (c.surrender || 0) > 0.6 ? 'bad' : '']]);
+    let html = `<div class="row">${G.flag(c.tag, 54, 36)}<div class="grow"><div style="font-size:20px;font-weight:700">${esc(d.n)}</div><div class="muted small">${esc(c.leader)} · <span style="color:${id.c}">${id.n}</span>${fac ? ' · ' + esc(fac.n) : ''}</div></div></div>`;
+    html += kv([['Siyasi güç', int(c.pp)], ['Günlük', '+' + r1(c.ppDay || 2)], ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'bad' : 'good'], ['Savaş desteği', pct(c.ws ?? 0.2), (c.ws ?? 0) < 0.2 ? 'warn' : 'good'], ['Gerginlik', '%' + Math.round(st.tension)], ['Teslim riski', c.enemies.length ? pct(Math.max(0, Math.min(1, c.surrender || 0))) : '—', (c.surrender || 0) > 0.6 ? 'bad' : '']]);
+    // parti desteği
+    const IDS = ['dem', 'fas', 'com', 'neu'];
+    let ph = `<div class="party">${IDS.map((k) => `<i style="width:${(c.pop[k] * 100).toFixed(1)}%;background:${g.IDEOLOGIES[k].c}"></i>`).join('')}</div>`;
+    ph += `<div class="legend">${IDS.map((k) => `<span><i style="background:${g.IDEOLOGIES[k].c}"></i>${g.PARTY_N[k]} <b>${pct(c.pop[k])}</b>${k === c.ideo ? ' ★' : ''}</span>`).join('')}</div>`;
+    ph += `<p class="muted small" style="margin:0">Bir parti %50'yi geçerse hükümet değişikliği gündeme gelir. Yönetici partinin desteği %40'ın altına düşerse istikrar azalır.</p>`;
+    html += sec('Parti desteği', ph);
+    // ulusal ruhlar
+    const sp = c.spirits.filter((s) => g.SPIRITS[s]);
+    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı bonus verir.</div></div></div>`;
-    fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç</button>`;
-    html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length} tamamlandı`);
+    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
+    fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç${g.FOCUS_NATIONAL[c.tag] ? ' · ulusal ağaç' : ''}</button>`;
+    html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length}/${G.focusList(c).length} tamamlandı`);
+    // danışmanlar
+    let ah = '<div class="advgrid">';
+    for (const [role, n] of Object.entries(g.ADV_SLOTS)) {
+      const cur2 = c.adv[role] || [];
+      for (let i = 0; i < n; i++) {
+        const t = cur2[i];
+        ah += t ? `<div class="adv on"><small>${g.ADV_ROLE_N[role]}</small><b>${esc(G.advName(c.tag, t))}</b><span class="d">${g.ADV_TYPES[t].d}</span><button class="x" data-act="fireadv" data-v="${t}" aria-label="Görevden al">✕</button></div>`
+          : `<button class="adv" data-act="sub" data-v="adv:${role}"><small>${g.ADV_ROLE_N[role]}</small><b class="muted">+ Ata</b><span class="d">${g.ADV_COST[role]} SG</span></button>`;
+      }
+    }
+    html += sec('Danışmanlar ve tasarım büroları', ah + '</div>');
     // yasalar
     let lh = '<div class="list">';
     for (const [k, L] of Object.entries(g.LAWS)) {
@@ -2897,44 +3852,69 @@ window.IDEOLOGIES = {
       dh += `<div class="item"><div class="grow"><div class="t">${dc.n}</div><div class="d">${dc.d}${ready ? '' : ` · ${c.dec[dc.id] - st.day} gün sonra`}</div></div><button class="btn sm ${can ? 'pri' : ''}" data-act="decide" data-v="${dc.id}" ${can ? '' : 'disabled'}>${dc.cost} SG</button></div>`;
     }
     html += sec('Kararlar', dh + '</div>');
-    // otomasyon
     const t = (k, n, d2) => `<button class="toggle ${c.auto[k] ? 'on' : ''}" data-act="auto" data-v="${k}"><span><b>${n}</b><br><span class="muted small">${d2}</span></span><i></i></button>`;
     html += sec('Yardımcı bakanlar', `<div class="list">${t('focus', 'Odak bakanı', 'Sıradaki odağı otomatik seçer')}${t('res', 'Bilim bakanı', 'Boş araştırma yuvalarını doldurur')}${t('prod', 'Sanayi bakanı', 'Üretim hatlarını dengeler')}${t('con', 'Bayındırlık bakanı', 'İnşaat kuyruğunu doldurur')}</div>`);
     return { title: 'Siyaset', html };
   };
 
+  function advPicker(c, role) {
+    let html = `<p class="muted small" style="margin:0">${g.ADV_ROLE_N[role]}: yuva ${(c.adv[role] || []).length}/${g.ADV_SLOTS[role]}. Elinde ${int(c.pp)} siyasi güç var.</p><div class="list">`;
+    for (const [type, a] of Object.entries(g.ADV_TYPES)) {
+      if (a.r !== role) continue;
+      const r = G.canHire(c, type);
+      html += `<div class="item"><div class="grow"><div class="t">${esc(G.advName(c.tag, type))}</div><div class="d">${a.n} · ${a.d}</div>${!r.ok ? `<div class="d warn">${r.why}</div>` : ''}</div><button class="btn sm ${r.ok ? 'pri' : ''}" data-act="hire" data-v="${type}" ${r.ok ? '' : 'disabled'}>${G.advCost(c, type)} SG</button></div>`;
+    }
+    return { title: g.ADV_ROLE_N[role], html: html + '</div>' };
+  }
+
   function focusTree(c) {
     const list = G.focusList(c);
-    const cols = {};
-    for (const f of list) (cols[f.x] || (cols[f.x] = [])).push(f);
-    let html = '';
-    const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    html += cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı · Yeni odak seçersen ilerleme sıfırlanır.</div></div></div>` : '<p class="muted small" style="margin:0">Uygun bir odağa dokunarak başlat. Okunaklı kartlar şu an seçilebilir.</p>';
-    html += '<div class="tree"><div class="tree-grid">';
-    for (const x of Object.keys(cols).sort((a, b) => b - a === 0 ? 0 : (a == 5 ? -1 : b == 5 ? 1 : a - b))) {
-      html += `<div class="tree-col"><h4>${BRANCH[x]}</h4>`;
-      for (const f of cols[x].sort((a, b) => a.y - b.y)) {
-        const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f);
-        const cls = done ? 'done' : active ? 'active' : avail ? 'avail' : 'locked';
-        const pre = f.pre.length && !done && !avail ? `<span class="d">Önce: ${f.pre.map((p) => esc(G.focusById(c, p)?.n || p)).join(', ')}</span>` : '';
-        html += `<button class="fnode ${cls}" data-act="focus" data-v="${f.id}" ${avail ? '' : 'disabled'}><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${pre}</button>`;
+    const NW = 128, NH = 74, GX = 140, GY = 104, PAD = 14;
+    const maxX = Math.max(...list.map((f) => f.x)), maxY = Math.max(...list.map((f) => f.y));
+    const W = Math.ceil((maxX + 1) * GX + PAD * 2), H = Math.ceil((maxY + 1) * GY + PAD * 2);
+    const pos = (f) => ({ x: PAD + f.x * GX, y: PAD + f.y * GY });
+    const byId = Object.fromEntries(list.map((f) => [f.id, f]));
+    let lines = '';
+    for (const f of list) {
+      const b = pos(f);
+      for (const p of f.pre) {
+        const group = Array.isArray(p) ? p : [p];
+        for (const pid of group) {
+          const a = byId[pid]; if (!a) continue;
+          const s = pos(a);
+          const x1 = s.x + NW / 2, y1 = s.y + NH, x2 = b.x + NW / 2, y2 = b.y, my = (y1 + y2) / 2;
+          const done = c.focus.done[pid];
+          lines += `<path d="M${x1} ${y1}V${my}H${x2}V${y2}" class="${done ? 'ln done' : 'ln'}${Array.isArray(p) ? ' or' : ''}"/>`;
+        }
       }
-      html += '</div>';
+      for (const e of f.excl || []) {
+        const o = byId[e]; if (!o || o.id < f.id || o.y !== f.y) continue;
+        const a = pos(f), b2 = pos(o);
+        const x = (Math.min(a.x, b2.x) + NW + Math.max(a.x, b2.x)) / 2, y = a.y + NH / 2;
+        lines += `<g class="excl"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 4}" text-anchor="middle">⇄</text></g>`;
+      }
     }
-    html += '</div></div>';
-    return { title: 'Ulusal odak ağacı', html };
+    let nodes = '';
+    for (const f of list) {
+      const p = pos(f);
+      const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
+      const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
+      nodes += `<button class="fn ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
+    }
+    const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
+    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir. ⇄ işaretli odaklar birbirini dışlar. Bir odağa dokunarak başlat; kilitli odaklarda nedeni görürsün.</p>';
+    html += `<div class="ftree" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
 
   function lawPicker(c, k) {
-    const L = g.LAWS[k], st = G.st;
-    const atWar = c.enemies.length > 0;
-    let html = `<p class="muted small" style="margin:0">Yasa değişikliği 100 siyasi güç ister. Bazı seçenekler yalnızca savaşta veya yüksek dünya gerginliğinde açılır.</p><div class="list">`;
+    const L = g.LAWS[k];
+    let html = `<p class="muted small" style="margin:0">Yasa değişikliği ${g.LAW_COST} siyasi güç ister. Seçenekler savaş desteğine (şu an ${pct(c.ws ?? 0)}) bağlıdır; bazıları yalnızca savaşta açılır.</p><div class="list">`;
     L.opts.forEach((o, i) => {
       const cur = c.laws[k] === i;
-      let ok = true, why = '';
-      if (o.war === 1 && !(atWar || st.tension >= 50 || c.ideo !== 'dem' || c.mods.ignoreTension)) { ok = false; why = 'Savaş veya %50 gerginlik gerekir'; }
-      if (o.war === 2 && !atWar) { ok = false; why = 'Yalnızca savaşta'; }
-      if (c.pp < 100) { ok = false; why = why || '100 siyasi güç gerekli'; }
+      const r = G.lawAllowed(c, k, i);
+      let ok = r.ok, why = r.why || '';
+      if (ok && c.pp < g.LAW_COST) { ok = false; why = `${g.LAW_COST} siyasi güç gerekli`; }
       html += `<div class="item ${cur ? 'active' : ''}"><div class="grow"><div class="t">${o.n}</div><div class="d">${o.d}${why && !cur ? ` · <span class="warn">${why}</span>` : ''}</div></div>${cur ? '<span class="pill ally">Yürürlükte</span>' : `<button class="btn sm ${ok ? 'pri' : ''}" data-act="law" data-k="${k}" data-v="${i}" ${ok ? '' : 'disabled'}>Uygula</button>`}</div>`;
     });
     return { title: L.n, html: html + '</div>' };
@@ -2949,10 +3929,11 @@ window.IDEOLOGIES = {
       const r = c.res[i];
       if (r) {
         const t = g.TECH_BY_ID[r.id], cost = G.techCost(c, r.id);
-        const days = Math.ceil((cost - r.p) / (1 + (m.research || 0)));
+        const days = Math.ceil((cost - r.p) / (G.resSpeed(c, r.id) * (1 + (r.b || 0))));
         sh += `<div class="item active"><div class="grow"><div class="t">${esc(t.n)}</div>${bar(r.p / cost)}<div class="d">${days} gün kaldı</div></div><button class="btn sm" data-act="rescancel" data-v="${r.id}" aria-label="İptal">✕</button></div>`;
       } else sh += `<div class="item"><div class="grow"><div class="t muted">Boş yuva</div><div class="d">Aşağıdan bir teknoloji seç</div></div></div>`;
     }
+    if ((c.rb || []).length) sh += `<div class="d good" style="font-size:13px">Araştırma bonusları: ${c.rb.map(([cat, v]) => `${g.TECH_CATS[cat]} +%${Math.round(v * 100)}`).join(' · ')}</div>`;
     html += sec('Araştırma yuvaları', sh + '</div>', `Hız +%${Math.round((m.research || 0) * 100)}`);
     const tab = UI.tab.res;
     html += `<div class="tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}</button>`).join('')}</div>`;
@@ -2964,7 +3945,8 @@ window.IDEOLOGIES = {
       const ahead = t.year > yr ? ` · <span class="warn">${t.year - yr} yıl erken</span>` : '';
       const cls = done ? 'done' : active ? 'active' : avail ? '' : 'locked';
       const pre = !done && !avail && !active ? `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}` : esc(t.d || fxText(t.fx));
-      lh += `<button class="item ${cls}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (1 + (m.research || 0)))} gün`}${ahead}</div></div></button>`;
+      const bon = (c.rb || []).find((x) => x[0] === t.cat);
+      lh += `<button class="item ${cls}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
     }
     html += lh + '</div>';
     return { title: 'Araştırma', html };
@@ -3048,49 +4030,120 @@ window.IDEOLOGIES = {
   }
 
   // Ordu
+  const ORD_N = { hold: 'Bekle', def: 'Savun', atk: 'Taarruz' };
+  const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · Sv ${gen.lvl}</span>`;
+  const genSkills = (gen) => `<span class="skills"><b title="Saldırı">S ${gen.atk}</b><b title="Savunma">Sv ${gen.def}</b><b title="Planlama">P ${gen.plan}</b><b title="Lojistik">L ${gen.log}</b></span>${gen.tr.length ? `<div class="d">${gen.tr.map((t) => g.GEN_TRAITS[t].n).join(' · ')}</div>` : ''}`;
   PANELS.army = () => {
     const st = G.st, c = me();
+    if (UI.sub && UI.sub.startsWith('tpl:')) return templateDesigner(c, UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('gen:')) return generalPicker(c, +UI.sub.slice(4));
+    if (UI.sub === 'gens') return generalList(c);
     const mine = st.units.filter((u) => u.t === c.tag);
     const mp = G.manpower(c);
     let html = kv([['İnsan gücü', G.fmtMP(mp.avail), mp.avail < 30 ? 'bad' : ''], ['Toplam', G.fmtMP(mp.max)], ['Tümen', mine.length], ['Eğitimde', c.train.length], ['Piyade T.', int(c.stock.inf)], ['Topçu', int(c.stock.art)], ['Tank', int(c.stock.tank)], ['Motorlu', int(c.stock.mot)]]);
-    // eğitim
-    let th = '<div class="list">';
-    for (const [k, u] of Object.entries(g.UNITS)) {
-      if (!c.mods.unlock[k]) continue;
-      const eq = Object.entries(u.eq).map(([e, n]) => `${n} ${g.EQUIP[e].s.toLowerCase()}`).join(', ');
-      const ok = mp.avail >= u.mp;
-      th += `<div class="item"><div class="grow"><div class="t">${u.n}</div><div class="d">${u.mp}K asker · ${u.days} gün · ${eq}</div><div class="d">Saldırı ${u.atk} · Savunma ${u.def} · Hız ${u.spd}${u.arm ? ' · Zırh ' + u.arm : ''}</div></div><div class="btns"><button class="btn sm ${ok ? 'pri' : ''}" data-act="train" data-v="${k}" data-n="1" ${ok ? '' : 'disabled'}>+1</button><button class="btn sm" data-act="train" data-v="${k}" data-n="5" ${mp.avail >= u.mp * 5 ? '' : 'disabled'}>+5</button></div></div>`;
+    // ordular
+    const enemies = c.enemies.slice();
+    let oh = '<div class="list">';
+    for (const a of c.armies || []) {
+      const us = G.armyUnits(c, a.id);
+      const gen = a.gen ? G.genById(c, a.gen) : null;
+      const str = us.length ? us.reduce((s, u) => s + u.str, 0) / us.length : 0;
+      const battle = (G.battles || []).filter((b) => us.some((u) => u.loc === b.n || u.path[0] === b.n)).length;
+      oh += `<div class="item army"><div class="grow">
+        <div class="row" style="gap:8px"><div class="t grow">${esc(a.n)} <span class="muted small">${us.length} tümen${battle ? ` · <span class="bad">${battle} muharebe</span>` : ''}</span></div><button class="btn sm" data-act="armysel" data-v="${a.id}">Seç</button></div>
+        <button class="genrow" data-act="sub" data-v="gen:${a.id}">${gen ? `<div>${genLine(gen)}</div>${genSkills(gen)}` : '<span class="warn">Komutan ata ›</span>'}</button>
+        <div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a.id}" data-v="${k}">${n}</button>`).join('')}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="armyvs" data-v="${a.id}">Cephe: ${a.vs ? esc(G.cname(a.vs)) : 'Tüm düşmanlar'}</button><button class="btn sm" data-act="armyadd" data-v="${a.id}" ${R.sel.units.size ? '' : 'disabled'}>Seçilileri ekle</button><button class="btn sm danger" data-act="armydel" data-v="${a.id}">Dağıt</button></div>
+        ${bar(str, 'g')}</div></div>`;
     }
-    html += sec('Tümen eğit', th + '</div>', 'Tümenler başkentte konuşlanır');
+    if (!(c.armies || []).length) oh += '<p class="muted small" style="margin:0">Henüz ordu yok. Tümenleri bir orduda toplayıp komutan atarsan, komutan becerileri muharebeye eklenir ve “Savun” ya da “Taarruz” emriyle cepheyi senin yerine yönetir.</p>';
+    oh += `</div><div class="btns"><button class="btn pri" data-act="armynew">${R.sel.units.size ? `Seçili ${R.sel.units.size} tümenden ordu kur` : 'Ordusuz tümenlerden ordu kur'}</button><button class="btn" data-act="sub" data-v="gens">Komutanlar (${c.gens.length})</button></div>`;
+    html += sec('Ordular', oh, enemies.length ? `${enemies.length} düşman` : 'barış');
+    // şablonlar ve eğitim
+    const tpl = G.templatesOf(c);
+    let th = '<div class="list">';
+    for (const id of Object.keys(tpl)) {
+      const t = G.T(c.tag, id);
+      const locked = Object.keys(tpl[id].b).some((k) => g.BATS[k]?.req && !c.tech[g.BATS[k].req]);
+      const ok = !locked && mp.avail >= t.mp;
+      th += `<div class="item"><div class="grow"><div class="t">${esc(t.n)}</div><div class="d">${Object.entries(tpl[id].b).map(([k, n]) => `${n}×${g.BATS[k].n}`).join(', ')}${Object.keys(tpl[id].s || {}).length ? ' · ' + Object.keys(tpl[id].s).map((k) => g.SUPPORTS[k].n).join(', ') : ''}</div><div class="d">Saldırı ${r1(t.atk)} · Savunma ${r1(t.def)} · Moral ${Math.round(t.org)} · Hız ${t.spd} · Genişlik ${t.w}${t.arm ? ' · Zırh ' + Math.round(t.arm) : ''} · ${t.mp}K asker · ${t.days} gün${locked ? ' · <span class="warn">teknoloji gerekli</span>' : ''}</div></div><div class="btns col"><button class="btn sm ${ok ? 'pri' : ''}" data-act="train" data-v="${id}" data-n="1" ${ok ? '' : 'disabled'}>+1</button><button class="btn sm" data-act="train" data-v="${id}" data-n="5" ${ok && mp.avail >= t.mp * 5 ? '' : 'disabled'}>+5</button><button class="btn sm" data-act="sub" data-v="tpl:${id}">Tasarla</button></div></div>`;
+    }
+    th += `</div><button class="btn" data-act="tplnew">+ Yeni tümen şablonu</button>`;
+    html += sec('Tümen tasarımcısı ve eğitim', th, 'Tümenler başkentte konuşlanır');
     if (c.train.length) {
       let qh = '<div class="list">';
       c.train.forEach((t, i) => {
-        const u = g.UNITS[t.u];
+        const u = G.T(c.tag, t.u);
         let ratio = 1; for (const [e, n] of Object.entries(u.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
-        qh += `<div class="item"><div class="grow"><div class="t">${u.n}</div><div class="d">${t.d > 0 ? t.d + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
+        qh += `<div class="item"><div class="grow"><div class="t">${esc(u.n)}</div><div class="d">${t.d > 0 ? t.d + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
       });
       html += sec('Eğitim kuyruğu', qh + '</div>');
     }
-    // komuta
-    const autoN = mine.filter((u) => u.auto).length;
-    html += sec('Komuta', `<button class="toggle ${autoN === mine.length && mine.length ? 'on' : ''}" data-act="allauto"><span><b>Otomatik kurmay</b><br><span class="muted small">${autoN}/${mine.length} tümen yapay zekâ komutasında: cepheleri tutar, fırsat bulunca saldırır.</span></span><i></i></button>`);
-    // ordular
+    const free = mine.filter((u) => !u.army);
+    const autoN = free.filter((u) => u.auto).length;
+    html += sec('Ordusuz tümenler', `<button class="toggle ${autoN === free.length && free.length ? 'on' : ''}" data-act="allauto"><span><b>Otomatik kurmay</b><br><span class="muted small">${autoN}/${free.length} ordusuz tümen yapay zekâ komutasında.</span></span><i></i></button>`);
     const groups = new Map();
     for (const u of mine) { const k = u.loc; let gl = groups.get(k); if (!gl) groups.set(k, (gl = [])); gl.push(u); }
     const rows = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
     let gh = '<div class="list">';
-    for (const [loc, gl] of rows.slice(0, 60)) {
-      const types = {}; for (const u of gl) types[u.u] = (types[u.u] || 0) + 1;
+    for (const [loc, gl] of rows.slice(0, 50)) {
+      const types = {}; for (const u of gl) { const s = G.T(u.t, u.u).s; types[s] = (types[s] || 0) + 1; }
       const str = gl.reduce((s, u) => s + u.str, 0) / gl.length;
-      const org = gl.reduce((s, u) => s + u.org / (G.unitStats(u).org), 0) / gl.length;
+      const org = gl.reduce((s, u) => s + u.org / G.unitStats(u).org, 0) / gl.length;
       const moving = gl.filter((u) => u.path.length).length;
-      const battle = (G.battles || []).some((b) => b.n === loc || gl.some((u) => u.path[0] === b.n));
       const name = loc < NP ? G.pname(loc) : 'Denizde';
-      gh += `<button class="item" data-act="selgroup" data-v="${loc}"><div class="grow"><div class="t">${esc(name)} ${battle ? '<span class="pill war">Muharebe</span>' : ''}</div><div class="d">${Object.entries(types).map(([k, n]) => `${n} ${g.UNITS[k].s}`).join(' · ')}${moving ? ` · ${moving} hareket hâlinde` : ''}</div><div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div><div class="grow">${bar(org)}</div></div></div><span class="muted">›</span></button>`;
+      gh += `<button class="item" data-act="selgroup" data-v="${loc}"><div class="grow"><div class="t">${esc(name)}</div><div class="d">${Object.entries(types).map(([k, n]) => `${n} ${k}`).join(' · ')}${moving ? ` · ${moving} hareket hâlinde` : ''}</div><div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div><div class="grow">${bar(org)}</div></div></div><span class="muted">›</span></button>`;
     }
-    html += sec('Ordular', gh + '</div>', `${rows.length} konum · yeşil güç, sarı moral`);
+    html += sec('Konuşlanma', gh + '</div>', `${rows.length} konum · yeşil güç, sarı moral`);
     return { title: 'Ordu', html };
   };
+
+  function generalList(c) {
+    let html = `<p class="muted small" style="margin:0">Komutanlar muharebede tecrübe kazanır, seviye atlar ve yeni özellikler edinir. Saldırı (S) ve savunma (Sv) muharebe gücünü, planlama (P) muharebenin ilk günlerini ve siperi, lojistik (L) ikmali etkiler.</p><div class="list">`;
+    for (const gen of c.gens) {
+      const a = (c.armies || []).find((x) => x.gen === gen.id);
+      html += `<div class="item"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div></div></div>`;
+    }
+    html += `</div><button class="btn pri" data-act="newgen" ${c.pp >= 50 ? '' : 'disabled'}>Yeni komutan ata (50 SG)</button>`;
+    return { title: 'Komutanlar', html };
+  }
+  function generalPicker(c, armyId) {
+    const a = G.armyById(c, armyId);
+    let html = `<p class="muted small" style="margin:0">${esc(a.n)} için komutan seç. Bir general en iyi 24 tümene kadar komuta eder; mareşaller büyük ordularda da tam etki gösterir.</p><div class="list">`;
+    const sorted = c.gens.slice().sort((x, y) => (y.atk + y.def + y.plan + y.log) - (x.atk + x.def + x.plan + x.log));
+    for (const gen of sorted) {
+      const other = (c.armies || []).find((x) => x.gen === gen.id && x.id !== armyId);
+      html += `<button class="item ${a.gen === gen.id ? 'active' : ''}" data-act="setgen" data-k="${armyId}" data-v="${gen.id}"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}${other ? `<div class="d warn">Şu an ${esc(other.n)} komutanı</div>` : ''}</div></button>`;
+    }
+    return { title: 'Komutan seç', html: html + '</div>' };
+  }
+  function templateDesigner(c, id) {
+    const tpl = G.templatesOf(c)[id];
+    if (!tpl) { UI.sub = null; return PANELS.army(); }
+    const t = G.T(c.tag, id);
+    const nb = Object.values(tpl.b).reduce((a, b) => a + b, 0);
+    const ns = Object.values(tpl.s || {}).filter(Boolean).length;
+    let html = `<label class="field"><span>Şablon adı</span><input id="tpl-name" data-tpl="${id}" value="${esc(tpl.n)}" maxlength="28"></label>`;
+    html += kv([['Saldırı', r1(t.atk)], ['Savunma', r1(t.def)], ['Moral', Math.round(t.org)], ['Hız', t.spd], ['Zırh', Math.round(t.arm)], ['Zırh delme', Math.round(t.prc)], ['Genişlik', t.w], ['Asker', t.mp + 'K'], ['Eğitim', t.days + ' gün']]);
+    html += `<p class="muted small" style="margin:0">Teçhizat: ${Object.entries(t.eq).map(([e, n]) => `${Math.round(n)} ${g.EQUIP[e].s.toLowerCase()}`).join(', ')}. Muharebe genişliği arazinin kaldırabileceği tümen sayısını belirler (ovada 80).</p>`;
+    let bh = '<div class="list">';
+    for (const [k, b] of Object.entries(g.BATS)) {
+      const locked = b.req && !c.tech[b.req];
+      const n = tpl.b[k] || 0;
+      bh += `<div class="item ${locked ? 'locked' : ''}"><div class="grow"><div class="t">${b.n}</div><div class="d">S ${b.atk} · Sv ${b.def} · Moral ${b.org} · Hız ${b.spd} · G ${b.w}${b.arm ? ' · Zırh ' + b.arm : ''}${locked ? ' · teknoloji gerekli' : ''}</div></div><div class="stepper"><button data-act="tplb" data-k="${id}" data-e="${k}" data-v="-1" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button data-act="tplb" data-k="${id}" data-e="${k}" data-v="1" ${locked || nb >= g.MAX_BATS ? 'disabled' : ''}>+</button></div></div>`;
+    }
+    html += sec('Muharebe taburları', bh + '</div>', `${nb}/${g.MAX_BATS}`);
+    let sh = '<div class="list">';
+    for (const [k, s] of Object.entries(g.SUPPORTS)) {
+      const locked = s.req && !c.tech[s.req];
+      const on = !!(tpl.s || {})[k];
+      sh += `<button class="toggle ${on ? 'on' : ''}" data-act="tpls" data-k="${id}" data-v="${k}" ${locked || (!on && ns >= g.MAX_SUP) ? 'disabled' : ''} style="${locked ? 'opacity:.45' : ''}"><span><b>${s.n}</b><br><span class="muted small">${s.d}${locked ? ' · teknoloji gerekli' : ''}</span></span><i></i></button>`;
+    }
+    html += sec('Destek bölükleri', sh + '</div>', `${ns}/${g.MAX_SUP}`);
+    if (!g.DEFAULT_TEMPLATES[id]) html += `<button class="btn danger" data-act="tpldel" data-v="${id}">Şablonu sil</button>`;
+    html += '<p class="muted small" style="margin:0">Değişiklikler hemen geçerlidir. Mevcut tümenler yeni teçhizat ihtiyacını takviye ile tamamlar.</p>';
+    return { title: 'Tümen tasarımcısı', html };
+  }
 
   // Diplomasi
   PANELS.dip = () => {
@@ -3172,6 +4225,7 @@ window.IDEOLOGIES = {
     html += sec('Kayıt', sh + '</div>', 'Bu cihazda saklanır');
     const modes = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar' };
     html += sec('Harita modu', `<div class="seg">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
+    html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Kapalıysa ülkeler tarihi olayları izlemez, kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
     html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
@@ -3183,6 +4237,10 @@ window.IDEOLOGIES = {
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Ordular ve komutanlar</h3><p class="small" style="margin:0">Ordu panelinde tümenlerini ordulara topla ve her orduya bir general ya da mareşal ata. Komutanın saldırı, savunma, planlama ve lojistik becerileri ile özellikleri (Panzer Uzmanı, Kış Uzmanı, Çöl Tilkisi…) muharebeye eklenir. “Savun” emri cepheyi tutar, “Taarruz” emri fırsat buldukça saldırır; “Cephe” düğmesiyle hangi ülkeye karşı savaşacağını seçersin. Komutanlar muharebede tecrübe kazanıp seviye atlar.</p></section>
+  <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden oluşur. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
+  <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
+  <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
   // ---------- Eyalet kartı ----------
@@ -3219,9 +4277,12 @@ window.IDEOLOGIES = {
     const locs = new Set(sel.map((u) => u.loc));
     const where = locs.size === 1 ? ([...locs][0] < NP ? G.pname([...locs][0]) : 'Denizde') : `${locs.size} konum`;
     let html = `<div class="card-h"><div class="grow"><h3>${sel.length} tümen seçili</h3><div class="muted small">${esc(where)}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
-    html += `<div class="units">${sel.slice(0, 40).map((u) => { const s = G.unitStats(u); return `<button class="ubox on" data-act="unsel" data-v="${u.id}"><b>${g.UNITS[u.u].s}</b>${bar(u.str, 'g')}${bar(u.org / s.org)}</button>`; }).join('')}</div>`;
+    html += `<div class="units">${sel.slice(0, 40).map((u) => { const s = G.unitStats(u); return `<button class="ubox on" data-act="unsel" data-v="${u.id}"><b>${s.t.s}</b>${bar(u.str, 'g')}${bar(u.org / s.org)}</button>`; }).join('')}</div>`;
+    const c0 = me(); const a0 = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
+    if (a0) { const gen = a0.gen ? G.genById(c0, a0.gen) : null; html += `<div class="small muted">${esc(a0.n)} · ${gen ? esc(gen.n) : 'komutansız'} · emir: ${({ hold: 'Bekle', def: 'Savun', atk: 'Taarruz' })[a0.ord]}</div>`; }
     html += `<div class="hint">${auto ? 'Bu tümenler otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedef eyalete dokun. Düşman eyaleti saldırı başlatır.'}</div>`;
-    html += `<div class="btns"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto ${auto ? 'açık' : 'kapalı'}</button><button class="btn sm" data-act="selall">Bölgedekilerin tümü</button></div>`;
+    if (!sel.length) return;
+    html += `<div class="btns"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto ${auto ? 'açık' : 'kapalı'}</button><button class="btn sm" data-act="selall">Bölgedekilerin tümü</button><button class="btn sm" data-act="selarmy">${a0 ? 'Ordu emirleri' : 'Ordu kur'}</button></div>`;
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
     sb.hidden = !$('sheet').hidden;
@@ -3256,17 +4317,30 @@ window.IDEOLOGIES = {
     UI.act(b.dataset.act, b.dataset, b);
   });
   ACT.panel = (d) => UI.open(d.p);
+  ACT.alert = (d) => { UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
   ACT.pause = () => { G.st.paused = !G.st.paused; UI.hud(); };
   ACT.speed = (d) => { G.st.speed = +d.v; G.st.paused = 0; UI.hud(); };
-  ACT.focus = (d) => { const c = me(); if (c.focus.cur && c.focus.cur !== d.v && c.focus.p > 5) UI.toast('Önceki odağın ilerlemesi sıfırlandı.', 'warn'); c.focus.cur = d.v; c.focus.p = 0; UI.render(); UI.toast('Odak başladı: ' + G.focusById(c, d.v).n, 'good'); };
-  ACT.law = (d) => { const c = me(); if (c.pp < 100) return; c.pp -= 100; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
+  ACT.focus = (d) => {
+    const c = me(); const f = G.focusById(c, d.v);
+    if (c.focus.done[f.id]) { UI.toast(`${f.n}: tamamlandı. ${f.d}`); return; }
+    if (c.focus.cur === f.id) { UI.toast(`${f.n}: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.`); return; }
+    if (!G.focusAvailable(c, f)) {
+      let why = G.focusExcluded(c, f) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, f) ? 'Önce bağlı olduğu odakları tamamla.' : G.focusReq(c, f).why;
+      UI.toast(`${f.n}: ${why}`, 'warn'); return;
+    }
+    if (c.focus.cur && c.focus.p > 5) UI.toast('Önceki odağın ilerlemesi sıfırlandı.', 'warn');
+    c.focus.cur = d.v; c.focus.p = 0; UI.render(); UI.toast('Odak başladı: ' + f.n, 'good');
+  };
+  ACT.hire = (d) => { const c = me(); const r = G.hireAdvisor(c, d.v); UI.toast(r.ok ? `${G.advName(c.tag, d.v)} göreve başladı.` : r.why, r.ok ? 'good' : 'warn'); if (r.ok) UI.sub = null; UI.render(true); UI.hud(); };
+  ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
+  ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
   ACT.decide = (d) => { const c = me(), dc = DECISIONS.find((x) => x.id === d.v); if (c.pp < dc.cost) return; c.pp -= dc.cost; c.dec = c.dec || {}; c.dec[dc.id] = G.st.day + dc.cd; dc.fx(c); G.needSummary = 1; G.updateSummaries(); UI.render(); UI.toast(dc.n + ' uygulandı.', 'good'); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
-  ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } c.res.push({ id: d.v, p: 0 }); UI.render(); };
+  ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
   ACT.line = (d) => {
     const c = me(); const l = c.lines.find((x) => x.e === d.e); if (!l) return;
@@ -3283,7 +4357,41 @@ window.IDEOLOGIES = {
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
   ACT.build = (d) => { const c = me(); c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };
   ACT.quickbuild = (d) => { UI.panel = 'con'; UI.sub = null; UI.render(true); };
-  ACT.train = (d) => { const c = me(); for (let k = 0; k < +d.n; k++) { if (G.manpower(c, true).avail < g.UNITS[d.v].mp) break; c.train.push({ u: d.v, d: g.UNITS[d.v].days, auto: 0 }); } UI.render(); UI.hud(); };
+  ACT.train = (d) => { const c = me(); const t = G.T(c.tag, d.v); for (let k = 0; k < +d.n; k++) { if (G.manpower(c, true).avail < t.mp) break; c.train.push({ u: d.v, d: t.days, auto: 0 }); } UI.render(); UI.hud(); };
+  // ordular
+  const armyOf = (id) => G.armyById(me(), +id);
+  ACT.armynew = () => {
+    const st = G.st, c = me();
+    let ids = [...R.sel.units];
+    if (!ids.length) ids = st.units.filter((u) => u.t === c.tag && !u.army).slice(0, 24).map((u) => u.id);
+    if (!ids.length) { UI.toast('Ordu kurmak için tümen yok.', 'warn'); return; }
+    const a = G.createArmy(c, ids);
+    for (const u of st.units) if (ids.includes(u.id)) u.auto = 0;
+    UI.toast(`${a.n} kuruldu (${ids.length} tümen).`, 'good'); UI.render(); R.dirty = 1;
+  };
+  ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; } UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
+  ACT.armydel = (d) => { G.disbandArmy(me(), +d.v); UI.render(); };
+  ACT.armyord = (d) => { const a = armyOf(d.k); a.ord = d.v; if (d.v === 'hold') for (const u of G.armyUnits(me(), a.id)) { u.path = []; } UI.toast(`${a.n}: ${({ hold: 'beklemede', def: 'cepheyi savunuyor', atk: 'taarruz emri aldı' })[d.v]}.`, d.v === 'atk' ? 'major' : 'info'); UI.render(); };
+  ACT.armyvs = (d) => {
+    const st = G.st, c = me(), a = armyOf(d.v);
+    const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) { const t = st.prov[j].c; if (t !== c.tag) neigh.add(t); }
+    const opts = [null, ...new Set([...c.enemies, ...neigh])].filter((t) => t === null || st.C[t]?.alive);
+    const k = opts.indexOf(a.vs); a.vs = opts[(k + 1) % opts.length]; UI.render();
+  };
+  ACT.armysel = (d) => { const c = me(); const us = G.armyUnits(c, +d.v); if (!us.length) { UI.toast('Orduda tümen yok.', 'warn'); return; } R.sel.units = new Set(us.map((u) => u.id)); R.focusOn(us[0].loc, 1.8); UI.close(); UI.renderSel(); R.dirty = 1; };
+  ACT.setgen = (d) => { const c = me(); for (const a of c.armies) if (a.gen === +d.v) a.gen = null; armyOf(d.k).gen = +d.v; UI.sub = null; UI.render(true); };
+  ACT.newgen = () => { const c = me(); if (c.pp < 50) return; c.pp -= 50; const gen = G.newGeneral(c); UI.toast(`${gen.n} göreve başladı.`, 'good'); UI.render(); };
+  ACT.tplnew = () => { const c = me(); const tpl = G.templatesOf(c); const id = 't' + G.st.nextId++; tpl[id] = { n: 'Yeni Tümen ' + (Object.keys(tpl).length - 5), b: { inf: 7, art: 2 }, s: {} }; G.invalidateTemplates(c); UI.sub = 'tpl:' + id; UI.render(true); };
+  ACT.tplb = (d) => { const c = me(); const t = G.templatesOf(c)[d.k]; const n = (t.b[d.e] || 0) + +d.v; if (n <= 0) delete t.b[d.e]; else t.b[d.e] = n; if (!Object.keys(t.b).length) t.b.inf = 1; G.invalidateTemplates(c); UI.render(); };
+  ACT.tpls = (d) => { const c = me(); const t = G.templatesOf(c)[d.k]; t.s = t.s || {}; if (t.s[d.v]) delete t.s[d.v]; else t.s[d.v] = 1; G.invalidateTemplates(c); UI.render(); };
+  ACT.tpldel = (d) => { const c = me(); delete G.templatesOf(c)[d.v]; for (const u of G.st.units) if (u.t === c.tag && u.u === d.v) u.u = 'inf'; c.train = c.train.filter((t) => t.u !== d.v); G.invalidateTemplates(c); UI.sub = null; UI.render(true); };
+  document.addEventListener('change', (e) => { if (e.target.id === 'tpl-name') { const c = me(); const t = G.templatesOf(c)[e.target.dataset.tpl]; if (t) { t.n = e.target.value.trim() || t.n; G.invalidateTemplates(c); } } });
+  ACT.selarmy = () => {
+    const c = me(); const sel = G.st.units.filter((u) => R.sel.units.has(u.id));
+    const a0 = sel[0]?.army;
+    if (a0 && sel.every((u) => u.army === a0)) { UI.open('army'); return; }
+    ACT.armynew();
+  };
   ACT.tdel = (d) => { me().train.splice(+d.v, 1); UI.render(); };
   ACT.allauto = () => { const st = G.st; const mine = st.units.filter((u) => u.t === st.player); const on = !mine.every((u) => u.auto); for (const u of mine) { u.auto = on ? 1 : 0; if (!on) { /* elle */ } } UI.render(); UI.toast(on ? 'Tüm tümenler otomatik kurmaya devredildi.' : 'Tümenler senin komutanda.', 'info'); };
   ACT.selgroup = (d) => { const st = G.st; const loc = +d.v; R.sel.units = new Set(st.units.filter((u) => u.t === st.player && u.loc === loc).map((u) => u.id)); R.focusOn(loc, 2.2); UI.close(); UI.renderSel(); R.dirty = 1; };
@@ -3320,6 +4428,15 @@ window.IDEOLOGIES = {
   ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); UI.toast('Harita modu: ' + { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar' }[R.mode]); UI.hud(); };
   ACT.setting = (d) => { if (d.v === 'hist') G.st.opts.hist = G.st.opts.hist ? 0 : 1; else UI.settings[d.v] = UI.settings[d.v] ? 0 : 1; UI.render(); };
   ACT.newgame = () => { UI.close(); G.st.paused = 1; UI.showStart(); };
+  ACT.fullscreen = async () => {
+    const el = document.documentElement;
+    try {
+      if (!document.fullscreenElement) await (el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen());
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+      UI.toast('Yatay mod açık.', 'good');
+    } catch (e) { UI.toast('Bu tarayıcı tam ekranı/kilidi desteklemiyor. Telefonu yan çevirmen yeterli.', 'warn'); }
+    setTimeout(() => R.resize(), 300);
+  };
   ACT.home = () => { const c = me(); if (c && c.cap >= 0) R.focusOn(c.cap, 2); };
   ACT.boxsel = () => { R.boxMode = !R.boxMode; $('btn-box').classList.toggle('on', R.boxMode); UI.toast(R.boxMode ? 'Alan seçimi: harita üzerinde parmağını sürükle.' : 'Alan seçimi kapandı.'); };
 
@@ -3443,7 +4560,7 @@ window.IDEOLOGIES = {
       if (hudT > 0.25) { UI.hud(); hudT = 0; }
       if (panelT > 0.6 && performance.now() - UI.lastTouch > 1500) {
         panelT = 0;
-        if (UI.panel && !UI.sub?.startsWith('build:')) UI.render();
+        if (UI.panel && !UI.sub?.startsWith('build:') && !UI.sub?.startsWith('tpl:')) UI.render(false, true);
         if (!$('selbar').hidden) UI.renderSel();
         if (!$('card').hidden && UI.cardProv >= 0) UI.showCard(UI.cardProv);
       }
@@ -3614,6 +4731,7 @@ window.IDEOLOGIES = {
     else if (/^Digit[1-5]$/.test(e.code)) { G.st.speed = +e.code.slice(5); G.st.paused = 0; UI.hud(); }
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
   });
+  g.addEventListener('orientationchange', () => setTimeout(() => R.resize(), 250));
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.st && $('start').hidden && UI.settings.autosave) G.saveGame('auto'); });
 
   // ---------- Başlat ----------

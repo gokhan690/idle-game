@@ -21,7 +21,6 @@
     { id: 'sci', n: 'Bilim İnsanı Transferi', d: 'Süren araştırmalara +25 gün ilerleme', cost: 150, cd: 180, fx: (c) => { for (const r of c.res) r.p += 25; } },
     { id: 'fort', n: 'Sınır Tahkimatı', d: 'Düşman sınırındaki eyaletlere +1 tahkimat', cost: 120, cd: 180, fx: (c) => { const st = G.st; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === c.tag && P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c))) pr.fort = Math.min(5, pr.fort + 1); } } },
   ];
-  const BRANCH = ['Sanayi', 'Ordu', 'Hava', 'Deniz', 'Siyaset', 'Ulusal'];
 
   // ---------- Bildirim ----------
   UI.toast = (msg, kind = 'info') => {
@@ -45,6 +44,8 @@
     const divs = st.units.reduce((n, u) => n + (u.t === c.tag), 0);
     const chips = [
       ['Siyasi güç', int(c.pp), ''],
+      ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : ''],
+      ['Savaş desteği', pct(c.ws ?? 0.2), ''],
       ['İnsan gücü', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : ''],
       ['Sivil', s.civ, ''],
       ['Askerî', s.mil, ''],
@@ -54,7 +55,24 @@
       ['Tümen', divs + (c.train.length ? `+${c.train.length}` : ''), ''],
     ];
     if (c.enemies.length) chips.push(['Savaş', c.enemies.length + ' düşman', 'neg']);
-    $('hud-res').innerHTML = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    const hr = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
+    // HOI4 tarzı uyarılar
+    const al = [];
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`]);
+    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
+    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
+    if (c.enemies.length) {
+      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`]);
+    }
+    const ah = al.map(([p, sub, n]) => `<button class="alert" data-act="alert" data-p="${p}" data-s="${sub}">${n}</button>`).join('');
+    const box = $('hud-alerts');
+    if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
     const pause = $('btn-pause');
     pause.classList.toggle('paused', !!st.paused);
     document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
@@ -69,21 +87,26 @@
     UI.render(true);
   };
   UI.close = () => { UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
-  UI.render = (reset) => {
+  UI.render = (reset, auto) => {
     if (!UI.panel) return;
     const sheet = $('sheet'), body = $('sheet-body');
     const scroll = body.scrollTop;
-    const tree = body.querySelector('.tree'); const tScroll = tree ? tree.scrollLeft : 0;
     // Dokunma sırasında içerik değiştirilmez; aynı içerik yeniden yazılmaz.
-    if (!reset && (performance.now() - UI.lastTouch < 1500)) return;
+    if (auto && (performance.now() - UI.lastTouch < 1500)) return;
     const out = PANELS[UI.panel]();
-    if (!reset && out.html === UI.lastHtml && !sheet.hidden) return;
+    if (auto && out.html === UI.lastHtml && !sheet.hidden) return;
     UI.lastHtml = out.html;
     $('sheet-title').textContent = out.title;
     $('sheet-back').hidden = !UI.sub;
     body.innerHTML = out.html;
     sheet.hidden = false;
-    if (!reset) { body.scrollTop = scroll; const t2 = body.querySelector('.tree'); if (t2) t2.scrollLeft = tScroll; } else body.scrollTop = 0;
+    const ft = body.querySelector('.ftree');
+    if (!reset) { body.scrollTop = scroll; if (ft && UI.ftScroll) { ft.scrollLeft = UI.ftScroll[0]; ft.scrollTop = UI.ftScroll[1]; } }
+    else {
+      body.scrollTop = 0;
+      if (ft) { const n = ft.querySelector('.fn.active') || ft.querySelector('.fn.avail'); if (n) { ft.scrollLeft = Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2); ft.scrollTop = Math.max(0, n.offsetTop - 40); } }
+    }
+    if (ft) ft.onscroll = () => { UI.ftScroll = [ft.scrollLeft, ft.scrollTop]; };
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
   };
@@ -104,15 +127,36 @@
     const st = G.st, c = me(), d = G.def(c.tag);
     if (UI.sub === 'tree') return focusTree(c);
     if (UI.sub && UI.sub.startsWith('law:')) return lawPicker(c, UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('adv:')) return advPicker(c, UI.sub.slice(4));
     const id = g.IDEOLOGIES[c.ideo];
     const fac = c.fac ? st.factions[c.fac] : null;
-    let html = `<div class="row">${G.flag(c.tag, 54, 36)}<div class="grow"><div style="font-size:20px;font-weight:700">${esc(d.n)}</div><div class="muted small">${esc(d.l)} · <span style="color:${id.c}">${id.n}</span>${fac ? ' · ' + esc(fac.n) : ''}</div></div></div>`;
-    html += kv([['Siyasi güç', int(c.pp)], ['Günlük', '+' + r1(2 + (c.mods.pp || 0))], ['Gerginlik', '%' + Math.round(st.tension)], ['Teslim riski', c.enemies.length ? pct(Math.max(0, Math.min(1, c.surrender || 0))) : '—', (c.surrender || 0) > 0.6 ? 'bad' : '']]);
+    let html = `<div class="row">${G.flag(c.tag, 54, 36)}<div class="grow"><div style="font-size:20px;font-weight:700">${esc(d.n)}</div><div class="muted small">${esc(c.leader)} · <span style="color:${id.c}">${id.n}</span>${fac ? ' · ' + esc(fac.n) : ''}</div></div></div>`;
+    html += kv([['Siyasi güç', int(c.pp)], ['Günlük', '+' + r1(c.ppDay || 2)], ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'bad' : 'good'], ['Savaş desteği', pct(c.ws ?? 0.2), (c.ws ?? 0) < 0.2 ? 'warn' : 'good'], ['Gerginlik', '%' + Math.round(st.tension)], ['Teslim riski', c.enemies.length ? pct(Math.max(0, Math.min(1, c.surrender || 0))) : '—', (c.surrender || 0) > 0.6 ? 'bad' : '']]);
+    // parti desteği
+    const IDS = ['dem', 'fas', 'com', 'neu'];
+    let ph = `<div class="party">${IDS.map((k) => `<i style="width:${(c.pop[k] * 100).toFixed(1)}%;background:${g.IDEOLOGIES[k].c}"></i>`).join('')}</div>`;
+    ph += `<div class="legend">${IDS.map((k) => `<span><i style="background:${g.IDEOLOGIES[k].c}"></i>${g.PARTY_N[k]} <b>${pct(c.pop[k])}</b>${k === c.ideo ? ' ★' : ''}</span>`).join('')}</div>`;
+    ph += `<p class="muted small" style="margin:0">Bir parti %50'yi geçerse hükümet değişikliği gündeme gelir. Yönetici partinin desteği %40'ın altına düşerse istikrar azalır.</p>`;
+    html += sec('Parti desteği', ph);
+    // ulusal ruhlar
+    const sp = c.spirits.filter((s) => g.SPIRITS[s]);
+    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı bonus verir.</div></div></div>`;
-    fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç</button>`;
-    html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length} tamamlandı`);
+    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
+    fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç${g.FOCUS_NATIONAL[c.tag] ? ' · ulusal ağaç' : ''}</button>`;
+    html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length}/${G.focusList(c).length} tamamlandı`);
+    // danışmanlar
+    let ah = '<div class="advgrid">';
+    for (const [role, n] of Object.entries(g.ADV_SLOTS)) {
+      const cur2 = c.adv[role] || [];
+      for (let i = 0; i < n; i++) {
+        const t = cur2[i];
+        ah += t ? `<div class="adv on"><small>${g.ADV_ROLE_N[role]}</small><b>${esc(G.advName(c.tag, t))}</b><span class="d">${g.ADV_TYPES[t].d}</span><button class="x" data-act="fireadv" data-v="${t}" aria-label="Görevden al">✕</button></div>`
+          : `<button class="adv" data-act="sub" data-v="adv:${role}"><small>${g.ADV_ROLE_N[role]}</small><b class="muted">+ Ata</b><span class="d">${g.ADV_COST[role]} SG</span></button>`;
+      }
+    }
+    html += sec('Danışmanlar ve tasarım büroları', ah + '</div>');
     // yasalar
     let lh = '<div class="list">';
     for (const [k, L] of Object.entries(g.LAWS)) {
@@ -129,44 +173,69 @@
       dh += `<div class="item"><div class="grow"><div class="t">${dc.n}</div><div class="d">${dc.d}${ready ? '' : ` · ${c.dec[dc.id] - st.day} gün sonra`}</div></div><button class="btn sm ${can ? 'pri' : ''}" data-act="decide" data-v="${dc.id}" ${can ? '' : 'disabled'}>${dc.cost} SG</button></div>`;
     }
     html += sec('Kararlar', dh + '</div>');
-    // otomasyon
     const t = (k, n, d2) => `<button class="toggle ${c.auto[k] ? 'on' : ''}" data-act="auto" data-v="${k}"><span><b>${n}</b><br><span class="muted small">${d2}</span></span><i></i></button>`;
     html += sec('Yardımcı bakanlar', `<div class="list">${t('focus', 'Odak bakanı', 'Sıradaki odağı otomatik seçer')}${t('res', 'Bilim bakanı', 'Boş araştırma yuvalarını doldurur')}${t('prod', 'Sanayi bakanı', 'Üretim hatlarını dengeler')}${t('con', 'Bayındırlık bakanı', 'İnşaat kuyruğunu doldurur')}</div>`);
     return { title: 'Siyaset', html };
   };
 
+  function advPicker(c, role) {
+    let html = `<p class="muted small" style="margin:0">${g.ADV_ROLE_N[role]}: yuva ${(c.adv[role] || []).length}/${g.ADV_SLOTS[role]}. Elinde ${int(c.pp)} siyasi güç var.</p><div class="list">`;
+    for (const [type, a] of Object.entries(g.ADV_TYPES)) {
+      if (a.r !== role) continue;
+      const r = G.canHire(c, type);
+      html += `<div class="item"><div class="grow"><div class="t">${esc(G.advName(c.tag, type))}</div><div class="d">${a.n} · ${a.d}</div>${!r.ok ? `<div class="d warn">${r.why}</div>` : ''}</div><button class="btn sm ${r.ok ? 'pri' : ''}" data-act="hire" data-v="${type}" ${r.ok ? '' : 'disabled'}>${G.advCost(c, type)} SG</button></div>`;
+    }
+    return { title: g.ADV_ROLE_N[role], html: html + '</div>' };
+  }
+
   function focusTree(c) {
     const list = G.focusList(c);
-    const cols = {};
-    for (const f of list) (cols[f.x] || (cols[f.x] = [])).push(f);
-    let html = '';
-    const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    html += cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı · Yeni odak seçersen ilerleme sıfırlanır.</div></div></div>` : '<p class="muted small" style="margin:0">Uygun bir odağa dokunarak başlat. Okunaklı kartlar şu an seçilebilir.</p>';
-    html += '<div class="tree"><div class="tree-grid">';
-    for (const x of Object.keys(cols).sort((a, b) => b - a === 0 ? 0 : (a == 5 ? -1 : b == 5 ? 1 : a - b))) {
-      html += `<div class="tree-col"><h4>${BRANCH[x]}</h4>`;
-      for (const f of cols[x].sort((a, b) => a.y - b.y)) {
-        const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f);
-        const cls = done ? 'done' : active ? 'active' : avail ? 'avail' : 'locked';
-        const pre = f.pre.length && !done && !avail ? `<span class="d">Önce: ${f.pre.map((p) => esc(G.focusById(c, p)?.n || p)).join(', ')}</span>` : '';
-        html += `<button class="fnode ${cls}" data-act="focus" data-v="${f.id}" ${avail ? '' : 'disabled'}><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${pre}</button>`;
+    const NW = 128, NH = 74, GX = 140, GY = 104, PAD = 14;
+    const maxX = Math.max(...list.map((f) => f.x)), maxY = Math.max(...list.map((f) => f.y));
+    const W = Math.ceil((maxX + 1) * GX + PAD * 2), H = Math.ceil((maxY + 1) * GY + PAD * 2);
+    const pos = (f) => ({ x: PAD + f.x * GX, y: PAD + f.y * GY });
+    const byId = Object.fromEntries(list.map((f) => [f.id, f]));
+    let lines = '';
+    for (const f of list) {
+      const b = pos(f);
+      for (const p of f.pre) {
+        const group = Array.isArray(p) ? p : [p];
+        for (const pid of group) {
+          const a = byId[pid]; if (!a) continue;
+          const s = pos(a);
+          const x1 = s.x + NW / 2, y1 = s.y + NH, x2 = b.x + NW / 2, y2 = b.y, my = (y1 + y2) / 2;
+          const done = c.focus.done[pid];
+          lines += `<path d="M${x1} ${y1}V${my}H${x2}V${y2}" class="${done ? 'ln done' : 'ln'}${Array.isArray(p) ? ' or' : ''}"/>`;
+        }
       }
-      html += '</div>';
+      for (const e of f.excl || []) {
+        const o = byId[e]; if (!o || o.id < f.id || o.y !== f.y) continue;
+        const a = pos(f), b2 = pos(o);
+        const x = (Math.min(a.x, b2.x) + NW + Math.max(a.x, b2.x)) / 2, y = a.y + NH / 2;
+        lines += `<g class="excl"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 4}" text-anchor="middle">⇄</text></g>`;
+      }
     }
-    html += '</div></div>';
-    return { title: 'Ulusal odak ağacı', html };
+    let nodes = '';
+    for (const f of list) {
+      const p = pos(f);
+      const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
+      const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
+      nodes += `<button class="fn ${cls}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
+    }
+    const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
+    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir. ⇄ işaretli odaklar birbirini dışlar. Bir odağa dokunarak başlat; kilitli odaklarda nedeni görürsün.</p>';
+    html += `<div class="ftree" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
 
   function lawPicker(c, k) {
-    const L = g.LAWS[k], st = G.st;
-    const atWar = c.enemies.length > 0;
-    let html = `<p class="muted small" style="margin:0">Yasa değişikliği 100 siyasi güç ister. Bazı seçenekler yalnızca savaşta veya yüksek dünya gerginliğinde açılır.</p><div class="list">`;
+    const L = g.LAWS[k];
+    let html = `<p class="muted small" style="margin:0">Yasa değişikliği ${g.LAW_COST} siyasi güç ister. Seçenekler savaş desteğine (şu an ${pct(c.ws ?? 0)}) bağlıdır; bazıları yalnızca savaşta açılır.</p><div class="list">`;
     L.opts.forEach((o, i) => {
       const cur = c.laws[k] === i;
-      let ok = true, why = '';
-      if (o.war === 1 && !(atWar || st.tension >= 50 || c.ideo !== 'dem' || c.mods.ignoreTension)) { ok = false; why = 'Savaş veya %50 gerginlik gerekir'; }
-      if (o.war === 2 && !atWar) { ok = false; why = 'Yalnızca savaşta'; }
-      if (c.pp < 100) { ok = false; why = why || '100 siyasi güç gerekli'; }
+      const r = G.lawAllowed(c, k, i);
+      let ok = r.ok, why = r.why || '';
+      if (ok && c.pp < g.LAW_COST) { ok = false; why = `${g.LAW_COST} siyasi güç gerekli`; }
       html += `<div class="item ${cur ? 'active' : ''}"><div class="grow"><div class="t">${o.n}</div><div class="d">${o.d}${why && !cur ? ` · <span class="warn">${why}</span>` : ''}</div></div>${cur ? '<span class="pill ally">Yürürlükte</span>' : `<button class="btn sm ${ok ? 'pri' : ''}" data-act="law" data-k="${k}" data-v="${i}" ${ok ? '' : 'disabled'}>Uygula</button>`}</div>`;
     });
     return { title: L.n, html: html + '</div>' };
@@ -181,10 +250,11 @@
       const r = c.res[i];
       if (r) {
         const t = g.TECH_BY_ID[r.id], cost = G.techCost(c, r.id);
-        const days = Math.ceil((cost - r.p) / (1 + (m.research || 0)));
+        const days = Math.ceil((cost - r.p) / (G.resSpeed(c, r.id) * (1 + (r.b || 0))));
         sh += `<div class="item active"><div class="grow"><div class="t">${esc(t.n)}</div>${bar(r.p / cost)}<div class="d">${days} gün kaldı</div></div><button class="btn sm" data-act="rescancel" data-v="${r.id}" aria-label="İptal">✕</button></div>`;
       } else sh += `<div class="item"><div class="grow"><div class="t muted">Boş yuva</div><div class="d">Aşağıdan bir teknoloji seç</div></div></div>`;
     }
+    if ((c.rb || []).length) sh += `<div class="d good" style="font-size:13px">Araştırma bonusları: ${c.rb.map(([cat, v]) => `${g.TECH_CATS[cat]} +%${Math.round(v * 100)}`).join(' · ')}</div>`;
     html += sec('Araştırma yuvaları', sh + '</div>', `Hız +%${Math.round((m.research || 0) * 100)}`);
     const tab = UI.tab.res;
     html += `<div class="tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}</button>`).join('')}</div>`;
@@ -196,7 +266,8 @@
       const ahead = t.year > yr ? ` · <span class="warn">${t.year - yr} yıl erken</span>` : '';
       const cls = done ? 'done' : active ? 'active' : avail ? '' : 'locked';
       const pre = !done && !avail && !active ? `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}` : esc(t.d || fxText(t.fx));
-      lh += `<button class="item ${cls}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (1 + (m.research || 0)))} gün`}${ahead}</div></div></button>`;
+      const bon = (c.rb || []).find((x) => x[0] === t.cat);
+      lh += `<button class="item ${cls}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
     }
     html += lh + '</div>';
     return { title: 'Araştırma', html };
@@ -280,49 +351,120 @@
   }
 
   // Ordu
+  const ORD_N = { hold: 'Bekle', def: 'Savun', atk: 'Taarruz' };
+  const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · Sv ${gen.lvl}</span>`;
+  const genSkills = (gen) => `<span class="skills"><b title="Saldırı">S ${gen.atk}</b><b title="Savunma">Sv ${gen.def}</b><b title="Planlama">P ${gen.plan}</b><b title="Lojistik">L ${gen.log}</b></span>${gen.tr.length ? `<div class="d">${gen.tr.map((t) => g.GEN_TRAITS[t].n).join(' · ')}</div>` : ''}`;
   PANELS.army = () => {
     const st = G.st, c = me();
+    if (UI.sub && UI.sub.startsWith('tpl:')) return templateDesigner(c, UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('gen:')) return generalPicker(c, +UI.sub.slice(4));
+    if (UI.sub === 'gens') return generalList(c);
     const mine = st.units.filter((u) => u.t === c.tag);
     const mp = G.manpower(c);
     let html = kv([['İnsan gücü', G.fmtMP(mp.avail), mp.avail < 30 ? 'bad' : ''], ['Toplam', G.fmtMP(mp.max)], ['Tümen', mine.length], ['Eğitimde', c.train.length], ['Piyade T.', int(c.stock.inf)], ['Topçu', int(c.stock.art)], ['Tank', int(c.stock.tank)], ['Motorlu', int(c.stock.mot)]]);
-    // eğitim
-    let th = '<div class="list">';
-    for (const [k, u] of Object.entries(g.UNITS)) {
-      if (!c.mods.unlock[k]) continue;
-      const eq = Object.entries(u.eq).map(([e, n]) => `${n} ${g.EQUIP[e].s.toLowerCase()}`).join(', ');
-      const ok = mp.avail >= u.mp;
-      th += `<div class="item"><div class="grow"><div class="t">${u.n}</div><div class="d">${u.mp}K asker · ${u.days} gün · ${eq}</div><div class="d">Saldırı ${u.atk} · Savunma ${u.def} · Hız ${u.spd}${u.arm ? ' · Zırh ' + u.arm : ''}</div></div><div class="btns"><button class="btn sm ${ok ? 'pri' : ''}" data-act="train" data-v="${k}" data-n="1" ${ok ? '' : 'disabled'}>+1</button><button class="btn sm" data-act="train" data-v="${k}" data-n="5" ${mp.avail >= u.mp * 5 ? '' : 'disabled'}>+5</button></div></div>`;
+    // ordular
+    const enemies = c.enemies.slice();
+    let oh = '<div class="list">';
+    for (const a of c.armies || []) {
+      const us = G.armyUnits(c, a.id);
+      const gen = a.gen ? G.genById(c, a.gen) : null;
+      const str = us.length ? us.reduce((s, u) => s + u.str, 0) / us.length : 0;
+      const battle = (G.battles || []).filter((b) => us.some((u) => u.loc === b.n || u.path[0] === b.n)).length;
+      oh += `<div class="item army"><div class="grow">
+        <div class="row" style="gap:8px"><div class="t grow">${esc(a.n)} <span class="muted small">${us.length} tümen${battle ? ` · <span class="bad">${battle} muharebe</span>` : ''}</span></div><button class="btn sm" data-act="armysel" data-v="${a.id}">Seç</button></div>
+        <button class="genrow" data-act="sub" data-v="gen:${a.id}">${gen ? `<div>${genLine(gen)}</div>${genSkills(gen)}` : '<span class="warn">Komutan ata ›</span>'}</button>
+        <div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a.id}" data-v="${k}">${n}</button>`).join('')}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="armyvs" data-v="${a.id}">Cephe: ${a.vs ? esc(G.cname(a.vs)) : 'Tüm düşmanlar'}</button><button class="btn sm" data-act="armyadd" data-v="${a.id}" ${R.sel.units.size ? '' : 'disabled'}>Seçilileri ekle</button><button class="btn sm danger" data-act="armydel" data-v="${a.id}">Dağıt</button></div>
+        ${bar(str, 'g')}</div></div>`;
     }
-    html += sec('Tümen eğit', th + '</div>', 'Tümenler başkentte konuşlanır');
+    if (!(c.armies || []).length) oh += '<p class="muted small" style="margin:0">Henüz ordu yok. Tümenleri bir orduda toplayıp komutan atarsan, komutan becerileri muharebeye eklenir ve “Savun” ya da “Taarruz” emriyle cepheyi senin yerine yönetir.</p>';
+    oh += `</div><div class="btns"><button class="btn pri" data-act="armynew">${R.sel.units.size ? `Seçili ${R.sel.units.size} tümenden ordu kur` : 'Ordusuz tümenlerden ordu kur'}</button><button class="btn" data-act="sub" data-v="gens">Komutanlar (${c.gens.length})</button></div>`;
+    html += sec('Ordular', oh, enemies.length ? `${enemies.length} düşman` : 'barış');
+    // şablonlar ve eğitim
+    const tpl = G.templatesOf(c);
+    let th = '<div class="list">';
+    for (const id of Object.keys(tpl)) {
+      const t = G.T(c.tag, id);
+      const locked = Object.keys(tpl[id].b).some((k) => g.BATS[k]?.req && !c.tech[g.BATS[k].req]);
+      const ok = !locked && mp.avail >= t.mp;
+      th += `<div class="item"><div class="grow"><div class="t">${esc(t.n)}</div><div class="d">${Object.entries(tpl[id].b).map(([k, n]) => `${n}×${g.BATS[k].n}`).join(', ')}${Object.keys(tpl[id].s || {}).length ? ' · ' + Object.keys(tpl[id].s).map((k) => g.SUPPORTS[k].n).join(', ') : ''}</div><div class="d">Saldırı ${r1(t.atk)} · Savunma ${r1(t.def)} · Moral ${Math.round(t.org)} · Hız ${t.spd} · Genişlik ${t.w}${t.arm ? ' · Zırh ' + Math.round(t.arm) : ''} · ${t.mp}K asker · ${t.days} gün${locked ? ' · <span class="warn">teknoloji gerekli</span>' : ''}</div></div><div class="btns col"><button class="btn sm ${ok ? 'pri' : ''}" data-act="train" data-v="${id}" data-n="1" ${ok ? '' : 'disabled'}>+1</button><button class="btn sm" data-act="train" data-v="${id}" data-n="5" ${ok && mp.avail >= t.mp * 5 ? '' : 'disabled'}>+5</button><button class="btn sm" data-act="sub" data-v="tpl:${id}">Tasarla</button></div></div>`;
+    }
+    th += `</div><button class="btn" data-act="tplnew">+ Yeni tümen şablonu</button>`;
+    html += sec('Tümen tasarımcısı ve eğitim', th, 'Tümenler başkentte konuşlanır');
     if (c.train.length) {
       let qh = '<div class="list">';
       c.train.forEach((t, i) => {
-        const u = g.UNITS[t.u];
+        const u = G.T(c.tag, t.u);
         let ratio = 1; for (const [e, n] of Object.entries(u.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
-        qh += `<div class="item"><div class="grow"><div class="t">${u.n}</div><div class="d">${t.d > 0 ? t.d + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
+        qh += `<div class="item"><div class="grow"><div class="t">${esc(u.n)}</div><div class="d">${t.d > 0 ? t.d + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
       });
       html += sec('Eğitim kuyruğu', qh + '</div>');
     }
-    // komuta
-    const autoN = mine.filter((u) => u.auto).length;
-    html += sec('Komuta', `<button class="toggle ${autoN === mine.length && mine.length ? 'on' : ''}" data-act="allauto"><span><b>Otomatik kurmay</b><br><span class="muted small">${autoN}/${mine.length} tümen yapay zekâ komutasında: cepheleri tutar, fırsat bulunca saldırır.</span></span><i></i></button>`);
-    // ordular
+    const free = mine.filter((u) => !u.army);
+    const autoN = free.filter((u) => u.auto).length;
+    html += sec('Ordusuz tümenler', `<button class="toggle ${autoN === free.length && free.length ? 'on' : ''}" data-act="allauto"><span><b>Otomatik kurmay</b><br><span class="muted small">${autoN}/${free.length} ordusuz tümen yapay zekâ komutasında.</span></span><i></i></button>`);
     const groups = new Map();
     for (const u of mine) { const k = u.loc; let gl = groups.get(k); if (!gl) groups.set(k, (gl = [])); gl.push(u); }
     const rows = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
     let gh = '<div class="list">';
-    for (const [loc, gl] of rows.slice(0, 60)) {
-      const types = {}; for (const u of gl) types[u.u] = (types[u.u] || 0) + 1;
+    for (const [loc, gl] of rows.slice(0, 50)) {
+      const types = {}; for (const u of gl) { const s = G.T(u.t, u.u).s; types[s] = (types[s] || 0) + 1; }
       const str = gl.reduce((s, u) => s + u.str, 0) / gl.length;
-      const org = gl.reduce((s, u) => s + u.org / (G.unitStats(u).org), 0) / gl.length;
+      const org = gl.reduce((s, u) => s + u.org / G.unitStats(u).org, 0) / gl.length;
       const moving = gl.filter((u) => u.path.length).length;
-      const battle = (G.battles || []).some((b) => b.n === loc || gl.some((u) => u.path[0] === b.n));
       const name = loc < NP ? G.pname(loc) : 'Denizde';
-      gh += `<button class="item" data-act="selgroup" data-v="${loc}"><div class="grow"><div class="t">${esc(name)} ${battle ? '<span class="pill war">Muharebe</span>' : ''}</div><div class="d">${Object.entries(types).map(([k, n]) => `${n} ${g.UNITS[k].s}`).join(' · ')}${moving ? ` · ${moving} hareket hâlinde` : ''}</div><div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div><div class="grow">${bar(org)}</div></div></div><span class="muted">›</span></button>`;
+      gh += `<button class="item" data-act="selgroup" data-v="${loc}"><div class="grow"><div class="t">${esc(name)}</div><div class="d">${Object.entries(types).map(([k, n]) => `${n} ${k}`).join(' · ')}${moving ? ` · ${moving} hareket hâlinde` : ''}</div><div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div><div class="grow">${bar(org)}</div></div></div><span class="muted">›</span></button>`;
     }
-    html += sec('Ordular', gh + '</div>', `${rows.length} konum · yeşil güç, sarı moral`);
+    html += sec('Konuşlanma', gh + '</div>', `${rows.length} konum · yeşil güç, sarı moral`);
     return { title: 'Ordu', html };
   };
+
+  function generalList(c) {
+    let html = `<p class="muted small" style="margin:0">Komutanlar muharebede tecrübe kazanır, seviye atlar ve yeni özellikler edinir. Saldırı (S) ve savunma (Sv) muharebe gücünü, planlama (P) muharebenin ilk günlerini ve siperi, lojistik (L) ikmali etkiler.</p><div class="list">`;
+    for (const gen of c.gens) {
+      const a = (c.armies || []).find((x) => x.gen === gen.id);
+      html += `<div class="item"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div></div></div>`;
+    }
+    html += `</div><button class="btn pri" data-act="newgen" ${c.pp >= 50 ? '' : 'disabled'}>Yeni komutan ata (50 SG)</button>`;
+    return { title: 'Komutanlar', html };
+  }
+  function generalPicker(c, armyId) {
+    const a = G.armyById(c, armyId);
+    let html = `<p class="muted small" style="margin:0">${esc(a.n)} için komutan seç. Bir general en iyi 24 tümene kadar komuta eder; mareşaller büyük ordularda da tam etki gösterir.</p><div class="list">`;
+    const sorted = c.gens.slice().sort((x, y) => (y.atk + y.def + y.plan + y.log) - (x.atk + x.def + x.plan + x.log));
+    for (const gen of sorted) {
+      const other = (c.armies || []).find((x) => x.gen === gen.id && x.id !== armyId);
+      html += `<button class="item ${a.gen === gen.id ? 'active' : ''}" data-act="setgen" data-k="${armyId}" data-v="${gen.id}"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}${other ? `<div class="d warn">Şu an ${esc(other.n)} komutanı</div>` : ''}</div></button>`;
+    }
+    return { title: 'Komutan seç', html: html + '</div>' };
+  }
+  function templateDesigner(c, id) {
+    const tpl = G.templatesOf(c)[id];
+    if (!tpl) { UI.sub = null; return PANELS.army(); }
+    const t = G.T(c.tag, id);
+    const nb = Object.values(tpl.b).reduce((a, b) => a + b, 0);
+    const ns = Object.values(tpl.s || {}).filter(Boolean).length;
+    let html = `<label class="field"><span>Şablon adı</span><input id="tpl-name" data-tpl="${id}" value="${esc(tpl.n)}" maxlength="28"></label>`;
+    html += kv([['Saldırı', r1(t.atk)], ['Savunma', r1(t.def)], ['Moral', Math.round(t.org)], ['Hız', t.spd], ['Zırh', Math.round(t.arm)], ['Zırh delme', Math.round(t.prc)], ['Genişlik', t.w], ['Asker', t.mp + 'K'], ['Eğitim', t.days + ' gün']]);
+    html += `<p class="muted small" style="margin:0">Teçhizat: ${Object.entries(t.eq).map(([e, n]) => `${Math.round(n)} ${g.EQUIP[e].s.toLowerCase()}`).join(', ')}. Muharebe genişliği arazinin kaldırabileceği tümen sayısını belirler (ovada 80).</p>`;
+    let bh = '<div class="list">';
+    for (const [k, b] of Object.entries(g.BATS)) {
+      const locked = b.req && !c.tech[b.req];
+      const n = tpl.b[k] || 0;
+      bh += `<div class="item ${locked ? 'locked' : ''}"><div class="grow"><div class="t">${b.n}</div><div class="d">S ${b.atk} · Sv ${b.def} · Moral ${b.org} · Hız ${b.spd} · G ${b.w}${b.arm ? ' · Zırh ' + b.arm : ''}${locked ? ' · teknoloji gerekli' : ''}</div></div><div class="stepper"><button data-act="tplb" data-k="${id}" data-e="${k}" data-v="-1" ${n ? '' : 'disabled'}>−</button><b>${n}</b><button data-act="tplb" data-k="${id}" data-e="${k}" data-v="1" ${locked || nb >= g.MAX_BATS ? 'disabled' : ''}>+</button></div></div>`;
+    }
+    html += sec('Muharebe taburları', bh + '</div>', `${nb}/${g.MAX_BATS}`);
+    let sh = '<div class="list">';
+    for (const [k, s] of Object.entries(g.SUPPORTS)) {
+      const locked = s.req && !c.tech[s.req];
+      const on = !!(tpl.s || {})[k];
+      sh += `<button class="toggle ${on ? 'on' : ''}" data-act="tpls" data-k="${id}" data-v="${k}" ${locked || (!on && ns >= g.MAX_SUP) ? 'disabled' : ''} style="${locked ? 'opacity:.45' : ''}"><span><b>${s.n}</b><br><span class="muted small">${s.d}${locked ? ' · teknoloji gerekli' : ''}</span></span><i></i></button>`;
+    }
+    html += sec('Destek bölükleri', sh + '</div>', `${ns}/${g.MAX_SUP}`);
+    if (!g.DEFAULT_TEMPLATES[id]) html += `<button class="btn danger" data-act="tpldel" data-v="${id}">Şablonu sil</button>`;
+    html += '<p class="muted small" style="margin:0">Değişiklikler hemen geçerlidir. Mevcut tümenler yeni teçhizat ihtiyacını takviye ile tamamlar.</p>';
+    return { title: 'Tümen tasarımcısı', html };
+  }
 
   // Diplomasi
   PANELS.dip = () => {
@@ -404,6 +546,7 @@
     html += sec('Kayıt', sh + '</div>', 'Bu cihazda saklanır');
     const modes = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar' };
     html += sec('Harita modu', `<div class="seg">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
+    html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Kapalıysa ülkeler tarihi olayları izlemez, kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
     html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
@@ -415,6 +558,10 @@
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Ordular ve komutanlar</h3><p class="small" style="margin:0">Ordu panelinde tümenlerini ordulara topla ve her orduya bir general ya da mareşal ata. Komutanın saldırı, savunma, planlama ve lojistik becerileri ile özellikleri (Panzer Uzmanı, Kış Uzmanı, Çöl Tilkisi…) muharebeye eklenir. “Savun” emri cepheyi tutar, “Taarruz” emri fırsat buldukça saldırır; “Cephe” düğmesiyle hangi ülkeye karşı savaşacağını seçersin. Komutanlar muharebede tecrübe kazanıp seviye atlar.</p></section>
+  <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden oluşur. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
+  <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
+  <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
   // ---------- Eyalet kartı ----------
@@ -451,9 +598,12 @@
     const locs = new Set(sel.map((u) => u.loc));
     const where = locs.size === 1 ? ([...locs][0] < NP ? G.pname([...locs][0]) : 'Denizde') : `${locs.size} konum`;
     let html = `<div class="card-h"><div class="grow"><h3>${sel.length} tümen seçili</h3><div class="muted small">${esc(where)}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
-    html += `<div class="units">${sel.slice(0, 40).map((u) => { const s = G.unitStats(u); return `<button class="ubox on" data-act="unsel" data-v="${u.id}"><b>${g.UNITS[u.u].s}</b>${bar(u.str, 'g')}${bar(u.org / s.org)}</button>`; }).join('')}</div>`;
+    html += `<div class="units">${sel.slice(0, 40).map((u) => { const s = G.unitStats(u); return `<button class="ubox on" data-act="unsel" data-v="${u.id}"><b>${s.t.s}</b>${bar(u.str, 'g')}${bar(u.org / s.org)}</button>`; }).join('')}</div>`;
+    const c0 = me(); const a0 = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
+    if (a0) { const gen = a0.gen ? G.genById(c0, a0.gen) : null; html += `<div class="small muted">${esc(a0.n)} · ${gen ? esc(gen.n) : 'komutansız'} · emir: ${({ hold: 'Bekle', def: 'Savun', atk: 'Taarruz' })[a0.ord]}</div>`; }
     html += `<div class="hint">${auto ? 'Bu tümenler otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedef eyalete dokun. Düşman eyaleti saldırı başlatır.'}</div>`;
-    html += `<div class="btns"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto ${auto ? 'açık' : 'kapalı'}</button><button class="btn sm" data-act="selall">Bölgedekilerin tümü</button></div>`;
+    if (!sel.length) return;
+    html += `<div class="btns"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto ${auto ? 'açık' : 'kapalı'}</button><button class="btn sm" data-act="selall">Bölgedekilerin tümü</button><button class="btn sm" data-act="selarmy">${a0 ? 'Ordu emirleri' : 'Ordu kur'}</button></div>`;
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
     sb.hidden = !$('sheet').hidden;
@@ -488,17 +638,30 @@
     UI.act(b.dataset.act, b.dataset, b);
   });
   ACT.panel = (d) => UI.open(d.p);
+  ACT.alert = (d) => { UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
   ACT.pause = () => { G.st.paused = !G.st.paused; UI.hud(); };
   ACT.speed = (d) => { G.st.speed = +d.v; G.st.paused = 0; UI.hud(); };
-  ACT.focus = (d) => { const c = me(); if (c.focus.cur && c.focus.cur !== d.v && c.focus.p > 5) UI.toast('Önceki odağın ilerlemesi sıfırlandı.', 'warn'); c.focus.cur = d.v; c.focus.p = 0; UI.render(); UI.toast('Odak başladı: ' + G.focusById(c, d.v).n, 'good'); };
-  ACT.law = (d) => { const c = me(); if (c.pp < 100) return; c.pp -= 100; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
+  ACT.focus = (d) => {
+    const c = me(); const f = G.focusById(c, d.v);
+    if (c.focus.done[f.id]) { UI.toast(`${f.n}: tamamlandı. ${f.d}`); return; }
+    if (c.focus.cur === f.id) { UI.toast(`${f.n}: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.`); return; }
+    if (!G.focusAvailable(c, f)) {
+      let why = G.focusExcluded(c, f) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, f) ? 'Önce bağlı olduğu odakları tamamla.' : G.focusReq(c, f).why;
+      UI.toast(`${f.n}: ${why}`, 'warn'); return;
+    }
+    if (c.focus.cur && c.focus.p > 5) UI.toast('Önceki odağın ilerlemesi sıfırlandı.', 'warn');
+    c.focus.cur = d.v; c.focus.p = 0; UI.render(); UI.toast('Odak başladı: ' + f.n, 'good');
+  };
+  ACT.hire = (d) => { const c = me(); const r = G.hireAdvisor(c, d.v); UI.toast(r.ok ? `${G.advName(c.tag, d.v)} göreve başladı.` : r.why, r.ok ? 'good' : 'warn'); if (r.ok) UI.sub = null; UI.render(true); UI.hud(); };
+  ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
+  ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
   ACT.decide = (d) => { const c = me(), dc = DECISIONS.find((x) => x.id === d.v); if (c.pp < dc.cost) return; c.pp -= dc.cost; c.dec = c.dec || {}; c.dec[dc.id] = G.st.day + dc.cd; dc.fx(c); G.needSummary = 1; G.updateSummaries(); UI.render(); UI.toast(dc.n + ' uygulandı.', 'good'); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
-  ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } c.res.push({ id: d.v, p: 0 }); UI.render(); };
+  ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
   ACT.line = (d) => {
     const c = me(); const l = c.lines.find((x) => x.e === d.e); if (!l) return;
@@ -515,7 +678,41 @@
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
   ACT.build = (d) => { const c = me(); c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };
   ACT.quickbuild = (d) => { UI.panel = 'con'; UI.sub = null; UI.render(true); };
-  ACT.train = (d) => { const c = me(); for (let k = 0; k < +d.n; k++) { if (G.manpower(c, true).avail < g.UNITS[d.v].mp) break; c.train.push({ u: d.v, d: g.UNITS[d.v].days, auto: 0 }); } UI.render(); UI.hud(); };
+  ACT.train = (d) => { const c = me(); const t = G.T(c.tag, d.v); for (let k = 0; k < +d.n; k++) { if (G.manpower(c, true).avail < t.mp) break; c.train.push({ u: d.v, d: t.days, auto: 0 }); } UI.render(); UI.hud(); };
+  // ordular
+  const armyOf = (id) => G.armyById(me(), +id);
+  ACT.armynew = () => {
+    const st = G.st, c = me();
+    let ids = [...R.sel.units];
+    if (!ids.length) ids = st.units.filter((u) => u.t === c.tag && !u.army).slice(0, 24).map((u) => u.id);
+    if (!ids.length) { UI.toast('Ordu kurmak için tümen yok.', 'warn'); return; }
+    const a = G.createArmy(c, ids);
+    for (const u of st.units) if (ids.includes(u.id)) u.auto = 0;
+    UI.toast(`${a.n} kuruldu (${ids.length} tümen).`, 'good'); UI.render(); R.dirty = 1;
+  };
+  ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; } UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
+  ACT.armydel = (d) => { G.disbandArmy(me(), +d.v); UI.render(); };
+  ACT.armyord = (d) => { const a = armyOf(d.k); a.ord = d.v; if (d.v === 'hold') for (const u of G.armyUnits(me(), a.id)) { u.path = []; } UI.toast(`${a.n}: ${({ hold: 'beklemede', def: 'cepheyi savunuyor', atk: 'taarruz emri aldı' })[d.v]}.`, d.v === 'atk' ? 'major' : 'info'); UI.render(); };
+  ACT.armyvs = (d) => {
+    const st = G.st, c = me(), a = armyOf(d.v);
+    const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) { const t = st.prov[j].c; if (t !== c.tag) neigh.add(t); }
+    const opts = [null, ...new Set([...c.enemies, ...neigh])].filter((t) => t === null || st.C[t]?.alive);
+    const k = opts.indexOf(a.vs); a.vs = opts[(k + 1) % opts.length]; UI.render();
+  };
+  ACT.armysel = (d) => { const c = me(); const us = G.armyUnits(c, +d.v); if (!us.length) { UI.toast('Orduda tümen yok.', 'warn'); return; } R.sel.units = new Set(us.map((u) => u.id)); R.focusOn(us[0].loc, 1.8); UI.close(); UI.renderSel(); R.dirty = 1; };
+  ACT.setgen = (d) => { const c = me(); for (const a of c.armies) if (a.gen === +d.v) a.gen = null; armyOf(d.k).gen = +d.v; UI.sub = null; UI.render(true); };
+  ACT.newgen = () => { const c = me(); if (c.pp < 50) return; c.pp -= 50; const gen = G.newGeneral(c); UI.toast(`${gen.n} göreve başladı.`, 'good'); UI.render(); };
+  ACT.tplnew = () => { const c = me(); const tpl = G.templatesOf(c); const id = 't' + G.st.nextId++; tpl[id] = { n: 'Yeni Tümen ' + (Object.keys(tpl).length - 5), b: { inf: 7, art: 2 }, s: {} }; G.invalidateTemplates(c); UI.sub = 'tpl:' + id; UI.render(true); };
+  ACT.tplb = (d) => { const c = me(); const t = G.templatesOf(c)[d.k]; const n = (t.b[d.e] || 0) + +d.v; if (n <= 0) delete t.b[d.e]; else t.b[d.e] = n; if (!Object.keys(t.b).length) t.b.inf = 1; G.invalidateTemplates(c); UI.render(); };
+  ACT.tpls = (d) => { const c = me(); const t = G.templatesOf(c)[d.k]; t.s = t.s || {}; if (t.s[d.v]) delete t.s[d.v]; else t.s[d.v] = 1; G.invalidateTemplates(c); UI.render(); };
+  ACT.tpldel = (d) => { const c = me(); delete G.templatesOf(c)[d.v]; for (const u of G.st.units) if (u.t === c.tag && u.u === d.v) u.u = 'inf'; c.train = c.train.filter((t) => t.u !== d.v); G.invalidateTemplates(c); UI.sub = null; UI.render(true); };
+  document.addEventListener('change', (e) => { if (e.target.id === 'tpl-name') { const c = me(); const t = G.templatesOf(c)[e.target.dataset.tpl]; if (t) { t.n = e.target.value.trim() || t.n; G.invalidateTemplates(c); } } });
+  ACT.selarmy = () => {
+    const c = me(); const sel = G.st.units.filter((u) => R.sel.units.has(u.id));
+    const a0 = sel[0]?.army;
+    if (a0 && sel.every((u) => u.army === a0)) { UI.open('army'); return; }
+    ACT.armynew();
+  };
   ACT.tdel = (d) => { me().train.splice(+d.v, 1); UI.render(); };
   ACT.allauto = () => { const st = G.st; const mine = st.units.filter((u) => u.t === st.player); const on = !mine.every((u) => u.auto); for (const u of mine) { u.auto = on ? 1 : 0; if (!on) { /* elle */ } } UI.render(); UI.toast(on ? 'Tüm tümenler otomatik kurmaya devredildi.' : 'Tümenler senin komutanda.', 'info'); };
   ACT.selgroup = (d) => { const st = G.st; const loc = +d.v; R.sel.units = new Set(st.units.filter((u) => u.t === st.player && u.loc === loc).map((u) => u.id)); R.focusOn(loc, 2.2); UI.close(); UI.renderSel(); R.dirty = 1; };
@@ -552,6 +749,15 @@
   ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); UI.toast('Harita modu: ' + { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar' }[R.mode]); UI.hud(); };
   ACT.setting = (d) => { if (d.v === 'hist') G.st.opts.hist = G.st.opts.hist ? 0 : 1; else UI.settings[d.v] = UI.settings[d.v] ? 0 : 1; UI.render(); };
   ACT.newgame = () => { UI.close(); G.st.paused = 1; UI.showStart(); };
+  ACT.fullscreen = async () => {
+    const el = document.documentElement;
+    try {
+      if (!document.fullscreenElement) await (el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen());
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+      UI.toast('Yatay mod açık.', 'good');
+    } catch (e) { UI.toast('Bu tarayıcı tam ekranı/kilidi desteklemiyor. Telefonu yan çevirmen yeterli.', 'warn'); }
+    setTimeout(() => R.resize(), 300);
+  };
   ACT.home = () => { const c = me(); if (c && c.cap >= 0) R.focusOn(c.cap, 2); };
   ACT.boxsel = () => { R.boxMode = !R.boxMode; $('btn-box').classList.toggle('on', R.boxMode); UI.toast(R.boxMode ? 'Alan seçimi: harita üzerinde parmağını sürükle.' : 'Alan seçimi kapandı.'); };
 
