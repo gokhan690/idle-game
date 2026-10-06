@@ -125,6 +125,7 @@
     c.stock[e] -= n;
     const w = { id: st.nextId++, e, n, max: G.WING_MAX, r, mis: mis || G.WING_TYPES[e].m[0], q: Object.assign({}, G.stockVec(c, e)) };
     (c.wings || (c.wings = [])).push(w);
+    if (G.bestBaseFor) { G.ensureAirbases(); G.setBase(w, G.bestBaseFor(c, w, r)); if (w.b < 0) G.fixBase(c, w); }
     return w;
   };
   G.disbandWing = (c, id) => { const k = (c.wings || []).findIndex((w) => w.id === id); if (k < 0) return; c.stock[c.wings[k].e] = (c.stock[c.wings[k].e] || 0) + c.wings[k].n; c.wings.splice(k, 1); };
@@ -132,6 +133,13 @@
   // Kanat bu bölgede görev yapabilir mi? (menzil: bölgede ya da komşu bölgede dost toprak)
   G.canBase = (tag, r) => {
     const st = G.st;
+    if (G.baseOk) { // hava üsleri: menzil içinde (900 km) dost üs
+      if (!G._cbCache || G._cbDay !== st.day) { G._cbCache = new Map(); G._cbDay = st.day; }
+      const k = tag + '|' + r; const hit = G._cbCache.get(k); if (hit != null) return hit;
+      let ok = false;
+      for (let i = 0; i < NP && !ok; i++) if (st.prov[i].ab && G.baseOk(tag, i) && G.regionKm(i, r) <= 900) ok = true;
+      G._cbCache.set(k, ok); return ok;
+    }
     const ok = (rr) => regions[rr].nodes.some((n) => n < NP && (st.prov[n].c === tag || (G.friendly(tag, st.prov[n].c) && !G.atWar(tag, st.prov[n].c))));
     if (ok(r)) return true;
     return regions[r].adj.some(ok);
@@ -147,17 +155,21 @@
   G.airTick = () => {
     const st = G.st;
     const R = new Map();
+    G.ensureAirbases(); G._abLoad = null;
     for (const c of Object.values(st.C)) {
       if (!c.alive || !c.wings) continue;
       c.bombed = 0;
       for (const w of c.wings) {
+        if (!G.baseOk(c.tag, w.b)) G.fixBase(c, w);
         // takviye: stoktan
         if (w.n < w.max && (c.stock[w.e] || 0) >= 1) { const k = Math.min(w.max - w.n, c.stock[w.e], 4); w.q = G.blendVec(G.wingQ(c, w), G.stockVec(c, w.e), k / (w.n + k)); w.n += k; c.stock[w.e] -= k; }
         if (w.n < 1 || w.r < 0) continue;
         if (!c.enemies.length && w.mis !== 'sup') continue;
+        const eff = G.wingEff(c, w); w._eff = eff;
+        if (eff <= 0) continue; // menzil dışı ya da üssüz
         let m = R.get(w.r); if (!m) R.set(w.r, (m = {}));
         const a = m[c.tag] || (m[c.tag] = { sup: 0, int: 0, cas: 0, str: 0, nav: 0, wings: [] });
-        a[w.mis] += G.wingPower(c, w); a.wings.push(w);
+        a[w.mis] += G.wingPower(c, w) * eff; a.wings.push(w);
       }
     }
     G.airR = R; G._sup = new Map();
@@ -190,11 +202,13 @@
       if (x.str > 0) {
         const pow = x.str * (0.4 + 0.6 * sup);
         const hit = new Map();
-        for (const n of regions[r].nodes) { if (n >= NP) continue; const pr = st.prov[n]; if (!G.atWar(t, pr.c) || pr.civ + pr.mil + pr.dock === 0) continue; hit.set(pr.o, (hit.get(pr.o) || 0) + pr.civ + pr.mil + pr.dock); }
+        for (const n of regions[r].nodes) { if (n >= NP) continue; const pr = st.prov[n]; if (!G.atWar(t, pr.c) || pr.civ + pr.mil + pr.dock + (pr.ab || 0) === 0) continue; hit.set(pr.o, (hit.get(pr.o) || 0) + pr.civ + pr.mil + pr.dock); }
         for (const [o, fac] of hit) {
           const oc = st.C[o]; if (!oc) continue;
           oc.bombed = Math.min(0.3, (oc.bombed || 0) + 0.0006 * pow * Math.min(1, fac / 10) / Math.max(1, oc.sum.civ + oc.sum.mil) * 10);
           oc.wsX = (oc.wsX || 0) - 0.00004 * Math.min(1, pow / 300);
+          // hava üssü bombardımanı
+          if (G.rand() < 0.003 * Math.min(1, pow / 300)) { const ns = regions[r].nodes.filter((n) => n < NP && st.prov[n].o === o && st.prov[n].ab > 0); if (ns.length) { const pr = st.prov[ns[Math.floor(G.rand() * ns.length)]]; pr.ab--; G._abLoad = null; } }
           // ara sıra fabrika hasarı
           if (G.rand() < 0.002 * Math.min(1, pow / 400)) { const ns = regions[r].nodes.filter((n) => n < NP && st.prov[n].o === o && st.prov[n].mil + st.prov[n].civ > 0); if (ns.length) { const pr = st.prov[ns[Math.floor(G.rand() * ns.length)]]; if (pr.mil > 0) pr.mil--; else pr.civ--; G.needSummary = 1; if (o === st.player) G.log(`Düşman bombardımanı ${G.cname(o)} topraklarında bir fabrikayı yıktı.`, [o], 'bad'); } }
         }
@@ -243,7 +257,18 @@
     // stoktaki uçaklardan yeni kanat
     for (const e of g.PLANES) while ((c.stock[e] || 0) >= 60) if (!G.newWing(c, e, G.homeRegion(c), e === 'bom' ? 'str' : G.WING_TYPES[e].m[0])) break;
     const home = G.homeRegion(c);
-    if (!c.enemies.length) { for (const w of c.wings) { if (!w.manual) { w.r = home; w.mis = w.e === 'bom' ? 'str' : G.WING_TYPES[w.e].m[0]; } } return; }
+    if (!c.enemies.length) {
+      for (const w of c.wings) {
+        if (w.manual) continue;
+        w.r = home; w.mis = w.e === 'bom' ? 'str' : G.WING_TYPES[w.e].m[0];
+        if (!G.inRange(c, w, w.r) || !G.baseOk(c.tag, w.b) || G.baseLoad(w.b) > G.baseCap(w.b)) {
+          let b = G.bestBaseFor(c, w, w.r);
+          if (b < 0 || G.baseCap(b) - G.baseLoad(b) + (w.b === b ? w.max : 0) < w.max) { const f = G.freeBaseNear(c, w, c.cap); if (f >= 0) { b = f; w.r = regionOf[f]; } }
+          if (b >= 0) G.setBase(w, b);
+        }
+      }
+      return;
+    }
     // cephe bölgeleri: düşmana komşu dost eyaletlerin bölgeleri, muharebe sayısıyla ağırlıklı
     const score = new Map();
     for (let i = 0; i < NP; i++) {
@@ -261,11 +286,21 @@
     const navT = [];
     for (const e of c.enemies) for (const f of st.C[e].fleets || []) { const r = regionOf[f.loc]; if (r >= 0 && G.canBase(c.tag, r) && !navT.includes(r)) navT.push(r); }
     let fi = 0, ci = 0;
+    const r0 = new Map(c.wings.map((w) => [w.id, w.r]));
     for (const w of c.wings) {
       if (w.manual) continue;
       if (w.e === 'fig') { w.r = fronts.length ? fronts[fi++ % Math.min(fronts.length, Math.max(1, Math.ceil(c.wings.filter((x) => x.e === 'fig').length / 2)))] : home; w.mis = 'sup'; }
       else if (w.e === 'cas') { if (navT.length && ci % 4 === 3) { w.r = navT[0]; w.mis = 'nav'; } else { w.r = fronts.length ? fronts[ci % Math.min(fronts.length, 3)] : home; w.mis = 'cas'; } ci++; }
-      else { if (bombT.length) { w.r = bombT[0]; w.mis = 'str'; } else if (navT.length) { w.r = navT[0]; w.mis = 'nav'; } else { w.r = fronts[0] ?? home; w.mis = 'cas'; } }
+      else { const bt = bombT.find((r) => G.bestBaseFor(c, w, r) >= 0); if (bt != null) { w.r = bt; w.mis = 'str'; } else if (navT.length) { w.r = navT[0]; w.mis = 'nav'; } else { w.r = fronts[0] ?? home; w.mis = 'cas'; } }
+      // üs: hedef menzilde değilse uygun üsse taşın; yoksa menzildeki en yakın cephe bölgesi
+      if (w.r >= 0 && (r0.get(w.id) !== w.r || !G.inRange(c, w, w.r) || !G.baseOk(c.tag, w.b))) {
+        let b = G.bestBaseFor(c, w, w.r);
+        if (b < 0) { const alt = fronts.find((r) => G.bestBaseFor(c, w, r) >= 0); if (alt != null) { w.r = alt; if (w.e !== 'fig') w.mis = G.WING_TYPES[w.e].m.includes('cas') ? 'cas' : w.mis; b = G.bestBaseFor(c, w, alt); } }
+        if (b >= 0) G.setBase(w, b);
+        else { w.r = home; const hb = G.bestBaseFor(c, w, home); if (hb >= 0) G.setBase(w, hb); }
+      }
+      // kapasite aşımı: aynı bölgeye menzilli boş üs varsa taşın
+      else if (w.b >= 0 && G.baseLoad(w.b) > G.baseCap(w.b)) { const b = G.bestBaseFor(c, w, w.r); if (b >= 0 && b !== w.b && G.baseCap(b) - G.baseLoad(b) >= w.max) G.setBase(w, b); }
     }
   };
 })(window);

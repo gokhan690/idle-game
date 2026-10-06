@@ -163,6 +163,7 @@
     const st = G.st; if (!st || !$('start').hidden) return;
     // hava kanadı için bölge seçimi
     if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
+    if (UI.basePick) { UI.assignWingBase(R.nodeAt(x, y)); R.mapDirty = 1; return; }
     // barış konferansı: bölge seçimi
     if (st.conf && R.mode === 'peace') { UI.confPick(R.nodeAt(x, y)); return; }
     const cnt = R.counterAt(x, y);

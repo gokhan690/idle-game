@@ -351,8 +351,50 @@
   }
 
   // ---------- Hava bölgeleri: adlar ve kanat rozetleri ----------
+  // hava üsleri: kendi ve müttefik üsler, kanat üs→bölge çizgileri, seçili kanadın menzil halkası
+  function drawAirBases(ctx, z) {
+    const st = G.st, c = st.C[st.player]; if (!c) return;
+    const UI = G.UI, pickId = UI && (UI.airPick || UI.basePick);
+    const wings = c.wings || [];
+    const atBase = new Map(); for (const w of wings) if (w.b >= 0) atBase.set(w.b, (atBase.get(w.b) || 0) + 1);
+    // menzil halkası
+    const pw = pickId ? wings.find((w) => w.id === pickId) : null;
+    if (pw && pw.b >= 0) {
+      const s0 = R.toScreen(G.nodeX[pw.b], G.nodeY[pw.b]);
+      const rad = G.wingRangeKm(c, pw) / 6371 * G.M.K / Math.cos(P[pw.b].lat * Math.PI / 180) * z;
+      ctx.beginPath(); ctx.arc(s0.x, s0.y, rad, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(127,200,248,0.08)'; ctx.fill();
+      ctx.setLineDash([6, 4]); ctx.strokeStyle = 'rgba(127,200,248,0.85)'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+    }
+    // kanat çizgileri
+    ctx.strokeStyle = 'rgba(127,200,248,0.55)'; ctx.lineWidth = 1.3; ctx.setLineDash([3, 3]);
+    for (const w of wings) {
+      if (w.b < 0 || w.r < 0) continue;
+      const r = G.AIR.regions[w.r]; const a = R.toScreen(G.nodeX[w.b], G.nodeY[w.b]), b = R.toScreen(r.x, r.y);
+      if (Math.abs(a.x - b.x) > R.w * 1.5) continue;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // üs simgeleri
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 10px "Barlow Semi Condensed", sans-serif';
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i]; if (!pr.ab) continue;
+      const own = pr.c === st.player, ally = !own && G.sameFaction(st.player, pr.c) && !G.atWar(st.player, pr.c), enemy = G.atWar(st.player, pr.c);
+      const nw = atBase.get(i) || 0;
+      if (!own && !ally && !enemy) continue;
+      if (!nw && z < (own ? 1.1 : 1.8)) continue;
+      const p = P[i]; const sc = p.q ? visible(p.q[0], p.q[1] + 6, 20) : visible(p.x, p.y, 20); if (!sc) continue;
+      const txt = '✈' + pr.ab + (nw ? '·' + nw : '');
+      const w = ctx.measureText(txt).width + 8, y = sc.y + 12;
+      ctx.fillStyle = enemy ? 'rgba(70,20,16,0.9)' : own ? 'rgba(14,30,44,0.92)' : 'rgba(26,34,30,0.85)';
+      ctx.fillRect(sc.x - w / 2, y - 7, w, 14);
+      ctx.strokeStyle = enemy ? '#e86a5a' : nw ? '#f2d27a' : '#7fc8f8'; ctx.lineWidth = 1; ctx.strokeRect(sc.x - w / 2, y - 7, w, 14);
+      ctx.fillStyle = enemy ? '#ffc2b8' : '#e8f2fa'; ctx.fillText(txt, sc.x, y + 0.5);
+    }
+  }
   function drawAirRegions(ctx, z) {
     if (R.mode !== 'air') return;
+    drawAirBases(ctx, z);
     const st = G.st, c = st.C[st.player];
     const mine = new Map();
     for (const w of (c && c.wings) || []) { if (w.r < 0) continue; let m = mine.get(w.r); if (!m) mine.set(w.r, (m = { fig: 0, cas: 0, bom: 0, n: 0 })); m[w.e]++; m.n += w.n; }

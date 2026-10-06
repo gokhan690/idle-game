@@ -28,7 +28,7 @@
       let best = -1, bv = 0;
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== c.tag || pr.o !== c.tag) continue;
-        const queued = c.constr.filter((q) => q.p === i && q.b !== 'fort').length;
+        const queued = c.constr.filter((q) => q.p === i && !G.LEVEL_B.has(q.b)).length;
         const free = G.freeSlots(i) - queued;
         if (free <= 0) continue;
         const v = free + P[i].vp * 0.1 + (i === c.cap ? 2 : 0);
@@ -36,6 +36,20 @@
       }
       if (best < 0) break;
       c.constr.push({ b: type, p: best, prog: 0 });
+    }
+    // savaşta cephe gerisine hava üssü (kanatlar menzilde kalsın)
+    if ((atWar || st.tension > 60) && c.wings && c.wings.length >= 3 && c.constr.length < 5 && !c.constr.some((q) => q.b === 'ab') && G.rand() < 0.2) {
+      const near = new Uint8Array(NP);
+      for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c))) { near[i] = 1; for (const j of P[i].a) if (!near[j]) near[j] = 2; }
+      let best = -1, bv = -1;
+      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (near[i] !== 2 || pr.c !== c.tag || (pr.ab || 0) >= 6) continue; const v = P[i].vp + (pr.ab || 0) * 3 + (pr.inf || 2); if (v > bv) { bv = v; best = i; } }
+      if (best >= 0) c.constr.push({ b: 'ab', p: best, prog: 0 });
+    }
+    // dolu üsleri genişlet
+    if (c.wings && c.wings.length && c.constr.length < 7 && c.constr.filter((q) => q.b === 'ab').length < 2 && G.rand() < 0.4) {
+      let best = -1, bv = 0;
+      for (const w of c.wings) { if (w.b == null || w.b < 0 || c.constr.some((q) => q.b === 'ab' && q.p === w.b)) continue; const pr = st.prov[w.b]; if (pr.c !== c.tag || (pr.ab || 0) >= 10) continue; const over = G.baseLoad(w.b) - G.baseCap(w.b); if (over > bv) { bv = over; best = w.b; } }
+      if (best >= 0) c.constr.push({ b: 'ab', p: best, prog: 0 });
     }
     // savaşta sınır tahkimatı
     if (atWar && c.constr.length < 4 && G.rand() < 0.3) {
