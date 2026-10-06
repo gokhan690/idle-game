@@ -197,37 +197,8 @@
   };
 
   // ---------- Hava / deniz savaşı (soyut) ----------
-  function airNaval() {
-    const st = G.st;
-    for (const c of Object.values(st.C)) { c.bombed = 0; c.airMod = 1; }
-    // stratejik bombardıman: her ülkenin bombardıman uçakları seçtiği (ya da en güçlü) düşmanı vurur
-    const bombIn = {};
-    for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.enemies.length || !(c.stock.bom > 1)) continue;
-      const a = c.air || {};
-      if (a.bomb === 'off') continue;
-      let tgt = a.bomb && a.bomb !== 'auto' && G.atWar(c.tag, a.bomb) ? a.bomb : null;
-      if (!tgt) tgt = c.enemies.reduce((b, t) => ((st.C[t].sum.mil || 0) > (st.C[b]?.sum.mil || -1) ? t : b), c.enemies[0]);
-      bombIn[tgt] = (bombIn[tgt] || 0) + c.stock.bom * G.lvl(c, 'bom');
-      // bombardıman kayıpları hedefin avcılarına göre
-      const tf = (st.C[tgt].stock.fig || 0) * G.lvl(st.C[tgt], 'fig');
-      c.stock.bom = Math.max(0, c.stock.bom * (1 - 0.003 * tf / (tf + c.stock.bom + 1)));
-    }
-    for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.enemies.length) continue;
-      let eAir = 0;
-      for (const t of c.enemies) eAir += G.airPower(st.C[t]);
-      const myAir = G.airPower(c);
-      const ratio = eAir / (myAir + eAir + 1);
-      for (const k of g.PLANES) c.stock[k] = Math.max(0, c.stock[k] * (1 - 0.0012 - 0.004 * ratio));
-      const eBom = bombIn[c.tag] || 0;
-      c.bombed = Math.min(0.25, (eBom / ((c.stock.fig || 0) * G.lvl(c, 'fig') * 2 + 60)) * 0.06);
-      if (eBom) c.wsX -= 0.0002 * Math.min(1, eBom / 500);
-      const s = myAir / (myAir + eAir + 1);
-      let aa = 0; for (const t of c.enemies) aa = Math.max(aa, st.C[t].mods.aa || 0);
-      c.airMod = 1 + 0.4 * (s - 0.5) * (s > 0.5 ? 1 - aa : 1);
-    }
-  }
+  // Hava savaşı: airwar.js (bölgeler, kanatlar, görevler)
+  function airNaval() { G.airTick(); }
 
   // ---------- Hareket ve muharebe ----------
   function moveAndFight() {
@@ -345,6 +316,7 @@
     const aaOf = (L) => Math.min(0.5, L.reduce((s, u) => s + (u._s.t.aa || 0), 0) / L.length * 2);
     const airAdj = (mod, enemyAA) => (mod > 1 ? 1 + (mod - 1) * (1 - enemyAA) : mod);
     const aAA = aaOf(A), dAA = aaOf(D);
+    const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
     let hitD = 0, hitA = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
@@ -353,14 +325,14 @@
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
+      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= airAdj(c.airMod || 1, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decrypt && c.decrypt[attTag] > st.day ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decrypt && c.decrypt[attTag] > st.day ? 1.12 : 1);
       if (s.arm > aPrc) atk *= 1.25;
       hitA += atk;
     }
@@ -404,7 +376,7 @@
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + u.org / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
-      A, D, atts, defs, width, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: st.C[attTag].airMod || 1, dAir: st.C[defs[0].t].airMod || 1 });
+      A, D, atts, defs, width, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
@@ -551,6 +523,7 @@
       if (tags[i] === st.player) { G.playerAuto(c, i); continue; }
       if ((st.day + i) % 2 === 0) G.aiMilitary(c);
       if ((st.day + i) % 7 === 0) G.aiEconomy(c);
+      if ((st.day + i) % 10 === 0) G.aiAir(c);
       if ((st.day + i) % 15 === 0) G.aiDiplomacy(c);
     }
     moveAndFight();

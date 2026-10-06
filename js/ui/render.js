@@ -35,7 +35,7 @@
   R.mix = mix;
 
   // ---------- Grup yolları (sahiplik değişince yeniden) ----------
-  let fillGroups = new Map(), occGroups = new Map(), countryBorder = new Path2D(), provBorder = new Path2D(), labels = [];
+  let fillGroups = new Map(), occGroups = new Map(), countryBorder = new Path2D(), provBorder = new Path2D(), regionBorder = new Path2D(), labels = [];
   function rebuild() {
     const st = G.st;
     fillGroups = new Map(); occGroups = new Map();
@@ -44,6 +44,13 @@
       if (R.mode === 'terrain') return 'te' + P[i].te;
       if (R.mode === 'ind') { const v = pr.civ + pr.mil + pr.dock; return 'ind' + Math.min(6, Math.ceil(v / 2)); }
       if (R.mode === 'fac') { const f = st.C[pr.c]?.fac; return f ? 'fac:' + f : 'nofac:' + pr.c; }
+      if (R.mode === 'air') {
+        const r = G.regionOf(i), pl = st.player;
+        const m = G.airR && G.airR.get(r);
+        const contested = m && Object.keys(m).some((t) => t === pl || G.sameFaction(t, pl)) && Object.keys(m).some((t) => G.atWar(t, pl));
+        if (contested) { const v = G.airSup(pl, r); return 'airs' + Math.min(4, Math.floor(v * 5)); }
+        return 'airn' + (r % 6);
+      }
       if (R.mode === 'sup') {
         const pl = st.player, av = G.supAvail[pl];
         if (!av || !(pr.c === pl || (G.friendly(pl, pr.c) && !G.atWar(pl, pr.c)))) return 'nosup:' + pr.c;
@@ -59,11 +66,12 @@
       const pr = st.prov[i];
       if (R.mode === 'pol' && pr.o !== pr.c) { let o = occGroups.get(pr.o); if (!o) occGroups.set(pr.o, (o = hasAdd ? new Path2D() : [])); if (hasAdd) o.addPath(provPath[i]); else o.push(i); }
     }
-    countryBorder = new Path2D(); provBorder = new Path2D();
+    countryBorder = new Path2D(); provBorder = new Path2D(); regionBorder = new Path2D();
     for (const bd of borders) {
       if (bd.b < 0) continue;
       const ca = st.prov[bd.a].c, cb = st.prov[bd.b].c;
       addLine(ca !== cb ? countryBorder : provBorder, bd.pts);
+      if (R.mode === 'air' && G.regionOf(bd.a) !== G.regionOf(bd.b)) addLine(regionBorder, bd.pts);
     }
     buildLabels();
     R.mapDirty = 0;
@@ -152,6 +160,8 @@
     return c;
   }
   const stripeCache = new Map();
+  const AIRS_COLORS = ['#a8322a', '#c8682f', '#c9a640', '#7ea54c', '#3f8f4f'];
+  const AIRN_COLORS = ['#4d5a6a', '#56634e', '#665a4c', '#4f5f63', '#5d5266', '#5a604a'];
   const SUP_COLORS = ['#a8322a', '#cc6a2c', '#d6a73a', '#a9b54a', '#6fa84d', '#3f8f4f'];
   const IND_COLORS = ['#2e3a2a', '#4b5a33', '#6b7a35', '#94913a', '#c0a03c', '#d98a37', '#e0663a'];
 
@@ -160,6 +170,7 @@
     const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
     if (!st) return;
     if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
+    if (R.mode === 'air' && R.airDay !== (st.day / 5 | 0)) { R.airDay = st.day / 5 | 0; R.mapDirty = 1; }
     if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 180)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); }
     if (G.wxDirty) { buildWeather(); G.wxDirty = 0; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -180,6 +191,7 @@
         if (R.mode === 'terrain') col = g.TERRAIN[+k.slice(2)].c;
         else if (R.mode === 'ind') col = IND_COLORS[+k.slice(3)];
         else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
+        else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else col = R.ccolor(k);
         if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
@@ -206,6 +218,7 @@
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
+      if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); ctx.stroke(regionBorder); ctx.setLineDash([]); }
       drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
@@ -225,6 +238,7 @@
     drawBattles(ctx);
     drawUnits(ctx, z);
     drawArmyTags(ctx, z);
+    drawAirRegions(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
   };
@@ -249,22 +263,27 @@
       }
       ctx.letterSpacing = '0px';
     }
-    // şehirler
-    if (z > 1.7) {
+    // şehirler: büyükten küçüğe, çakışmayanlar yazılır; yakınlaştıkça daha çok şehir
+    if (z > 1.4) {
+      const minVp = z > 3.4 ? 1 : z > 2.4 ? 2 : z > 1.9 ? 3 : 10;
+      if (!R._cityOrder) R._cityOrder = P.map((_, i) => i).filter((i) => !P[i].n.startsWith('#')).sort((a, b) => P[b].vp - P[a].vp);
+      const boxes = [];
+      const caps = new Set(); for (const c of Object.values(st.C)) if (c.alive && c.cap >= 0) caps.add(c.cap);
       ctx.font = `500 ${z > 4 ? 12 : 11}px "Barlow Semi Condensed", sans-serif`;
-      for (let i = 0; i < NP; i++) {
+      for (const i of R._cityOrder) {
         const p = P[i];
-        const minVp = z > 4.5 ? 1 : z > 3 ? 3 : 10;
-        if (p.vp < minVp || p.n.startsWith('#')) continue;
-        const s = visible(p.x, p.y, 40); if (!s) continue;
-        const isCap = Object.values(st.C).some((c) => c.alive && c.cap === i);
+        if (p.vp < minVp) break;
+        const s = p.q ? visible(p.q[0], p.q[1], 40) : visible(p.x, p.y, 40); if (!s) continue;
+        const isCap = caps.has(i);
         const r = isCap ? 4 : p.vp >= 10 ? 3 : 2;
+        const tw = ctx.measureText(p.n).width;
+        const bx = { x0: s.x - tw / 2 - 2, x1: s.x + tw / 2 + 2, y0: s.y - 14, y1: s.y + 10 };
+        if (boxes.some((b) => bx.x0 < b.x1 && bx.x1 > b.x0 && bx.y0 < b.y1 && bx.y1 > b.y0)) { if (!isCap && p.vp < 10) continue; }
+        boxes.push(bx);
         ctx.fillStyle = isCap ? '#f2d27a' : '#efe9d8'; ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = 1.2;
         ctx.beginPath(); if (isCap) { starPath(ctx, s.x, s.y - 9, r + 1.5); } else ctx.arc(s.x, s.y - 9, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        if (z > 2.4 || p.vp >= 10) {
-          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.strokeText(p.n, s.x, s.y + 3);
-          ctx.fillStyle = '#efe9d8'; ctx.fillText(p.n, s.x, s.y + 3);
-        }
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.strokeText(p.n, s.x, s.y + 3);
+        ctx.fillStyle = '#efe9d8'; ctx.fillText(p.n, s.x, s.y + 3);
       }
     }
   }
@@ -298,6 +317,32 @@
       ctx.fillStyle = 'rgba(10,12,9,0.85)'; ctx.fillRect(s.x - r, s.y - r - 12, r * 2, r * 2);
       ctx.strokeStyle = big ? '#f2d27a' : '#cfe3b0'; ctx.lineWidth = 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
       ctx.fillStyle = '#efe9d8'; ctx.fillText(String(Math.round(cap)), s.x, s.y - 12);
+    }
+  }
+
+  // ---------- Hava bölgeleri: adlar ve kanat rozetleri ----------
+  function drawAirRegions(ctx, z) {
+    if (R.mode !== 'air') return;
+    const st = G.st, c = st.C[st.player];
+    const mine = new Map();
+    for (const w of (c && c.wings) || []) { if (w.r < 0) continue; let m = mine.get(w.r); if (!m) mine.set(w.r, (m = { fig: 0, cas: 0, bom: 0, n: 0 })); m[w.e]++; m.n += w.n; }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const r of G.AIR.regions) {
+      const s = visible(r.x, r.y, 60); if (!s) continue;
+      const m = mine.get(r.id);
+      if (z > 0.9 || m) {
+        ctx.font = `600 ${r.land ? 11 : 10}px "Barlow Semi Condensed", sans-serif`;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(10,12,9,0.85)'; ctx.strokeText(r.n, s.x, s.y - (m ? 16 : 0));
+        ctx.fillStyle = r.land ? '#efe9d8' : '#a9c8e6'; ctx.fillText(r.n, s.x, s.y - (m ? 16 : 0));
+      }
+      if (m) {
+        const label = ['fig', 'cas', 'bom'].filter((e) => m[e]).map((e) => ({ fig: '✈', cas: '⬇', bom: '✦' })[e] + m[e]).join(' ');
+        ctx.font = '700 12px "Barlow Semi Condensed", sans-serif';
+        const w = ctx.measureText(label).width + 14;
+        ctx.fillStyle = 'rgba(16,22,30,0.92)'; ctx.fillRect(s.x - w / 2, s.y - 9, w, 18);
+        ctx.strokeStyle = '#7fc8f8'; ctx.lineWidth = 1.4; ctx.strokeRect(s.x - w / 2, s.y - 9, w, 18);
+        ctx.fillStyle = '#e8f2fa'; ctx.fillText(label, s.x, s.y);
+      }
     }
   }
 

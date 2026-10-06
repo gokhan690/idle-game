@@ -147,7 +147,7 @@
     { id: 'barbarossa', date: '1941-06-22', actor: 'GER', title: 'Barbarossa Harekâtı',
       text: 'Tarihin en büyük işgal ordusu Sovyet sınırında. Saldırı emri verilsin mi?',
       cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.st.player === 'GER' || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
-      opts: [{ n: 'Sovyetler Birliği\'ne saldır', fx: () => { delete G.st.pacts[G.pairKey('GER', 'SOV')]; war('GER', 'SOV'); G.timedSpirit('SOV', 'barb_surprise', 120); G.timedSpirit('GER', 'barb_drive', 160); if (alive('FIN') && ai('FIN') && !G.atWar('FIN', 'SOV')) { joinAxis('FIN'); } } }, { n: 'Bekle', fx: () => {} }] },
+      opts: [{ n: 'Sovyetler Birliği\'ne saldır', fx: () => { delete G.st.pacts[G.pairKey('GER', 'SOV')]; war('GER', 'SOV'); G.timedSpirit('SOV', 'barb_surprise', 90); G.timedSpirit('GER', 'barb_drive', 160); if (alive('FIN') && ai('FIN') && !G.atWar('FIN', 'SOV')) { joinAxis('FIN'); } } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'pearl', date: '1941-12-07', actor: 'JAP', title: 'Pearl Harbor',
       text: 'ABD petrol ambargosu uyguluyor. Donanma, Pasifik Filosu\'na ani bir baskın planladı.',
       cond: () => alive('JAP') && alive('USA') && !G.atWar('JAP', 'USA'),

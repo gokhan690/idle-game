@@ -161,6 +161,8 @@
 
   function onTap(x, y) {
     const st = G.st; if (!st || !$('start').hidden) return;
+    // hava kanadı için bölge seçimi
+    if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
     const cnt = R.counterAt(x, y);
     const n = cnt ? cnt.n : R.nodeAt(x, y);
     const selectAt = (node) => {
@@ -203,7 +205,7 @@
     if (R.sel.fleet) {
       const c = st.C[st.player]; const f = c.fleets.find((x) => x.id === R.sel.fleet);
       if (f && n >= NP) {
-        const p = G.fleetPath(f.loc, n);
+        const p = G.fleetPath(f.loc, n, st.player);
         if (p) { f.path = p; f.prog = 0; if (f.mis === 'patrol' || f.mis === 'raid') f.mis = 'hold'; UI.toast(`${f.n} yola çıktı (${p.length} bölge).`); }
         else UI.toast('Bu deniz bölgesine yol yok.', 'warn');
         UI.renderSel(); R.dirty = 1; return;

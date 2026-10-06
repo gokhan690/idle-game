@@ -118,7 +118,7 @@
     wehrmacht: { n: 'Wehrmacht Doktrini', d: 'Kara saldırısı +%12, zırhlı saldırı +%10, moral +%10 (1942\'ye dek)', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
     sichelschnitt: { n: 'Orak Darbesi', d: 'Batı Seferi: kara saldırısı +%20, zırhlı saldırı +%15, hız +%10', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
     fra_shock: { n: 'Savaş Şoku', d: 'Savunma -%15, moral -%15', fx: { landDef: -0.15, org: -0.15 } },
-    barb_surprise: { n: 'Barbarossa Baskını', d: 'Savunma -%25, moral -%20', fx: { landDef: -0.25, org: -0.2 } },
+    barb_surprise: { n: 'Barbarossa Baskını', d: 'Savunma -%20, moral -%15', fx: { landDef: -0.2, org: -0.15 } },
     barb_drive: { n: 'Doğu Seferi', d: 'Kara saldırısı +%15, zırhlı saldırı +%10', fx: { landAtk: 0.15, armAtk: 0.1 } },
     blitz: { n: 'Yıldırım Savaşı Ruhu', d: 'Zırhlı saldırı +%10, hız +%5', fx: { armAtk: 0.1, speed: 0.05 } },
     ethiopia: { n: 'Habeşistan Harekâtı', d: 'Savaş desteği +%10, siyasi güç -%10', fx: { ws: 0.1, ppM: -0.1 } },

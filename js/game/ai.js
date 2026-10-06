@@ -91,8 +91,10 @@
     const units = st.units.filter((u) => u.t === c.tag).length + c.train.length;
     const s = c.sum;
     const atWar = c.enemies.length > 0;
-    const target = Math.min(c.major ? 220 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9)));
-    if (units >= target || c.train.length >= Math.max(2, Math.ceil(s.mil / 4))) return;
+    // otoriter büyük güçler gerginlik yükseldikçe hızla silahlanır (1937-39 Almanya, Japonya, İtalya)
+    const rearm = c.major && (c.ideo === 'fas' || c.ideo === 'com') && st.tension > 25 ? 1.35 : 1;
+    const target = Math.min(c.major ? 260 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm));
+    if (units >= target || c.train.length >= Math.max(2, Math.ceil(s.mil / (rearm > 1 ? 3 : 4)))) return;
     if ((c.mpAvail || 0) < 15) return;
     let type = 'inf';
     const r = G.rand();
@@ -110,6 +112,7 @@
 
   G.playerAuto = (c, i) => {
     const st = G.st;
+    if ((st.day + i) % 10 === 0) { if (c.auto.air) G.aiAir(c); else if (!c.wings) G.initWings(c); }
     if ((st.day + i) % 2 === 0) {
       if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
       // ordular: cephe ve taarruz planına göre komutan yönetir
