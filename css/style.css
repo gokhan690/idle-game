@@ -293,7 +293,7 @@ button.item:active { background: var(--field-3); }
 .fdetail .d { color: #d9d3bf; font-size: 13.5px; }
 .fn.sel { outline: 2px solid #fff; outline-offset: 1px; }
 @media (orientation: landscape) and (max-height: 560px) {
-  .ftree { max-height: calc(100vh - 210px); }
+  .ftree { max-height: calc(100vh - 150px); }
   .sheet-head { padding-top: 4px; padding-bottom: 4px; }
   .sheet-body { padding-top: 8px; gap: 10px; }
   .fdetail { bottom: -18px; }
@@ -347,3 +347,9 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 #map-tools #btn-menu { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2'%3E%3Cpath d='M4 7h16M4 12h16M4 17h16'/%3E%3C/svg%3E"); }
 .wic { display: inline-block; width: 18px; text-align: center; color: #7fc8f8; }
 .item.active { border-color: var(--brass); }
+
+.ftbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ftree.compact .fn .d { display: none; }
+.ftree.compact .fn .t { font-size: 11px; }
+.ftree.compact .fn { padding: 4px 5px; }
+.fn.flash { outline: 3px solid #fff; outline-offset: 2px; }

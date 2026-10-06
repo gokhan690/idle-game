@@ -149,7 +149,7 @@
     html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
+    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / G.focusDays(cur))}<div class="d">${Math.ceil(G.focusDays(cur) - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Odaklar 35 ya da 70 günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
     fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç${g.FOCUS_NATIONAL[c.tag] ? ' · ulusal ağaç' : ''}</button>`;
     html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length}/${G.focusList(c).length} tamamlandı`);
     // danışmanlar
@@ -196,7 +196,8 @@
 
   function focusTree(c) {
     const list = G.focusList(c);
-    const NW = 128, NH = 74, GX = 140, GY = 104, PAD = 14;
+    const k = UI.ftZ || 1;
+    const NW = Math.round(128 * k), NH = Math.round((k < 0.8 ? 44 : 74) * Math.max(k, 0.8)), GX = Math.round(140 * k), GY = Math.round((k < 0.8 ? 66 : 104) * Math.max(k, 0.8)), PAD = 14;
     const maxX = Math.max(...list.map((f) => f.x)), maxY = Math.max(...list.map((f) => f.y));
     const W = Math.ceil((maxX + 1) * GX + PAD * 2), H = Math.ceil((maxY + 1) * GY + PAD * 2);
     const pos = (f) => ({ x: PAD + f.x * GX, y: PAD + f.y * GY });
@@ -226,15 +227,17 @@
       const p = pos(f);
       const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir; ⇄ işaretliler birbirini dışlar. Ağacı parmağınla her yöne kaydır, bir odağa dokunup ayrıntısını gör ve “Başlat” de.</p>';
-    html += `<div class="ftree" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(G.focusDays(cur) - c.focus.p)} gün</div>${bar(c.focus.p / G.focusDays(cur))}</div></div>` : '<p class="muted small" style="margin:0">Parlak = seçilebilir · ⇄ birbirini dışlar · odağa dokun → Başlat</p>';
+    const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
+    html += `<div class="ftbar"><button class="btn sm" data-act="ftzoom" data-v="-1" aria-label="Uzaklaştır">−</button><button class="btn sm" data-act="ftzoom" data-v="1" aria-label="Yakınlaştır">+</button><button class="btn sm" data-act="ftnext">Seçilebilir odaklar (${nAvail}) ›</button><span class="muted small">${Object.keys(c.focus.done).length}/${list.length} tamamlandı</span></div>`;
+    html += `<div class="ftree ${k < 0.8 ? 'compact' : ''}" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
     const sf = UI.fsel ? G.focusById(c, UI.fsel) : null;
     if (sf) {
       const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
-      const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.` : avail ? `${g.FOCUS_DAYS} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
+      const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(G.focusDays(sf) - c.focus.p)} gün kaldı.` : avail ? `${G.focusDays(sf)} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
       html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div><div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
@@ -887,6 +890,14 @@
     UI.open('air'); return true;
   };
 
+  ACT.ftzoom = (d) => { const Z = [0.5, 0.65, 0.8, 1]; const i = Z.indexOf(UI.ftZ || 1); UI.ftZ = Z[Math.max(0, Math.min(Z.length - 1, i + +d.v))]; UI.render(false); };
+  ACT.ftnext = () => {
+    const ft = document.getElementById('ftree'); if (!ft) return;
+    const L = [...ft.querySelectorAll('.fn.avail')]; if (!L.length) { UI.toast('Şu an seçilebilir odak yok.'); return; }
+    UI.ftIdx = ((UI.ftIdx ?? -1) + 1) % L.length; const n = L[UI.ftIdx];
+    ft.scrollTo({ left: Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2), top: Math.max(0, n.offsetTop - 40), behavior: 'smooth' });
+    n.classList.add('flash'); setTimeout(() => n.classList.remove('flash'), 900);
+  };
   ACT.panel = (d) => UI.open(d.p);
   ACT.alert = (d) => { UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();

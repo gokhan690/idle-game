@@ -148,6 +148,7 @@
     return (flCache[key] = list);
   };
   G.focusById = (c, id) => G.focusList(c).find((f) => f.id === id);
+  G.focusDays = (f) => (f && f.days) || g.FOCUS_DAYS;
   G.focusReq = (c, f) => {
     if (!f.req) return { ok: true };
     const st = G.st;
@@ -170,7 +171,7 @@
     const st = G.st; const f = G.focusById(c, id);
     c.focus.done[id] = 1; c.focus.cur = null; c.focus.p = 0;
     if (!f) return;
-    const SPECIAL = new Set(['addCiv', 'addMil', 'addDock', 'addPlanes', 'addBombers', 'addCas', 'forts', 'tech', 'tech2', 'spirit', 'rmSpirit', 'pop', 'rb', 'tension', 'fn', 'ships', 'stock', 'units']);
+    const SPECIAL = new Set(['addCiv', 'addMil', 'addDock', 'addPlanes', 'addBombers', 'addCas', 'forts', 'tech', 'tech2', 'spirit', 'rmSpirit', 'pop', 'rb', 'tension', 'fn', 'ships', 'stock', 'units', 'addInfra', 'addConv', 'synth']);
     for (const [k, v] of Object.entries(f.fx)) {
       if (!SPECIAL.has(k)) { if (typeof v === 'number') c.fmods[k] = (c.fmods[k] || 0) + v; continue; }
       switch (k) {
@@ -190,6 +191,8 @@
         case 'ships': for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break;
         case 'stock': for (const [e, n] of Object.entries(v)) c.stock[e] = (c.stock[e] || 0) + n; break;
         case 'units': for (const [t, n] of Object.entries(v)) for (let i = 0; i < n; i++) { const u = G.makeUnit(c.tag, t, c.cap, 1); st.units.push(u); } G.rebuildUnitIndex(); break;
+        case 'addInfra': G.FX.infra(c, v); break;
+        case 'addConv': c.ships.conv = (c.ships.conv || 0) + v; break;
         case 'fn': try { G.FX[v[0]](c, ...v.slice(1)); } catch (e) { console.error('focus fx', id, e); } break;
       }
     }
@@ -256,6 +259,14 @@
     leader(c, ideo) { G.setIdeology(c, ideo); },
     leaderName(c, name) { c.leader = name; G.log(`${G.cname(c.tag)}: ${name} yönetimi devraldı.`, [c.tag], 'major'); },
     gift(c, list, eq) { for (const t of list) if (alive(t)) for (const [e, n] of Object.entries(eq)) G.st.C[t].stock[e] = (G.st.C[t].stock[e] || 0) + n; },
+    infra(c, n) {
+      const st = G.st; G.ensureInfra && G.ensureInfra();
+      const L = []; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === c.tag && pr.o === c.tag && (pr.inf || 1) < 5) L.push(i); }
+      L.sort((a, b) => (P[b].vp - P[a].vp) || ((st.prov[a].inf || 1) - (st.prov[b].inf || 1)));
+      for (const i of L.slice(0, n)) st.prov[i].inf = Math.min(5, (st.prov[i].inf || 1) + 1);
+      G.supDirty = 1;
+    },
+    decryptAll(c) { c.decryptAll = 1; },
     general(c) { const gen = G.newGeneral(c, { good: 1 }); if (c.tag === G.st.player) G.log(`Yeni komutan: ${gen.n}`, [c.tag], 'good'); },
     fortRegion(c, region, lv) {
       const st = G.st;

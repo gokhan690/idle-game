@@ -126,7 +126,7 @@
     // odak
     if (c.focus.cur) {
       c.focus.p += 1;
-      if (c.focus.p >= g.FOCUS_DAYS) G.completeFocus(c, c.focus.cur);
+      if (c.focus.p >= G.focusDays(G.focusById(c, c.focus.cur))) G.completeFocus(c, c.focus.cur);
     }
     // gerekçe
     if (c.just) {
@@ -325,14 +325,14 @@
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
+      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decrypt && c.decrypt[attTag] > st.day ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       if (s.arm > aPrc) atk *= 1.25;
       hitA += atk;
     }
