@@ -21,6 +21,19 @@
   P.forEach((p, i) => { p.a.forEach((j) => link(i, j)); p.s.forEach((s) => link(i, NP + s)); });
   SEAS.forEach((s, i) => s.a.forEach((j) => link(NP + i, NP + j)));
   G.adj = adj; G.nodeX = nodeX; G.nodeY = nodeY;
+  // Boğazlar ve kanallar: kontrol eyaletlerinden biri düşmandaysa geçilemez (HOI4)
+  G.STRAITS = M.straits || [];
+  const straitMap = new Map();
+  // aynı geçide birden çok boğaz/kanal düşebilir (ör. Danimarka Boğazları ve Kiel Kanalı): biri açıksa geçilir
+  const addS = (k, st) => { const L = straitMap.get(k); if (L) { if (!L.includes(st)) L.push(st); } else straitMap.set(k, [st]); };
+  for (const st of G.STRAITS) for (const [x, y] of st.e || [[st.a, st.b]]) { const a = NP + x, b = NP + y; addS(a * 8192 + b, st); addS(b * 8192 + a, st); }
+  G.straitAt = (a, b) => (straitMap.get(a * 8192 + b) || [])[0];
+  const closed = (tag, s) => { for (const i of s.p) { const c = G.st.prov[i].c; if (c !== tag && G.atWar(tag, c)) return true; } return false; };
+  G.straitBlocked = (tag, a, b) => {
+    if (a < NP || b < NP) return false;
+    const L = straitMap.get(a * 8192 + b); if (!L) return false;
+    return L.every((s) => closed(tag, s));
+  };
   G.isSea = (n) => n >= NP;
   const HW = M.W / 2;
   G.dist = (a, b) => { let dx = nodeX[a] - nodeX[b]; if (dx < 0) dx = -dx; if (dx > HW) dx = M.W - dx; const dy = nodeY[a] - nodeY[b]; return Math.sqrt(dx * dx + dy * dy); };
@@ -105,6 +118,7 @@
       const gn = gScore[n];
       for (const [b] of adj[n]) {
         if (b >= NP && !opts.naval) continue;
+        if (b >= NP && n >= NP && G.straitBlocked(tag, n, b)) continue;
         if (b < NP && b !== to && !G.canEnter(tag, b)) continue;
         if (b < NP && b !== to && opts.avoidHostile && G.hostileIn(b, tag)) continue;
         // denizden geçiş: kara düğümlerinden denize sadece kıyıdan
@@ -135,6 +149,7 @@
       if (d > fDist[m]) continue;
       for (const [n] of adj[m]) {
         if (n >= NP && !opts.naval) continue;
+        if (n >= NP && m >= NP && G.straitBlocked(tag, n, m)) continue;
         if (n < NP && (!G.canEnter(tag, n) || G.atWar(tag, G.st.prov[n].c))) continue;
         const c = d + G.edgeDays(n, m, spd);
         if (c < fDist[n]) { fDist[n] = c; fNext[n] = m; fSrc[n] = fSrc[m]; h.push(n, c); }
@@ -183,8 +198,8 @@
   G.bestLevel = (c, e) => c.mods['eq_' + e] || 1;
   G.lvl = (c, e) => (c.sl && c.sl[e]) || c.mods['eq_' + e] || 1;
   G.airPower = (c) => {
-    const m = c.mods, s = c.stock, casOn = !c.air || c.air.cas !== 0;
-    return ((s.fig || 0) * G.lvl(c, 'fig') + (casOn ? (s.cas || 0) * G.lvl(c, 'cas') * 0.6 : 0) + (s.bom || 0) * G.lvl(c, 'bom') * 0.3) * (1 + (m.air || 0));
+    const m = c.mods;
+    return (G.planes(c, 'fig') * G.lvl(c, 'fig') + G.planes(c, 'cas') * G.lvl(c, 'cas') * 0.6 + G.planes(c, 'bom') * G.lvl(c, 'bom') * 0.3) * (1 + (m.air || 0));
   };
   G.shipsPower = (c, sh) => {
     const m = c.mods; let v = 0;

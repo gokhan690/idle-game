@@ -34,7 +34,7 @@
     if (f && e !== 'ss') f.sh[e] = (f.sh[e] || 0) + 1;
     else { const sf = (c.fleets || []).find((x) => x.sh.ss > 0 && e === 'ss'); if (sf) sf.sh.ss++; else c.ships[e] = (c.ships[e] || 0) + 1; }
   };
-  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * ((c.stock.fig || 0) > 50 ? 1 : 0.3));
+  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3));
   G.fleetShips = (f) => SH.reduce((a, e) => a + (f.sh[e] || 0), 0);
 
   // Bir bölgedeki deniz üstünlüğü (0..1): dost / (dost + düşman), komşu bölgeler yarım ağırlık
@@ -56,18 +56,18 @@
     return mine / (mine + theirs);
   };
 
-  G.fleetPath = (from, to) => {
-    // yalnızca deniz düğümleri
+  G.fleetPath = (from, to, tag) => {
+    // yalnızca deniz düğümleri; düşman kontrolündeki boğazlardan geçilmez
     if (from === to) return [];
     const prev = new Map([[from, -1]]); const q = [from];
     for (let k = 0; k < q.length; k++) {
       const n = q[k]; if (n === to) break;
-      for (const [b] of G.adj[n]) if (b >= NP && !prev.has(b)) { prev.set(b, n); q.push(b); }
+      for (const [b] of G.adj[n]) if (b >= NP && !prev.has(b) && !(tag && G.straitBlocked(tag, n, b))) { prev.set(b, n); q.push(b); }
     }
     if (!prev.has(to)) return null;
     const path = []; let n = to; while (n !== from) { path.push(n); n = prev.get(n); } return path.reverse();
   };
-  G.zoneDist = (from, to) => { const p = G.fleetPath(from, to); return p ? p.length : 99; };
+  G.zoneDist = (from, to, tag) => { const p = G.fleetPath(from, to, tag); return p ? p.length : 99; };
 
   G.navalTick = () => {
     const st = G.st;
@@ -78,6 +78,7 @@
       c.fleets = c.fleets.filter((f) => G.fleetShips(f) >= 0.5);
       for (const f of c.fleets) {
         if (!f.path.length) continue;
+        if (G.straitBlocked(c.tag, f.loc, f.path[0])) { const sn = G.straitAt(f.loc, f.path[0])?.n || 'Boğaz'; f.path = []; f.prog = 0; if (c.tag === st.player) G.log(`${f.n}: ${sn} düşman kontrolünde, geçilemiyor.`, [c.tag], 'warn'); continue; }
         f.prog += g.SHIP_SPEED;
         const need = G.dist(f.loc, f.path[0]);
         if (f.prog >= need) { f.loc = f.path.shift(); f.prog = 0; }
@@ -109,7 +110,7 @@
       hit(allies, pb, pa); hit(enemies, pa, pb);
       G.navalBattles.push({ loc: zone, a: allies[0][0].tag, b: enemies[0][0].tag, adv: pa / (pa + pb) });
       // zayıf taraf limana çekilir
-      const retreat = (side, ownP, oppP) => { if (ownP < oppP * 0.35) for (const [c, f] of side) { const p = G.fleetPath(f.loc, f.home); if (p) { f.path = p; f.prog = 0; } } };
+      const retreat = (side, ownP, oppP) => { if (ownP < oppP * 0.35) for (const [c, f] of side) { const p = G.fleetPath(f.loc, f.home, c.tag); if (p) { f.path = p; f.prog = 0; } } };
       retreat(allies, pa, pb); retreat(enemies, pb, pa);
       const pl = st.player;
       G._nbLog = G._nbLog || {};
@@ -138,11 +139,11 @@
       for (const t of c.enemies) for (const ef of st.C[t].fleets || []) {
         const ep = G.fleetPower(st.C[t], ef);
         if (myP < ep * (f.mis === 'strike' ? 0.9 : 1.2)) continue;
-        const d = G.zoneDist(f.loc, ef.loc);
+        const d = G.zoneDist(f.loc, ef.loc, c.tag);
         if (d < bd && d <= (f.mis === 'strike' ? 14 : 6)) { bd = d; best = ef; }
       }
-      if (best) { const p = G.fleetPath(f.loc, best.loc); if (p) { f.path = p; f.prog = 0; } return; }
-      if (f.loc !== f.home && G.zoneDist(f.loc, f.home) > 6) { const p = G.fleetPath(f.loc, f.home); if (p) f.path = p; }
+      if (best) { const p = G.fleetPath(f.loc, best.loc, c.tag); if (p) { f.path = p; f.prog = 0; } return; }
+      if (f.loc !== f.home && G.zoneDist(f.loc, f.home, c.tag) > 6) { const p = G.fleetPath(f.loc, f.home, c.tag); if (p) f.path = p; }
     } else if (f.mis === 'raid') {
       if (!c.enemies.length) return;
       // düşman kıyısına komşu bir bölge
@@ -150,19 +151,19 @@
         let best = -1, bd = 99;
         for (let s = 0; s < SEAS.length; s++) {
           if (!SEAS[s].p.some((i) => G.atWar(c.tag, st.prov[i].c))) continue;
-          const d = G.zoneDist(f.loc, NP + s); if (d < bd) { bd = d; best = NP + s; }
+          const d = G.zoneDist(f.loc, NP + s, c.tag); if (d < bd) { bd = d; best = NP + s; }
         }
         f.raidZone = best;
       }
-      if (f.raidZone >= 0 && f.loc !== f.raidZone) { const p = G.fleetPath(f.loc, f.raidZone); if (p) f.path = p; }
+      if (f.raidZone >= 0 && f.loc !== f.raidZone) { const p = G.fleetPath(f.loc, f.raidZone, c.tag); if (p) f.path = p; }
     } else if (f.mis === 'escort') {
-      if (f.loc !== f.home) { const p = G.fleetPath(f.loc, f.home); if (p) f.path = p; }
+      if (f.loc !== f.home) { const p = G.fleetPath(f.loc, f.home, c.tag); if (p) f.path = p; }
     }
   }
   function aiFleets(c) {
     for (const f of c.fleets) {
       if (f.path.length) continue;
-      if (!c.enemies.length) { if (f.loc !== f.home) { const p = G.fleetPath(f.loc, f.home); if (p) f.path = p; } continue; }
+      if (!c.enemies.length) { if (f.loc !== f.home) { const p = G.fleetPath(f.loc, f.home, c.tag); if (p) f.path = p; } continue; }
       if (f.mis === 'hold') f.mis = f.sh.ss > G.fleetShips(f) * 0.6 ? 'raid' : 'patrol';
       fleetMission(c, f);
     }

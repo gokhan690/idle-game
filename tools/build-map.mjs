@@ -15,6 +15,47 @@ import { CITIES, ISLANDS } from './cities.mjs';
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const world = require('world-atlas/countries-50m.json');
+const ALL_CITIES = require('all-the-cities');
+
+// 1936 adları ve Türkçe karşılıklar (modern ad -> oyundaki ad)
+const RENAME = {
+  'Gdańsk': 'Danzig', 'Wrocław': 'Breslau', 'Szczecin': 'Stettin', 'Kaliningrad': 'Königsberg', 'Olsztyn': 'Allenstein', 'Opole': 'Oppeln',
+  'Gliwice': 'Gleiwitz', 'Zabrze': 'Hindenburg', 'Bytom': 'Beuthen', 'Legnica': 'Liegnitz', 'Wałbrzych': 'Waldenburg', 'Zielona Góra': 'Grünberg',
+  'Koszalin': 'Köslin', 'Słupsk': 'Stolp', 'Elbląg': 'Elbing', 'Gorzów Wielkopolski': 'Landsberg', 'Jelenia Góra': 'Hirschberg', 'Sovetsk': 'Tilsit',
+  'Chernyakhovsk': 'Insterburg', 'Klaipėda': 'Memel', 'Lviv': 'Lwów', 'Vilnius': 'Wilno', 'Hrodna': 'Grodno', 'Brest': 'Brest-Litovsk',
+  'Saint Petersburg': 'Leningrad', 'Volgograd': 'Stalingrad', 'Yekaterinburg': 'Sverdlovsk', 'Nizhniy Novgorod': 'Gorki', 'Samara': 'Kuybişev',
+  'Tver': 'Kalinin', 'Donetsk': 'Stalino', 'Dnipro': 'Dnepropetrovsk', 'Zaporizhzhya': 'Zaporojye', 'Zaporizhzhia': 'Zaporojye', 'Kharkiv': 'Harkov',
+  'Kyiv': 'Kiev', 'Odesa': 'Odessa', 'Mykolayiv': 'Nikolayev', 'Luhansk': 'Voroşilovgrad', 'Kryvyi Rih': 'Krivoy Rog', 'Chişinău': 'Kişinev',
+  'Chisinau': 'Kişinev', 'Almaty': 'Alma-Ata', 'Bishkek': 'Frunze', 'Dushanbe': 'Stalinabad', 'Tbilisi': 'Tiflis', 'Vladikavkaz': 'Orconikidze',
+  'Novosibirsk': 'Novosibirsk', 'Ulyanovsk': 'Ulyanovsk', 'Perm': 'Molotov', 'Izhevsk': 'İjevsk', 'Lugansk': 'Voroşilovgrad', 'Kirov': 'Kirov',
+  'Tolyatti': 'Stavropol (Volga)', 'Astana': 'Akmolinsk', 'Nur-Sultan': 'Akmolinsk', 'Ashgabat': 'Aşkabat', 'Tashkent': 'Taşkent', 'Baku': 'Bakü',
+  'Yerevan': 'Erivan', 'Moscow': 'Moskova', 'Minsk': 'Minsk', 'Riga': 'Riga', 'Tallinn': 'Tallinn', 'Kaunas': 'Kaunas', 'Helsinki': 'Helsinki',
+  'Ho Chi Minh City': 'Saygon', 'Jakarta': 'Batavia', 'Mumbai': 'Bombay', 'Chennai': 'Madras', 'Kolkata': 'Kalküta', 'Bengaluru': 'Bangalore',
+  'Beijing': 'Pekin', 'Guangzhou': 'Kanton', 'Nanjing': 'Nankin', 'Yangon': 'Rangun', 'Kinshasa': 'Léopoldville', 'Kisangani': 'Stanleyville',
+  'Lubumbashi': 'Élisabethville', 'Harare': 'Salisbury', 'Maputo': 'Lourenço Marques', 'Chongqing': 'Çungking', 'Shenyang': 'Mukden',
+  'Changchun': 'Hsinking', 'Dalian': 'Dairen', 'Lüshunkou': 'Port Arthur', 'Taipei': 'Taihoku', 'Seoul': 'Keijō', 'Busan': 'Fuzan', 'Pyongyang': 'Heijō',
+  'Ulaanbaatar': 'Ulan Bator', 'Thiruvananthapuram': 'Trivandrum', 'Kochi': 'Cochin', 'Pune': 'Poona', 'Vadodara': 'Baroda', 'Varanasi': 'Benares',
+  'Kanpur': 'Cawnpore', 'Chattogram': 'Chittagong', 'Dhaka': 'Dakka', 'Faisalabad': 'Lyallpur', 'Kozhikode': 'Calicut', 'Ankara': 'Ankara',
+  'Istanbul': 'İstanbul', 'Izmir': 'İzmir', 'Antalya': 'Antalya', 'Gaziantep': 'Antep', 'Kahramanmaraş': 'Maraş', 'Şanlıurfa': 'Urfa',
+  'Thessaloniki': 'Selanik', 'Athens': 'Atina', 'Sofia': 'Sofya', 'Plovdiv': 'Filibe', 'Bucharest': 'Bükreş', 'Belgrade': 'Belgrad',
+  'Budapest': 'Budapeşte', 'Vienna': 'Viyana', 'Prague': 'Prag', 'Warsaw': 'Varşova', 'Kraków': 'Krakov', 'Rome': 'Roma', 'Milan': 'Milano',
+  'Naples': 'Napoli', 'Turin': 'Torino', 'Venice': 'Venedik', 'Florence': 'Floransa', 'Genoa': 'Cenova', 'Munich': 'Münih', 'Cologne': 'Köln',
+  'Nuremberg': 'Nürnberg', 'Lisbon': 'Lizbon', 'Copenhagen': 'Kopenhag', 'Brussels': 'Brüksel', 'Antwerp': 'Anvers', 'The Hague': 'Lahey',
+  'London': 'Londra', 'Edinburgh': 'Edinburgh', 'Cairo': 'Kahire', 'Alexandria': 'İskenderiye', 'Damascus': 'Şam', 'Aleppo': 'Halep',
+  'Beirut': 'Beyrut', 'Baghdad': 'Bağdat', 'Mosul': 'Musul', 'Basra': 'Basra', 'Tehran': 'Tahran', 'Tabriz': 'Tebriz', 'Jerusalem': 'Kudüs',
+  'Mecca': 'Mekke', 'Medina': 'Medine', 'Riyadh': 'Riyad', 'Algiers': 'Cezayir', 'Tunis': 'Tunus', 'Tripoli': 'Trablusgarp', 'Benghazi': 'Bingazi',
+  'Casablanca': 'Kazablanka', 'Marseille': 'Marsilya', 'Bordeaux': 'Bordo', 'Strasbourg': 'Strazburg', 'Seville': 'Sevilla', 'Saragossa': 'Zaragoza',
+  'Tokyo': 'Tokyo', 'Kyoto': 'Kyoto', 'Bucuresti': 'Bükreş', 'Iasi': 'Yaş', 'Iași': 'Yaş', 'Constanța': 'Köstence', 'Cluj-Napoca': 'Kluj',
+  'Skopje': 'Üsküp', 'Sarajevo': 'Saraybosna', 'Tirana': 'Tiran', 'Durrës': 'Draç', 'Varna': 'Varna', 'Rhodes': 'Rodos', 'Nicosia': 'Lefkoşa',
+  'Mexico City': 'Meksiko', 'New York City': 'New York', 'Washington, D.C.': 'Washington', 'Rio de Janeiro': 'Rio de Janeiro',
+  'Bratislava': 'Pressburg/Bratislava', 'Bratislava ': 'Bratislava',
+};
+RENAME['Bratislava'] = 'Bratislava';
+Object.assign(RENAME, { 'Rivne': 'Równe', 'Ternopil': 'Tarnopol', 'Ivano-Frankivsk': 'Stanisławów', 'Lutsk': 'Łuck', 'Kovel': 'Kowel', 'Baranovichi': 'Baranowicze',
+  'Drohobych': 'Drohobycz', 'Stryi': 'Stryj', 'Chernivtsi': 'Çernovtsi', 'Uzhhorod': 'Ungvár', 'Mukachevo': 'Munkács', 'Oradea': 'Nagyvárad',
+  'Bratislava': 'Bratislava', 'Kosice': 'Košice', 'Lublin': 'Lublin', 'Klaipeda': 'Memel', 'Vyborg': 'Viipuri', 'Sortavala': 'Sortavala',
+  'Petrozavodsk': 'Petrozavodsk', 'Sovetsk': 'Tilsit', 'Gusev': 'Gumbinnen', 'Zelenogradsk': 'Cranz', 'Baltiysk': 'Pillau' });
+const cityName = (c) => RENAME[c.name] || c.name;
 
 // ---------- Projeksiyon (Miller, merkez 11.05°D, kesim Bering Boğazı) ----------
 const W = 4000;
@@ -194,7 +235,7 @@ const lonCol = new Float32Array(W).map((_, x) => invLon(x + 0.5));
 const latRow = new Float32Array(H).map((_, y) => invLat(y + 0.5));
 
 // ---------- 3. Tohumlar (ağırlıklı k-ortalamalar) ----------
-const TARGET = 1500;
+const TARGET = 2300;
 const gPix = groups.map(() => []);
 let totalW = 0;
 for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
@@ -203,19 +244,59 @@ for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
   gPix[gi].push(x + 0.5, y + 0.5, w); totalW += w;
 }
 const baseW = totalW / TARGET;
+// Şehirler: tohum adayları (gerçek şehirler eyaletlerin merkezi olur)
+const gCities = groups.map(() => []);
+{
+  for (const c of CITIES) {
+    const [name, lon, lat, vp] = c;
+    const sh = (lon - LON0) < -180 ? 360 : (lon - LON0) >= 180 ? -360 : 0;
+    const x = projX(lon, sh), y = projY(lat);
+    const gi = nearGroup(x, y); if (gi < 0) continue;
+    gCities[gi].push({ x, y, name, pop: 1e9 + vp * 1e6, cur: c });
+  }
+  for (const c of ALL_CITIES) {
+    if (c.population < 12000) continue;
+    const [lon, lat] = c.loc.coordinates;
+    if (lat > LAT_MAX || lat < LAT_MIN) continue;
+    const sh = (lon - LON0) < -180 ? 360 : (lon - LON0) >= 180 ? -360 : 0;
+    const x = projX(lon, sh), y = projY(lat);
+    const gi = groupGrid[Math.floor(y) * W + Math.floor(x)]; if (gi == null || gi < 0) continue;
+    gCities[gi].push({ x, y, name: cityName(c), pop: c.population });
+  }
+  for (const L of gCities) L.sort((a, b) => b.pop - a.pop);
+}
+function nearGroup(x, y) {
+  for (let r = 0; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const xx = Math.floor(x) + dx, yy = Math.floor(y) + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+    const v = groupGrid[yy * W + xx]; if (v >= 0) return v;
+  }
+  return -1;
+}
 const provinces = [];
 groups.forEach((g, gi) => {
   const pix = gPix[gi]; const n = pix.length / 3;
   if (!n) return;
   let sw = 0; for (let i = 0; i < n; i++) sw += pix[i * 3 + 2];
   const k = Math.max(1, Math.min(n, Math.round(sw / baseW)));
-  let seeds = [];
-  for (let s = 0; s < k; s++) {
+  // yerel eyalet aralığı (piksel): örnekleme 2 pikselde bir, her örnek ağırlığı = yoğunluk
+  const spacing = (x, y) => Math.sqrt((4 * baseW) / density(invLon(x), invLat(y))) * 0.78;
+  let seeds = [], meta = [];
+  const far = (x, y, f) => { const d0 = spacing(x, y) * f; for (const s of seeds) if ((s[0] - x) ** 2 + (s[1] - y) ** 2 < d0 * d0) return false; return true; };
+  for (const c of gCities[gi]) {
+    if (seeds.length >= k) break;
+    if (!far(c.x, c.y, c.cur ? 0.5 : 1)) continue;
+    seeds.push([c.x, c.y]); meta.push(c);
+  }
+  // şehri olmayan boş bölgeler için dolgu tohumları
+  for (let tries = 0; seeds.length < k && tries < k * 60; tries++) {
     let r = rnd() * sw, i = 0;
     for (; i < n - 1; i++) { r -= pix[i * 3 + 2]; if (r <= 0) break; }
-    seeds.push([pix[i * 3] + rnd() * 0.01, pix[i * 3 + 1] + rnd() * 0.01]);
+    const x = pix[i * 3] + rnd() * 0.01, y = pix[i * 3 + 1] + rnd() * 0.01;
+    if (tries < k * 50 && !far(x, y, 0.85)) continue;
+    seeds.push([x, y]); meta.push(null);
   }
-  for (let it = 0; it < 12 && k > 1; it++) {
+  // Lloyd gevşetmesi: yalnızca dolgu tohumları hareket eder, şehirler yerinde kalır
+  for (let it = 0; it < 8 && seeds.length > 1 && meta.some((m) => !m); it++) {
     const del = Delaunay.from(seeds);
     const acc = seeds.map(() => [0, 0, 0]);
     let hint = 0;
@@ -224,8 +305,9 @@ groups.forEach((g, gi) => {
       hint = del.find(x, y, hint);
       const a = acc[hint]; a[0] += x * w; a[1] += y * w; a[2] += w;
     }
-    seeds = seeds.map((s, i) => (acc[i][2] > 0 ? [acc[i][0] / acc[i][2], acc[i][1] / acc[i][2]] : s));
+    seeds = seeds.map((s, i) => (!meta[i] && acc[i][2] > 0 ? [acc[i][0] / acc[i][2], acc[i][1] / acc[i][2]] : s));
   }
+  const k2 = seeds.length;
   // Hücreleri ülke şekliyle kes
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const poly of g.polys) for (const p of poly[0]) { minX = Math.min(minX, p[0]); minY = Math.min(minY, p[1]); maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]); }
@@ -234,7 +316,7 @@ groups.forEach((g, gi) => {
     for (const p of poly[0]) { a = Math.min(a, p[0]); b = Math.min(b, p[1]); c = Math.max(c, p[0]); d = Math.max(d, p[1]); }
     return [a, b, c, d];
   });
-  const cells = k > 1 ? Delaunay.from(seeds).voronoi([minX - 1, minY - 1, maxX + 1, maxY + 1]) : null;
+  const cells = k2 > 1 ? Delaunay.from(seeds).voronoi([minX - 1, minY - 1, maxX + 1, maxY + 1]) : null;
   seeds.forEach((s, si) => {
     let shape;
     if (!cells) shape = g.polys.map((p) => p.map((r) => [...r]));
@@ -267,7 +349,7 @@ groups.forEach((g, gi) => {
       else if ((pt.a >= 4 && !arctic) || !clusters.length) clusters.push({ x: pt.x, y: pt.y, parts: [pt.poly] });
       else if (arctic) clusters[0].parts.push(pt.poly);
     }
-    for (const cl of clusters) provinces.push({ tag: g.tag, seed: cl === clusters[0] ? s : [cl.x, cl.y], shape: cl.parts });
+    for (const cl of clusters) provinces.push({ tag: g.tag, seed: cl === clusters[0] ? s : [cl.x, cl.y], shape: cl.parts, city: cl === clusters[0] ? meta[si] : null });
   });
 });
 console.log('groups', groups.length, 'provinces', provinces.length);
@@ -302,11 +384,21 @@ for (const [name, lon, lat, tag, kind, r] of ISLANDS) {
     if (!shape.length) continue;
     provinces.push({ tag, seed: pt, shape, cx: pt[0], cy: pt[1], fixed: 1 });
   } else {
-    if (at < 0) continue;
+    if (at < 0) {
+      // nokta sadeleştirilmiş kıyının dışında kaldı: en yakın küçük eyaletin tamamı enklav olur
+      let best = -1, bd = 14;
+      provinces.forEach((p, i) => { const d = Math.hypot(p.cx - pt[0], p.cy - pt[1]); if (d < bd) { bd = d; best = i; } });
+      if (best >= 0) { const h = provinces[best]; const ha = h.shape.reduce((t, poly) => t + Math.abs(ringArea(poly[0])), 0); if (ha < 160) { h.tag = tag; h.fixed = 1; } }
+      continue;
+    }
     const host = provinces[at];
+
     let part, rest;
     try { part = pc.intersection(host.shape, [circ]); rest = pc.difference(host.shape, [circ]); } catch (e) { continue; }
-    if (!part.length || !rest.length) continue;
+    const hostArea = host.shape.reduce((t, poly) => t + Math.abs(ringArea(poly[0])), 0);
+    const partArea = part.reduce((t, poly) => t + Math.abs(ringArea(poly[0])), 0);
+    // parça rasterde görünemeyecek kadar küçükse ve ev sahibi eyalet küçükse eyaletin tamamı enklav olur (ör. Cebelitarık)
+    if (!part.length || partArea < 6 || !rest.length) { if (hostArea < 160) { host.tag = tag; host.fixed = 1; } continue; }
     host.shape = rest;
     provinces.push({ tag, seed: pt, shape: part, cx: pt[0], cy: pt[1], fixed: 1 });
   }
@@ -479,6 +571,60 @@ for (let i = 0; i < seaSeeds.length; i++) {
 }
 console.log('sea zones', seas.length);
 
+// ---------- 8b. Boğazlar ve kanallar ----------
+// [ad, [boylam, enlem] A tarafı, B tarafı, kontrol noktası, yarıçap(px)]
+const STRAITS = [
+  ['Türk Boğazları (İstanbul ve Çanakkale)', [29.6, 41.7], [25.6, 39.85], [[29.05, 41.1], [26.4, 40.15]], 7],
+  ['Cebelitarık Boğazı', [-6.4, 35.95], [-4.9, 36.15], [-5.35, 36.1], 9],
+  ['Danimarka Boğazları', [11.4, 57.0], [13.2, 55.1], [12.6, 55.85], 10],
+  ['Kiel Kanalı', [8.4, 54.05], [10.5, 54.55], [9.6, 54.3], 8],
+  ['Süveyş Kanalı', [32.4, 31.45], [32.6, 29.7], [32.45, 30.6], 9],
+  ['Panama Kanalı', [-79.85, 9.6], [-79.45, 8.6], [-79.65, 9.1], 8],
+  ['Kerç Boğazı', [36.75, 45.55], [36.45, 44.85], [36.55, 45.25], 8],
+  ['Bab-ül Mendep', [43.1, 13.1], [43.7, 12.35], [43.4, 12.65], 9],
+  ['Messina Boğazı', [15.7, 38.4], [15.5, 37.9], [15.6, 38.2], 6],
+];
+const straits = [];
+{
+  const P = (ll) => { const sh = (ll[0] - LON0) < -180 ? 360 : (ll[0] - LON0) >= 180 ? -360 : 0; return [projX(ll[0], sh), projY(ll[1])]; };
+  const zoneAt = ([x, y]) => {
+    for (let r = 0; r <= 40; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const xx = Math.round(x) + dx, yy = Math.round(y) + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      const z = sgrid[yy * W + xx]; if (z >= 0 && seaKeep[z]) return seaIdx[z];
+    }
+    return -1;
+  };
+  for (const [name, A, B, C, rad] of STRAITS) {
+    const za = zoneAt(P(A)), zb = zoneAt(P(B));
+    if (za < 0 || zb < 0 || za === zb) { console.warn('strait skipped', name, za, zb); continue; }
+    if (!seas[za].a.includes(zb)) { seas[za].a.push(zb); seas[zb].a.push(za); }
+    const pts = Array.isArray(C[0]) ? C : [C];
+    const p = [];
+    for (const pt of pts) {
+      const [cx, cy] = P(pt); const ctrl = new Map();
+      for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+        const xx = Math.round(cx) + dx, yy = Math.round(cy) + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        const v = pgrid[yy * W + xx]; if (v >= 0) ctrl.set(v, (ctrl.get(v) || 0) + 1);
+      }
+      for (const [v] of [...ctrl.entries()].sort((a, b) => b[1] - a[1]).slice(0, pts.length > 1 ? 2 : 3)) if (!p.includes(v)) p.push(v);
+    }
+    const [cx, cy] = P(pts[0]);
+    // boğaz çevresinde bölgeler arası tüm deniz geçişleri bu boğaza bağlıdır (dolambaçlı yan geçit kalmasın)
+    const e = new Set([Math.min(za, zb) + '|' + Math.max(za, zb)]);
+    for (const pt of pts) {
+      const [px, py] = P(pt); const R2 = rad * 3;
+      for (let dy = -R2; dy <= R2; dy++) for (let dx = -R2; dx <= R2; dx++) {
+        const xx = Math.round(px) + dx, yy = Math.round(py) + dy; if (xx < 0 || yy < 0 || xx >= W - 1 || yy >= H - 1) continue;
+        const s0 = sgrid[yy * W + xx]; if (s0 < 0 || !seaKeep[s0]) continue;
+        for (const nn of [yy * W + xx + 1, (yy + 1) * W + xx]) { const t0 = sgrid[nn]; if (t0 >= 0 && t0 !== s0 && seaKeep[t0]) { const u = seaIdx[s0], v = seaIdx[t0]; e.add(Math.min(u, v) + '|' + Math.max(u, v)); } }
+      }
+    }
+    straits.push({ n: name, a: za, b: zb, p, x: Math.round(cx), y: Math.round(cy), e: [...e].map((k) => k.split('|').map(Number)).filter(([u, v]) => u === za || u === zb || v === za || v === zb) });
+  }
+  console.log('straits', straits.map((s) => s.n + ':' + s.a + '-' + s.b + ' [' + s.p.join(',') + ']').join(' | '));
+}
+
 // Deniz bölgesi sınırlarını (ince kesik çizgiler) çıkar
 const seaLines = [];
 {
@@ -513,6 +659,17 @@ for (const c of CITIES) {
   if (p < 0) { console.warn('city not placed', name); continue; }
   pcity[p].push(c);
 }
+// tüm gerçek şehirleri eyaletlere yerleştir (ikincil adlar ve dolgu eyaletlerinin adı için)
+const pcityG = provinces.map(() => []);
+for (const c of ALL_CITIES) {
+  if (c.population < 1000) continue;
+  const [lon, lat] = c.loc.coordinates; if (lat > LAT_MAX || lat < LAT_MIN) continue;
+  const sh = (lon - LON0) < -180 ? 360 : (lon - LON0) >= 180 ? -360 : 0;
+  const x = Math.floor(projX(lon, sh)), y = Math.floor(projY(lat)); if (x < 0 || x >= W || y < 0 || y >= H) continue;
+  const v = pgrid[y * W + x]; if (v >= 0) pcityG[v].push({ name: cityName(c), pop: c.population, x: projX(lon, sh), y: projY(lat) });
+}
+for (const L of pcityG) L.sort((a, b) => b.pop - a.pop);
+const usedNames = new Map();
 const out = provinces.map((p, i) => {
   const cities = pcity[i].sort((a, b) => b[3] - a[3]);
   let lx = pcount[i] ? psx[i] / pcount[i] : p.cx, ly = pcount[i] ? psy[i] / pcount[i] : p.cy;
@@ -532,8 +689,15 @@ const out = provinces.map((p, i) => {
   for (const c of cities) { if (c[4]?.oil) oil += c[4].oil; if (c[4]?.steel) steel += c[4].steel; }
   let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
   for (const poly of p.shape) for (const ring of poly) for (const [x, y] of ring) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
+  // ad: önce tarihî şehir listesi, sonra eyaletin tohum şehri, sonra içindeki en büyük gerçek şehir
+  const main = cities.length ? { name: cities[0][0], x: projX(cities[0][1], (cities[0][1] - LON0) < -180 ? 360 : (cities[0][1] - LON0) >= 180 ? -360 : 0), y: projY(cities[0][2]), pop: 1e9 }
+    : p.city ? p.city : pcityG[i][0] || null;
+  let name = main ? main.name : '';
+  if (name) { const k = (usedNames.get(name) || 0) + 1; usedNames.set(name, k); }
+  const others = [...cities.slice(1).map((c) => c[0]), ...pcityG[i].map((c) => c.name)].filter((nm, j, arr) => nm !== name && arr.indexOf(nm) === j).slice(0, 4);
+  const popVp = !cities.length && main && main.pop ? (main.pop >= 1e6 ? 3 : main.pop >= 3e5 ? 2 : 1) : 0;
   return {
-    t: p.tag, n: cities.length ? cities[0][0] : '', cs: cities.slice(1, 4).map((c) => c[0]),
+    t: p.tag, n: name, cs: others, q: main ? [Math.round(main.x * 10) / 10, Math.round(main.y * 10) / 10] : undefined, _pv: popVp,
     x: Math.round(lx * 10) / 10, y: Math.round(ly * 10) / 10, lon: Math.round(lon * 100) / 100, lat: Math.round(lat * 100) / 100,
     b: [bx0 / Q, by0 / Q, bx1 / Q, by1 / Q].map((v) => Math.round(v)), ar: Math.round(pcount[i]),
     te, vp: Math.max(1, vp), oil, st: steel, c: coastal[i],
@@ -541,6 +705,12 @@ const out = provinces.map((p, i) => {
     p: p.shape.map((poly) => poly.map(enc)),
   };
 });
+for (const p of out) { if (p._pv) p.vp = Math.max(p.vp, p._pv); delete p._pv; }
+// Aynı adı taşıyan farklı eyaletler: ikinciye ülke içi ayırt edici ek
+{
+  const seen = new Map();
+  for (const p of out) { if (!p.n) continue; const k = p.n; const c = (seen.get(k) || 0) + 1; seen.set(k, c); if (c > 1 && p.cs.length) p.n = p.cs.shift(); else if (c > 1) p.n = `${p.n} ${'I'.repeat(Math.min(c, 3))}`; }
+}
 // İsimsiz eyaletler: aynı devletteki en yakın şehir
 for (const p of out) {
   if (p.n) continue;
@@ -568,7 +738,7 @@ for (const p of out) {
 }
 for (const p of out) delete p.nn;
 
-const MAP = { W, H, K, LON0, Q, Y_TOP, provinces: out, seas, borders, seaLines };
+const MAP = { W, H, K, LON0, Q, Y_TOP, provinces: out, seas, borders, seaLines, straits };
 const js = `// Otomatik üretildi: tools/build-map.mjs — elle düzenlemeyin.\nwindow.MAP_DATA=${JSON.stringify(MAP)};\n`;
 writeFileSync(join(ROOT, 'js/data/map.js'), js);
 console.log('wrote map.js', (js.length / 1024 / 1024).toFixed(2), 'MB');

@@ -10,6 +10,7 @@
     "serve": "npx --yes http-server -c-1 -p 8080 ."
   },
   "devDependencies": {
+    "all-the-cities": "^3.1.0",
     "d3-delaunay": "^6.0.4",
     "d3-geo": "^3.1.1",
     "polygon-clipping": "^0.15.7",

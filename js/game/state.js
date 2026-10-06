@@ -26,7 +26,7 @@
       tech: {}, res: [], focus: { done: {}, cur: null, p: 0 }, fmods: {}, mods: {},
       lines: [], stock: { inf: 0, art: 0, mot: 0, tank: 0, fig: 0, cas: 0, bom: 0 }, ships: { dd: 0, cr: 0, bb: 0, ss: 0, cv: 0 },
       constr: [], train: [], dead: 0, just: null, cap: -1, startW: 0, enemies: [], ai: { t: 0 }, sl: {}, air: { bomb: 'auto', cas: 1 }, fleets: [], ops: [],
-      auto: { res: 0, prod: 0, con: 0, focus: 0, trade: 1 }, sum: {},
+      auto: { res: 0, prod: 0, con: 0, focus: 0, trade: 1, air: 1 }, sum: {},
     };
     for (let l = 0; l <= (d.tl || 0); l++) for (const id of g.START_TECHS[l]) c.tech[id] = 1;
     if (d.div.mtn) c.tech.mtn1 = c.tech.sup1 = 1;
@@ -129,7 +129,7 @@
     st.tension = 8;
     G.rebuildUnitIndex();
     G.updateSummaries();
-    for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); c._mpu = null; G.econCalc(c); }
+    for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
     if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
@@ -206,6 +206,7 @@
     G.rebuildUnitIndex();
     G.updateSummaries();
     G.ensureInfra(); G.updateWeather(true); G.supDirty = 1;
+    for (const c of Object.values(st.C)) if (c.alive && !c.wings) G.initWings(c);
     for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
     return st;
   };

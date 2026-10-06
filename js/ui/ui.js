@@ -375,15 +375,43 @@
     fh += `</div>${res.length ? `<div class="item"><div class="grow"><div class="t">Yedek gemiler</div><div class="d">${res.map((e2) => `${Math.floor(c.ships[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ')}</div></div><button class="btn sm pri" data-act="fleetnew">Yeni filo kur</button></div>` : ''}`;
     fh += '<p class="muted small" style="margin:0">Devriye: yakındaki zayıf düşman filolarına saldırır. Saldırı: daha uzağa ve cesurca saldırır. Konvoy akını: düşman ticaretini ve konvoylarını vurur. Refakat: kendi konvoylarını korur. Bir filoyu “Seç”ip haritada bir deniz bölgesine dokunarak elle taşıyabilirsin.</p>';
     html += sec('Filolar', fh);
-    // hava görevleri
-    const a = c.air || (c.air = { bomb: 'auto', cas: 1 });
-    const tgts = ['auto', 'off', ...c.enemies];
-    html += sec('Hava görevleri', `<div class="list">
-      <button class="toggle ${a.cas ? 'on' : ''}" data-act="aircas"><span><b>Yakın hava desteği</b><br><span class="muted small">Yakın destek uçakları muharebelere katılır (${int(c.stock.cas)} uçak).</span></span><i></i></button>
-      <div class="item"><div class="grow"><div class="t">Stratejik bombardıman</div><div class="d">${int(c.stock.bom)} bombardıman uçağı · hedef: ${a.bomb === 'auto' ? 'otomatik (en güçlü düşman)' : a.bomb === 'off' ? 'kapalı' : esc(G.cname(a.bomb))}</div></div><button class="btn sm" data-act="airbomb">Değiştir</button></div>
-      </div>${kv([['Avcı', int(c.stock.fig)], ['Yakın destek', int(c.stock.cas)], ['Bombardıman', int(c.stock.bom)]])}`);
-    void tgts;
-    return { title: 'Donanma ve hava', html };
+    return { title: 'Donanma', html };
+  };
+  // ---------- Hava kuvvetleri (HOI4 tarzı) ----------
+  const WIC = { fig: '✈', cas: '⬇', bom: '✦' };
+  UI.wingName = (c, w) => { const k = c.wings.filter((x) => x.e === w.e).indexOf(w) + 1; return `${k}. ${G.WING_TYPES[w.e].n} Kanadı`; };
+  PANELS.air = () => {
+    const st = G.st, c = me();
+    if (!c.wings) G.initWings(c);
+    const tot = (e) => int(G.planes(c, e));
+    let html = kv([['Avcı', tot('fig')], ['Yakın destek', tot('cas')], ['Bombardıman', tot('bom')], ['Stokta avcı', int(c.stock.fig || 0)], ['Stokta YDU', int(c.stock.cas || 0)], ['Stokta bombacı', int(c.stock.bom || 0)]]);
+    html += `<button class="toggle ${c.auto.air ? 'on' : ''}" data-act="airauto"><span><b>Hava kurmayı (otomatik)</b><br><span class="muted small">Açıkken kanatlar cephelere, düşman sanayisine ve filolarına kendiliğinden atanır. Elle bölge verdiğin kanatlar sende kalır.</span></span><i></i></button>`;
+    let wh = '<div class="list">';
+    for (const w of c.wings) {
+      const reg = w.r >= 0 ? G.AIR.regions[w.r] : null;
+      const sup = reg ? G.airSup(c.tag, w.r) : 0.5;
+      const pick = UI.airPick === w.id;
+      wh += `<div class="item army ${pick ? 'active' : ''}"><div class="grow">
+        <div class="row" style="gap:8px"><div class="t grow"><span class="wic">${WIC[w.e]}</span> ${esc(UI.wingName(c, w))} <span class="muted small">${Math.round(w.n)}/${w.max} uçak · ${g.MODEL_N?.[w.e]?.[Math.floor(G.lvl(c, w.e))] || ''}</span></div>${w.manual ? '<span class="pill">elle</span>' : '<span class="pill ally">oto</span>'}</div>
+        ${bar(w.n / w.max, 'g')}
+        <div class="small">Bölge: <b>${reg ? esc(reg.n) : '—'}</b>${reg && c.enemies.length ? ` · hava üstünlüğü <b class="${sup > 0.55 ? 'good' : sup < 0.45 ? 'bad' : 'warn'}">%${Math.round(sup * 100)}</b>` : ''}</div>
+        <div class="seg sm">${G.WING_TYPES[w.e].m.map((k) => `<button class="${w.mis === k ? 'on' : ''}" data-act="wingmis" data-k="${w.id}" data-v="${k}">${G.MIS[k].n}</button>`).join('')}</div>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ${pick ? 'pri' : ''}" data-act="wingpick" data-v="${w.id}">${pick ? 'Haritada bölgeye dokun…' : 'Bölge seç (harita)'}</button>${w.manual ? `<button class="btn sm" data-act="wingauto" data-v="${w.id}">Kurmaya bırak</button>` : ''}<button class="btn sm danger" data-act="wingdel" data-v="${w.id}">Dağıt</button></div>
+      </div></div>`;
+    }
+    if (!c.wings.length) wh += '<p class="muted small" style="margin:0">Hava kanadın yok. Üretim panelinden uçak üret; stokta 10+ uçak olunca buradan kanat kur.</p>';
+    wh += `</div><div class="btns">${g.PLANES.map((e) => `<button class="btn ${c.stock[e] >= 10 ? 'pri' : ''}" data-act="wingnew" data-v="${e}" ${c.stock[e] >= 10 ? '' : 'disabled'}>+ ${G.WING_TYPES[e].n} kanadı (${int(Math.min(G.WING_MAX, c.stock[e] || 0))})</button>`).join('')}</div>`;
+    html += sec('Hava kanatları', wh, `${c.wings.length} kanat`);
+    // görev rehberi
+    html += sec('Görevler', `<div class="mods">${Object.entries(G.MIS).map(([k, m]) => `<div><span><b>${m.n}</b><br><span class="muted small">${m.d}</span></span><b class="small">${Object.entries(G.WING_TYPES).filter(([, t]) => t.m.includes(k)).map(([, t]) => t.n).join(', ')}</b></div>`).join('')}</div><p class="muted small" style="margin:6px 0 0">Kanat yalnızca kendi ya da müttefik toprağı bulunan veya ona komşu bölgelerde görev yapabilir (menzil). Kayıplar stoktaki uçaklarla kendiliğinden takviye edilir. Harita modu “Hava” bölgeleri ve hava üstünlüğünü gösterir.</p>`);
+    // çekişmeli bölgeler
+    if (c.enemies.length && G.airR) {
+      const rows = [];
+      for (const [r, m] of G.airR) { const tags = Object.keys(m); if (!tags.some((t) => t === c.tag || G.sameFaction(t, c.tag)) && !tags.some((t) => G.atWar(t, c.tag))) continue; if (!tags.some((t) => G.atWar(t, c.tag))) continue; rows.push([r, G.airSup(c.tag, r)]); }
+      rows.sort((a, b) => a[1] - b[1]);
+      if (rows.length) html += sec('Hava savaşı', `<div class="mods">${rows.slice(0, 12).map(([r, v]) => `<div><span>${esc(G.AIR.regions[r].n)}</span><b class="${v > 0.55 ? 'good' : v < 0.45 ? 'bad' : 'warn'}">%${Math.round(v * 100)}</b></div>`).join('')}</div>`, 'bizim hava üstünlüğümüz');
+    }
+    return { title: 'Hava kuvvetleri', html };
   };
   const SEA_N = (n) => {
     if (n < NP) return G.pname(n);
@@ -730,6 +758,8 @@
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Hava kuvvetleri</h3><p class="small" style="margin:0">Dünya, HOI4\'teki gibi hava bölgelerine ayrılmıştır (Hava panelindeki ya da “Hava” harita modundaki kesikli çizgiler). Ürettiğin uçaklar stoka girer; Hava panelinden 100 uçaklık kanatlar kurarsın. Her kanada bir bölge ve görev ver: <b>Hava üstünlüğü</b> (avcı) düşman uçaklarıyla çarpışır ve o bölgedeki kara muharebelerine saldırı/savunma bonusu sağlar; <b>Önleme</b> düşman bombacılarını avlar; <b>Yakın hava desteği</b> bölgedeki muharebelerde tümenlerine ek saldırı verir; <b>Stratejik bombardıman</b> düşman fabrikalarını vurur, üretimini ve savaş desteğini düşürür; <b>Deniz saldırısı</b> düşman filolarını ve konvoylarını hedef alır. “Bölge seç” düğmesine basıp haritada bir yere dokunarak kanadı gönderirsin; kanat ancak dost toprak bulunan ya da ona komşu bölgelerde çalışabilir. Kayıplar stoktan kendiliğinden takviye edilir. “Hava kurmayı” açıkken kanatlar cephelere kendiliğinden dağıtılır.</p></section>
+  <section class="sec"><h3 class="sec-h">Harita, şehirler ve boğazlar</h3><p class="small" style="margin:0">Eyaletler gerçek şehirlerin etrafında kuruludur ve 1936\'daki adlarıyla anılır (Danzig, Breslau, Königsberg, Leningrad, Stalingrad…). Yakınlaştıkça daha çok şehir adı görünür. Gemiler Türk Boğazları, Cebelitarık, Danimarka Boğazları, Kiel ve Süveyş kanalları, Panama, Kerç ve Messina\'dan geçebilir; ancak boğazı kontrol eden eyaletlerden biri düşman elindeyse geçemez.</p></section>
   <section class="sec"><h3 class="sec-h">İkmal, altyapı ve hava</h3><p class="small" style="margin:0">İkmal başkentten ve büyük şehirlerdeki ikmal merkezlerinden demiryolu ve altyapı boyunca akar; uzaklaştıkça azalır. Bir eyalette ikmalin kaldırabileceğinden fazla tümen yığarsan ya da düşman topraklarında çok derine inersen birliklerin saldırı gücü ve toparlanması düşer, ikmalsiz kalanlar yıpranır. İşgal ettiğin şehirler yarım kapasiteyle ikmal merkezi olur; anakaradan kopuk bölgeler yalnızca limanla, konvoy ve deniz üstünlüğüyle beslenir. “İkmal” harita modunda kırmızı yetersiz, yeşil bol ikmali gösterir; kutular ikmal merkezleridir. İnşaat panelinden altyapı kurarak ikmali ve hareket hızını artırabilirsin. Kuzeyde kışın kar ve tipi saldırıyı, hareketi ve ikmali zorlaştırır, kışa hazırlıksız ordular yıpranır; Doğu Avrupa\'da ilkbahar ve sonbaharda çamur, Asya\'da muson vardır.</p></section>
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden oluşur. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
@@ -837,6 +867,26 @@
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     UI.act(b.dataset.act, b.dataset, b);
   });
+  ACT.airauto = () => { const c = me(); c.auto.air = c.auto.air ? 0 : 1; if (c.auto.air) G.aiAir(c); UI.render(); };
+  ACT.wingmis = (d) => { const c = me(); const w = c.wings.find((x) => x.id === +d.k); if (!w) return; w.mis = d.v; w.manual = 1; UI.render(); };
+  ACT.wingpick = (d) => {
+    UI.airPick = UI.airPick === +d.v ? null : +d.v;
+    if (UI.airPick) { R.setMode('air'); UI.close(); UI.toast('Kanadın görev yapacağı bölgeye haritada dokun.'); R.dirty = 1; } else UI.render();
+  };
+  ACT.wingauto = (d) => { const c = me(); const w = c.wings.find((x) => x.id === +d.v); if (w) w.manual = 0; G.aiAir(c); UI.render(); };
+  ACT.wingdel = (d) => { G.disbandWing(me(), +d.v); UI.render(); };
+  ACT.wingnew = (d) => { const c = me(); const w = G.newWing(c, d.v, G.homeRegion(c), d.v === 'bom' ? 'str' : G.WING_TYPES[d.v].m[0]); if (w) { UI.toast(`${UI.wingName(c, w)} kuruldu (${Math.round(w.n)} uçak). Bölge ve görev seç.`, 'good'); if (c.auto.air) G.aiAir(c); } UI.render(); };
+  UI.assignWingRegion = (n) => {
+    const c = me(); const w = (c.wings || []).find((x) => x.id === UI.airPick); UI.airPick = null;
+    if (!w || n < 0) return false;
+    const r = G.regionOf(n);
+    if (!G.canBase(c.tag, r)) { UI.toast(`${G.AIR.regions[r].n} menzil dışında: bölgede ya da komşusunda dost toprak olmalı.`, 'warn'); return true; }
+    w.r = r; w.manual = 1;
+    if (!G.WING_TYPES[w.e].m.includes(w.mis)) w.mis = G.WING_TYPES[w.e].m[0];
+    UI.toast(`${UI.wingName(c, w)} → ${G.AIR.regions[r].n} (${G.MIS[w.mis].n}).`, 'good');
+    UI.open('air'); return true;
+  };
+
   ACT.panel = (d) => UI.open(d.p);
   ACT.alert = (d) => { UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
@@ -876,7 +926,7 @@
   ACT.buy = (d) => { const c = me(); const n = Math.max(1, Math.min(+d.n, Math.floor(G.exportFree(d.k, d.v)))); G.addDeal(c.tag, d.k, d.v, n); G.refreshTradeCache(); G.econCalc(c); UI.toast(`${G.cname(d.k)} ile ${g.RES[d.v].toLowerCase()} anlaşması: ${n} birim.`, 'good'); UI.render(); };
   ACT.fleetsel = (d) => { const c = me(); const f = c.fleets.find((x) => x.id === +d.v); R.sel.fleet = f.id; R.sel.units.clear(); R.focusOn(f.loc, 1.4); UI.close(); UI.renderSel(); R.dirty = 1; UI.toast('Filo seçildi: bir deniz bölgesine dokunarak gönder.'); };
   ACT.fleetmis = (d) => { const f = me().fleets.find((x) => x.id === +d.k); f.mis = d.v; if (d.v === 'hold') f.path = []; UI.render(); UI.renderSel(); };
-  ACT.fleethome = (d) => { const f = me().fleets.find((x) => x.id === +d.v); const p = G.fleetPath(f.loc, f.home); if (p) { f.path = p; f.prog = 0; } f.mis = 'hold'; UI.render(); UI.renderSel(); };
+  ACT.fleethome = (d) => { const f = me().fleets.find((x) => x.id === +d.v); const p = G.fleetPath(f.loc, f.home, me().tag); if (p) { f.path = p; f.prog = 0; } f.mis = 'hold'; UI.render(); UI.renderSel(); };
   ACT.fleetauto = (d) => { for (const f of me().fleets) f.auto = f.id === +d.v ? 1 : 0; UI.render(); };
   ACT.fleetmerge = (d) => {
     const c = me(); const f = c.fleets.find((x) => x.id === +d.v); const o = c.fleets.find((x) => x.id !== f.id && x.loc === f.loc);
@@ -890,8 +940,6 @@
     c.fleets.push({ id: G.st.nextId++, n: `${c.fleets.length + 1}. Filo`, loc: home, home, sh, mis: 'hold', path: [], prog: 0 });
     UI.render();
   };
-  ACT.aircas = () => { const a = me().air; a.cas = a.cas ? 0 : 1; UI.render(); };
-  ACT.airbomb = () => { const c = me(); const opts = ['auto', 'off', ...c.enemies]; const k = opts.indexOf(c.air.bomb); c.air.bomb = opts[(k + 1) % opts.length]; UI.render(); };
   ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0, lv: G.bestLevel(c, d.v) }); UI.toast(`${g.EQUIP[d.v].n} hattı eklendi; + ile fabrika ata.`, 'good'); UI.render(); };
   ACT.cup = (d) => { const c = me(); const i = +d.v; [c.constr[i - 1], c.constr[i]] = [c.constr[i], c.constr[i - 1]]; UI.render(); };
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
@@ -1003,8 +1051,8 @@
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   ACT.setmode = (d) => { R.setMode(d.v); if (d.v === 'sup') G.computeSupplyFor(me()); UI.render(); UI.hud(); };
   ACT.wxtoggle = () => { R.showWeather = !R.showWeather; R.dirty = 1; UI.render(); };
-  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal' };
-  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri' : '')); UI.hud(); };
+  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava' };
+  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri' : '')); UI.hud(); };
   ACT.setting = (d) => { if (d.v === 'hist') G.st.opts.hist = G.st.opts.hist ? 0 : 1; else UI.settings[d.v] = UI.settings[d.v] ? 0 : 1; UI.render(); };
   ACT.newgame = () => { UI.close(); G.st.paused = 1; UI.showStart(); };
   ACT.fullscreen = async () => {
