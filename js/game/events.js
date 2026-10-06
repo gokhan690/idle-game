@@ -105,7 +105,7 @@
     { id: 'gelb', date: '1940-05-10', actor: 'GER', title: 'Sarı Durum (Fall Gelb)',
       text: 'Batı taarruzu Ardenler ve Alçak Ülkeler üzerinden başlayabilir.',
       cond: () => alive('GER') && (alive('BEL') || alive('HOL')) && G.st.C.GER.enemies.includes('FRA'),
-      opts: [{ n: 'Batı taarruzunu başlat', fx: () => { war('GER', 'BEL'); war('GER', 'HOL'); war('GER', 'LUX'); } }, { n: 'Bekle', fx: () => {} }] },
+      opts: [{ n: 'Batı taarruzunu başlat', fx: () => { war('GER', 'BEL'); war('GER', 'HOL'); war('GER', 'LUX'); G.timedSpirit('GER', 'sichelschnitt', 150); G.timedSpirit('FRA', 'fra_shock', 200); } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'baltic', date: '1940-06-15', actor: 'SOV', title: 'Baltık Ültimatomu',
       text: 'Sovyetler Birliği Baltık devletlerinin Birliğe katılmasını talep ediyor.',
       cond: () => alive('SOV') && (alive('EST') || alive('LAT') || alive('LIT')),
@@ -140,10 +140,14 @@
       text: 'Belgrad\'daki darbe Mihver karşıtı bir hükümeti iktidara getirdi.',
       cond: () => alive('GER') && alive('YUG') && !G.atWar('GER', 'YUG') && !facOf('YUG'),
       opts: [{ n: 'Yugoslavya\'yı işgal et', fx: () => { war('GER', 'YUG'); if (alive('GRE')) war('GER', 'GRE'); } }, { n: 'Vazgeç', fx: () => {} }] },
+    { id: 'jsnap', date: '1941-04-13', actor: 'JAP', title: 'Sovyet-Japon Tarafsızlık Paktı',
+      text: 'Matsuoka Moskova\'da: Japonya ile Sovyetler Birliği birbirine saldırmama sözü veriyor.',
+      cond: () => alive('JAP') && alive('SOV') && !G.atWar('JAP', 'SOV') && G.st.player !== 'SOV',
+      opts: [{ n: 'Paktı imzala', fx: () => { G.st.pacts[G.pairKey('JAP', 'SOV')] = 'nap'; G.log('Sovyet-Japon Tarafsızlık Paktı imzalandı.', ['JAP', 'SOV'], 'major'); } }, { n: 'İmzalama', fx: () => {} }] },
     { id: 'barbarossa', date: '1941-06-22', actor: 'GER', title: 'Barbarossa Harekâtı',
       text: 'Tarihin en büyük işgal ordusu Sovyet sınırında. Saldırı emri verilsin mi?',
-      cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV'),
-      opts: [{ n: 'Sovyetler Birliği\'ne saldır', fx: () => { delete G.st.pacts[G.pairKey('GER', 'SOV')]; war('GER', 'SOV'); if (alive('FIN') && ai('FIN') && !G.atWar('FIN', 'SOV')) { joinAxis('FIN'); } } }, { n: 'Bekle', fx: () => {} }] },
+      cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.st.player === 'GER' || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
+      opts: [{ n: 'Sovyetler Birliği\'ne saldır', fx: () => { delete G.st.pacts[G.pairKey('GER', 'SOV')]; war('GER', 'SOV'); G.timedSpirit('SOV', 'barb_surprise', 120); G.timedSpirit('GER', 'barb_drive', 160); if (alive('FIN') && ai('FIN') && !G.atWar('FIN', 'SOV')) { joinAxis('FIN'); } } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'pearl', date: '1941-12-07', actor: 'JAP', title: 'Pearl Harbor',
       text: 'ABD petrol ambargosu uyguluyor. Donanma, Pasifik Filosu\'na ani bir baskın planladı.',
       cond: () => alive('JAP') && alive('USA') && !G.atWar('JAP', 'USA'),
@@ -167,13 +171,33 @@
     const st = G.st;
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
+      if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
       st.ev[e.id] = 1;
-      if (!e.cond()) continue;
       if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
       else if (e.targetPrompt === st.player) {
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
       } else e.opts[0].fx();
     }
+  };
+  // Zamana bağlı ulusal ruhlar (HOI4'teki tarihî ruh değişimleri)
+  // Süreli ruh: belirli gün sonra kendiliğinden kalkar
+  G.timedSpirit = (t, sp, days) => {
+    const st = G.st, c = st.C[t]; if (!c || !c.alive) return;
+    if (!c.spirits.includes(sp)) c.spirits.push(sp);
+    st.tsp = (st.tsp || []).filter((x) => !(x.t === t && x.sp === sp));
+    st.tsp.push({ t, sp, until: st.day + days });
+    G.recomputeMods(c);
+  };
+  G.timedSpirits = () => {
+    const st = G.st;
+    for (const x of st.tsp || []) if (st.day >= x.until) { const c = st.C[x.t]; if (c) { c.spirits = c.spirits.filter((s2) => s2 !== x.sp); G.recomputeMods(c); } }
+    if (st.tsp) st.tsp = st.tsp.filter((x) => st.day < x.until);
+    const drop = (t, sp) => { const c = st.C[t]; if (c && c.spirits.includes(sp)) { c.spirits = c.spirits.filter((x) => x !== sp); G.recomputeMods(c); return true; } return false; };
+    const add = (t, sp) => { const c = st.C[t]; if (c && c.alive && !c.spirits.includes(sp)) { c.spirits.push(sp); G.recomputeMods(c); return true; } return false; };
+    if (st.day >= G.dayOf('1942-06-01') && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
+    const w = st.wars[G.pairKey('GER', 'SOV')];
+    if (w && st.day - w.since > 90 && st.C.SOV.alive && add('SOV', 'gpw')) G.log('Sovyetler Birliği: Büyük Vatanseverlik Savaşı ilan edildi.', ['SOV'], 'major');
+    if (st.day >= G.dayOf('1941-01-01') && w && drop('SOV', 'purge')) G.log('Kızıl Ordu, Büyük Temizlik\'in etkilerinden kurtuluyor.', ['SOV'], 'info');
   };
 })(window);

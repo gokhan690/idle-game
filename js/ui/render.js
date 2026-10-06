@@ -7,7 +7,7 @@
   const R = (G.R = {
     cv: null, ctx: null, dpr: 1, w: 0, h: 0,
     cam: { x: M.W * 0.53, y: M.H * 0.3, z: 1 },
-    mode: 'pol', // pol | terrain | ind | fac
+    mode: 'pol', // pol | terrain | ind | fac | sup
     sel: { prov: -1, units: new Set() },
     dirty: 1, mapDirty: 1, t: 0, box: null, hover: -1,
   });
@@ -44,6 +44,11 @@
       if (R.mode === 'terrain') return 'te' + P[i].te;
       if (R.mode === 'ind') { const v = pr.civ + pr.mil + pr.dock; return 'ind' + Math.min(6, Math.ceil(v / 2)); }
       if (R.mode === 'fac') { const f = st.C[pr.c]?.fac; return f ? 'fac:' + f : 'nofac:' + pr.c; }
+      if (R.mode === 'sup') {
+        const pl = st.player, av = G.supAvail[pl];
+        if (!av || !(pr.c === pl || (G.friendly(pl, pr.c) && !G.atWar(pl, pr.c)))) return 'nosup:' + pr.c;
+        const v = av[i]; return 'sup' + (v < 0.6 ? 0 : v < 1.5 ? 1 : v < 3 ? 2 : v < 5 ? 3 : v < 8 ? 4 : 5);
+      }
       return pr.c;
     };
     const hasAdd = typeof Path2D.prototype.addPath === 'function';
@@ -147,13 +152,16 @@
     return c;
   }
   const stripeCache = new Map();
+  const SUP_COLORS = ['#a8322a', '#cc6a2c', '#d6a73a', '#a9b54a', '#6fa84d', '#3f8f4f'];
   const IND_COLORS = ['#2e3a2a', '#4b5a33', '#6b7a35', '#94913a', '#c0a03c', '#d98a37', '#e0663a'];
 
   // ---------- Çizim ----------
   R.draw = () => {
     const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
     if (!st) return;
+    if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
     if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 180)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); }
+    if (G.wxDirty) { buildWeather(); G.wxDirty = 0; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // okyanus
     const grd = ctx.createLinearGradient(0, 0, 0, R.h);
@@ -172,10 +180,17 @@
         if (R.mode === 'terrain') col = g.TERRAIN[+k.slice(2)].c;
         else if (R.mode === 'ind') col = IND_COLORS[+k.slice(3)];
         else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
+        else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else col = R.ccolor(k);
         if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
         ctx.fillStyle = col;
         if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+      }
+      // hava: kar ve çamur katmanı
+      if (R.showWeather && R.mode !== 'ind') {
+        if (wxPaths.snow1) { ctx.fillStyle = 'rgba(235,242,250,0.3)'; ctx.fill(wxPaths.snow1, 'evenodd'); }
+        if (wxPaths.snow2) { ctx.fillStyle = 'rgba(244,248,253,0.52)'; ctx.fill(wxPaths.snow2, 'evenodd'); }
+        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; ctx.fill(wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
       }
       // işgal çizgileri
       if (R.mode === 'pol') for (const [owner, pa] of occGroups) {
@@ -192,15 +207,6 @@
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
       drawFronts(ctx, z);
-      // tur tabanlı mod: gidilebilir (yeşil) ve saldırılabilir (kırmızı) eyaletler
-      if (R.turnHL && R.sel.units.size && G.playerPhase()) {
-        ctx.fillStyle = 'rgba(140,230,110,0.42)'; ctx.strokeStyle = 'rgba(190,255,150,0.95)'; ctx.lineWidth = 2 / z;
-        for (const n of R.turnHL.reach.keys()) { ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
-        const pulse = 0.35 + 0.15 * Math.sin(R.t / 200);
-        ctx.strokeStyle = '#ff5a40'; ctx.lineWidth = 3 / z;
-        for (const n of R.turnHL.atk) { ctx.fillStyle = n === R.turnHL.pend ? `rgba(255,90,60,${pulse + 0.2})` : `rgba(230,60,40,${pulse})`; ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
-        R.dirty = 1;
-      }
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -213,12 +219,12 @@
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawLabels(ctx, z);
+    drawHubs(ctx);
     drawPaths(ctx);
     drawArrows(ctx, z);
     drawBattles(ctx);
     drawUnits(ctx, z);
     drawArmyTags(ctx, z);
-    drawFx(ctx);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
   };
@@ -265,6 +271,34 @@
   function starPath(ctx, x, y, r) {
     for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5; const rr = k % 2 ? r * 0.45 : r; const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
     ctx.closePath();
+  }
+
+  // ---------- Hava katmanı ----------
+  let wxPaths = {}, mudPat = null;
+  R.showWeather = true;
+  function buildWeather() {
+    const s1 = new Path2D(), s2 = new Path2D(), md = new Path2D(); let n1 = 0, n2 = 0, nm = 0;
+    if (typeof Path2D.prototype.addPath !== 'function') { wxPaths = {}; return; }
+    for (let i = 0; i < NP; i++) {
+      const sn = G.wx.snow[i], m = G.wx.mud[i];
+      if (sn > 0.55) { s2.addPath(provPath[i]); n2++; } else if (sn > 0.15) { s1.addPath(provPath[i]); n1++; }
+      if (m > 0.3) { md.addPath(provPath[i]); nm++; }
+    }
+    wxPaths = { snow1: n1 ? s1 : null, snow2: n2 ? s2 : null, mud: nm ? md : null };
+  }
+  // ikmal merkezleri (ikmal haritasında)
+  function drawHubs(ctx) {
+    const st = G.st; if (R.mode !== 'sup') return;
+    const hubs = G.hubs[st.player] || [];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 10px "Barlow Semi Condensed", sans-serif';
+    for (const [i, cap] of hubs) {
+      const s = visible(G.nodeX[i], G.nodeY[i], 20); if (!s) continue;
+      const big = i === st.C[st.player].cap;
+      const r = big ? 9 : 7;
+      ctx.fillStyle = 'rgba(10,12,9,0.85)'; ctx.fillRect(s.x - r, s.y - r - 12, r * 2, r * 2);
+      ctx.strokeStyle = big ? '#f2d27a' : '#cfe3b0'; ctx.lineWidth = 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
+      ctx.fillStyle = '#efe9d8'; ctx.fillText(String(Math.round(cap)), s.x, s.y - 12);
+    }
   }
 
   // ---------- Ordu cepheleri (HOI4 tarzı) ----------
@@ -359,25 +393,6 @@
       ctx.fillStyle = a.ord === 'atk' ? '#e0574a' : '#7fb069'; ctx.fillRect(x + 8, y + h - 6, (w - 14) * Math.min(1, (a.plan || 0) / Math.max(0.01, mx)), 3);
       R.counters.push({ x, y, w, h, n, tag: st.player, army: a.id });
     }
-  }
-
-  // Uçan hasar sayıları (European War tarzı)
-  R.fx = [];
-  R.addFx = (n, text, col, delay = 0) => { R.fx.push({ n, text, col, t0: performance.now() + delay * 1000 }); R.dirty = 1; };
-  function drawFx(ctx) {
-    const now = performance.now();
-    R.fx = R.fx.filter((f) => now - f.t0 < 1800);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (const f of R.fx) {
-      const t = (now - f.t0) / 1800; if (t < 0) continue;
-      const s = R.toScreen(G.nodeX[f.n], G.nodeY[f.n]);
-      const y = s.y - 20 - t * 42;
-      ctx.globalAlpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
-      ctx.font = '800 17px "Barlow Semi Condensed", sans-serif';
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,10,8,0.9)'; ctx.strokeText(f.text, s.x, y);
-      ctx.fillStyle = f.col; ctx.fillText(f.text, s.x, y);
-    }
-    ctx.globalAlpha = 1;
   }
 
   function drawPaths(ctx) {
@@ -482,11 +497,9 @@
     const kind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0][0];
     let org = 0, os = 0, str = 0, fighting = false, moving = false;
     for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += Math.max(0, u.org); os += sOrg; str += u.str; if (G.inBattle && G.inBattle.has(u)) fighting = true; if (u.path.length) moving = true; }
-    const done = G.isTurn() && tag === st.player && gl.every((u) => u.mv);
     ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
     ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + h - 5, w, 5);
-    if (done) { ctx.fillStyle = gl.every((u) => u.at) ? 'rgba(20,20,18,0.55)' : 'rgba(20,20,18,0.3)'; ctx.fillRect(x, y, w, h); }
     drawNato(ctx, kind, x + 4, y + 3, 15, 10, ink);
     ctx.fillStyle = ink; ctx.font = '700 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(gl.length), x + 30, y + 8.5);

@@ -1,7 +1,7 @@
 // 1936 devletleri. civ/mil/dock: fabrika, pop: milyon nüfus, div: başlangıç tümenleri,
 // air: uçak (savaş), navy: [muhrip, kruvazör, zırhlı, denizaltı, uçak gemisi], tl: teknoloji seviyesi (0-3)
 window.COUNTRY_DEFS = {
-  GER: { n: 'Almanya', c: '#6b6f5e', id: 'fas', l: 'Adolf Hitler', cap: 'Berlin', civ: 32, mil: 28, dock: 4, pop: 68, div: { inf: 26, mtn: 2, arm: 3, mot: 2 }, air: [300, 80, 60], navy: [20, 8, 3, 30, 0], tl: 3, major: 1 },
+  GER: { n: 'Almanya', c: '#6b6f5e', id: 'fas', l: 'Adolf Hitler', cap: 'Berlin', civ: 32, mil: 28, dock: 4, pop: 68, div: { inf: 34, mtn: 3, arm: 3, mot: 4 }, air: [300, 80, 60], navy: [20, 8, 3, 30, 0], tl: 3, major: 1 },
   ITA: { n: 'İtalya', c: '#4f8a52', id: 'fas', l: 'Benito Mussolini', cap: 'Roma', civ: 18, mil: 12, dock: 6, pop: 43, div: { inf: 26, mtn: 4, arm: 1 }, air: [250, 50, 50], navy: [40, 18, 4, 60, 0], tl: 2, major: 1 },
   JAP: { n: 'Japonya', c: '#d9c58b', id: 'fas', l: 'İmparator Hirohito', cap: 'Tokyo', civ: 20, mil: 12, dock: 10, pop: 98, div: { inf: 24, mar: 2, arm: 1 }, air: [350, 80, 60], navy: [60, 30, 9, 40, 5], tl: 2, major: 1 },
   SOV: { n: 'Sovyetler Birliği', c: '#9b3226', id: 'com', l: 'Josef Stalin', cap: 'Moskova', bonus: { landDef: 0.1 }, civ: 34, mil: 32, dock: 6, pop: 170, div: { inf: 64, cav: 8, mtn: 4, arm: 6 }, air: [600, 150, 120], navy: [30, 8, 3, 70, 0], tl: 2, major: 1 },

@@ -41,41 +41,8 @@
     for (const u of st.units) st.C[u.t]._mpu += G.T(u.t, u.u).mp * u.str;
   }
 
-  // ---------- İkmal: dost çekirdek topraklardan eyalet sayısı ----------
-  G.sup = {};
-  function computeSupply() {
-    const st = G.st;
-    const q = new Int32Array(NP);
-    for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.enemies.length) { delete G.sup[c.tag]; continue; }
-      const tag = c.tag;
-      const d = G.sup[tag] || (G.sup[tag] = new Uint8Array(NP));
-      d.fill(255);
-      let qh = 0, qt = 0;
-      for (let i = 0; i < NP; i++) {
-        const pr = st.prov[i];
-        if ((pr.c === tag || G.friendly(tag, pr.c)) && !G.atWar(tag, pr.c) && (pr.core === pr.c || pr.core === tag) ) { d[i] = 0; q[qt++] = i; }
-      }
-      while (qh < qt) {
-        const i = q[qh++]; const nd = d[i] + 1; if (nd > 30) continue;
-        for (const j of P[i].a) {
-          if (d[j] <= nd) continue;
-          const pr = st.prov[j];
-          if (pr.c === tag || G.friendly(tag, pr.c)) { d[j] = nd; q[qt++] = j; }
-        }
-      }
-    }
-  }
-  G.supplyMul = (u) => {
-    if (u.loc >= NP) return 1;
-    const d = G.sup[u.t]; if (!d) return 1;
-    const h = d[u.loc];
-    let pen = h === 255 ? 0.45 : h <= 4 ? 0 : Math.min(0.4, 0.06 * (h - 4));
-    if (!pen) return 1;
-    const s = u._s || G.unitStats(u);
-    const red = Math.min(0.8, (s.t.sup || 0) + (s.gb ? s.gb.sup : 0) + (G.st.C[u.t].mods.supply || 0));
-    return 1 - pen * (1 - red);
-  };
+  // ---------- İkmal: logistics.js (ikmal merkezleri, altyapı, hava) ----------
+  function computeSupply() { G.computeSupplyAll(); }
 
   // ---------- Ekonomi ----------
   // Kaynak dengesi ve serbest sivil fabrika hesabı (durumu değiştirmez)
@@ -116,7 +83,7 @@
       q.prog += n * 5 * (1 + (m.construct || 0) + stabF);
       const b = g.BUILDINGS[q.b];
       if (q.prog >= b.cost) {
-        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else pr[q.b]++;
+        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else if (q.b === 'inf') { pr.inf = Math.min(5, (pr.inf || 1) + 1); G.supDirty = 1; } else pr[q.b]++;
         c.constr.splice(i, 1); i--;
         if (c.tag === st.player) G.log(`${b.n} tamamlandı: ${G.pname(q.p)}`, [c.tag], 'good');
         G.needSummary = 1;
@@ -293,7 +260,7 @@
         const sup = G.navalSupremacy(u.t, u.loc);
         if (sup < 0.4) u.str = Math.max(0.05, u.str - 0.02 * (0.4 - sup) / 0.4);
       }
-      const need = G.edgeDays(u.loc, n, 1) * (seaLeg ? G.SEA_SPEED : 1);
+      const need = G.edgeDays(u.loc, n, 1) * (seaLeg ? G.SEA_SPEED : G.moveMul(n));
       if (u.prog >= need) {
         const from = u.loc;
         u.loc = n; u.path.shift(); u.prog = 0; u.ent = 0;
@@ -307,8 +274,9 @@
     G.battles = [];
     G.inBattle = new Set();
     for (const b of battles.values()) fight(b);
-    // muharebede olmayan duran birlikler toparlanır
+    // muharebede olmayan duran birlikler toparlanır; ikmalsizlik ve kış yıpratır
     for (const u of st.units) if (!u.dead && !u.path.length && !G.inBattle.has(u)) recover(u, u._s);
+    for (const u of st.units) if (!u.dead) G.attrition(u);
     // ölüleri temizle
     if (st.units.some((u) => u.dead)) { st.units = st.units.filter((u) => !u.dead); G.rebuildUnitIndex(); }
   }
@@ -385,7 +353,7 @@
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
+      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(c.airMod || 1, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
       hitD += atk;
     }
@@ -401,7 +369,7 @@
     const casMul = (s) => Math.max(0.4, 1 - (s.t.cas || 0) - (s.gb ? s.gb.cas : 0));
     for (const u of D) {
       const s = u._s;
-      const def = s.def * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month);
+      const def = s.def * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1);
       let ol = perD * 20 / (20 + def);
       if (s.arm > aPrc) ol *= 0.6;
       u.org -= ol; const sl = ol * (s.arm > aPrc ? 0.0025 : 0.004);
@@ -491,7 +459,8 @@
         for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].vp > bv) { bv = P[i].vp; best = i; }
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
-      const th = Math.min(0.95, (c.tag === 'SOV' ? 0.85 : c.tag === 'CHI' ? 0.92 : c.major ? 0.68 : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
+      // otoriter büyük güçler sonuna dek savaşır (HOI4: Almanya ve Japonya geç teslim olur)
+      const th = Math.min(0.95, (c.tag === 'SOV' ? 0.85 : c.tag === 'CHI' ? 0.92 : c.major ? (c.ideo === 'fas' || c.ideo === 'com' ? 0.8 : 0.68) : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
       c.surrender = lost / th;
       if (lost >= th) G.capitulate(c.tag);
     }
@@ -561,12 +530,12 @@
   };
 
   G._moveAndFight = moveAndFight;
-  G._fight = fight;
   // ---------- Ana gün döngüsü ----------
   G.tick = () => {
     const st = G.st;
     if (st.over === 1) return;
     st.day++;
+    if (G.updateWeather()) G.supDirty = 1;
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     G.precomputeTrade();
     airNaval();
@@ -588,6 +557,8 @@
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
+    if (st.day % 5 === 0) G.timedSpirits();
+    if (st.day % 10 === 0) G.expelUnits();
     G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
   };

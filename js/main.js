@@ -23,20 +23,18 @@
   };
 
   // ---------- Oyun döngüsü ----------
-  const SPEEDS = [0, 1.2, 2.5, 5, 10, 20]; // gün/saniye
+  const SPEEDS = [0, 0.6, 1.25, 2.5, 5, 12]; // gün/saniye (HOI4 temposu)
   let last = performance.now(), acc = 0, hudT = 0, panelT = 0, lastMonth = -1;
   function frame(now) {
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
     R.t = now;
     const st = G.st;
-    const turnRun = st && G.isTurn() && st.turnLeft > 0;
-    if (st && (turnRun || (!G.isTurn() && !st.paused)) && !UI.modalOpen && st.over !== 1 && $('start').hidden) {
-      acc += dt * (turnRun ? 16 : SPEEDS[st.speed || 1]);
+    if (st && !st.paused && !UI.modalOpen && st.over !== 1 && $('start').hidden) {
+      acc += dt * SPEEDS[st.speed || 1];
       const t0 = performance.now();
       let ticks = 0;
       while (acc >= 1) {
         G.tick(); acc -= 1; ticks++;
-        if (turnRun) { st.turnLeft--; if (st.turnLeft <= 0) { G.turnDone(); acc = 0; break; } }
         if (performance.now() - t0 > 22) { acc = Math.min(acc, 1); break; }
         if (UI.modalOpen) break;
       }
@@ -44,7 +42,7 @@
         R.dirty = 1;
         const m = G.dateOf(st.day).getUTCMonth();
         if (m !== lastMonth) { if (lastMonth >= 0 && UI.settings.autosave) G.saveGame('auto'); lastMonth = m; }
-        if (st.day === G.dayOf('1946-01-01')) endOfWar();
+        if (st.day === G.dayOf('1948-01-01')) endOfWar();
       }
     }
     if (st && $('start').hidden) {
@@ -57,7 +55,7 @@
         if (!$('card').hidden && UI.cardProv >= 0) UI.showCard(UI.cardProv);
       }
     }
-    if (R.dirty || (G.battles && G.battles.length) || R.mapDirty || G.mapDirty || (R.fx && R.fx.length)) R.draw();
+    if (R.dirty || (G.battles && G.battles.length) || R.mapDirty || G.mapDirty) R.draw();
     requestAnimationFrame(frame);
   }
 
@@ -66,7 +64,7 @@
     let vp = 0; for (let i = 0; i < NP; i++) if (st.prov[i].c === st.player) vp += G.P[i].vp;
     const rank = Object.values(st.C).filter((x) => x.alive).map((x) => { let v = 0; for (let i = 0; i < NP; i++) if (st.prov[i].c === x.tag) v += G.P[i].vp; return [x.tag, v]; }).sort((a, b) => b[1] - a[1]);
     const pos = rank.findIndex((r) => r[0] === st.player) + 1;
-    G.queuePopup({ eyebrow: '1 Ocak 1946', title: 'Bir çağ kapanıyor', text: `${G.cname(st.player)} ${c.alive ? `${vp} zafer puanıyla dünyada ${pos}. sırada` : 'artık haritada yok'}. En güçlü üç devlet: ${rank.slice(0, 3).map((r) => G.cname(r[0])).join(', ')}. Dilersen oynamaya devam edebilirsin.`, opts: [{ n: 'Devam et', fx: () => {} }, { n: 'Yeni oyun', fx: () => UI.showStart() }] });
+    G.queuePopup({ eyebrow: '1 Ocak 1948', title: 'Bir çağ kapanıyor', text: `${G.cname(st.player)} ${c.alive ? `${vp} zafer puanıyla dünyada ${pos}. sırada` : 'artık haritada yok'}. En güçlü üç devlet: ${rank.slice(0, 3).map((r) => G.cname(r[0])).join(', ')}. Dilersen oynamaya devam edebilirsin.`, opts: [{ n: 'Devam et', fx: () => {} }, { n: 'Yeni oyun', fx: () => UI.showStart() }] });
   }
 
   // ---------- Girdi ----------
@@ -177,7 +175,7 @@
       return true;
     };
     const pc = st.C[st.player];
-    const armyOfCnt = (k) => { if (G.isTurn()) return 0; const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
+    const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
     const setGoal = (a, node) => {
       const owner = st.prov[node].c;
       if (owner === st.player || G.sameFaction(owner, st.player)) return false;
@@ -223,16 +221,6 @@
         return;
       }
       if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
-      // tur tabanlı mod: anında hareket / saldırı
-      if (G.playerPhase() && !R.sel.army && R.turnHL) {
-        const hl = R.turnHL;
-        if (hl.atk.has(n)) {
-          // iki dokunuş: önce önizleme, ikinci dokunuşta saldırı
-          if (hl.pend === n) { turnAttack(sel, n); return; }
-          hl.pend = n; UI.renderSel(true); R.dirty = 1; return;
-        }
-        if (hl.reach.has(n)) { G.instantMove(sel, n, hl.prev); UI.renderSel(); R.dirty = 1; G.mapDirty = 1; return; }
-      }
       // ordu seçiliyken düşman eyaleti: taarruz oku (HOI4 savaş planı)
       const a = R.sel.army ? G.armyById(pc, R.sel.army) : null;
       if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
@@ -244,21 +232,6 @@
     R.sel.prov = n;
     if (UI.panel) UI.close();
     UI.showCard(n); R.dirty = 1;
-  }
-
-  G.turnAttack = (n) => { const st = G.st; turnAttack(st.units.filter((u) => R.sel.units.has(u.id)), n); };
-  function turnAttack(sel, n) {
-    const st = G.st;
-    const r = G.instantAttack(sel, n);
-    if (!r) { UI.toast('Bu birlikler saldıramaz (moral düşük ya da bu tur saldırdı).', 'warn'); return; }
-    const pct = (v) => Math.round(v * 100);
-    R.addFx(n, `−%${pct(r.dLoss)}`, '#ff8a6a');
-    R.addFx(r.from, `−%${pct(r.aLoss)}`, '#f4efe0', 0.25);
-    if (r.killed) R.addFx(n, `${r.killed} tümen imha!`, '#f2d27a', 0.5);
-    if (r.took) R.addFx(n, 'Ele geçirildi', '#9be38a', 0.8);
-    else if (r.won) R.addFx(n, 'Düşman çekildi', '#9be38a', 0.8);
-    R.sel.units = new Set([...R.sel.units].filter((id) => st.units.some((u) => u.id === id)));
-    UI.renderSel(); R.dirty = 1; G.mapDirty = 1; UI.hud();
   }
 
   function order(units, target) {
@@ -288,15 +261,14 @@
     else if (!ok) UI.toast('Bu hedefe ulaşılabilecek bir yol yok.', 'warn');
     else if (fail) UI.toast(`${ok} tümen yola çıktı, ${fail} tümen hedefe ulaşamıyor.`, 'warn');
     else if (naval) UI.toast(`${ok} tümen deniz yoluyla gönderildi.`);
-    if (ok && G.isTurn()) UI.toast('Bu tur ulaşılamaz: yol emri verildi, birlikler tur sonunda ilerler.');
-    else if (ok && st.paused) UI.toast('Oyun duraklatıldı: emirler zaman başlayınca uygulanır.');
+    if (ok && st.paused) UI.toast('Oyun duraklatıldı: emirler zaman başlayınca uygulanır.');
     R.dirty = 1; UI.renderSel();
   }
 
   // klavye kısayolları (masaüstü)
   g.addEventListener('keydown', (e) => {
     if (!G.st || !$('start').hidden || UI.modalOpen) return;
-    if (e.code === 'Space') { e.preventDefault(); if (G.isTurn()) { G.endTurn(); UI.hud(); } else { G.st.paused = !G.st.paused; UI.hud(); } }
+    if (e.code === 'Space') { e.preventDefault(); G.st.paused = !G.st.paused; UI.hud(); }
     else if (/^Digit[1-5]$/.test(e.code)) { G.st.speed = +e.code.slice(5); G.st.paused = 0; UI.hud(); }
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
   });

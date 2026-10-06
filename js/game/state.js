@@ -121,6 +121,8 @@
       G.defaultLines(c);
       c.lines.forEach((l) => (l.eff = 0.5));
     }
+    G.initInfra();
+    G.updateWeather(true);
     G.refreshEnemies();
     // başlangıç savaşı: İtalya - Etiyopya
     if (st.C.ITA.alive && st.C.ETH.alive) G.setWar('ITA', 'ETH');
@@ -203,6 +205,7 @@
     G.cwDirty = 1;
     G.rebuildUnitIndex();
     G.updateSummaries();
+    G.ensureInfra(); G.updateWeather(true); G.supDirty = 1;
     for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
     return st;
   };
