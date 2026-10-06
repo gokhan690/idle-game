@@ -126,7 +126,7 @@
     // odak
     if (c.focus.cur) {
       c.focus.p += 1;
-      if (c.focus.p >= g.FOCUS_DAYS) G.completeFocus(c, c.focus.cur);
+      if (c.focus.p >= G.focusDays(G.focusById(c, c.focus.cur))) G.completeFocus(c, c.focus.cur);
     }
     // gerekçe
     if (c.just) {
@@ -325,16 +325,16 @@
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decrypt && c.decrypt[defs[0].t] > st.day ? 1.12 : 1);
+      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
       if (s.arm > dPrc) atk *= 1.25;
-      hitD += atk;
+      hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decrypt && c.decrypt[attTag] > st.day ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       if (s.arm > aPrc) atk *= 1.25;
-      hitA += atk;
+      hitA += atk; G.contrib(attTag, u.t, atk);
     }
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
     const perD = (hitD * 0.9 * rD) / D.length, perA = (hitA * 0.9 * rA) / A.length;
@@ -423,6 +423,7 @@
       if (pr.c === core || (!c.eset.has(pr.c) && G.friendly(core, pr.c))) have[core] = (have[core] || 0) + G.cw[i];
     }
     for (const c of Object.values(st.C)) {
+      if (st.conf) return;
       if (!c.alive || !c.enemies.length) continue;
       const lost = 1 - (have[c.tag] || 0) / (c.startW || 1);
       // başkent düştüyse en değerli toprağa taşı
@@ -440,52 +441,35 @@
 
   G.capitulate = (tag) => {
     const st = G.st, c = st.C[tag];
-    const enemies = c.enemies.slice();
-    // en çok toprak tutan düşman
-    const held = {};
-    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === tag && pr.c !== tag && enemies.includes(pr.c)) held[pr.c] = (held[pr.c] || 0) + P[i].vp + 1; }
-    let winner = enemies[0]; let hv = -1;
-    for (const [t, v] of Object.entries(held)) if (v > hv) { hv = v; winner = t; }
-    // işgal edilen topraklar işgalciye geçer
-    for (let i = 0; i < NP; i++) {
-      const pr = st.prov[i];
-      if (pr.o === tag && pr.c !== tag) { pr.o = pr.c; pr.core = pr.c; }
-    }
-    // işgalcilerin yeni çekirdek toprakları
-    G.cwDirty = 1;
-    for (const t of enemies) if (st.C[t]?.alive) st.C[t].startW = G.coreWeight(t, true);
-    // kalan toprak çok azsa tamamen ilhak
-    G.cwDirty = 1;
-    const remain = G.coreWeight(tag, false);
-    const full = remain < (c.startW || 1) * 0.12;
-    if (!full && st.prov[c.cap]?.o !== tag) { G.updateSummaries(); c.cap = G.anyOwnProvince(tag); G.cwDirty = 1; }
-    if (full && winner) {
-      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === tag) { pr.o = pr.c = pr.core = winner; } }
-    }
-    // savaşlardan çık
+    const enemies = c.enemies.filter((t) => st.C[t]?.alive);
+    // savaşlardan çık; yabancı topraklardaki işgal sona erer
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    // diğer ülkelerin bu ülkenin topraklarındaki birlikleri çekilir
     if (c.fac) G.leaveFaction(tag);
+    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === tag && pr.o !== tag) pr.c = pr.o; }
     for (const u of st.units) if (u.t === tag && (u.loc >= NP || st.prov[u.loc].c !== tag)) u.dead = 1;
     st.units = st.units.filter((u) => !u.dead);
     c.train = []; c.just = null;
     st.tension = Math.min(100, st.tension + 3);
     G.refreshEnemies();
     G.mapDirty = 1; G.needSummary = 1;
-    G.updateSummaries();
-    if (full || !c.alive) G.killCountry(tag);
-    else { G.cwDirty = 1; c.startW = G.coreWeight(tag, true); c.surrender = 0; }
-    const msg = full ? `${G.cname(tag)} teslim oldu ve ${G.cname(winner)} tarafından ilhak edildi!` : `${G.cname(tag)} teslim oldu! Kalan toprakları tarafsız bir rejim altında.`;
-    G.log(msg, [tag, winner], tag === st.player ? 'bad' : 'major');
-    if (G.onCapitulate) G.onCapitulate(tag, winner, full);
-    // barış konferansı: oyuncu kazanansa kukla devlet seçeneği
-    if (winner === st.player && tag !== st.player && G.queuePopup) {
-      G.queuePopup({ title: 'Barış Konferansı', text: `${G.cname(tag)} teslim oldu. İşgal ettiğimiz asli topraklarında ne yapalım?`, opts: [
-        { n: 'Topraklarını ilhak et', fx: () => {} },
-        { n: 'Kukla devlet olarak kur', fx: () => G.makePuppet(st.player, tag) },
-      ] });
+    G.log(`${G.cname(tag)} teslim oldu! Barış konferansı toplanıyor.`, [tag], tag === st.player ? 'bad' : 'major');
+    // barış konferansı
+    const conf = G.startConference(tag, enemies);
+    if (!conf) { G.updateSummaries(); G.rebuildUnitIndex(); if (!c.sum.provs) G.killCountry(tag); return; }
+    G.confRun(conf);
+    if (!conf.done && st.player && conf.parts.some((p) => p.t === st.player)) {
+      st.conf = conf; // oyuncu sırası: simülasyon konferans bitene dek durur
+      if (G.onConference) G.onConference(conf);
+      return;
     }
+    G.confEnd(conf);
+  };
+  G.confEnd = (conf) => {
+    const st = G.st;
+    G.confFinish(conf);
+    st.conf = null;
     G.rebuildUnitIndex();
+    if (G.onCapitulate) G.onCapitulate(conf.L, conf.top, conf.full, conf);
   };
 
   G.killCountry = (tag) => {
@@ -506,6 +490,7 @@
   G.tick = () => {
     const st = G.st;
     if (st.over === 1) return;
+    if (st.conf) return; // barış konferansı sürüyor
     st.day++;
     if (G.updateWeather()) G.supDirty = 1;
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }

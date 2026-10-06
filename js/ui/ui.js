@@ -62,6 +62,7 @@
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
     // HOI4 tarzı uyarılar
     const al = [];
+    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor']);
     if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi']);
     if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`]);
     const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
@@ -105,6 +106,7 @@
     $('sheet-back').hidden = !UI.sub;
     body.innerHTML = out.html;
     sheet.hidden = false;
+    sheet.classList.toggle('half', UI.panel === 'peace');
     const ft = body.querySelector('.ftree');
     if (!reset) { body.scrollTop = scroll; if (ft && UI.ftScroll) { ft.scrollLeft = UI.ftScroll[0]; ft.scrollTop = UI.ftScroll[1]; } }
     else {
@@ -149,7 +151,7 @@
     html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / g.FOCUS_DAYS)}<div class="d">${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Her odak ${g.FOCUS_DAYS} günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
+    let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / G.focusDays(cur))}<div class="d">${Math.ceil(G.focusDays(cur) - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Odaklar 35 ya da 70 günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
     fh += `<button class="btn pri" data-act="sub" data-v="tree">Odak ağacını aç${g.FOCUS_NATIONAL[c.tag] ? ' · ulusal ağaç' : ''}</button>`;
     html += sec('Ulusal odak', fh, `${Object.keys(c.focus.done).length}/${G.focusList(c).length} tamamlandı`);
     // danışmanlar
@@ -196,7 +198,8 @@
 
   function focusTree(c) {
     const list = G.focusList(c);
-    const NW = 128, NH = 74, GX = 140, GY = 104, PAD = 14;
+    const k = UI.ftZ || 1;
+    const NW = Math.round(128 * k), NH = Math.round((k < 0.8 ? 44 : 74) * Math.max(k, 0.8)), GX = Math.round(140 * k), GY = Math.round((k < 0.8 ? 66 : 104) * Math.max(k, 0.8)), PAD = 14;
     const maxX = Math.max(...list.map((f) => f.x)), maxY = Math.max(...list.map((f) => f.y));
     const W = Math.ceil((maxX + 1) * GX + PAD * 2), H = Math.ceil((maxY + 1) * GY + PAD * 2);
     const pos = (f) => ({ x: PAD + f.x * GX, y: PAD + f.y * GY });
@@ -226,15 +229,17 @@
       const p = pos(f);
       const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / g.FOCUS_DAYS * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün</div>${bar(c.focus.p / g.FOCUS_DAYS)}</div></div>` : '<p class="muted small" style="margin:0">Parlak çerçeveli odaklar seçilebilir; ⇄ işaretliler birbirini dışlar. Ağacı parmağınla her yöne kaydır, bir odağa dokunup ayrıntısını gör ve “Başlat” de.</p>';
-    html += `<div class="ftree" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(G.focusDays(cur) - c.focus.p)} gün</div>${bar(c.focus.p / G.focusDays(cur))}</div></div>` : '<p class="muted small" style="margin:0">Parlak = seçilebilir · ⇄ birbirini dışlar · odağa dokun → Başlat</p>';
+    const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
+    html += `<div class="ftbar"><button class="btn sm" data-act="ftzoom" data-v="-1" aria-label="Uzaklaştır">−</button><button class="btn sm" data-act="ftzoom" data-v="1" aria-label="Yakınlaştır">+</button><button class="btn sm" data-act="ftnext">Seçilebilir odaklar (${nAvail}) ›</button><span class="muted small">${Object.keys(c.focus.done).length}/${list.length} tamamlandı</span></div>`;
+    html += `<div class="ftree ${k < 0.8 ? 'compact' : ''}" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
     const sf = UI.fsel ? G.focusById(c, UI.fsel) : null;
     if (sf) {
       const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
-      const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(g.FOCUS_DAYS - c.focus.p)} gün kaldı.` : avail ? `${g.FOCUS_DAYS} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
+      const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(G.focusDays(sf) - c.focus.p)} gün kaldı.` : avail ? `${G.focusDays(sf)} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
       html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div><div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
@@ -412,6 +417,36 @@
       if (rows.length) html += sec('Hava savaşı', `<div class="mods">${rows.slice(0, 12).map(([r, v]) => `<div><span>${esc(G.AIR.regions[r].n)}</span><b class="${v > 0.55 ? 'good' : v < 0.45 ? 'bad' : 'warn'}">%${Math.round(v * 100)}</b></div>`).join('')}</div>`, 'bizim hava üstünlüğümüz');
     }
     return { title: 'Hava kuvvetleri', html };
+  };
+  // Barış konferansı
+  PANELS.peace = () => {
+    const st = G.st, cf = st.conf;
+    if (!cf) return { title: 'Barış konferansı', html: '<p class="muted">Şu an süren bir barış konferansı yok.</p>' };
+    const me0 = st.player, p = cf.parts.find((q) => q.t === me0), turn = G.confTurn(cf), myTurn = turn === me0 && !cf.done;
+    let html = `<div class="cfhead">${G.flag(cf.L, 30, 20)}<div class="grow"><b>${esc(G.cname(cf.L))}</b> <span class="muted small">tur ${cf.round}</span><div class="small">${cf.done ? '<b class="good">Paylaşım tamamlandı</b>' : myTurn ? '<b class="good">Sıra sende</b>' : 'Sıra: ' + esc(G.cname(turn))}</div></div>${cf.parts.map((q) => `<span class="cfpart ${q.t === turn ? 'on' : ''} ${q.pass === 2 ? 'off' : ''}" title="${esc(G.cname(q.t))} · katkı %${Math.round(q.sh * 100)}">${G.flag(q.t, 22, 15)}<b>${q.pts}</b></span>`).join('')}</div>`;
+    // seçili bölge
+    const sel = UI.cfSel != null ? cf.states[UI.cfSel] : null;
+    if (sel) {
+      const fl = sel.p.filter((n) => !cf.own[n]);
+      const cost = fl.length ? G.confCost(cf, me0, fl) : 0;
+      const ctrl = {}; for (const n of sel.p) ctrl[cf.ctrl[n]] = (ctrl[cf.ctrl[n]] || 0) + 1;
+      const owner = !fl.length ? cf.own[sel.p[0]] : null;
+      html += `<div class="item active"><div class="grow"><div class="t">${esc(sel.n)} <span class="muted small">${sel.p.length} eyalet · ${sel.vp} ZP · ${sel.ind} fabrika</span></div><div class="d">İşgalci: ${Object.entries(ctrl).map(([t, n]) => `${esc(G.cname(t))} ${n}`).join(', ')}${sel.oc !== cf.L ? ` · asli sahibi ${esc(G.cname(sel.oc))}` : ''}</div>${owner ? `<div class="d">Talep eden: <b>${esc(G.cname(owner.by || owner.t))}</b></div>` : ''}</div>${fl.length && myTurn ? `<button class="btn sm ${cost <= p.pts ? 'pri' : ''}" data-act="cftake" data-v="${sel.id}" ${cost <= p.pts ? '' : 'disabled'}>Talep et · ${cost}</button>` : ''}</div>`;
+    } else if (!cf.done) html += '<p class="muted small" style="margin:0">Haritada bir bölgeye dokun ya da aşağıdan seç. Rakam senin için maliyet: kendi işgalin ucuz, başkasının işgali pahalı, eski asli toprakların yarı fiyat.</p>';
+    if (myTurn) html += '<div class="btns"><button class="btn" data-act="cfpass">Pas geç</button><button class="btn danger" data-act="cfquit">Konferanstan çekil</button></div>';
+    else if (cf.done) html += '<div class="btns"><button class="btn pri" data-act="cfend">Antlaşmayı imzala</button></div>';
+    if (myTurn) {
+      const pc = G.confPuppetCost(cf), canP = !cf.puppet && G.confRemainFrac(cf) >= 0.05;
+      let ah = '';
+      if (canP) ah += `<div class="item"><div class="grow"><div class="t">Kukla devlet kur</div><div class="d">Talep edilmemiş tüm topraklarda ${esc(G.cname(cf.L))} sana bağlı kukla olur.</div></div><button class="btn sm ${pc <= p.pts ? 'pri' : ''}" data-act="cfpuppet" ${pc <= p.pts ? '' : 'disabled'}>${pc}</button></div>`;
+      for (const r of G.confReleasable(cf)) { const rc = G.confReleaseCost(cf, me0, r.provs); ah += `<div class="item">${G.flag(r.t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(r.t))} ulusunu serbest bırak</div><div class="d">${r.provs.length} asli eyaleti · sana bağlı kukla olur</div></div><button class="btn sm ${rc <= p.pts ? 'pri' : ''}" data-act="cfrelease" data-v="${r.t}" ${rc <= p.pts ? '' : 'disabled'}>${rc}</button></div>`; }
+      if (ah) html += sec('Özel talepler', `<div class="list">${ah}</div>`, `${p.pts} puanın var`);
+    }
+    // bölgeler
+    const rows = cf.states.map((s) => { const fl = s.p.filter((n) => !cf.own[n]); return { s, fl, cost: fl.length ? G.confCost(cf, me0, fl) : 1e9 }; }).sort((a, b) => (a.fl.length ? 0 : 1) - (b.fl.length ? 0 : 1) || a.cost - b.cost);
+    html += sec('Bölgeler', `<div class="list">${rows.map(({ s, fl, cost }) => { const o = !fl.length ? cf.own[s.p[0]] : null; return `<button class="item ${UI.cfSel === s.id ? 'active' : ''}" data-act="cfsel" data-v="${s.id}">${o ? G.flag(o.by || o.t, 22, 15) : ''}<div class="grow"><div class="t">${esc(s.n)}</div><div class="d">${s.p.length} eyalet · ${s.vp} ZP · ${s.ind} fabrika${o ? ` · ${esc(G.cname(o.t))}${o.by && o.by !== o.t ? ' (' + esc(G.cname(o.by)) + ')' : ''}` : ''}</div></div>${fl.length ? `<b class="${p && cost <= p.pts ? 'good' : 'muted'}">${cost}</b>` : ''}</button>`; }).join('')}</div>`, `${cf.states.length} bölge`);
+    if (cf.log.length) html += sec('Konferans günlüğü', `<div class="list">${cf.log.slice().reverse().slice(0, 30).map((l) => `<div class="item">${G.flag(l.t, 22, 15)}<div class="grow"><div class="d">${esc(G.cname(l.t))}: ${esc(l.m)}</div></div></div>`).join('')}</div>`);
+    return { title: 'Barış konferansı', html };
   };
   const SEA_N = (n) => {
     if (n < NP) return G.pname(n);
@@ -758,6 +793,7 @@
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Barış konferansı</h3><p class="small" style="margin:0">Bir ülke teslim olunca ona karşı savaşan herkes konferansa katılır. Muharebelerde verdiğin hasar ve işgal ettiğin topraklar oranında puan alırsın. Sırayla bölge talep edilir (sıra her turda en çok puanı kalana geçer). Haritadaki rakam senin için maliyettir: kendi işgal ettiğin yer ucuz, başka bir galibin işgali pahalı, eski asli toprakların yarı fiyat. Puanını kukla devlet kurmak ya da yok olmuş ulusları serbest bırakmak için de harcayabilirsin. Kimsenin almadığı topraklar teslim olan ülkede kalır. Konferans sürerken zaman durur.</p></section>
   <section class="sec"><h3 class="sec-h">Hava kuvvetleri</h3><p class="small" style="margin:0">Dünya, HOI4\'teki gibi hava bölgelerine ayrılmıştır (Hava panelindeki ya da “Hava” harita modundaki kesikli çizgiler). Ürettiğin uçaklar stoka girer; Hava panelinden 100 uçaklık kanatlar kurarsın. Her kanada bir bölge ve görev ver: <b>Hava üstünlüğü</b> (avcı) düşman uçaklarıyla çarpışır ve o bölgedeki kara muharebelerine saldırı/savunma bonusu sağlar; <b>Önleme</b> düşman bombacılarını avlar; <b>Yakın hava desteği</b> bölgedeki muharebelerde tümenlerine ek saldırı verir; <b>Stratejik bombardıman</b> düşman fabrikalarını vurur, üretimini ve savaş desteğini düşürür; <b>Deniz saldırısı</b> düşman filolarını ve konvoylarını hedef alır. “Bölge seç” düğmesine basıp haritada bir yere dokunarak kanadı gönderirsin; kanat ancak dost toprak bulunan ya da ona komşu bölgelerde çalışabilir. Kayıplar stoktan kendiliğinden takviye edilir. “Hava kurmayı” açıkken kanatlar cephelere kendiliğinden dağıtılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita, şehirler ve boğazlar</h3><p class="small" style="margin:0">Eyaletler gerçek şehirlerin etrafında kuruludur ve 1936\'daki adlarıyla anılır (Danzig, Breslau, Königsberg, Leningrad, Stalingrad…). Yakınlaştıkça daha çok şehir adı görünür. Gemiler Türk Boğazları, Cebelitarık, Danimarka Boğazları, Kiel ve Süveyş kanalları, Panama, Kerç ve Messina\'dan geçebilir; ancak boğazı kontrol eden eyaletlerden biri düşman elindeyse geçemez.</p></section>
   <section class="sec"><h3 class="sec-h">İkmal, altyapı ve hava</h3><p class="small" style="margin:0">İkmal başkentten ve büyük şehirlerdeki ikmal merkezlerinden demiryolu ve altyapı boyunca akar; uzaklaştıkça azalır. Bir eyalette ikmalin kaldırabileceğinden fazla tümen yığarsan ya da düşman topraklarında çok derine inersen birliklerin saldırı gücü ve toparlanması düşer, ikmalsiz kalanlar yıpranır. İşgal ettiğin şehirler yarım kapasiteyle ikmal merkezi olur; anakaradan kopuk bölgeler yalnızca limanla, konvoy ve deniz üstünlüğüyle beslenir. “İkmal” harita modunda kırmızı yetersiz, yeşil bol ikmali gösterir; kutular ikmal merkezleridir. İnşaat panelinden altyapı kurarak ikmali ve hareket hızını artırabilirsin. Kuzeyde kışın kar ve tipi saldırıyı, hareketi ve ikmali zorlaştırır, kışa hazırlıksız ordular yıpranır; Doğu Avrupa\'da ilkbahar ve sonbaharda çamur, Asya\'da muson vardır.</p></section>
@@ -887,8 +923,59 @@
     UI.open('air'); return true;
   };
 
+  ACT.ftzoom = (d) => { const Z = [0.5, 0.65, 0.8, 1]; const i = Z.indexOf(UI.ftZ || 1); UI.ftZ = Z[Math.max(0, Math.min(Z.length - 1, i + +d.v))]; UI.render(false); };
+  ACT.ftnext = () => {
+    const ft = document.getElementById('ftree'); if (!ft) return;
+    const L = [...ft.querySelectorAll('.fn.avail')]; if (!L.length) { UI.toast('Şu an seçilebilir odak yok.'); return; }
+    UI.ftIdx = ((UI.ftIdx ?? -1) + 1) % L.length; const n = L[UI.ftIdx];
+    ft.scrollTo({ left: Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2), top: Math.max(0, n.offsetTop - 40), behavior: 'smooth' });
+    n.classList.add('flash'); setTimeout(() => n.classList.remove('flash'), 900);
+  };
+  // barış konferansı eylemleri
+  const cfAfter = () => {
+    const cf = G.st.conf; if (!cf) return;
+    G.confRun(cf);
+    G.mapDirty = 1; R.mapDirty = 1; R.dirty = 1;
+    if (cf.done) { UI.toast('Konferans sona erdi. Antlaşmayı imzala.', 'good'); }
+    UI.render();
+  };
+  const cfDo = (a) => { const cf = G.st.conf; if (!cf) return; const r = G.confAct(cf, G.st.player, a); if (!r.ok) { UI.toast(r.why || 'Yapılamaz.', 'warn'); return; } cfAfter(); };
+  // hedefi haritanın görünen kısmına getir (dikeyde alt pencere haritayı örter)
+  UI.focusVis = (n, z) => {
+    R.focusOn(n); if (z) { R.cam.z = z; R.clamp(); }
+    if (!$('sheet').hidden) { if (R.h > R.w) R.cam.y += ($('sheet').offsetHeight / 2) / R.cam.z; else R.cam.x += ($('sheet').offsetWidth / 2) / R.cam.z; R.clamp(); }
+    R.dirty = 1;
+  };
+  ACT.cfsel = (d) => { const cf = G.st.conf; UI.cfSel = +d.v; if (cf) UI.focusVis(cf.states[+d.v].c); R.dirty = 1; UI.render(); };
+  ACT.cftake = (d) => cfDo({ k: 'take', s: +d.v });
+  ACT.cfpuppet = () => cfDo({ k: 'puppet' });
+  ACT.cfrelease = (d) => cfDo({ k: 'release', t: d.v });
+  ACT.cfpass = () => cfDo({ k: 'pass' });
+  ACT.cfquit = () => cfDo({ k: 'quit' });
+  ACT.cfend = () => { const cf = G.st.conf; if (!cf || !cf.done) return; UI.cfSel = null; G.confEnd(cf); R.setMode('pol'); UI.close(); UI.hud(); };
+  UI.confPick = (n) => {
+    const cf = G.st.conf; if (!cf || n < 0 || n >= NP) return;
+    const s = cf.sOf[n]; if (s == null) { UI.toast(`${G.cname(cf.L)} topraklarından bir bölgeye dokun.`); return; }
+    UI.cfSel = s; R.dirty = 1;
+    if (UI.panel !== 'peace') UI.open('peace'); else UI.render();
+  };
+  G.onConference = (cf) => {
+    UI.cfSel = null;
+    R.setMode('peace');
+    $('card').hidden = true; R.sel.units.clear(); R.sel.fleet = null;
+    UI.open('peace');
+    // ülkenin tamamını göster
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, best = -1, bv = -1;
+    for (const s of cf.states) for (const n of s.p) if (G.P[n].vp > bv) { bv = G.P[n].vp; best = n; }
+    for (const s of cf.states) for (const n of s.p) if (G.dist(n, best) < 420) { x0 = Math.min(x0, G.nodeX[n]); x1 = Math.max(x1, G.nodeX[n]); y0 = Math.min(y0, G.nodeY[n]); y1 = Math.max(y1, G.nodeY[n]); }
+    const port = R.h > R.w, vh = port ? R.h - $('sheet').offsetHeight - 120 : R.h - 80, vw = port ? R.w : R.w - $('sheet').offsetWidth;
+    const z = Math.max(0.6, Math.min(4, vw / Math.max(60, (x1 - x0) * 1.25), vh / Math.max(40, (y1 - y0) * 1.25)));
+    if (x1 - x0 < G.M.W / 2) { R.cam.x = (x0 + x1) / 2; R.cam.y = (y0 + y1) / 2; R.cam.z = z; R.clamp(); if (port) { R.cam.y += ($('sheet').offsetHeight / 2 - 30) / R.cam.z; } else { R.cam.x += ($('sheet').offsetWidth / 2) / R.cam.z; } R.clamp(); }
+    else UI.focusVis(best);
+    R.mapDirty = 1; R.dirty = 1;
+  };
   ACT.panel = (d) => UI.open(d.p);
-  ACT.alert = (d) => { UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
+  ACT.alert = (d) => { if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
@@ -1122,13 +1209,16 @@
     const mineRel = l.t.includes(st.player) || l.t.some((t) => G.sameFaction(t, st.player) || G.atWar(t, st.player));
     if (l.k === 'major' || mineRel) UI.toast(l.m, l.k === 'major' ? 'major' : l.k);
   };
-  G.onCapitulate = (tag, winner, full) => {
+  G.onCapitulate = (tag, winner, full, cf) => {
     const st = G.st;
+    const sum = cf && cf.summary ? ' ' + cf.summary : '';
     if (tag === st.player) {
-      if (full) G.queuePopup({ title: 'Teslim olduk', text: 'Ordularımız dağıldı ve ülkemiz ilhak edildi. Savaşı izlemeye devam edebilir ya da yeni bir oyuna başlayabilirsin.', opts: [{ n: 'Yeni oyun', fx: () => UI.showStart() }, { n: 'İzlemeye devam et', fx: () => {} }] });
-      else G.queuePopup({ title: 'Ateşkes', text: 'Hükümetimiz teslim oldu. İşgal edilen topraklar kaybedildi, kalan topraklarda tarafsız olarak devam ediyoruz.', opts: [{ n: 'Devam et', fx: () => {} }] });
-    } else if (G.atWar(winner, st.player) === false && (st.C[tag].major || G.sameFaction(tag, st.player) || winner === st.player)) {
-      G.queuePopup({ title: `${G.cname(tag)} teslim oldu`, text: full ? `${G.cname(tag)} tamamen ilhak edildi.` : `${G.cname(tag)} silahlarını bıraktı; işgal edilen topraklar galiplere geçti.`, opts: [{ n: 'Anlaşıldı', fx: () => {} }] });
+      if (full) G.queuePopup({ title: 'Teslim olduk', text: 'Ordularımız dağıldı ve ülkemiz galipler arasında paylaşıldı.' + sum + ' Savaşı izlemeye devam edebilir ya da yeni bir oyuna başlayabilirsin.', opts: [{ n: 'Yeni oyun', fx: () => UI.showStart() }, { n: 'İzlemeye devam et', fx: () => {} }] });
+      else G.queuePopup({ title: 'Barış antlaşması', text: 'Hükümetimiz teslim oldu ve barış konferansında topraklarımız paylaşıldı.' + sum, opts: [{ n: 'Devam et', fx: () => {} }] });
+    } else if (cf && cf.parts.some((p) => p.t === st.player)) {
+      G.queuePopup({ title: 'Barış antlaşması imzalandı', eyebrow: G.cname(tag), text: cf.summary, opts: [{ n: 'Tamam', fx: () => {} }] });
+    } else if (st.C[tag].major || G.sameFaction(tag, st.player)) {
+      G.queuePopup({ title: `${G.cname(tag)} teslim oldu`, text: 'Barış konferansı:' + sum, opts: [{ n: 'Anlaşıldı', fx: () => {} }] });
     }
   };
   G.onGameOver = () => {};
