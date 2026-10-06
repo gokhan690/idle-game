@@ -69,7 +69,8 @@
       if (f <= 0) continue;
       const old = c.lines.find((l) => l.e === e);
       const best = G.bestLevel(c, e);
-      lines.push({ e, f, eff: old ? (old.lv && old.lv < best ? old.eff * 0.7 : old.eff) : 0.3, acc: 0, lv: best }); used += f;
+      const d = G.aiDesign ? G.aiDesign(c, e) : null;
+      lines.push({ e, f, eff: old ? ((old.lv && old.lv < best) || (old.d || null) !== d ? old.eff * 0.7 : old.eff) : 0.3, acc: 0, lv: best, d }); used += f;
     }
     if (total > used) { const l = lines.find((x) => x.e === 'inf'); if (l) l.f += total - used; else lines.push({ e: 'inf', f: total - used, eff: 0.3, acc: 0 }); }
     // tersaneler

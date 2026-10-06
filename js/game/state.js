@@ -139,6 +139,7 @@
     const st = G.st;
     const c = st.C[tag];
     const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, xp: 0.2, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
+    if (G.T(tag, type).tanks) u.lv.tq = Object.assign({}, G.stockVec(c, 'tank'));
     u.org = G.unitStats(u).org * (str >= 1 ? 1 : 0.5);
     return u;
   };

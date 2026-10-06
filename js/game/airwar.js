@@ -118,13 +118,12 @@
   };
   G.WING_MAX = 100;
   G.planes = (c, e) => (c.stock[e] || 0) + (c.wings || []).reduce((s, w) => s + (w.e === e ? w.n : 0), 0);
-  G.wingPower = (c, w) => w.n * (G.lvl(c, w.e) || 1) * (1 + (c.mods.air || 0));
   G.newWing = (c, e, r, mis, n) => {
     const st = G.st;
     n = Math.floor(Math.min(n ?? G.WING_MAX, c.stock[e] || 0));
     if (n < 10) return null;
     c.stock[e] -= n;
-    const w = { id: st.nextId++, e, n, max: G.WING_MAX, r, mis: mis || G.WING_TYPES[e].m[0] };
+    const w = { id: st.nextId++, e, n, max: G.WING_MAX, r, mis: mis || G.WING_TYPES[e].m[0], q: Object.assign({}, G.stockVec(c, e)) };
     (c.wings || (c.wings = [])).push(w);
     return w;
   };
@@ -153,7 +152,7 @@
       c.bombed = 0;
       for (const w of c.wings) {
         // takviye: stoktan
-        if (w.n < w.max && (c.stock[w.e] || 0) >= 1) { const k = Math.min(w.max - w.n, c.stock[w.e], 4); w.n += k; c.stock[w.e] -= k; }
+        if (w.n < w.max && (c.stock[w.e] || 0) >= 1) { const k = Math.min(w.max - w.n, c.stock[w.e], 4); w.q = G.blendVec(G.wingQ(c, w), G.stockVec(c, w.e), k / (w.n + k)); w.n += k; c.stock[w.e] -= k; }
         if (w.n < 1 || w.r < 0) continue;
         if (!c.enemies.length && w.mis !== 'sup') continue;
         let m = R.get(w.r); if (!m) R.set(w.r, (m = {}));
@@ -177,7 +176,8 @@
         const press = enF / (enF + ownF + 1);
         for (const w of m[t].wings) {
           const k = w.mis === 'sup' || w.mis === 'int' ? 0.01 * press : 0.016 * (enF + enInt) / (enF + enInt + ownF * 1.3 + 1);
-          const lost = w.n * k * (0.7 + G.rand() * 0.6);
+          const q = G.wingQ(c, w);
+          const lost = w.n * (k / Math.max(0.5, q.df) + (1 - q.rel) * 0.002) * (0.7 + G.rand() * 0.6);
           w.n = Math.max(0, w.n - lost);
           c.dead += lost * 0.002;
         }

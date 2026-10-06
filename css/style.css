@@ -359,3 +359,14 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .cfpart { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border: 1px solid var(--rule); border-radius: 4px; font-variant-numeric: tabular-nums; }
 .cfpart.on { border-color: var(--brass); background: rgba(214,170,76,0.14); }
 .cfpart.off { opacity: 0.45; }
+/* tasarım bürosu */
+.seg.wrap { flex-wrap: wrap; }
+.seg.wrap button { flex: 1 1 auto; }
+.dzslot { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.dzslot:last-child { border-bottom: 0; }
+.dzst { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px; font-size: 13px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.dzst > div { display: contents; }
+.dzst b { text-align: right; }
+.dzst .small { text-align: right; min-width: 40px; }
+.seg button:disabled { opacity: 0.32; text-decoration: line-through; text-decoration-thickness: 1px; }
+.seg.wrap button { border-top: 1px solid var(--rule); margin-top: -1px; }
