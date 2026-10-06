@@ -341,10 +341,4 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
   .selbar .hint.small { display: none; }
   .selbar .card-h h3 { font-size: 15px; }
 }
-/* tur tabanlı mod */
-.endturn { margin-left: auto; height: 34px; padding: 0 14px; border-radius: 6px; background: var(--brass); color: #16180f; font-weight: 800; font-size: 14px; letter-spacing: 0.02em; white-space: nowrap; box-shadow: 0 2px 10px rgba(214,170,76,0.35); }
-.endturn.busy { background: var(--field-2); color: var(--muted); box-shadow: none; }
-.pill.good { border-color: var(--good); color: var(--good); }
-.atkprev { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid var(--bad); border-radius: 6px; background: rgba(214,72,52,0.12); }
-.atkprev .btn { flex: none; }
 .selbar > * { flex: none; }

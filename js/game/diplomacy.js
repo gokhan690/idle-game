@@ -24,6 +24,31 @@
     delete st.pacts[k];
     delete st.access[a + '>' + b]; delete st.access[b + '>' + a];
     G.refreshEnemies();
+    // savaş başlarken karşı tarafın topraklarındaki birlikler kendi topraklarına çekilir
+    G.expelUnits((u, pr) => (u.t === a && pr.c === b) || (u.t === b && pr.c === a));
+  };
+  // Girme hakkı olmayan topraktaki birlikleri en yakın kendi/dost eyaletine taşı
+  G.expelUnits = (pred) => {
+    const st = G.st; let moved = 0;
+    for (const u of st.units) {
+      if (u.loc >= NP) continue;
+      const pr = st.prov[u.loc];
+      if (pred ? !pred(u, pr) : (pr.c === u.t || G.friendly(u.t, pr.c) || G.atWar(u.t, pr.c))) continue;
+      const seen = new Set([u.loc]), q = [u.loc]; let dest = -1;
+      for (let k = 0; k < q.length && k < 3000; k++) {
+        const n = q[k];
+        const pn = st.prov[n];
+        if (n !== u.loc && (pn.c === u.t || (G.friendly(u.t, pn.c) && !G.atWar(u.t, pn.c)))) { dest = n; break; }
+        for (const j of P[n].a) if (!seen.has(j)) { seen.add(j); q.push(j); }
+      }
+      if (dest < 0) { const c = st.C[u.t]; dest = c && c.cap >= 0 && st.prov[c.cap].c === u.t ? c.cap : -1; }
+      if (dest < 0) continue;
+      const L = G.unitsAt && G.unitsAt[u.loc]; if (L) { const i = L.indexOf(u); if (i >= 0) L.splice(i, 1); }
+      u.loc = dest; u.path = []; u.prog = 0; u.ent = 0;
+      if (G.unitsAt) (G.unitsAt[dest] || (G.unitsAt[dest] = [])).push(u);
+      moved++;
+    }
+    return moved;
   };
 
   G.sideOf = (tag) => { const c = G.st.C[tag]; return c.fac ? G.st.factions[c.fac].members.filter((t) => G.st.C[t].alive) : [tag]; };

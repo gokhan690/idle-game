@@ -115,6 +115,11 @@
     maginot: { n: 'Maginot Zihniyeti', d: 'Savunma +%10, saldırı -%10', fx: { landDef: 0.1, landAtk: -0.1 } },
     autarky: { n: 'Otarşi Programı', d: 'Fabrika +%5, sentetik petrol +10', fx: { factory: 0.05, oil: 10 } },
     rearm: { n: 'Yeniden Silahlanma', d: 'Savaş desteği +%10, askerî fabrika üretimi +%5', fx: { ws: 0.1, factory: 0.05 } },
+    wehrmacht: { n: 'Wehrmacht Doktrini', d: 'Kara saldırısı +%12, zırhlı saldırı +%10, moral +%10 (1942\'ye dek)', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
+    sichelschnitt: { n: 'Orak Darbesi', d: 'Batı Seferi: kara saldırısı +%20, zırhlı saldırı +%15, hız +%10', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
+    fra_shock: { n: 'Savaş Şoku', d: 'Savunma -%15, moral -%15', fx: { landDef: -0.15, org: -0.15 } },
+    barb_surprise: { n: 'Barbarossa Baskını', d: 'Savunma -%25, moral -%20', fx: { landDef: -0.25, org: -0.2 } },
+    barb_drive: { n: 'Doğu Seferi', d: 'Kara saldırısı +%15, zırhlı saldırı +%10', fx: { landAtk: 0.15, armAtk: 0.1 } },
     blitz: { n: 'Yıldırım Savaşı Ruhu', d: 'Zırhlı saldırı +%10, hız +%5', fx: { armAtk: 0.1, speed: 0.05 } },
     ethiopia: { n: 'Habeşistan Harekâtı', d: 'Savaş desteği +%10, siyasi güç -%10', fx: { ws: 0.1, ppM: -0.1 } },
     mare_nostrum: { n: 'Mare Nostrum', d: 'Deniz gücü +%15', fx: { navy: 0.15 } },
@@ -133,7 +138,7 @@
   // stab, ws, partiler (dem, fas, com, neu), ruhlar, ticaret yasası
   g.POLITICS = {
     TUR: { stab: 0.65, ws: 0.2, pop: { dem: 0.1, fas: 0.05, com: 0.05, neu: 0.8 }, sp: ['kemalist', 'econ_tur'] },
-    GER: { stab: 0.6, ws: 0.35, pop: { dem: 0.08, fas: 0.82, com: 0.05, neu: 0.05 }, sp: ['rearm'], trade: 1 },
+    GER: { stab: 0.6, ws: 0.35, pop: { dem: 0.08, fas: 0.82, com: 0.05, neu: 0.05 }, sp: ['rearm', 'wehrmacht'], trade: 1 },
     SOV: { stab: 0.5, ws: 0.3, pop: { dem: 0.03, fas: 0.02, com: 0.9, neu: 0.05 }, sp: ['purge'], trade: 3 },
     ENG: { stab: 0.75, ws: 0.1, pop: { dem: 0.8, fas: 0.04, com: 0.06, neu: 0.1 }, sp: ['pacifism'] },
     FRA: { stab: 0.45, ws: 0.1, pop: { dem: 0.6, fas: 0.1, com: 0.2, neu: 0.1 }, sp: ['pol_div', 'maginot'] },

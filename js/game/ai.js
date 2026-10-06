@@ -158,8 +158,17 @@
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
       }
+      // potansiyel tehdit: düşmanın toplam ordusu cephe uzunluğuna bölünür (sınırda henüz birliği olmasa bile)
+      const flen = {}, epow = {};
+      for (const f of front) { const seen = new Set(); for (const j of f.enemyAdj) { const ec = st.prov[j].c; if (!seen.has(ec)) { seen.add(ec); flen[ec] = (flen[ec] || 0) + 1; } } }
+      for (const f of front) {
+        const seen = new Set();
+        for (const j of f.enemyAdj) { const ec = st.prov[j].c; if (seen.has(ec)) continue; seen.add(ec); if (epow[ec] == null) epow[ec] = G.armyPower(ec); f.threat += 0.35 * epow[ec] / Math.max(6, flen[ec]); }
+      }
     }
-    const idle = mine.filter((u) => !u.path.length && u.loc < NP && !u.ret);
+    // yurt garnizonu: savaşta başkent ve büyük şehirlerde yedek tümen tutulur (derin sızmalara karşı)
+    if (atWar && !opts.army) aiHomeGuard(c, mine);
+    const idle = mine.filter((u) => !u.path.length && u.loc < NP && !u.ret && !(u.gar && st.prov[u.gar - 1]?.c === tag && !P[u.loc].a.some((j) => G.hostileIn(j, tag))));
     if (atWar && front.length) {
       // yalnızca kendi bölgesine yakın cepheleri dikkate al (müttefik cephelere de yardım)
       // 1) Saldırılar
@@ -184,12 +193,15 @@
         const fortMul = 1 + 0.15 * st.prov[t.e].fort;
         const need = t.def * aggr * fortMul / Math.max(0.4, 1 + te.atk);
         const avail = [];
-        for (const fi of t.from) for (const u of byFront.get(fi) || []) if (!committed.has(u) && u.org > u._s.org * 0.7 && u.str > 0.5) avail.push(u);
+        for (const fi of t.from) for (const u of byFront.get(fi) || []) if (!committed.has(u) && u.org > u._s.org * 0.7 && u.str > 0.5 && G.supplyRatio(u) > 0.3) avail.push(u);
         if (!avail.length) continue;
         if (t.def === 0) {
-          // boş eyalet: en hızlı birim
+          // boş eyalet: piyade hat hâlinde ilerler (en az iki dost komşu); zırhlı/motorize derinlemesine sızabilir
           avail.sort((a, b) => b._s.spd - a._s.spd);
           const u = avail[0];
+          const friendNb = P[t.e].a.reduce((k, j) => k + (st.prov[j].c === tag || (G.friendly(tag, st.prov[j].c) && !G.atWar(tag, st.prov[j].c)) ? 1 : 0), 0);
+          if (friendNb < 2 && u._s.t.mob < 0.5 && P[t.e].vp < 10 && G.supplyRatio(u) < 0.7) continue;
+          if (G.supplyRatio(u) < 0.45) continue; // ikmali kopmuş öncü durur
           const left = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u).length;
           const otherThreat = P[u.loc].a.some((j) => j !== t.e && provThreat(j, tag) > 0);
           if (left === 0 && otherThreat) continue;
@@ -207,22 +219,65 @@
           }
         }
       }
-      // 2) Takviye: boştaki birlikleri akış alanıyla ihtiyaç duyan cephelere dağıt
-      const free = idle.filter((u) => !committed.has(u) && (!frontSet.has(u.loc) || (byFront.get(u.loc) || []).length > 3));
+      // 1b) Cephe boşluklarını kapat: boş cephe eyaletine en yakın boştaki birlik (yığından alınır)
+      {
+        const holes = front.filter((f) => !(G.unitsAt[f.i] || []).some((u) => u.t === tag || (G.friendly(tag, u.t) && !G.atWar(tag, u.t))));
+        if (holes.length) {
+          const pool = idle.filter((u) => !committed.has(u) && !u.gar && (!frontSet.has(u.loc) || (byFront.get(u.loc) || []).filter((x) => !committed.has(x)).length >= 2));
+          for (const h of holes) {
+            let best = null, bd = Infinity;
+            for (const u of pool) { if (committed.has(u)) continue; const d = G.dist(u.loc, h.i); if (d < bd && d < 420) { bd = d; best = u; } }
+            if (!best) continue;
+            const p = best.loc === h.i ? [] : G.findPath(best.loc, h.i, tag, best._s.spd, { avoidHostile: true });
+            if (p && p.length) { best.path = p; committed.add(best); const L = byFront.get(best.loc); if (L) { const k = L.indexOf(best); if (k >= 0) L.splice(k, 1); } }
+          }
+        }
+      }
+      // 2) Takviye: boştaki birlikleri akış alanıyla ihtiyaç duyan cephelere dağıt.
+      // Gereğinden fazla tutulan cephelerden fazlalık serbest bırakılır.
+      const released = new Set();
+      for (const f of front) {
+        const here = (byFront.get(f.i) || []).filter((u) => !committed.has(u)); if (here.length < 2) continue;
+        here.sort((a, b) => G.unitPower(b) - G.unitPower(a));
+        let kept = 0; const need = f.threat * 1.6 + 4;
+        for (const u of here) { if (kept >= need && kept > 0) released.add(u); else kept += G.unitPower(u); }
+      }
+      const free = idle.filter((u) => !committed.has(u) && (!frontSet.has(u.loc) || released.has(u) || (byFront.get(u.loc) || []).length > 3));
       if (free.length) {
         const fl = front.map((f) => ({ ...f, have: myPowerAt(f.i, tag, () => true) }));
+        // yurt savunması: düşman birlikleri yaklaşan başkent ve büyük şehirler savunma noktası olur
+        if (!opts.army) {
+          const enemyLocs = []; for (const u of st.units) if (u.loc < NP && G.atWar(tag, u.t)) enemyLocs.push(u);
+          for (let i = 0; i < NP; i++) {
+            const pr = st.prov[i]; if (pr.c !== tag || pr.core !== tag || (P[i].vp < 15 && i !== c.cap) || frontSet.has(i)) continue;
+            let near = 0; for (const e of enemyLocs) if (G.dist(i, e.loc) < 120) near += G.unitPower(e);
+            if (near > 0) fl.push({ i, threat: near * 0.8 * (i === c.cap ? 2 : 1), enemyAdj: [], own: true, have: myPowerAt(i, tag, () => true), imp: 3 });
+          }
+        }
+        // cephe önemi: yurda (başkent ve çekirdek topraklar) yakın cepheler önce savunulur
+        const capI = c.cap >= 0 ? c.cap : -1;
+        for (const f of fl) { const near = capI >= 0 ? Math.max(0, 1 - G.dist(f.i, capI) / 900) : 0.3; f.imp = 1 + 2.5 * near + (st.prov[f.i].core === tag ? 1 : 0); f.threat *= f.imp; }
         const totalNeed = fl.reduce((s2, f) => s2 + f.threat + 6, 0) || 1;
         // saldırı yönü: zayıf savunulan düşman eyaletlerine bakan cepheler ek takviye alır
         for (const f of fl) { let weak = 0; for (const e of f.enemyAdj) { const th = provThreat(e, tag); if (th < f.have * 0.8) weak += 1 + P[e].vp * 0.1; } f.push = weak; }
-        const quota = new Map(fl.map((f) => [f.i, Math.max(1, Math.ceil(((f.threat + 6 + f.push * 4) / totalNeed) * (free.length + mine.length * 0.5)) - Math.round(f.have / 15))]));
-        let pending = free.filter((u) => !frontSet.has(u.loc) || (byFront.get(u.loc) || []).length > 3);
+        // aşırı yığılmayı önle: cephe eyaleti başına en fazla ~8 tümen (ikmal ve genişlik); fazlası yedekte kalır
+        const quota = new Map(fl.map((f) => { const present = (G.unitsAt[f.i] || []).filter((u) => u.t === tag).length; const q = Math.max(1, Math.ceil(((f.threat + 6 + f.push * 4) / totalNeed) * (free.length + mine.length * 0.5)) - Math.round(f.have / 15)); return [f.i, Math.max(0, Math.min(q, 8 - present))]; }));
+        let pending = free.filter((u) => !frontSet.has(u.loc) || released.has(u) || (byFront.get(u.loc) || []).length > 3);
+        const landOK = new Set();
         for (let pass = 0; pass < 3 && pending.length; pass++) {
           const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) * (goal != null ? (G.dist(f.i, goal) < d0 + 70 ? 0.5 : 1.6) : 1) }));
           if (!srcs.length) break;
-          const ff = G.flowField(tag, srcs, { naval: pass === 2 });
+          const naval = pass === 2;
+          // deniz yolu: yalnızca karadan hiçbir cepheye ulaşamayan birlikler, konvoy varsa
+          let convLeft = naval ? Math.floor(((c.ships.conv || 0) - G.convoyNeed(tag)) / 5) : 0;
+          if (naval && convLeft <= 0) break;
+          const ff = G.flowField(tag, srcs, { naval });
           const rest = [];
           for (const u of pending) {
+            if (naval && landOK.has(u)) continue;
             if (ff.dist[u.loc] === Infinity) { rest.push(u); continue; }
+            if (!naval) landOK.add(u);
+            if (naval) { const p0 = G.followField(ff, u.loc); const sea = p0.filter((x) => x >= NP); if (!sea.length || convLeft <= 0 || sea.some((z) => G.navalSupremacy(tag, z) < 0.45)) continue; convLeft--; }
             const tgt = ff.src[u.loc];
             if (tgt === u.loc) continue;
             if ((quota.get(tgt) || 0) <= 0) { rest.push(u); continue; }
@@ -238,6 +293,30 @@
     }
     if ((!atWar || !front.length) && !(opts.army && atWar)) aiGarrison(c, idle, atWar, opts);
   };
+
+  function aiHomeGuard(c, mine) {
+    const st = G.st, tag = c.tag;
+    if (c.ai.hg && st.day - c.ai.hg < 20) return;
+    c.ai.hg = st.day;
+    for (const u of mine) if (u.gar && st.prov[u.gar - 1]?.c !== tag) u.gar = 0;
+    const lmE = new Set(); for (const e of c.enemies) { const ec = st.C[e]; if (ec && ec.cap >= 0) lmE.add(G.landmass[ec.cap]); for (const u of st.units) if (u.t === e && u.loc < NP) lmE.add(G.landmass[u.loc]); }
+    const spots = [];
+    if (c.cap >= 0 && st.prov[c.cap].c === tag && lmE.has(G.landmass[c.cap])) spots.push([c.cap, Math.max(2, Math.round(mine.length * 0.07))]);
+    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (i !== c.cap && pr.c === tag && pr.core === tag && P[i].vp >= 10 && lmE.has(G.landmass[i])) spots.push([i, P[i].vp >= 20 ? 2 : 1]); }
+    if (!spots.length || mine.length < 12) return;
+    const budget = Math.round(mine.length * 0.15);
+    let used = mine.filter((u) => u.gar).length;
+    for (const [i, need] of spots) {
+      let have = mine.filter((u) => u.gar === i + 1).length;
+      while (have < need && used < budget) {
+        let best = null, bd = Infinity;
+        for (const u of mine) { if (u.gar || u.loc >= NP || u.path.length || u.army) continue; if (G.inBattle && G.inBattle.has(u)) continue; if (G.T(u.t, u.u).mob > 0.5) continue; const d = G.dist(u.loc, i); if (d < bd && G.landmass[u.loc] === G.landmass[i]) { bd = d; best = u; } }
+        if (!best) break;
+        best.gar = i + 1; have++; used++;
+        if (best.loc !== i) { const p = G.findPath(best.loc, i, tag, G.unitStats(best).spd, {}); if (p) best.path = p; }
+      }
+    }
+  }
 
   function aiInvasion(c, idle) {
     const st = G.st, tag = c.tag;
