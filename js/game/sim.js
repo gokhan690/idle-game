@@ -105,8 +105,10 @@
         l.acc = (l.acc || 0) + ic;
         while (l.acc >= e.cost) { l.acc -= e.cost; G.addShip(c, l.e); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
       } else {
-        const add = ic / e.cost, old = c.stock[l.e] || 0, lv = l.lv || G.bestLevel(c, l.e);
-        c.sl[l.e] = old + add > 0 ? ((c.sl[l.e] || lv) * old + lv * add) / (old + add) : lv;
+        const D = G.lineDesign(c, l);
+        const add = ic / (e.cost * (D ? G.designStats(l.e, D).cm : 1)), old = c.stock[l.e] || 0, lv = l.lv || G.bestLevel(c, l.e);
+        if (D) G.stockAdd(c, l.e, old, add, D);
+        else c.sl[l.e] = old + add > 0 ? ((c.sl[l.e] || lv) * old + lv * add) / (old + add) : lv;
         c.stock[l.e] = old + add;
       }
     }
@@ -263,13 +265,16 @@
     if (home && u.lv && st.day % 2 === 0) {
       const T = G.T(u.t, u.u);
       for (const [k, e] of [['inf', 'inf'], ['art', 'art'], ['tank', 'tank']]) {
-        const sl = c.sl[e]; if (!sl || !T.eq[e] || sl <= u.lv[k] + 0.04) continue;
+        const sl = c.sl[e]; if (!sl || !T.eq[e]) continue;
+        if (k === 'tank') { if (u.lv.tq && G.vecLevel('tank', G.stockVec(c, 'tank')) <= G.vecLevel('tank', u.lv.tq) + 0.04) continue; } else if (sl <= u.lv[k] + 0.04) continue;
         const need = T.eq[e] * 0.04;
         if (c._rf == null || c._rfDay !== st.day) { c._rf = {}; c._rfDay = st.day; }
         const budget = c._rf[e] ?? ((c.stock[e] || 0) - T.eq[e] * 2) * 0.03;
         if (budget < need) continue;
         c._rf[e] = budget - need;
-        c.stock[e] -= need; u.lv[k] = Math.min(sl, u.lv[k] + (sl - u.lv[k]) * 0.08 + 0.005);
+        c.stock[e] -= need;
+        if (k === 'tank') { u.lv.tq = G.blendVec(u.lv.tq || G.stockVec(c, 'tank'), G.stockVec(c, 'tank'), 0.1); u.lv.tank = G.vecLevel('tank', u.lv.tq); u._sd = -1; }
+        else u.lv[k] = Math.min(sl, u.lv[k] + (sl - u.lv[k]) * 0.08 + 0.005);
       }
     }
     if (u.str < 1 && home) {
@@ -500,7 +505,7 @@
     if (st.day % 7 === 3) G.tradeTick();
     precomputeManpower();
     if (st.day % 5 === 0 || G.supDirty) { computeSupply(); G.supDirty = 0; }
-    for (const c of Object.values(st.C)) if (c.alive) { G.polTick(c); economy(c); }
+    for (const c of Object.values(st.C)) if (c.alive) { G.polTick(c); economy(c); G.xpTick(c); }
     // yapay zekâ
     const tags = Object.keys(st.C);
     for (let i = 0; i < tags.length; i++) {

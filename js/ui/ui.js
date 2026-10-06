@@ -295,8 +295,56 @@
   }
 
   // Üretim
+  // ---------- Tasarım bürosu (tank ve uçak tasarımcısı) ----------
+  const XPN = { axp: 'Kara tecrübesi', fxp: 'Hava tecrübesi' };
+  const STAT_SHOW = {
+    a: (v) => r1(v * 20), d: (v) => r1(v * 15), r: (v) => r1(v * 30), p: (v) => r1(v * 35), s: (v) => Math.round(v * 9 * 4) + ' km/s', rel: (v) => '%' + Math.round(v * 100),
+    aa: (v) => r1(v * 10), df: (v) => r1(v * 10), ga: (v) => r1(v * 10), sb: (v) => r1(v * 10), na: (v) => r1(v * 10), rg: (v) => Math.round(v * 500) + ' km',
+  };
+  const statTable = (e, st0, ref) => {
+    const D = g.DESIGN[e];
+    return `<div class="dzst">${D.stats.map(([k, n]) => { const v = st0.v[k] || 0, r = ref ? ref.v[k] || 0 : v; const dlt = r ? (v - r) / r : 0; return `<div><span>${n}</span><b>${STAT_SHOW[k](v)}</b><span class="${dlt > 0.005 ? 'good' : dlt < -0.005 ? 'bad' : 'muted'} small">${Math.abs(dlt) > 0.005 ? (dlt > 0 ? '+' : '') + Math.round(dlt * 100) + '%' : '—'}</span></div>`; }).join('')}<div><span>Üretim maliyeti</span><b>${r1(g.EQUIP[e].cost * st0.cm)}</b><span class="${st0.cm > (ref ? ref.cm : st0.cm) + 0.005 ? 'bad' : st0.cm < (ref ? ref.cm : st0.cm) - 0.005 ? 'good' : 'muted'} small">×${st0.cm.toFixed(2)}</span></div></div>`;
+  };
+  function designer(c, e) {
+    const D = g.DESIGN[e], best = Math.floor(G.bestLevel(c, e));
+    if (!UI.dz || UI.dz.e !== e) UI.dz = { e, t: Math.max(1, best), m: {}, n: '' };
+    const dz = UI.dz; if (dz.t > best) dz.t = Math.max(1, best);
+    const xk = G.XP_KIND[e], cost = G.designCost(e, dz), err = G.designValid(c, e, dz);
+    const pv = G.designPreview(e, dz), ref = G.designStats(e, G.defaultDesign(e, dz.t));
+    let html = `<div class="row" style="justify-content:space-between;align-items:center"><span class="small">${XPN[xk]}: <b>${Math.floor(c[xk] ?? 30)}</b></span><span class="small">Kaydetme: <b class="${(c[xk] ?? 30) >= cost ? '' : 'bad'}">${cost} tecrübe</b></span></div>`;
+    html += sec(D.n === 'Tank' ? 'Şasi' : 'Gövde', `<div class="seg sm wrap">${D.tierN.slice(1).map((n, i) => `<button class="${dz.t === i + 1 ? 'on' : ''}" data-act="dztier" data-v="${i + 1}" ${i + 1 > best ? 'disabled' : ''}>${esc(n)}</button>`).join('')}</div>`);
+    let mh = '';
+    for (const sl of D.slots) {
+      const lock = sl.req && dz.t < sl.req;
+      if (sl.lvl) {
+        const n = dz.m[sl.k] | 0;
+        mh += `<div class="dzslot"><div class="row" style="justify-content:space-between;align-items:center"><span class="t">${sl.n}</span><div class="stepper"><button data-act="dzlvl" data-k="${sl.k}" data-v="-1" aria-label="Azalt">−</button><b>${n}/${sl.lvl}</b><button data-act="dzlvl" data-k="${sl.k}" data-v="1" aria-label="Artır" ${lock ? 'disabled' : ''}>+</button></div></div><div class="muted small">${Object.entries(sl.per.fx).map(([k, v]) => `${(D.stats.find((x) => x[0] === k) || [k, k])[1]} ${v > 0 ? '+' : ''}${Math.round(v * 100)}%`).join(', ')} · maliyet +${Math.round(sl.per.cost * 100)}% (kademe başına)</div></div>`;
+        continue;
+      }
+      const cur = dz.m[sl.k] ?? sl.def;
+      mh += `<div class="dzslot"><span class="t">${sl.n}${lock ? ` <span class="muted small">(${D.tierN[sl.req]} gerekli)</span>` : ''}</span><div class="seg sm wrap">${sl.opts.map((o) => `<button class="${cur === o.id ? 'on' : ''}" data-act="dzmod" data-k="${sl.k}" data-v="${o.id}" ${lock || (o.req && dz.t < o.req) ? 'disabled' : ''}>${esc(o.n)}</button>`).join('')}</div></div>`;
+    }
+    html += sec('Modüller', mh);
+    html += sec('Özellikler', statTable(e, pv, ref) + '<p class="muted small" style="margin:0">Yüzdeler aynı şasinin standart modeline göredir.</p>');
+    html += `<label class="field"><span>Tasarım adı</span><input id="dz-name" value="${esc(dz.n)}" maxlength="28" placeholder="${esc(D.n)} ${(c.designs || []).filter((x) => x.e === e).length + 1}"></label>`;
+    if (err) html += `<p class="small warn" style="margin:0">${esc(err)}</p>`;
+    html += `<div class="btns"><button class="btn pri" data-act="dzsave" ${err ? 'disabled' : ''}>Kaydet</button>${UI.dzLine != null ? `<button class="btn" data-act="dzsave" data-v="line" ${err ? 'disabled' : ''}>Kaydet ve hatta ata</button>` : ''}<button class="btn" data-act="dzreset">Sıfırla</button></div>`;
+    return { title: `${g.EQUIP[e].s} tasarımcısı`, html };
+  }
+  function linePicker(c, i) {
+    const l = c.lines[i]; if (!l) { UI.sub = null; return PANELS.prod(); }
+    const cur = G.lineDesign(c, l), list = G.designsFor(c, l.e).reverse();
+    const ref = G.designStats(l.e, G.defaultDesign(l.e, Math.floor(G.bestLevel(c, l.e))));
+    let html = `<p class="muted small" style="margin:0">Hattın ürettiği tasarımı değiştirmek fabrika verimini düşürür (yeniden donanım).</p>`;
+    html += `<div class="list">${list.map((d) => { const st0 = G.designStats(l.e, d), on = cur && cur.id === d.id; return `<div class="item ${on ? 'active' : ''}"><div class="grow"><div class="t">${esc(d.n)} <span class="muted small">${esc(g.DESIGN[l.e].tierN[d.t])}</span></div>${statTable(l.e, st0, ref)}</div>${on ? '<span class="muted small">üretimde</span>' : `<button class="btn sm pri" data-act="linedesign" data-k="${i}" data-v="${d.id}">Seç</button>`}</div>`; }).join('')}</div>`;
+    html += `<div class="btns"><button class="btn pri" data-act="dznew" data-v="${l.e}" data-k="${i}">+ Yeni tasarım</button></div>`;
+    return { title: `${g.EQUIP[l.e].n}: tasarım seç`, html };
+  }
+
   PANELS.prod = () => {
     const c = me(), s = c.sum, e = c.econ || {}, m = c.mods;
+    if (UI.sub && UI.sub.startsWith('design:')) return designer(c, UI.sub.slice(7));
+    if (UI.sub && UI.sub.startsWith('line:')) return linePicker(c, +UI.sub.slice(5));
     let milA = 0, dockA = 0;
     for (const l of c.lines) (g.EQUIP[l.e].fac === 'mil' ? (milA += l.f) : (dockA += l.f));
     let html = kv([
@@ -311,14 +359,16 @@
     const line = (l, i) => {
       const eq = g.EQUIP[l.e];
       const best = G.bestLevel(c, l.e), lv = l.lv || best;
-      const out = eq.ship || eq.convoy ? (l.f * 2.5 * (1 + (m.factory || 0))) : (l.f * 4.5 * l.eff * (1 + (m.factory || 0)) / eq.cost);
+      const out = eq.ship || eq.convoy ? (l.f * 2.5 * (1 + (m.factory || 0))) : (l.f * 4.5 * l.eff * (1 + (m.factory || 0)) / (eq.cost * G.lineCostMul(c, l)));
       const stock = eq.convoy ? `${int(c.ships.conv || 0)} konvoy` : eq.ship ? `${Math.round(G.navyCount(c, l.e))} gemi` : `Stok ${int(c.stock[l.e] || 0)}`;
       const rate = eq.convoy ? `${r1(out / eq.cost)}/gün` : eq.ship ? `${l.f ? Math.ceil((eq.cost - (l.acc || 0)) / Math.max(0.1, out)) + ' günde 1' : 'durdu'}` : `${r1(out)}/gün`;
-      const model = (g.MODEL_N[l.e] || [])[lv];
-      const upg = !eq.ship && !eq.convoy && lv < best;
+      const dsg = G.lineDesign(c, l);
+      const model = dsg ? dsg.n : (g.MODEL_N[l.e] || [])[lv];
+      const upg = !dsg && !eq.ship && !eq.convoy && lv < best;
+      const dUp = dsg && dsg.t < Math.floor(best);
       const resTxt = Object.entries(eq.res).map(([r, v]) => `${g.RES[r].slice(0, 3)} ${r1(v * l.f)}`).join(' · ');
       return `<div class="item line"><div class="grow"><div class="t">${eq.n}${model ? ` <span class="muted small">${model}</span>` : ''}</div><div class="d">${stock} · ${rate}${eq.ship || eq.convoy ? '' : ` · verim ${pct(l.eff)}/${pct(effCap)}`}</div><div class="d">${resTxt}</div>${eq.ship ? bar((l.acc || 0) / eq.cost) : bar(l.eff / effCap, 'g')}
-        <div class="btns" style="margin-top:4px">${upg ? `<button class="btn sm pri" data-act="lineup" data-v="${i}">Yeni modele geç: ${(g.MODEL_N[l.e] || [])[best] || 'Seviye ' + best}</button>` : ''}<button class="btn sm danger" data-act="linedel" data-v="${i}">Hattı sil</button></div></div>
+        <div class="btns" style="margin-top:4px">${dsg ? `<button class="btn sm ${dUp ? 'pri' : ''}" data-act="sub" data-v="line:${i}">${dUp ? 'Yeni şasi var · ' : ''}Tasarım ▾</button>` : ''}${upg ? `<button class="btn sm pri" data-act="lineup" data-v="${i}">Yeni modele geç: ${(g.MODEL_N[l.e] || [])[best] || 'Seviye ' + best}</button>` : ''}<button class="btn sm danger" data-act="linedel" data-v="${i}">Hattı sil</button></div></div>
         <div class="stepper"><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="-1" aria-label="Azalt">−</button><b>${l.f}</b><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="1" aria-label="Artır">+</button></div></div>`;
     };
     const idx = (fac) => c.lines.map((l, i) => [l, i]).filter(([l]) => g.EQUIP[l.e].fac === fac);
@@ -327,6 +377,13 @@
     html += sec('Tersaneler', `<div class="list">${idx('dock').map(([l, i]) => line(l, i)).join('') || '<p class="muted small" style="margin:0">Tersane hattı yok. İnşaat panelinden kıyı eyaletlerine tersane kurabilirsin.</p>'}</div>${s.dock ? `<div class="btns">${avail('dock').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>` : ''}`, `${s.dock - dockA} boşta`);
     // teçhizat stoğu ve modeller
     const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Sv ' + r1(G.lvl(c, k))}</span></div>`).join('');
+    // tasarım bürosu
+    const cus = (c.designs || []).filter((d) => !d.id.startsWith('ai'));
+    let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span></div>`;
+    dh += `<div class="btns">${[...G.DESIGNABLE].filter((k) => m.unlockEq[k] || !g.EQUIP[k].req || c.tech[g.EQUIP[k].req]).map((k) => `<button class="btn sm" data-act="dznew" data-v="${k}">+ ${g.EQUIP[k].s} tasarla</button>`).join('')}</div>`;
+    if (cus.length) dh += `<div class="list">${cus.map((d) => { const st0 = G.designStats(d.e, d); return `<div class="item"><div class="grow"><div class="t">${esc(d.n)} <span class="muted small">${esc(g.DESIGN[d.e].tierN[d.t])}</span></div>${statTable(d.e, st0, G.designStats(d.e, G.defaultDesign(d.e, d.t)))}</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="dzcopy" data-v="${d.id}">Kopyala</button><button class="btn sm danger" data-act="dzdel" data-v="${d.id}">Sil</button></div></div>`; }).join('')}</div>`;
+    else dh += '<p class="muted small" style="margin:0">Tasarım yok. Şasi/gövde ve modülleri seçip kendi tankını ve uçağını tasarla; sonra üretim hattında “Tasarım ▾” ile üretime al. Tasarım kaydetmek tecrübe puanı harcar (savaşta ve görevlerde kazanılır).</p>';
+    html += sec('Tasarım bürosu', dh, `${cus.length} tasarım`);
     html += sec('Teçhizat deposu', `<div class="kv">${rows}</div><p class="muted small" style="margin:0">Yeni teknoloji araştırınca hatları “Yeni modele geç” ile güncelle. Ordudaki tümenler depodaki yeni modelleri takviye sırasında yavaşça alır.</p>`);
     return { title: 'Üretim', html };
   };
@@ -400,8 +457,9 @@
         <div class="row" style="gap:8px"><div class="t grow"><span class="wic">${WIC[w.e]}</span> ${esc(UI.wingName(c, w))} <span class="muted small">${Math.round(w.n)}/${w.max} uçak · ${g.MODEL_N?.[w.e]?.[Math.floor(G.lvl(c, w.e))] || ''}</span></div>${w.manual ? '<span class="pill">elle</span>' : '<span class="pill ally">oto</span>'}</div>
         ${bar(w.n / w.max, 'g')}
         <div class="small">Bölge: <b>${reg ? esc(reg.n) : '—'}</b>${reg && c.enemies.length ? ` · hava üstünlüğü <b class="${sup > 0.55 ? 'good' : sup < 0.45 ? 'bad' : 'warn'}">%${Math.round(sup * 100)}</b>` : ''}</div>
+        <div class="small">Üs: <b>${w.b >= 0 ? esc(G.pname(w.b)) : '—'}</b>${w.b >= 0 ? ` <span class="muted">(seviye ${st.prov[w.b].ab || 0}, ${Math.round(G.baseLoad(w.b) / 100)}/${st.prov[w.b].ab || 0} kanat)</span>` : ''} · menzil ${Math.round(G.wingRangeKm(c, w))} km${reg && w.b >= 0 ? (G.inRange(c, w, w.r) ? ` · hedefe ${Math.round(G.regionKm(w.b, w.r))} km` : ' · <b class="bad">hedef menzil dışında</b>') : ''}${w._eff > 0 && w._eff < 1 ? ` · <b class="warn">üs dolu: etkinlik %${Math.round(w._eff * 100)}</b>` : ''}</div>
         <div class="seg sm">${G.WING_TYPES[w.e].m.map((k) => `<button class="${w.mis === k ? 'on' : ''}" data-act="wingmis" data-k="${w.id}" data-v="${k}">${G.MIS[k].n}</button>`).join('')}</div>
-        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ${pick ? 'pri' : ''}" data-act="wingpick" data-v="${w.id}">${pick ? 'Haritada bölgeye dokun…' : 'Bölge seç (harita)'}</button>${w.manual ? `<button class="btn sm" data-act="wingauto" data-v="${w.id}">Kurmaya bırak</button>` : ''}<button class="btn sm danger" data-act="wingdel" data-v="${w.id}">Dağıt</button></div>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ${pick ? 'pri' : ''}" data-act="wingpick" data-v="${w.id}">${pick ? 'Haritada bölgeye dokun…' : 'Bölge seç (harita)'}</button><button class="btn sm ${UI.basePick === w.id ? 'pri' : ''}" data-act="basepick" data-v="${w.id}">Üs seç (harita)</button>${w.manual ? `<button class="btn sm" data-act="wingauto" data-v="${w.id}">Kurmaya bırak</button>` : ''}<button class="btn sm danger" data-act="wingdel" data-v="${w.id}">Dağıt</button></div>
       </div></div>`;
     }
     if (!c.wings.length) wh += '<p class="muted small" style="margin:0">Hava kanadın yok. Üretim panelinden uçak üret; stokta 10+ uçak olunca buradan kanat kur.</p>';
@@ -470,7 +528,7 @@
     });
     if (!c.constr.length) qh += '<p class="muted small" style="margin:0">Kuyruk boş. Sivil fabrikalar boşta bekliyor.</p>';
     html += sec('İnşaat kuyruğu', qh + '</div>', `${c.constr.length} proje`);
-    html += sec('Yeni proje', `<div class="list">${Object.entries(g.BUILDINGS).map(([k, b]) => `<button class="item" data-act="sub" data-v="build:${k}"><div class="grow"><div class="t">${b.n}</div><div class="d">${int(b.cost)} inşaat puanı${k === 'fort' ? ' · eyalet savunması +%15/kademe' : k === 'dock' ? ' · yalnızca kıyı' : k === 'inf' ? ' · ikmal akışı ve hareket hızı artar' : ''}</div></div><span class="muted">›</span></button>`).join('')}</div>`);
+    html += sec('Yeni proje', `<div class="list">${Object.entries(g.BUILDINGS).map(([k, b]) => `<button class="item" data-act="sub" data-v="build:${k}"><div class="grow"><div class="t">${b.n}</div><div class="d">${int(b.cost)} inşaat puanı${k === 'fort' ? ' · eyalet savunması +%15/kademe' : k === 'dock' ? ' · yalnızca kıyı' : k === 'inf' ? ' · ikmal akışı ve hareket hızı artar' : k === 'ab' ? ' · seviye başına 100 uçak, en fazla 10' : ''}</div></div><span class="muted">›</span></button>`).join('')}</div>`);
     return { title: 'İnşaat', html };
   };
   function buildPicker(c, type) {
@@ -478,20 +536,21 @@
     const rows = [];
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i]; if (pr.c !== c.tag) continue;
-      if (type !== 'fort' && type !== 'inf' && pr.o !== c.tag) continue;
+      if (!G.LEVEL_B.has(type) && pr.o !== c.tag) continue;
       if (b.coastal && !P[i].c) continue;
-      const queued = c.constr.filter((q) => q.p === i && (type === 'fort' || type === 'inf' ? q.b === type : q.b !== 'fort' && q.b !== 'inf')).length;
-      const free = type === 'fort' ? 5 - pr.fort - queued : type === 'inf' ? 5 - (pr.inf || 1) - queued : G.freeSlots(i) - queued;
+      const queued = c.constr.filter((q) => q.p === i && (G.LEVEL_B.has(type) ? q.b === type : !G.LEVEL_B.has(q.b))).length;
+      const free = type === 'fort' ? 5 - pr.fort - queued : type === 'inf' ? 5 - (pr.inf || 1) - queued : type === 'ab' ? 10 - (pr.ab || 0) - queued : G.freeSlots(i) - queued;
       if (free <= 0) continue;
       const border = P[i].a.some((j) => st.prov[j].c !== c.tag);
-      const score = type === 'fort' ? (P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c)) ? 100 : 0) + (border ? 50 : 0) + P[i].vp : type === 'inf' ? (G.supRatio[c.tag] && G.supRatio[c.tag][i] < 0.8 ? 80 : 0) + (border ? 30 : 0) + P[i].vp - (pr.inf || 1) * 5 : free * 3 + P[i].vp;
+      const front = type === 'ab' ? P[i].a.some((j) => P[j].a.some((k) => G.atWar(c.tag, st.prov[k].c))) : false;
+      const score = type === 'ab' ? (front ? 80 : 0) + (pr.ab || 0) * 6 + P[i].vp + (i === c.cap ? 20 : 0) : type === 'fort' ? (P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c)) ? 100 : 0) + (border ? 50 : 0) + P[i].vp : type === 'inf' ? (G.supRatio[c.tag] && G.supRatio[c.tag][i] < 0.8 ? 80 : 0) + (border ? 30 : 0) + P[i].vp - (pr.inf || 1) * 5 : free * 3 + P[i].vp;
       rows.push({ i, free, score, border });
     }
     rows.sort((a, b2) => b2.score - a.score);
-    let html = `<p class="muted small" style="margin:0">${b.n} için eyalet seç. ${type === 'fort' ? 'Sınır ve cephe eyaletleri üstte.' : type === 'inf' ? 'İkmali zayıf ve sınırdaki eyaletler üstte. Altyapı ikmal akışını ve hareket hızını artırır.' : 'En çok boş yuvası olan eyaletler üstte.'}</p><div class="list">`;
+    let html = `<p class="muted small" style="margin:0">${b.n} için eyalet seç. ${type === 'fort' ? 'Sınır ve cephe eyaletleri üstte.' : type === 'inf' ? 'İkmali zayıf ve sınırdaki eyaletler üstte. Altyapı ikmal akışını ve hareket hızını artırır.' : type === 'ab' ? 'Cepheye yakın ve büyük üsler üstte. Her seviye 100 uçak (bir kanat) barındırır; kanatlar yalnızca üslerinden menzil içindeki bölgelerde görev yapar.' : 'En çok boş yuvası olan eyaletler üstte.'}</p><div class="list">`;
     for (const r of rows.slice(0, 40)) {
       const pr = st.prov[r.i];
-      html += `<button class="item" data-act="build" data-b="${type}" data-v="${r.i}"><div class="grow"><div class="t">${esc(G.pname(r.i))}</div><div class="d">${type === 'fort' ? `Tahkimat ${pr.fort}/5${r.border ? ' · sınır' : ''}` : type === 'inf' ? `Altyapı ${pr.inf || 1}/5${r.border ? ' · sınır' : ''}${G.supAvail[c.tag] ? ' · ikmal ' + r1(G.supAvail[c.tag][r.i]) : ''}` : `Boş yuva ${r.free} · S${pr.civ} A${pr.mil} T${pr.dock}`}</div></div><span class="btn sm pri">Ekle</span></button>`;
+      html += `<button class="item" data-act="build" data-b="${type}" data-v="${r.i}"><div class="grow"><div class="t">${esc(G.pname(r.i))}</div><div class="d">${type === 'fort' ? `Tahkimat ${pr.fort}/5${r.border ? ' · sınır' : ''}` : type === 'inf' ? `Altyapı ${pr.inf || 1}/5${r.border ? ' · sınır' : ''}${G.supAvail[c.tag] ? ' · ikmal ' + r1(G.supAvail[c.tag][r.i]) : ''}` : type === 'ab' ? `Hava üssü ${pr.ab || 0}/10 · ${Math.round(G.baseLoad(r.i) / 100)}/${pr.ab || 0} kanat${P[r.i].a.some((j) => G.atWar(c.tag, st.prov[j].c)) ? ' · cephe' : ''}` : `Boş yuva ${r.free} · S${pr.civ} A${pr.mil} T${pr.dock}`}</div></div><span class="btn sm pri">Ekle</span></button>`;
     }
     if (!rows.length) html += '<p class="muted">Uygun eyalet yok.</p>';
     return { title: b.n, html: html + '</div>' };
@@ -793,8 +852,9 @@
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">Saldırı gücü, savunma, moral (sarı çizgi) ve güç (yeşil çizgi) belirleyicidir. Dağ, orman, bataklık ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur. Kendi topraklarından uzaklaştıkça ikmal azalır.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
   <section class="sec"><h3 class="sec-h">Diplomasi</h3><p class="small" style="margin:0">Savaş ilan etmek için önce savaş gerekçesi üret. Demokrasiler yüksek dünya gerginliği olmadan gerekçe üretemez. İttifak üyeleri saldırıya uğrayan müttefiklerini savunur. Bir ülke topraklarının büyük kısmını kaybedince teslim olur.</p></section>
+  <section class="sec"><h3 class="sec-h">Tank ve uçak tasarımcısı</h3><p class="small" style="margin:0">Üretim panelindeki Tasarım bürosundan kendi tank, avcı, yakın destek ve bombardıman uçağı modellerini tasarlarsın. Önce araştırdığın şasiyi/gövdeyi seç, sonra modülleri: tankta ana silah, taret, süspansiyon, zırh kalınlığı, motor gücü ve özel modüller; uçakta silahlar, motor, bomba bölmesi, savunma taretleri ve özel modüller (zırh plakası, atılabilir yakıt tankı, bomba nişangâhı…). Her seçim saldırı, yarma, zırh, delme, hız, güvenilirlik, hava/kara/deniz saldırısı, menzil ve üretim maliyetini değiştirir. Zırhı düşmanın delme değerinden yüksek olan tanklar çok daha etkilidir. Tasarımı kaydetmek tecrübe puanı harcar (savaşta ve görevdeki kanatlarla kazanılır). Üretim hattında “Tasarım ▾” ile hattı yeni tasarıma geçirirsin; bu, fabrika verimini bir süre düşürür. Depodaki teçhizat üretilen tasarımların ortalamasıdır ve tümenler ile kanatlar takviye sırasında yeni modelleri yavaşça alır.</p></section>
   <section class="sec"><h3 class="sec-h">Barış konferansı</h3><p class="small" style="margin:0">Bir ülke teslim olunca ona karşı savaşan herkes konferansa katılır. Muharebelerde verdiğin hasar ve işgal ettiğin topraklar oranında puan alırsın. Sırayla bölge talep edilir (sıra her turda en çok puanı kalana geçer). Haritadaki rakam senin için maliyettir: kendi işgal ettiğin yer ucuz, başka bir galibin işgali pahalı, eski asli toprakların yarı fiyat. Puanını kukla devlet kurmak ya da yok olmuş ulusları serbest bırakmak için de harcayabilirsin. Kimsenin almadığı topraklar teslim olan ülkede kalır. Konferans sürerken zaman durur.</p></section>
-  <section class="sec"><h3 class="sec-h">Hava kuvvetleri</h3><p class="small" style="margin:0">Dünya, HOI4\'teki gibi hava bölgelerine ayrılmıştır (Hava panelindeki ya da “Hava” harita modundaki kesikli çizgiler). Ürettiğin uçaklar stoka girer; Hava panelinden 100 uçaklık kanatlar kurarsın. Her kanada bir bölge ve görev ver: <b>Hava üstünlüğü</b> (avcı) düşman uçaklarıyla çarpışır ve o bölgedeki kara muharebelerine saldırı/savunma bonusu sağlar; <b>Önleme</b> düşman bombacılarını avlar; <b>Yakın hava desteği</b> bölgedeki muharebelerde tümenlerine ek saldırı verir; <b>Stratejik bombardıman</b> düşman fabrikalarını vurur, üretimini ve savaş desteğini düşürür; <b>Deniz saldırısı</b> düşman filolarını ve konvoylarını hedef alır. “Bölge seç” düğmesine basıp haritada bir yere dokunarak kanadı gönderirsin; kanat ancak dost toprak bulunan ya da ona komşu bölgelerde çalışabilir. Kayıplar stoktan kendiliğinden takviye edilir. “Hava kurmayı” açıkken kanatlar cephelere kendiliğinden dağıtılır.</p></section>
+  <section class="sec"><h3 class="sec-h">Hava kuvvetleri</h3><p class="small" style="margin:0">Dünya, HOI4\'teki gibi hava bölgelerine ayrılmıştır (Hava panelindeki ya da “Hava” harita modundaki kesikli çizgiler). Ürettiğin uçaklar stoka girer; Hava panelinden 100 uçaklık kanatlar kurarsın. Her kanada bir bölge ve görev ver: <b>Hava üstünlüğü</b> (avcı) düşman uçaklarıyla çarpışır ve o bölgedeki kara muharebelerine saldırı/savunma bonusu sağlar; <b>Önleme</b> düşman bombacılarını avlar; <b>Yakın hava desteği</b> bölgedeki muharebelerde tümenlerine ek saldırı verir; <b>Stratejik bombardıman</b> düşman fabrikalarını vurur, üretimini ve savaş desteğini düşürür; <b>Deniz saldırısı</b> düşman filolarını ve konvoylarını hedef alır. “Bölge seç” düğmesine basıp haritada bir yere dokunarak kanadı gönderirsin. <b>Hava üsleri:</b> her kanat bir hava üssüne konuşlanır (haritada ✈ simgesi; rakam üs seviyesi ve oradaki kanat sayısı). Üs seviyesi başına 100 uçak barınır; dolu üste etkinlik düşer. Kanat yalnızca uçağın menzili içindeki bölgelerde görev yapar (avcı ~700 km, YDU ~840 km, bombacı ~1400 km; atılabilir yakıt tankı ve dört motor menzili artırır). Bölge seçerken menzil dışındaysa kanat uygun bir üsse kendiliğinden taşınır; “Üs seç” ile üssü elle de belirleyebilirsin. Üssü düşman ele geçirirse kanat en yakın üsse çekilir. İnşaat panelinden hava üssü kurup büyütebilirsin; stratejik bombardıman düşman üslerini de vurur. Kayıplar stoktan kendiliğinden takviye edilir. “Hava kurmayı” açıkken kanatlar cephelere kendiliğinden dağıtılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita, şehirler ve boğazlar</h3><p class="small" style="margin:0">Eyaletler gerçek şehirlerin etrafında kuruludur ve 1936\'daki adlarıyla anılır (Danzig, Breslau, Königsberg, Leningrad, Stalingrad…). Yakınlaştıkça daha çok şehir adı görünür. Gemiler Türk Boğazları, Cebelitarık, Danimarka Boğazları, Kiel ve Süveyş kanalları, Panama, Kerç ve Messina\'dan geçebilir; ancak boğazı kontrol eden eyaletlerden biri düşman elindeyse geçemez.</p></section>
   <section class="sec"><h3 class="sec-h">İkmal, altyapı ve hava</h3><p class="small" style="margin:0">İkmal başkentten ve büyük şehirlerdeki ikmal merkezlerinden demiryolu ve altyapı boyunca akar; uzaklaştıkça azalır. Bir eyalette ikmalin kaldırabileceğinden fazla tümen yığarsan ya da düşman topraklarında çok derine inersen birliklerin saldırı gücü ve toparlanması düşer, ikmalsiz kalanlar yıpranır. İşgal ettiğin şehirler yarım kapasiteyle ikmal merkezi olur; anakaradan kopuk bölgeler yalnızca limanla, konvoy ve deniz üstünlüğüyle beslenir. “İkmal” harita modunda kırmızı yetersiz, yeşil bol ikmali gösterir; kutular ikmal merkezleridir. İnşaat panelinden altyapı kurarak ikmali ve hareket hızını artırabilirsin. Kuzeyde kışın kar ve tipi saldırıyı, hareketi ve ikmali zorlaştırır, kışa hazırlıksız ordular yıpranır; Doğu Avrupa\'da ilkbahar ve sonbaharda çamur, Asya\'da muson vardır.</p></section>
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
@@ -815,7 +875,7 @@
     const byTag = {}; for (const u of units) byTag[u.t] = (byTag[u.t] || 0) + 1;
     const battle = (G.battles || []).find((b) => b.n === i);
     let html = `<div class="card-h">${G.flag(pr.c, 36, 24)}<div class="grow"><h3>${esc(G.pname(i))}</h3><div class="muted small">${esc(G.cname(pr.c))}${occ ? ` · işgal altında (sahibi ${esc(G.cname(pr.o))})` : ''}</div></div><button class="x" data-act="closecard" aria-label="Kapat">✕</button></div>`;
-    html += `<div class="facts"><span>Arazi <b>${te.n}</b></span><span>Zafer puanı <b>${p.vp}</b></span><span>Fabrika <b>S${pr.civ} A${pr.mil} T${pr.dock}</b></span><span>Tahkimat <b>${pr.fort}/5</b></span><span>Altyapı <b>${pr.inf || 1}/5</b></span><span>Hava <b>${G.weatherName(i)}</b></span>${G.supAvail[G.st.player] && (pr.c === G.st.player || G.friendly(G.st.player, pr.c)) ? `<span>İkmal <b class="${G.supAvail[G.st.player][i] < 1.5 ? 'bad' : ''}">${r1(G.supAvail[G.st.player][i])}</b></span>` : ''}<span>Nüfus <b>${r1(pr.pop)} M</b></span>${p.st ? `<span>Çelik <b>${p.st}</b></span>` : ''}${p.oil ? `<span>Petrol <b>${p.oil}</b></span>` : ''}${p.c ? '<span><b>Kıyı</b></span>' : ''}</div>`;
+    html += `<div class="facts"><span>Arazi <b>${te.n}</b></span><span>Zafer puanı <b>${p.vp}</b></span><span>Fabrika <b>S${pr.civ} A${pr.mil} T${pr.dock}</b></span><span>Tahkimat <b>${pr.fort}/5</b></span><span>Altyapı <b>${pr.inf || 1}/5</b></span><span>Hava üssü <b>${pr.ab || 0}/10</b></span><span>Hava <b>${G.weatherName(i)}</b></span>${G.supAvail[G.st.player] && (pr.c === G.st.player || G.friendly(G.st.player, pr.c)) ? `<span>İkmal <b class="${G.supAvail[G.st.player][i] < 1.5 ? 'bad' : ''}">${r1(G.supAvail[G.st.player][i])}</b></span>` : ''}<span>Nüfus <b>${r1(pr.pop)} M</b></span>${p.st ? `<span>Çelik <b>${p.st}</b></span>` : ''}${p.oil ? `<span>Petrol <b>${p.oil}</b></span>` : ''}${p.c ? '<span><b>Kıyı</b></span>' : ''}</div>`;
     if (units.length) html += `<div class="facts">${Object.entries(byTag).map(([t, n]) => `<span>${G.flag(t, 18, 12)} <b>${n}</b> tümen</span>`).join('')}</div>`;
     if (battle) html += `<div class="row" style="gap:8px;align-items:center"><div class="small grow"><span class="pill war">Muharebe</span> ${esc(G.cname(battle.att))} saldırıyor · üstünlük ${pct(battle.adv)}</div><button class="btn sm" data-act="battle" data-v="${battle.n}">Ayrıntı</button></div>`;
     const btns = [];
@@ -912,11 +972,29 @@
   ACT.wingauto = (d) => { const c = me(); const w = c.wings.find((x) => x.id === +d.v); if (w) w.manual = 0; G.aiAir(c); UI.render(); };
   ACT.wingdel = (d) => { G.disbandWing(me(), +d.v); UI.render(); };
   ACT.wingnew = (d) => { const c = me(); const w = G.newWing(c, d.v, G.homeRegion(c), d.v === 'bom' ? 'str' : G.WING_TYPES[d.v].m[0]); if (w) { UI.toast(`${UI.wingName(c, w)} kuruldu (${Math.round(w.n)} uçak). Bölge ve görev seç.`, 'good'); if (c.auto.air) G.aiAir(c); } UI.render(); };
+  ACT.basepick = (d) => {
+    UI.basePick = UI.basePick === +d.v ? null : +d.v; UI.airPick = null;
+    if (UI.basePick) { R.setMode('air'); UI.close(); UI.toast('Kanadın konuşlanacağı hava üssüne (✈ simgeli şehir) haritada dokun.'); R.dirty = 1; } else UI.render();
+  };
+  UI.assignWingBase = (n) => {
+    const c = me(); const w = (c.wings || []).find((x) => x.id === UI.basePick); UI.basePick = null;
+    if (!w || n < 0 || n >= NP) return false;
+    if (!G.baseOk(c.tag, n)) { UI.toast(`${G.pname(n)}: kendi ya da müttefik kontrolünde bir hava üssü değil. İnşaat panelinden hava üssü kurabilirsin.`, 'warn'); UI.open('air'); return true; }
+    const free = G.baseCap(n) - G.baseLoad(n) + (w.b === n ? w.max : 0);
+    G.setBase(w, n); w.manual = 1;
+    if (w.r >= 0 && !G.inRange(c, w, w.r)) UI.toast(`${UI.wingName(c, w)} → ${G.pname(n)} üssü. Uyarı: ${G.AIR.regions[w.r].n} bu üssün menzili dışında.`, 'warn');
+    else UI.toast(`${UI.wingName(c, w)} → ${G.pname(n)} üssü${free < w.max ? ' (üs dolu, etkinlik düşer)' : ''}.`, free < w.max ? 'warn' : 'good');
+    UI.open('air'); return true;
+  };
   UI.assignWingRegion = (n) => {
     const c = me(); const w = (c.wings || []).find((x) => x.id === UI.airPick); UI.airPick = null;
     if (!w || n < 0) return false;
     const r = G.regionOf(n);
-    if (!G.canBase(c.tag, r)) { UI.toast(`${G.AIR.regions[r].n} menzil dışında: bölgede ya da komşusunda dost toprak olmalı.`, 'warn'); return true; }
+    if (!G.inRange(c, w, r) || !G.baseOk(c.tag, w.b)) {
+      const b = G.bestBaseFor(c, w, r);
+      if (b < 0) { UI.toast(`${G.AIR.regions[r].n} menzil dışında: ${Math.round(G.wingRangeKm(c, w))} km içinde uygun hava üssün yok. Cepheye yakın bir hava üssü kur ya da daha uzun menzilli uçak tasarla.`, 'warn'); UI.open('air'); return true; }
+      G.setBase(w, b); UI.toast(`Kanat menzil için ${G.pname(b)} üssüne taşındı.`, 'good');
+    }
     w.r = r; w.manual = 1;
     if (!G.WING_TYPES[w.e].m.includes(w.mis)) w.mis = G.WING_TYPES[w.e].m[0];
     UI.toast(`${UI.wingName(c, w)} → ${G.AIR.regions[r].n} (${G.MIS[w.mis].n}).`, 'good');
@@ -1008,6 +1086,23 @@
     UI.render();
   };
   ACT.lineup = (d) => { const c = me(); const l = c.lines[+d.v]; l.lv = G.bestLevel(c, l.e); l.eff = Math.max(0.1, l.eff * 0.6); UI.toast(`${g.EQUIP[l.e].n} hattı yeni modele geçti (verim düştü).`, 'good'); UI.render(); };
+  // tasarımcı eylemleri
+  ACT.dznew = (d) => { UI.dz = null; UI.dzLine = d.k != null ? +d.k : null; UI.sub = 'design:' + d.v; UI.render(true); };
+  ACT.dztier = (d) => { UI.dz.t = +d.v; UI.render(); };
+  ACT.dzmod = (d) => { UI.dz.m[d.k] = d.v; UI.render(); };
+  ACT.dzlvl = (d) => { const sl = g.DESIGN[UI.dz.e].slots.find((x) => x.k === d.k); UI.dz.m[d.k] = Math.max(0, Math.min(sl.lvl, (UI.dz.m[d.k] | 0) + +d.v)); UI.render(); };
+  ACT.dzreset = () => { UI.dz.m = {}; UI.render(); };
+  ACT.dzcopy = (d) => { const c = me(); const x = (c.designs || []).find((y) => y.id === d.v); if (!x) return; UI.dz = { e: x.e, t: x.t, m: Object.assign({}, x.m), n: x.n + ' II' }; UI.dzLine = null; UI.sub = 'design:' + x.e; UI.render(true); };
+  ACT.dzdel = (d) => { G.deleteDesign(me(), d.v); UI.render(); };
+  ACT.dzsave = (d) => {
+    const c = me(), inp = document.getElementById('dz-name'); if (inp) UI.dz.n = inp.value;
+    const r = G.saveDesign(c, UI.dz.e, UI.dz);
+    if (!r.ok) { UI.toast(r.why, 'warn'); return; }
+    if (d.v === 'line' && UI.dzLine != null && c.lines[UI.dzLine]) { const l = c.lines[UI.dzLine]; l.d = r.d.id; l.eff = Math.max(0.1, l.eff * 0.7); }
+    UI.toast(`Tasarım kaydedildi: ${r.d.n}`, 'good');
+    UI.dz = null; UI.sub = null; UI.render(true);
+  };
+  ACT.linedesign = (d) => { const c = me(); const l = c.lines[+d.k]; if (!l) return; if (l.d !== d.v) { l.d = d.v; l.lv = G.designById(c, l.e, d.v)?.t || l.lv; l.eff = Math.max(0.1, l.eff * 0.7); } UI.sub = null; UI.toast('Hat yeni tasarıma geçti (verim düştü).', 'good'); UI.render(true); };
   ACT.linedel = (d) => { const c = me(); c.lines.splice(+d.v, 1); UI.render(); };
   ACT.dealdel = (d) => { G.cancelDeal(+d.v); G.refreshTradeCache(); UI.render(); };
   ACT.buy = (d) => { const c = me(); const n = Math.max(1, Math.min(+d.n, Math.floor(G.exportFree(d.k, d.v)))); G.addDeal(c.tag, d.k, d.v, n); G.refreshTradeCache(); G.econCalc(c); UI.toast(`${G.cname(d.k)} ile ${g.RES[d.v].toLowerCase()} anlaşması: ${n} birim.`, 'good'); UI.render(); };
@@ -1027,7 +1122,7 @@
     c.fleets.push({ id: G.st.nextId++, n: `${c.fleets.length + 1}. Filo`, loc: home, home, sh, mis: 'hold', path: [], prog: 0 });
     UI.render();
   };
-  ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0, lv: G.bestLevel(c, d.v) }); UI.toast(`${g.EQUIP[d.v].n} hattı eklendi; + ile fabrika ata.`, 'good'); UI.render(); };
+  ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0, lv: G.bestLevel(c, d.v), d: G.DESIGNABLE.has(d.v) ? 'std' + Math.floor(G.bestLevel(c, d.v)) : undefined }); UI.toast(`${g.EQUIP[d.v].n} hattı eklendi; + ile fabrika ata.`, 'good'); UI.render(); };
   ACT.cup = (d) => { const c = me(); const i = +d.v; [c.constr[i - 1], c.constr[i]] = [c.constr[i], c.constr[i - 1]]; UI.render(); };
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
   ACT.build = (d) => { const c = me(); c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };

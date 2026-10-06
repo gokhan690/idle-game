@@ -180,6 +180,8 @@
       const genW = s.gb && s.gb.winter ? 0.5 : 1;
       if (!home) loss += 0.0016 * sn * adapt * genW * (r < 0.8 ? 1.6 : 1);
     }
+    const tq = u.lv && u.lv.tq;
+    if (tq && tq.rel < 0.95) { const t = G.T(u.t, u.u); loss += (0.95 - tq.rel) * 0.004 * Math.min(1, 2 * t.tanks / t.nb) * (u.path.length || r < 1 ? 1 : 0.35); }
     if (loss > 0) { u.str = Math.max(0.05, u.str - loss); st.C[u.t].dead += loss * G.T(u.t, u.u).mp * 0.4; }
   };
 })(window);

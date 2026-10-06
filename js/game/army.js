@@ -55,15 +55,17 @@
       w, bonus, amph: amph / nb, mob: mob / nb, tanks, ent, spdM, aa, sup, cas, nb,
     };
     // ülkenin mevcut teçhizat seviyesiyle gösterim değerleri
-    const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') };
+    const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank'), tq: tanks && G.stockVec ? G.stockVec(c, 'tank') : null };
     Object.assign(t, G.levelStats(t, L));
     return t;
   };
   G.levelStats = (t, L) => {
     let atk = t.atkK.flat, def = t.defK.flat;
-    for (const k of ['inf', 'art', 'tank']) { const m = G.lvMul(k, L[k] || 1); atk += t.atkK[k] * m; def += t.defK[k] * m; }
-    const tm = G.lvMul('tank', L.tank || 1);
-    return { atk, def, arm: t.armBase * (t.tanks ? tm : 1), prc: t.prcO + t.prcT * tm };
+    for (const k of ['inf', 'art']) { const m = G.lvMul(k, L[k] || 1); atk += t.atkK[k] * m; def += t.defK[k] * m; }
+    // tank: tasarım vektörü (saldırı, yarma, zırh, delme) ya da eski seviye çarpanı
+    const tq = L.tq, tm = G.lvMul('tank', L.tank || 1);
+    atk += t.atkK.tank * (tq ? tq.a : tm); def += t.defK.tank * (tq ? tq.d : tm);
+    return { atk, def, arm: t.armBase * (t.tanks ? (tq ? tq.r : tm) : 1), prc: t.prcO + t.prcT * (tq ? tq.p : tm) };
   };
   G.invalidateTemplates = (c) => { c._tc = {}; };
 
@@ -170,6 +172,7 @@
     let def = ls.def * (1 + (m.landDef || 0)) * xm;
     const org = t.org * (1 + (m.org || 0));
     let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
+    if (t.tanks && u.lv && u.lv.tq) spd *= 1 + (u.lv.tq.s - 1) * Math.min(1, 2 * t.tanks / t.nb);
     const gen = G.genOf(u);
     let gb = null;
     if (gen) {
