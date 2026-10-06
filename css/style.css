@@ -353,3 +353,9 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .ftree.compact .fn .t { font-size: 11px; }
 .ftree.compact .fn { padding: 4px 5px; }
 .fn.flash { outline: 3px solid #fff; outline-offset: 2px; }
+/* barış konferansı */
+@media (orientation: portrait) { .sheet.half { max-height: min(48vh, 480px); } }
+.cfhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cfpart { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border: 1px solid var(--rule); border-radius: 4px; font-variant-numeric: tabular-nums; }
+.cfpart.on { border-color: var(--brass); background: rgba(214,170,76,0.14); }
+.cfpart.off { opacity: 0.45; }

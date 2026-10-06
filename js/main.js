@@ -19,7 +19,7 @@
   G.saveMeta = (slot) => { const m = store.get(KEY(slot) + '_meta'); try { return m ? JSON.parse(m) : null; } catch (e) { return null; } };
   G.loadGame = (slot) => {
     const s = store.get(KEY(slot)); if (!s) return false;
-    try { G.deserialize(s); G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; return true; } catch (e) { console.error(e); return false; }
+    try { G.deserialize(s); G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); return true; } catch (e) { console.error(e); return false; }
   };
 
   // ---------- Oyun döngüsü ----------
@@ -163,6 +163,8 @@
     const st = G.st; if (!st || !$('start').hidden) return;
     // hava kanadı için bölge seçimi
     if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
+    // barış konferansı: bölge seçimi
+    if (st.conf && R.mode === 'peace') { UI.confPick(R.nodeAt(x, y)); return; }
     const cnt = R.counterAt(x, y);
     const n = cnt ? cnt.n : R.nodeAt(x, y);
     const selectAt = (node) => {

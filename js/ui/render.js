@@ -41,6 +41,7 @@
     fillGroups = new Map(); occGroups = new Map();
     const keyOf = (i) => {
       const pr = st.prov[i];
+      if (R.mode === 'peace') { const cf = st.conf; if (cf && cf.sOf[i] != null) { const o = cf.own[i]; return o ? 'pk:' + o.t : 'pu:' + cf.L; } return 'po:' + pr.c; }
       if (R.mode === 'terrain') return 'te' + P[i].te;
       if (R.mode === 'ind') { const v = pr.civ + pr.mil + pr.dock; return 'ind' + Math.min(6, Math.ceil(v / 2)); }
       if (R.mode === 'fac') { const f = st.C[pr.c]?.fac; return f ? 'fac:' + f : 'nofac:' + pr.c; }
@@ -64,6 +65,7 @@
       let pa = fillGroups.get(k); if (!pa) fillGroups.set(k, (pa = hasAdd ? new Path2D() : []));
       if (hasAdd) pa.addPath(provPath[i]); else pa.push(i);
       const pr = st.prov[i];
+      if (R.mode === 'peace' && st.conf && st.conf.sOf[i] != null && !st.conf.own[i] && st.conf.ctrl[i] !== st.conf.L) { const ct = st.conf.ctrl[i]; let o = occGroups.get(ct); if (!o) occGroups.set(ct, (o = hasAdd ? new Path2D() : [])); if (hasAdd) o.addPath(provPath[i]); else o.push(i); }
       if (R.mode === 'pol' && pr.o !== pr.c) { let o = occGroups.get(pr.o); if (!o) occGroups.set(pr.o, (o = hasAdd ? new Path2D() : [])); if (hasAdd) o.addPath(provPath[i]); else o.push(i); }
     }
     countryBorder = new Path2D(); provBorder = new Path2D(); regionBorder = new Path2D();
@@ -72,6 +74,7 @@
       const ca = st.prov[bd.a].c, cb = st.prov[bd.b].c;
       addLine(ca !== cb ? countryBorder : provBorder, bd.pts);
       if (R.mode === 'air' && G.regionOf(bd.a) !== G.regionOf(bd.b)) addLine(regionBorder, bd.pts);
+      if (R.mode === 'peace' && st.conf) { const sa = st.conf.sOf[bd.a], sb = st.conf.sOf[bd.b]; if (sa !== sb && (sa != null || sb != null)) addLine(regionBorder, bd.pts); }
     }
     buildLabels();
     R.mapDirty = 0;
@@ -192,6 +195,7 @@
         else if (R.mode === 'ind') col = IND_COLORS[+k.slice(3)];
         else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
         else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
+        else if (R.mode === 'peace') { const t = k.slice(3); col = k.startsWith('pk:') ? R.ccolor(t) : k.startsWith('pu:') ? mix(R.ccolor(t), '#d8d2bc', 0.35) : mix(R.ccolor(t), '#33362f', 0.78); }
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else col = R.ccolor(k);
         if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
@@ -205,7 +209,7 @@
         if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; ctx.fill(wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
       }
       // işgal çizgileri
-      if (R.mode === 'pol') for (const [owner, pa] of occGroups) {
+      if (R.mode === 'pol' || R.mode === 'peace') for (const [owner, pa] of occGroups) {
         let pat = stripeCache.get(owner);
         if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
         pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
@@ -219,7 +223,12 @@
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
       if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); ctx.stroke(regionBorder); ctx.setLineDash([]); }
-      drawFronts(ctx, z);
+      if (R.mode === 'peace') {
+        ctx.strokeStyle = 'rgba(20,18,12,0.95)'; ctx.lineWidth = 2.2 / z; ctx.stroke(regionBorder);
+        const cf = st.conf, cs = G.UI && G.UI.cfSel, sel = cf && cs != null ? cf.states[cs] : null;
+        if (sel) { ctx.fillStyle = 'rgba(255,240,190,0.28)'; for (const n of sel.p) ctx.fill(provPath[n], 'evenodd'); ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.6 / z; for (const n of sel.p) ctx.stroke(provPath[n]); }
+      }
+      if (R.mode !== 'peace') drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -232,12 +241,15 @@
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawLabels(ctx, z);
-    drawHubs(ctx);
-    drawPaths(ctx);
-    drawArrows(ctx, z);
-    drawBattles(ctx);
-    drawUnits(ctx, z);
-    drawArmyTags(ctx, z);
+    if (R.mode === 'peace') drawConf(ctx);
+    else {
+      drawHubs(ctx);
+      drawPaths(ctx);
+      drawArrows(ctx, z);
+      drawBattles(ctx);
+      drawUnits(ctx, z);
+      drawArmyTags(ctx, z);
+    }
     drawAirRegions(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = 0;
@@ -285,6 +297,24 @@
         ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.strokeText(p.n, s.x, s.y + 3);
         ctx.fillStyle = '#efe9d8'; ctx.fillText(p.n, s.x, s.y + 3);
       }
+    }
+  }
+  // barış konferansı: bölge başına maliyet ya da talep eden ülke
+  function drawConf(ctx) {
+    const st = G.st, cf = st.conf; if (!cf) return;
+    const me = st.player, p = cf.parts.find((q) => q.t === me);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 12px "Barlow Semi Condensed", sans-serif';
+    for (const s of cf.states) {
+      const P0 = P[s.c]; const sc = P0.q ? visible(P0.q[0], P0.q[1], 30) : visible(P0.x, P0.y, 30); if (!sc) continue;
+      const fl = s.p.filter((n) => !cf.own[n]);
+      let txt, bg, fg = '#14160f';
+      if (!fl.length) { const o = cf.own[s.p[0]]; txt = G.cname(o.t).slice(0, 3).toLocaleUpperCase('tr'); bg = R.ccolor(o.t); fg = R.luminance(bg) > 0.55 ? '#14160f' : '#f4efe0'; }
+      else { const cost = G.confCost(cf, me, fl); txt = String(cost); bg = p && cost <= p.pts ? '#f2d27a' : '#8d8a7c'; }
+      const w = ctx.measureText(txt).width + 10;
+      ctx.fillStyle = bg; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sc.x - w / 2, sc.y - 9, w, 18, 4) : ctx.rect(sc.x - w / 2, sc.y - 9, w, 18); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = fg; ctx.fillText(txt, sc.x, sc.y + 0.5);
     }
   }
   function starPath(ctx, x, y, r) {
