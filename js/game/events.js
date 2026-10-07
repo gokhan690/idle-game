@@ -387,9 +387,11 @@
       if (st.day - wgs.since >= 740 && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
       if (st.day - wgs.since > 540) add('GER', 'ost_crisis');
       // Stavka yedek orduları (1941-42): topraklar işgal edildikçe hazır tüfek stokları ve yedeklerle
-      // yeni tümenler kurulur. Tarihe değil duruma bağlıdır (toplam en çok 90 tümen, ayda 6-8).
+      // yeni tümenler kurulur (toplam en çok 60 tümen, ayda 6-8). Tarihî modda düzelticidir: yalnızca
+      // Almanya Doğu'da tarihten ileri gittiğinde; serbest modda Sovyet toprak kaybına bağlı.
       const sov = st.C.SOV;
-      if (sov?.alive && st.day % 30 === 0 && (sov.surrender || 0) >= 0.12 && (st.sovRes || 0) < 90) {
+      const behind = st.opts.hist ? (G.histAhead('GER', 'SOV') ?? -1) > 0.03 : (sov?.surrender || 0) >= 0.12;
+      if (sov?.alive && st.day % 30 === 0 && behind && (sov.surrender || 0) >= 0.08 && (st.sovRes || 0) < 60) {
         const n = (sov.surrender || 0) > 0.4 ? 8 : 6, mp = G.T('SOV', 'inf').mp;
         const divs = st.units.filter((u) => u.t === 'SOV').length;
         if (divs < 260 && (sov.mpAvail || 0) > mp * n * 1.5) {
