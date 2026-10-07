@@ -382,6 +382,26 @@
       if (st.day - wgs.since >= 510 && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
       if (st.day - wgs.since >= 740 && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
       if (st.day - wgs.since > 540) add('GER', 'ost_crisis');
+      // Stavka yedek orduları (1941-42): topraklar işgal edildikçe hazır tüfek stokları ve yedeklerle
+      // yeni tümenler kurulur. Tarihe değil duruma bağlıdır (toplam en çok 90 tümen, ayda 6-8).
+      const sov = st.C.SOV;
+      if (sov?.alive && st.day % 30 === 0 && (sov.surrender || 0) >= 0.12 && (st.sovRes || 0) < 90) {
+        const n = (sov.surrender || 0) > 0.4 ? 8 : 6, mp = G.T('SOV', 'inf').mp;
+        const divs = st.units.filter((u) => u.t === 'SOV').length;
+        if (divs < 260 && (sov.mpAvail || 0) > mp * n * 1.5) {
+          const L = [];
+          for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === 'SOV' && pr.core === 'SOV' && !P[i].a.some((j) => G.atWar('SOV', st.prov[j].c))) L.push(i); }
+          L.sort((a, b) => P[b].vp - P[a].vp || a - b);
+          const k = Math.min(6, L.length);
+          for (let j = 0; j < (k ? n : 0); j++) { const u = G.makeUnit('SOV', 'inf', L[j % k], 0.75); u.xp = 0.05; st.units.push(u); }
+          if (k) {
+            G.rebuildUnitIndex();
+            if (!st.sovRes) G.log('Stavka yedek orduları kuruluyor: yeni tümenler cepheye sevk edilecek.', ['SOV'], 'major');
+            else if (st.player === 'SOV') G.log(`Stavka yedeği: ${n} yeni tümen.`, ['SOV'], 'info');
+            st.sovRes = (st.sovRes || 0) + n;
+          }
+        }
+      }
     }
     // İspanya İç Savaşı: aylık dış yardım
     if (st.day % 30 === 0 && G.atWar('SPN', 'SPR')) {
