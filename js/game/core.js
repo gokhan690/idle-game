@@ -79,7 +79,7 @@
   G.hostileIn = (n, tag) => { const L = G.unitsAt[n]; if (!L) return false; for (const u of L) if (G.atWar(u.t, tag)) return true; return false; };
 
   // Birim istatistikleri army.js içinde (şablon + komutan).
-  G.unitPower = (u) => { const s = G.unitStats(u); return (s.atk * 0.5 + s.def * 0.5) * u.str * (0.35 + 0.65 * Math.min(1, u.org / s.org)); };
+  G.unitPower = (u) => { const s = G.unitStats(u); return (0.12 * (s.sa + s.ha) + 0.06 * s.df + 0.05 * s.bt) * u.str * (0.35 + 0.65 * Math.min(1, u.org / s.org)); };
 
   // ---------- Yol bulma (A*) ----------
   class Heap {
@@ -175,7 +175,7 @@
         else if (typeof v === 'number' && !['addCiv', 'addMil', 'addDock', 'addPlanes', 'addBombers', 'forts'].includes(k)) m[k] = (m[k] || 0) + v;
       }
     };
-    for (const id of Object.keys(c.tech)) add(g.TECH_BY_ID[id].fx);
+    for (const id of Object.keys(c.tech)) if (g.TECH_BY_ID[id]) add(g.TECH_BY_ID[id].fx);
     add(c.fmods);
     for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
     for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);

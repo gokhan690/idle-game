@@ -10,7 +10,7 @@
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i], c = st.C[pr.c]; if (!c) continue;
       const own = pr.o === pr.c || pr.core === pr.c;
-      const k = own ? 1 : 0.4;
+      const k = (pr.core === pr.c ? 1 : own ? 0.6 : 0.3) * (G.occMul ? G.occMul(pr) : 1);
       const s = c.sum;
       s.civ += pr.civ * k; s.mil += pr.mil * k; s.dock += pr.dock * k;
       const R = G.PR[i], sr = s.res;
@@ -148,7 +148,11 @@
       const def = G.T(c.tag, t.u);
       let ratio = 1;
       for (const [e, n] of Object.entries(def.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
-      if (ratio < 0.25) continue; // teçhizat bekleniyor
+      if (ratio < 0.25) { // teçhizat bekleniyor; YZ uzun bekleyen tümeni iptal eder
+        t.w = (t.w || 0) + 1;
+        if (c.tag !== st.player && t.w > 60) { c.train.splice(i, 1); i--; }
+        continue;
+      }
       const str = Math.min(1, ratio);
       for (const [e, n] of Object.entries(def.eq)) c.stock[e] -= n * str;
       let loc = c.cap;
@@ -177,8 +181,13 @@
     const yr = G.year(G.st.day);
     return 110 * (1 + Math.max(0, t.year - yr) * 0.9);
   };
+  // Kara doktrini dalları: dm/df/dg/da — yalnızca bir dal (HOI4)
+  G.docTreeOf = (id) => (/^d[mfga][1-4]$/.test(id) ? id[1] : null);
+  G.docTree = (c) => { for (const id of Object.keys(c.tech)) { const t = G.docTreeOf(id); if (t) return t; } for (const r of c.res || []) { const t = G.docTreeOf(r.id); if (t) return t; } return null; };
+  G.docPref = (c) => ({ GER: 'm', SOV: 'a', CHI: 'a', PRC: 'a', ENG: 'g', FRA: 'g', JAP: 'g', USA: 'f', ITA: 'f', TUR: 'g' })[c.tag] || ({ fas: 'm', com: 'a', dem: 'f' })[c.ideo] || 'g';
   G.techAvailable = (c, id) => {
-    const t = g.TECH_BY_ID[id];
+    const t = g.TECH_BY_ID[id]; if (!t) return false;
+    const tr = G.docTreeOf(id); if (tr) { const cur = G.docTree(c); if (cur && cur !== tr) return false; }
     return !c.tech[id] && t.pre.every((p) => c.tech[p]) && !c.res.some((r) => r.id === id);
   };
 
@@ -202,6 +211,23 @@
   // Hava savaşı: airwar.js (bölgeler, kanatlar, görevler)
   function airNaval() { G.airTick(); }
 
+  // Denizde rotasız kalan birlik (bozulan çıkarma, kapanan boğaz): en yakın dost limana döner
+  G.returnToPort = (u) => {
+    const st = G.st, prev = new Map([[u.loc, -1]]), q = [u.loc];
+    for (let k = 0; k < q.length; k++) {
+      const n = q[k];
+      let port = -1;
+      for (const [b] of G.adj[n]) {
+        if (b >= NP) continue;
+        const c = st.prov[b].c;
+        if ((c === u.t || (G.friendly(u.t, c) && !G.atWar(u.t, c))) && !G.hostileIn(b, u.t)) { port = b; if (c === u.t) break; }
+      }
+      if (port >= 0) { const path = [port]; let x = n; while (x !== u.loc) { path.unshift(x); x = prev.get(x); } u.path = path; u.prog = 0; return true; }
+      for (const [b] of G.adj[n]) if (b >= NP && !prev.has(b) && !G.straitBlocked(u.t, n, b)) { prev.set(b, n); q.push(b); }
+    }
+    return false;
+  };
+
   // ---------- Hareket ve muharebe ----------
   function moveAndFight() {
     const st = G.st;
@@ -212,6 +238,7 @@
       const stats = G.unitStats(u);
       u._s = stats;
       if (u.ret > 0) u.ret--;
+      if (!u.path.length && u.loc >= NP && !G.returnToPort(u)) u.str = Math.max(0.05, u.str - 0.01);
       if (!u.path.length) continue;
       const n = u.path[0];
       if (u.sr && (n >= NP || G.hostileIn(n, u.t) || !G.canEnter(u.t, n) || G.atWar(u.t, st.prov[n].c))) { u.path = []; u.prog = 0; u.sr = 0; continue; }
@@ -249,6 +276,7 @@
     for (const b of battles.values()) fight(b);
     // muharebede olmayan duran birlikler toparlanır; ikmalsizlik ve kış yıpratır
     for (const u of st.units) if (!u.dead && !u.path.length && !G.inBattle.has(u)) recover(u, u._s);
+    for (const u of st.units) if (!u.dead) reinforce(u, !u.path.length && !G.inBattle.has(u));
     for (const u of st.units) if (!u.dead) G.attrition(u);
     // ölüleri temizle
     if (st.units.some((u) => u.dead)) { st.units = st.units.filter((u) => !u.dead); G.rebuildUnitIndex(); }
@@ -269,7 +297,9 @@
         if (k === 'tank') { if (u.lv.tq && G.vecLevel('tank', G.stockVec(c, 'tank')) <= G.vecLevel('tank', u.lv.tq) + 0.04) continue; } else if (sl <= u.lv[k] + 0.04) continue;
         const need = T.eq[e] * 0.04;
         if (c._rf == null || c._rfDay !== st.day) { c._rf = {}; c._rfDay = st.day; }
-        const budget = c._rf[e] ?? ((c.stock[e] || 0) - T.eq[e] * 2) * 0.03;
+        // takviye önceliklidir: yalnızca ordunun ihtiyacının üstündeki stok modernizasyona gider
+        if (c._ae == null || c._aeDay !== st.day) { c._ae = {}; c._aeDay = st.day; for (const x of st.units) if (x.t === c.tag) { const tx = G.T(x.t, x.u); for (const [q, v] of Object.entries(tx.eq)) c._ae[q] = (c._ae[q] || 0) + v; } }
+        const budget = c._rf[e] ?? Math.max(0, (c.stock[e] || 0) - (c._ae[e] || 0) * (c.enemies.length ? 0.2 : 0.05)) * 0.015;
         if (budget < need) continue;
         c._rf[e] = budget - need;
         c.stock[e] -= need;
@@ -277,9 +307,17 @@
         else u.lv[k] = Math.min(sl, u.lv[k] + (sl - u.lv[k]) * 0.08 + 0.005);
       }
     }
-    if (u.str < 1 && home) {
+  }
+  // Takviye (HOI4: muharebede ve harekette de sürer; ikmal ve dost toprak gerekir)
+  function reinforce(u, still) {
+    const st = G.st, c = st.C[u.t];
+    if (u.loc >= NP || u.str >= 1) return;
+    const pr = st.prov[u.loc];
+    if (!(pr.c === u.t || G.friendly(u.t, pr.c))) return;
+    const sr = G.supplyRatio(u); if (sr < 0.4) return;
+    {
       const def = G.T(u.t, u.u);
-      let r = Math.min(0.05, 1 - u.str);
+      let r = Math.min((still ? 0.05 : 0.025) * Math.min(1, sr + 0.2), 1 - u.str);
       const mpNeed = def.mp * r;
       if ((c.mpAvail || 0) < mpNeed) r = Math.max(0, (c.mpAvail || 0) / def.mp);
       for (const [e, n] of Object.entries(def.eq)) r = Math.min(r, (c.stock[e] || 0) / n);
@@ -300,21 +338,76 @@
     }
     return v;
   }
+  // HOI4 muharebe modeli: her tümenin saldırısı = yumuşak·(1−sertlik) + sert·sertlik (hedef tarafın sertliği).
+  // Gelen saldırılar savunmayla (savunan) ya da atılımla (saldıran) karşılanır: karşılanan kısım %10,
+  // aşan kısım %40 isabet eder. Zırh, karşı tarafın delmesinden yüksekse hasar yarıya kadar düşer.
+  G.COMBAT = { H: 24, lo: 0.1, hi: 0.4, kOrg: 0.03, kStr: 0.009 };
+  const sideHard = (L) => { let h = 0, w = 0; for (const u of L) { h += (u._s.hd || 0) * u.str; w += u.str; } return w ? h / w : 0; };
+  const sidePrc = (L) => { let mx = 0, s = 0; for (const u of L) { mx = Math.max(mx, u._s.prc); s += u._s.prc; } return L.length ? 0.4 * mx + 0.6 * s / L.length : 0; };
+  G.sideHard = sideHard; G.sidePrc = sidePrc;
+  // Vatan savunması: asli topraklarında savunan ülke, teslim olmaya yaklaştıkça daha inatçı direnir (HOI4: seferberlik, Volkssturm, Büyük Vatanseverlik)
+  // Tarihî akış dengesi (yalnızca tarihî YZ modunda, YZ'ye karşı YZ muharebelerinde):
+  // kilit cephelerde savunanın asli toprak kaybı tarihî eğriden çok saparsa, geride kalan taraf
+  // muharebede kademeli üstünlük kazanır (en çok %30-50). Oyuncunun muharebelerine uygulanmaz.
+  // [saldıran, savunan, saldıran herhangi bir düşman mı, [tarih, savunanın asli kayıp oranı]...]
+  const HIST_COURSE = [
+    // [saldıran, savunan, herhangi düşman, eğri, en çok destek (saldıran geride / saldıran önde)]
+    ['GER', 'SOV', 0, [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], [0.3, 0.45]],
+    ['JAP', 'CHI', 0, [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], [0.05, 0.5]],
+    ['*', 'GER', 1, [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], [0.3, 0.45]],
+  ];
+  HIST_COURSE.forEach((h) => { h[3] = h[3].map(([d, v]) => [G.dayOf(d), v]); });
+  const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
+  // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
+  G.histAhead = (a, d) => { const x = G._hcs && G._hcs[a + '>' + d]; return x ? x.loss - x.ref : null; };
+  G.histCourse = () => {
+    const st = G.st; G._hc = []; G._hcs = {};
+    if (!st.opts.hist) return;
+    for (const [a, d, any, pts, km] of HIST_COURSE) {
+      if (st.day < pts[0][0] || !st.C[d]?.alive) continue;
+      if (!any && !(st.C[a]?.alive && G.atWar(a, d))) continue;
+      if (any && !st.C[d].enemies.length) continue;
+      let h = 0, w = 0;
+      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) h += x; }
+      const e = (1 - h / Math.max(1, w)) - refAt(pts, st.day); // + : saldıran tarihten önde
+      G._hcs[a + '>' + d] = { loss: 1 - h / Math.max(1, w), ref: refAt(pts, st.day) };
+      if (Math.abs(e) < 0.05) continue;
+      G._hc.push({ a, d, any, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? km[1] : km[0]) });
+    }
+  };
+  // taraf çarpanı: x tarafı y'ye karşı
+  G.histMul = (x, y) => {
+    const st = G.st; if (!G._hc || !G._hc.length || x === st.player || y === st.player) return 1;
+    const inA = (t, a, any, d) => (any ? G.atWar(t, d) : t === a || G.sameFaction(t, a));
+    const inD = (t, d) => t === d;
+    // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
+    let m = 1;
+    for (const h of G._hc) {
+      let side = null;
+      if (inA(x, h.a, h.any, h.d) && inD(y, h.d)) side = 'a'; else if (inD(x, h.d) && inA(y, h.a, h.any, h.d)) side = 'd';
+      if (!side) continue;
+      m *= side === h.fav ? 1 + h.k : 1 - h.k / 2;
+    }
+    return Math.max(0.55, Math.min(1.6, m));
+  };
+  G.homeDef = (tag, n) => { const pr = G.st.prov[n]; if (pr.core !== tag) return 1; const c = G.st.C[tag]; return 1 + 0.35 * Math.min(1, c.surrender || 0); };
   function fight(b) {
-    const st = G.st;
+    const st = G.st, CB = G.COMBAT;
     const n = b.n, te = g.TERRAIN[P[n].te], pr = st.prov[n];
     const attTag = b.att[0].t;
     const defs = (G.unitsAt[n] || []).filter((u) => !u.dead && G.atWar(u.t, attTag));
     const atts = b.att.filter((u) => !u.dead && defs.some((d) => G.atWar(u.t, d.t)));
     if (!defs.length || !atts.length) return;
-    const width = (te.width + (P[n].ar > 1500 ? 1 : 0)) * 20;
-    atts.sort((a, b2) => b2.org - a.org); defs.sort((a, b2) => b2.org - a.org);
-    const fit = (L) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > width) break; out.push(u); w += uw; } return out; };
-    const A = fit(atts), D = fit(defs);
+    for (const u of defs) if (!u._s || u._sd !== st.day) u._s = G.unitStats(u);
+    // cephe genişliği: arazi + birden çok yönden saldırıda kanat genişliği (HOI4: +%50 / yön)
+    const dirs = new Set(atts.map((u) => u.loc)).size;
+    const baseW = (te.width + (P[n].ar > 1500 ? 1 : 0)) * 20;
+    const width = Math.round(baseW * (1 + 0.5 * Math.min(2, dirs - 1)));
+    atts.sort((a, b2) => b2.org / b2._s.org - a.org / a._s.org); defs.sort((a, b2) => b2.org / b2._s.org - a.org / a._s.org);
+    const fit = (L, wmax) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > wmax) break; out.push(u); w += uw; } return out; };
+    const A = fit(atts, width), D = fit(defs, baseW);
     for (const u of defs) G.inBattle.add(u);
     for (const u of atts) { G.inBattle.add(u); u.bd = u.bt === n ? (u.bd || 0) + 1 : 0; u.bt = n; }
-    const avgPrc = (L) => L.reduce((s, u) => s + u._s.prc, 0) / L.length;
-    const dPrc = avgPrc(D), aPrc = avgPrc(A);
     const diffMul = (tag) => (tag === st.player ? 1 : [1.15, 1, 0.9][st.opts.diff] || 1);
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     // uçaksavar: düşman hava üstünlüğünü azaltır
@@ -322,42 +415,47 @@
     const airAdj = (mod, enemyAA) => (mod > 1 ? 1 + (mod - 1) * (1 - enemyAA) : mod);
     const aAA = aaOf(A), dAA = aaOf(D);
     const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
+    const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
+    const hmA = G.histMul(attTag, defs[0].t), hmD = G.histMul(defs[0].t, attTag);
     let hitD = 0, hitA = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
-      let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      let tm = (1 + te.atk) * terrainMul(s, te, lat, month);
+      let atk = (s.sa * (1 - hdD) + s.ha * hdD) * u.str;
+      let tm = (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort);
       if (b.amph && u.loc >= NP) { const am = Math.min(0.9, 0.5 + (c.mods.invasion || 0) + (s.gb ? s.gb.amph * 0.3 : 0)); tm *= am + (0.9 - am) * (s.t.amph || 0); }
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
-      atk *= Math.max(0.3, tm * G.wxAtk(n)) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
-      if (s.arm > dPrc) atk *= 1.25;
+      const wx = G.WINTER_READY.has(u.t) ? 1 - 0.2 * G.wx.snow[n] - 0.3 * G.wx.mud[n] : G.wxAtk(n);
+      atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
       hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
-      let atk = s.atk * u.str * (0.4 + 0.6 * Math.min(1, u.org / s.org));
-      atk *= airAdj(dAirM, aAA) * (1 + 0.1 * pr.fort) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
-      if (s.arm > aPrc) atk *= 1.25;
+      let atk = (s.sa * (1 - hdA) + s.ha * hdA) * u.str;
+      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       hitA += atk; G.contrib(attTag, u.t, atk);
     }
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
-    const perD = (hitD * 0.9 * rD) / D.length, perA = (hitA * 0.9 * rA) / A.length;
+    const wOf = (L) => L.reduce((s, u) => s + (u._s.t.w || 15), 0);
+    const wA = wOf(A), wD = wOf(D);
+    const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
     const casMul = (s) => Math.max(0.4, 1 - (s.t.cas || 0) - (s.gb ? s.gb.cas : 0));
     for (const u of D) {
       const s = u._s;
-      const def = s.def * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1);
-      let ol = perD * 20 / (20 + def);
-      if (s.arm > aPrc) ol *= 0.6;
-      u.org -= ol; const sl = ol * (s.arm > aPrc ? 0.0025 : 0.004);
+      const inc = hitD * rD * (s.t.w || 15) / wD;
+      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD;
+      const h = hits(inc, dv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
+      u.org -= h * CB.kOrg * armF;
+      const sl = h * CB.kStr * armF / Math.max(10, s.hp);
       u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
     for (const u of A) {
       const s = u._s;
-      const brk = s.def * 0.5 + s.atk * 0.35;
-      let ol = perA * 20 / (20 + brk);
-      if (s.arm > dPrc) ol *= 0.6;
-      u.org -= ol; const sl = ol * (s.arm > dPrc ? 0.003 : 0.005);
+      const inc = hitA * rA * (s.t.w || 15) / wA;
+      const bv = s.bt * u.str * (u.loc >= NP ? 0.5 : 1) * hmA;
+      const h = hits(inc, bv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcD / s.arm)) : 1;
+      u.org -= h * CB.kOrg * armF;
+      const sl = h * CB.kStr * armF / Math.max(10, s.hp);
       u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
     }
     // tümen tecrübesi (muharebede çarpışan tümenler)
@@ -379,11 +477,47 @@
     }
     if (lost && (defs[0].t === st.player || attTag === st.player)) G.log(`${G.pname(n)}: ${lost} tümen kuşatılarak imha edildi!`, [defs[0].t, attTag], defs[0].t === st.player ? 'bad' : 'good');
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
-    const aPow = A.reduce((s, u) => s + u.org / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
+    const aPow = A.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
-      A, D, atts, defs, width, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM });
+      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
+
+  // Muharebe tahmini (YZ kararı): aynı formüllerle iki tarafın moralinin kaç günde biteceği
+  G.predictBattle = (us, n, tag) => {
+    const st = G.st, CB = G.COMBAT, te = g.TERRAIN[P[n].te], pr = st.prov[n];
+    const Dall = (G.unitsAt[n] || []).filter((u) => !u.dead && G.atWar(u.t, tag));
+    if (!Dall.length) return { defT: 0, attT: 99, ratio: 99 };
+    for (const u of us) u._s = G.unitStats(u);
+    for (const u of Dall) u._s = G.unitStats(u);
+    const dirs = new Set(us.map((u) => u.loc)).size;
+    const baseW = (te.width + (P[n].ar > 1500 ? 1 : 0)) * 20, width = baseW * (1 + 0.5 * Math.min(2, dirs - 1));
+    const fit = (L, wmax) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > wmax) break; out.push(u); w += uw; } return out; };
+    const A = fit(us, width), D = fit(Dall, baseW);
+    const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
+    const hmA = G.histMul(tag, D[0].t), hmD = G.histMul(D[0].t, tag);
+    const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
+    const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
+    let aTot = 0, dTot = 0;
+    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * aAir; }
+    for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * dAir; }
+    const wA = A.reduce((s2, u) => s2 + (u._s.t.w || 15), 0), wD = D.reduce((s2, u) => s2 + (u._s.t.w || 15), 0);
+    const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
+    let defT = 0, attT = 0;
+    for (const u of D) {
+      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD;
+      const armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
+      defT += Math.max(0, u.org) / Math.max(0.01, hits(aTot * (s.t.w || 15) / wD, dv) * CB.kOrg * armF);
+    }
+    for (const u of A) {
+      const s = u._s, armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcD / s.arm)) : 1;
+      attT += Math.max(0, u.org - 0.15 * s.org) / Math.max(0.01, hits(dTot * (s.t.w || 15) / wA, s.bt * u.str * hmA) * CB.kOrg * armF);
+    }
+    defT /= D.length; attT /= A.length;
+    // yedekler savunmayı uzatır
+    if (Dall.length > D.length) defT *= Math.pow(Dall.length / D.length, 0.7);
+    return { defT, attT, ratio: attT / Math.max(0.1, defT) };
+  };
 
   function retreat(u, n, atts) {
     const st = G.st;
@@ -412,9 +546,24 @@
     let nc = tag;
     if (pr.o !== tag && st.C[pr.o]?.alive && G.sameFaction(tag, pr.o) && !G.atWar(tag, pr.o)) nc = pr.o;
     else if (pr.core !== tag && st.C[pr.core]?.alive && G.sameFaction(tag, pr.core) && !G.atWar(tag, pr.core)) nc = pr.core;
-    pr.c = nc;
+    pr.c = nc; pr.cd = st.day;
     G.mapDirty = 1; G.needSummary = 1;
+    // Sovyet sanayisinin doğuya taşınması: düşen asli eyaletteki fabrikaların bir kısmı Urallara ve Sibirya'ya kaçırılır
+    if (prev === 'SOV' && pr.core === 'SOV' && (pr.mil + pr.civ) > 0 && st.C.SOV?.alive && st.C.SOV.tag !== st.player) G.relocate('SOV', n, 0.6, 0.4);
     if (P[n].vp >= 10 && (tag === st.player || prev === st.player || pr.o === st.player)) G.log(`${G.pname(n)} ${G.cname(nc)} kontrolüne geçti.`, [nc, prev], prev === st.player ? 'bad' : 'good');
+  };
+
+  // Fabrika tahliyesi: kaybedilen eyaletten askerî ve sivil fabrikaların bir kısmı uzak doğudaki asli eyaletlere
+  G.relocate = (tag, n, fm, fc) => {
+    const st = G.st, pr = st.prov[n], c = st.C[tag];
+    const cap = c.cap >= 0 ? c.cap : n;
+    const dest = [];
+    for (let i = 0; i < NP; i++) { const q = st.prov[i]; if (q.c === tag && q.core === tag && P[i].lon > P[n].lon + 8 && G.freeSlots(i) > 0) dest.push(i); }
+    if (!dest.length) return;
+    dest.sort((a, b) => G.dist(b, n) - G.dist(a, n) || G.freeSlots(b) - G.freeSlots(a));
+    const mv = (type, f) => { let k = Math.floor(pr[type] * f + G.rand()); for (let t = 0; t < k && pr[type] > 0; t++) { const d = dest[t % Math.min(6, dest.length)]; if (G.freeSlots(d) <= 0) continue; pr[type]--; st.prov[d][type]++; } };
+    mv('mil', fm); mv('civ', fc);
+    void cap;
   };
 
   // ---------- Teslim olma ----------
@@ -438,7 +587,8 @@
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
       // otoriter büyük güçler sonuna dek savaşır (HOI4: Almanya ve Japonya geç teslim olur)
-      const th = Math.min(0.95, (c.tag === 'SOV' ? 0.85 : c.tag === 'CHI' ? 0.92 : c.major ? (c.ideo === 'fas' || c.ideo === 'com' ? 0.8 : 0.68) : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
+      const civil = (st.civil || []).some((p) => p.includes(c.tag));
+      const th = civil ? 0.85 : Math.min(0.95, (c.tag === 'SOV' ? 0.9 : c.tag === 'CHI' ? 0.96 : c.major ? (c.ideo === 'fas' || c.ideo === 'com' ? 0.88 : 0.68) : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
       c.surrender = lost / th;
       if (lost >= th) G.capitulate(c.tag);
     }
@@ -447,8 +597,23 @@
   G.capitulate = (tag) => {
     const st = G.st, c = st.C[tag];
     const enemies = c.enemies.filter((t) => st.C[t]?.alive);
-    // savaşlardan çık; yabancı topraklardaki işgal sona erer
+    // iç savaş: kaybeden taraf tamamen ilhak edilir (HOI4)
+    const cw = (st.civil || []).find((p) => p.includes(tag) && enemies.includes(p[0] === tag ? p[1] : p[0]));
+    if (cw) {
+      const win = cw[0] === tag ? cw[1] : cw[0];
+      st.civil = st.civil.filter((p) => p !== cw);
+      for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
+      G.refreshEnemies();
+      G.annex(win, tag);
+      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag || pr.oc === win) { if (pr.o === win) pr.core = win; } }
+      G.cwDirty = 1; st.C[win].startW = G.coreWeight(win, true);
+      G.log(`${G.cname(win)} iç savaşı kazandı: ${G.cname(tag)} teslim oldu ve tüm ülke ${G.cname(win)} yönetimine geçti.`, [win, tag], 'major');
+      if (G.onCapitulate) G.onCapitulate(tag, win, true, null);
+      return;
+    }
+    // savaşlardan çık; yabancı topraklardaki işgal sona erer; verdiği garantiler düşer
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
+    delete st.guar[tag]; c.capd = st.day;
     if (c.fac) G.leaveFaction(tag);
     for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === tag && pr.o !== tag) pr.c = pr.o; }
     for (const u of st.units) if (u.t === tag && (u.loc >= NP || st.prov[u.loc].c !== tag)) u.dead = 1;
@@ -522,6 +687,8 @@
     G.checkEvents();
     if (st.day % 5 === 0) G.timedSpirits();
     if (st.day % 10 === 0) G.expelUnits();
+    if (st.day % 10 === 5 && G.occTick) G.occTick();
+    if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
   };

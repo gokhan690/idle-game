@@ -52,6 +52,7 @@
         if (contested) { const v = G.airSup(pl, r); return 'airs' + Math.min(4, Math.floor(v * 5)); }
         return 'airn' + (r % 6);
       }
+      if (R.mode === 'occ') return pr.rs == null ? 'nooc:' + pr.c : 'occ' + Math.min(5, Math.floor(pr.rs * 7));
       if (R.mode === 'sup') {
         const pl = st.player, av = G.supAvail[pl];
         if (!av || !(pr.c === pl || (G.friendly(pl, pr.c) && !G.atWar(pl, pr.c)))) return 'nosup:' + pr.c;
@@ -173,6 +174,7 @@
     const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
     if (!st) return;
     if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
+    if (R.mode === 'occ' && R.occDay !== (st.day / 10 | 0)) { R.occDay = st.day / 10 | 0; R.mapDirty = 1; }
     if (R.mode === 'air' && R.airDay !== (st.day / 5 | 0)) { R.airDay = st.day / 5 | 0; R.mapDirty = 1; }
     if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 180)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); }
     if (G.wxDirty) { buildWeather(); G.wxDirty = 0; }
@@ -197,6 +199,7 @@
         else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
         else if (R.mode === 'peace') { const t = k.slice(3); col = k.startsWith('pk:') ? R.ccolor(t) : k.startsWith('pu:') ? mix(R.ccolor(t), '#d8d2bc', 0.35) : mix(R.ccolor(t), '#33362f', 0.78); }
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
+        else if (R.mode === 'occ') { col = k.startsWith('nooc:') ? mix(R.ccolor(k.slice(5)), '#3a3d36', 0.7) : SUP_COLORS[5 - +k.slice(3)]; }
         else col = R.ccolor(k);
         if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
         ctx.fillStyle = col;

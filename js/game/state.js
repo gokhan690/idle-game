@@ -28,7 +28,7 @@
       constr: [], train: [], dead: 0, just: null, cap: -1, startW: 0, enemies: [], ai: { t: 0 }, sl: {}, air: { bomb: 'auto', cas: 1 }, fleets: [], ops: [],
       auto: { res: 0, prod: 0, con: 0, focus: 0, trade: 1, air: 1 }, sum: {},
     };
-    for (let l = 0; l <= (d.tl || 0); l++) for (const id of g.START_TECHS[l]) c.tech[id] = 1;
+    for (let l = 0; l <= (d.tl || 0); l++) for (const id of g.START_TECHS[l]) c.tech[id === 'DOC1' ? 'd' + G.docPref(c) + '1' : id] = 1;
     if (d.div.mtn) c.tech.mtn1 = c.tech.sup1 = 1;
     if (d.div.mot) c.tech.mot1 = 1;
     if (d.div.arm) c.tech.tank1 = 1;
@@ -36,6 +36,8 @@
     if (d.navy[4]) c.tech.cv1 = 1;
     if (d.bonus) Object.assign(c.fmods, d.bonus);
     c.tpl = JSON.parse(JSON.stringify(g.DEFAULT_TEMPLATES));
+    // ülkeye özel başlangıç şablonları (ör. Çin'in topçusuz, eksik tümenleri)
+    if (d.tpl) Object.assign(c.tpl, JSON.parse(JSON.stringify(d.tpl)));
     c.armies = [];
     G.initPolitics(c);
     G.recomputeMods(c);
@@ -45,7 +47,7 @@
 
   G.newGame = (player, opts) => {
     const st = {
-      v: 4, day: 0, seed: 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
+      v: 4, day: 0, seed: (opts && opts.seed) || 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {}, deals: [], embargo: {}, ops: [],
       log: [], nextId: 1, over: 0,
     };
@@ -178,7 +180,10 @@
       const c = st.C[st.prov[i].core];
       const cap = c ? (c.cap0 != null && c.cap0 >= 0 ? c.cap0 : c.cap) : -1;
       const d = cap >= 0 ? G.dist(i, cap) : 0;
-      G.cw[i] = (P[i].vp + 1) * (d < 160 ? 1 : d < 420 ? 0.5 : 0.15);
+      // büyük ülkelerde (SSCB, Çin) uzak bölgeler de önemlidir: Urallar ve iç bölgeler teslim olmayı geciktirir
+      const big = c && (c.tag === 'SOV' || c.tag === 'CHI' || c.tag === 'USA');
+      // Çin: hükümet iç bölgelere çekilerek direndi (Chongqing); teslim için iç bölgeler de kıyı kadar önemli
+      G.cw[i] = (P[i].vp + 1) * (c && c.tag === 'CHI' ? 1 : d < 160 ? 1 : d < 420 ? 0.5 : big ? 0.4 : 0.15);
     }
     G.cwDirty = 0;
   };
@@ -201,6 +206,16 @@
     const st = JSON.parse(s);
     if (!st || st.v !== 4) throw new Error('Kayıt sürümü uyumsuz');
     G.st = st;
+    // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
+    const OLD = { doc_mob: 'm1', doc_mob2: 'm2', doc_fire: 'f1', doc_fire2: 'f2', doc_grand: 'g1', doc_grand2: 'g2', doc_mass: 'a1', doc_mass2: 'a2' };
+    for (const c of Object.values(st.C)) {
+      if (Object.keys(c.tech).some((id) => OLD[id])) {
+        const pref = G.docPref(c);
+        for (const [o, n] of Object.entries(OLD)) if (c.tech[o]) { delete c.tech[o]; if (n[0] === pref) c.tech['d' + n] = 1; }
+      }
+      for (const id of Object.keys(c.tech)) if (!g.TECH_BY_ID[id]) delete c.tech[id];
+      c.res = (c.res || []).filter((r) => g.TECH_BY_ID[r.id]);
+    }
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
     G.refreshEnemies();
     G.cwDirty = 1;

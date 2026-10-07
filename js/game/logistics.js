@@ -85,7 +85,13 @@
   function heapPush(h, k, n) { h.push([k, n]); let i = h.length - 1; while (i > 0) { const j = (i - 1) >> 1; if (h[j][0] <= h[i][0]) break; [h[i], h[j]] = [h[j], h[i]]; i = j; } }
   function heapPop(h) { const top = h[0]; const last = h.pop(); if (h.length) { h[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < h.length && h[l][0] < h[m][0]) m = l; if (r < h.length && h[r][0] < h[m][0]) m = r; if (m === i) break; [h[i], h[m]] = [h[m], h[i]]; i = m; } } return top; }
 
-  G.supAvail = {}; G.supRatio = {}; G.hubs = {};
+  // komşu eyaletler arası fazla mesafe (Avrupa'da ~0, Afrika'da ~2): 125 km üstü
+  let EK = null;
+  const edgeKm = (n) => {
+    if (!EK) EK = P.map((p, i) => p.a.map((j) => Math.max(0, Math.min(2.5, G.km(i, j) / 125 - 1))));
+    return EK[n];
+  };
+  G.supAvail = {}; G.supRatio = {}; G.hubs = {}; G.connCap = {};
   G.computeSupplyFor = (c) => {
     const st = G.st, tag = c.tag;
     const ctrl = (i) => { const pc = st.prov[i].c; return pc === tag || (G.friendly(tag, pc) && !G.atWar(tag, pc)); };
@@ -94,6 +100,15 @@
     if (c.cap >= 0 && st.prov[c.cap].c === tag) {
       const q = [c.cap]; conn[c.cap] = 1;
       for (let k = 0; k < q.length; k++) for (const j of P[q[k]].a) if (!conn[j] && ctrl(j)) { conn[j] = 1; q.push(j); }
+    }
+    G.connCap[tag] = conn;
+    // deniz ikmal yolları: başkente bağlı kendi limanlarından, düşman boğaz/kanallarından geçmeden ulaşılan denizler
+    // (ör. Süveyş ve Cebelitarık İngiliz elindeyken İtalyan Doğu Afrikası'na konvoy gidemez)
+    const seaOk = new Uint8Array(G.SEAS.length);
+    {
+      const q = [];
+      for (let i = 0; i < NP; i++) if (conn[i] && st.prov[i].c === tag && P[i].s.length) for (const z of P[i].s) if (!seaOk[z]) { seaOk[z] = 1; q.push(NP + z); }
+      for (let k = 0; k < q.length; k++) { const n = q[k]; for (const [b] of G.adj[n]) if (b >= NP && !seaOk[b - NP] && !G.straitBlocked(tag, n, b)) { seaOk[b - NP] = 1; q.push(b); } }
     }
     // ikmal merkezleri: başkent ve büyük şehirler (müttefik merkezleri de paylaşılır)
     const hubs = [];
@@ -107,13 +122,18 @@
       else if (P[i].vp >= 5 && pr.inf >= 2) cap = 6 + Math.min(12, P[i].vp / 2) + 2 * pr.inf;
       else continue;
       if (!own) cap *= 0.6;
-      else if (pr.core !== tag) cap *= 0.5; // işgal edilen şehir: demiryolu onarımı ve direniş
+      else if (pr.core !== tag) {
+        // işgal edilen şehir: demiryolu onarımı (Sovyet hat genişliği dönüşümü) ve direniş; zamanla toparlanır
+        cap *= 0.5;
+        if (pr.o !== tag) { const held = st.day - (pr.cd ?? -999); cap *= 0.2 + 0.8 * Math.min(1, held / 150); if (pr.oc === 'SOV' && tag !== 'SOV') cap *= 0.7; }
+      }
       if (own && !conn[i]) {
         // anakaradan kopuk: yalnızca limanla, konvoy ve deniz üstünlüğüne bağlı
-        if (P[i].c && P[i].s.length) { const sup = G.navalSupremacy ? G.navalSupremacy(tag, NP + P[i].s[0]) : 1; cap *= 0.55 * convR * (sup > 0.4 ? 1 : 0.4); }
-        else cap *= 0.15;
+        const route = P[i].s.find((z) => seaOk[z]);
+        if (P[i].c && route != null) { const sup = G.navalSupremacy ? G.navalSupremacy(tag, NP + route) : 1; cap *= 0.55 * convR * (sup > 0.4 ? 1 : 0.4); }
+        else cap *= P[i].s.length ? 0.1 : 0.15; // kuşatılmış: yalnızca yerel stoklar
       }
-      cap *= 1 + (c.mods.supply || 0);
+      cap *= (1 + (c.mods.supply || 0)) * G.occSup(pr, st.day);
       if (cap > 0.3) hubs.push([i, cap]);
     }
     G.hubs[tag] = hubs;
@@ -124,10 +144,14 @@
     while (h.length) {
       const [k, n] = heapPop(h);
       if (k > key[n]) continue;
-      for (const j of P[n].a) {
+      const ek = edgeKm(n);
+      for (let a = 0; a < P[n].a.length; a++) {
+        const j = P[n].a[a];
         if (!ctrl(j)) continue;
         const pr = st.prov[j];
-        const step = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * (pr.inf || 2)) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]);
+        // HOI4: ikmal mesafeyle zayıflar; demiryolu olmayan (altyapısı düşük) geniş eyaletlerde (Afrika çölleri) çok daha hızlı
+        const inf = pr.inf || 2;
+        const step = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * inf) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]) * (inf <= 1 ? 1 + ek[a] : 1) * (pr.sab >= st.day ? 1.6 : 1);
         const nk = k + step;
         if (nk < key[j]) { key[j] = nk; heapPush(h, nk, j); }
       }
@@ -136,8 +160,8 @@
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i];
       const flow = key[i] === Infinity ? 0 : Math.exp(-key[i] * LND);
-      const local = (pr.core === tag && pr.c === tag ? 1.0 * (pr.inf || 2) + 3 : 0.5 * (pr.inf || 2));
-      avail[i] = (flow + local) * (1 - 0.35 * G.wx.snow[i] - 0.3 * G.wx.mud[i]);
+      const local = (pr.core === tag && pr.c === tag ? 1.0 * (pr.inf || 2) + 3 : 0.35 * (pr.inf || 2));
+      avail[i] = (flow + local * (pr.rs ? 1 - 0.4 * pr.rs : 1)) * (1 - 0.35 * G.wx.snow[i] - 0.3 * G.wx.mud[i]);
     }
     // talep ve oran
     const dem = new Float32Array(NP);
@@ -162,7 +186,7 @@
     if (r >= 0.999) return 1;
     const s = u._s || G.unitStats(u);
     const red = Math.min(0.7, (s.t.sup || 0) + (s.gb ? s.gb.sup : 0) + (G.st.C[u.t].mods.supply || 0));
-    return Math.max(0.4, 1 - (1 - r) * 0.5 * (1 - red));
+    return Math.max(0.35, 1 - (1 - r) * 0.7 * (1 - red));
   };
   // Günlük yıpranma: ikmalsizlik ve kış
   G.attrition = (u) => {
@@ -170,7 +194,7 @@
     const st = G.st;
     const r = G.supplyRatio(u);
     let loss = 0;
-    if (r < 0.6) loss += 0.0025 * (0.6 - r) / 0.6;
+    if (r < 0.7) loss += 0.004 * (0.7 - r) / 0.7;
     const sn = G.wx.snow[u.loc];
     if (sn > 0.5) {
       const pr = st.prov[u.loc];

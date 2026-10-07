@@ -28,7 +28,7 @@
   ];
   g.DESIGN = {
     tank: {
-      n: 'Tank', tierN: TANK_TIER, stats: [['a', 'Saldırı (yumuşak)'], ['d', 'Yarma'], ['r', 'Zırh'], ['p', 'Delme'], ['s', 'Hız'], ['rel', 'Güvenilirlik']],
+      n: 'Tank', tierN: TANK_TIER, stats: [['a', 'Yumuşak saldırı'], ['p', 'Sert saldırı / zırh delme'], ['d', 'Atılım ve savunma'], ['r', 'Zırh'], ['s', 'Hız'], ['rel', 'Güvenilirlik']],
       slots: [
         { k: 'gun', n: 'Ana silah', def: 'sc', opts: [
           { id: 'mg', n: 'Makineli tüfek', fx: { a: -0.1, p: -0.4 }, cost: -0.1 },
@@ -120,7 +120,7 @@
   // ---------- Temel değerler ----------
   // Varsayılan tasarım eski seviye sistemini birebir verir (tank: 1+0.25(L-1); uçak: L).
   function base(e, L) {
-    if (e === 'tank') { const m = 1 + 0.25 * (L - 1); return { a: m, d: m, r: m, p: m, s: L === 3 ? 0.88 : 1, rel: 0.9 }; }
+    if (e === 'tank') return G.tankBase(L);
     const pl = { aa: 0.25 * L, ga: 0.25 * L, sb: 0, na: 0.2 * L, df: 1, rg: 1, rel: 0.9 };
     if (e === 'fig') { pl.aa = L; pl.rg = 1; }
     if (e === 'cas') { pl.ga = L; pl.na = L; pl.rg = 1.2; }
@@ -170,7 +170,7 @@
   G.lineCostMul = (c, l) => { const d = G.lineDesign(c, l); return d ? G.designStats(l.e, d).cm : 1; };
   // vektörden eşdeğer seviye (arayüz ve eski hesaplar için)
   G.vecLevel = (e, v) => {
-    if (e === 'tank') return 1 + ((v.a + v.d + v.r + v.p) / 4 - 1) / 0.25;
+    if (e === 'tank') return G.tankLevelOf(v.a);
     return e === 'fig' ? v.aa : e === 'cas' ? v.ga : v.sb;
   };
   G.stockVec = (c, e) => {
