@@ -603,6 +603,18 @@
     if (P[n].vp >= 10 && (tag === st.player || prev === st.player || pr.o === st.player)) G.log(`${G.pname(n)} ${G.cname(nc)} kontrolüne geçti.`, [nc, prev], prev === st.player ? 'bad' : 'good');
   };
 
+  // Gerideki boş düşman adacıkları: içinde düşman birliği olmayan ve bütün kara komşuları asli sahibinin
+  // (ya da dostlarının) kontrolünde olan eyalet asli sahibine döner (cephe geçtikten sonra arkada unutulan iller)
+  G.enclaves = () => {
+    const st = G.st;
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i], k = pr.core;
+      if (!k || pr.c === k || !st.C[k]?.alive || !G.atWar(k, pr.c)) continue;
+      const A = P[i].a; if (!A.length) continue;
+      if ((G.unitsAt[i] || []).some((u) => G.atWar(u.t, k))) continue;
+      if (A.every((j) => { const c = st.prov[j].c; return c === k || (G.friendly(k, c) && !G.atWar(k, c)); })) G.capture(i, k);
+    }
+  };
   // Fabrika tahliyesi: kaybedilen eyaletten askerî ve sivil fabrikaların bir kısmı uzak doğudaki asli eyaletlere
   G.relocate = (tag, n, fm, fc) => {
     const st = G.st, pr = st.prov[n], c = st.C[tag];
@@ -626,14 +638,20 @@
       if (!c || !c.enemies.length) continue;
       if (pr.c === core || (!c.eset.has(pr.c) && G.friendly(core, pr.c))) have[core] = (have[core] || 0) + G.cw[i];
     }
+    // ordusu tükenmiş ülke (en çok 2 tümen) topraklarının yarısından fazlasını yitirdiyse direnemez
+    // (ör. 1945'te Sardunya ve Arnavutluk'ta tek tümenle tutunan İtalya)
+    const divs = {}; for (const u of st.units) divs[u.t] = (divs[u.t] || 0) + 1;
     for (const c of Object.values(st.C)) {
       if (st.conf) return;
       if (!c.alive || !c.enemies.length) continue;
       const lost = 1 - (have[c.tag] || 0) / (c.startW || 1);
+      if (lost >= 0.55 && (divs[c.tag] || 0) + c.train.length <= 2 && c.tag !== st.player) { c.surrender = 1; G.capitulate(c.tag); continue; }
       // başkent düştüyse en değerli toprağa taşı
+      // (önce asli topraklar; asıl başkent geri alınınca başkent oraya döner)
+      if (c.cap0 >= 0 && c.cap !== c.cap0 && st.prov[c.cap0]?.c === c.tag) c.cap = c.cap0;
       if (c.cap >= 0 && st.prov[c.cap].c !== c.tag) {
         let best = -1, bv = -1;
-        for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].vp > bv) { bv = P[i].vp; best = i; }
+        for (let i = 0; i < NP; i++) { const q = st.prov[i]; if (q.c !== c.tag) continue; const v = P[i].vp + (q.core === c.tag ? 100 : 0); if (v > bv) { bv = v; best = i; } }
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
       // otoriter büyük güçler sonuna dek savaşır (HOI4: Almanya ve Japonya geç teslim olur)
@@ -738,6 +756,7 @@
     if (st.day % 5 === 0) G.timedSpirits();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
+    if (st.day % 10 === 7) G.enclaves();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
