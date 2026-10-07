@@ -115,7 +115,7 @@
     maginot: { n: 'Maginot Zihniyeti', d: 'Savunma +%10, saldırı -%10', fx: { landDef: 0.1, landAtk: -0.1 } },
     autarky: { n: 'Otarşi Programı', d: 'Fabrika +%5, sentetik petrol +10', fx: { factory: 0.05, oil: 10 } },
     rearm: { n: 'Yeniden Silahlanma', d: 'Savaş desteği +%10, askerî fabrika üretimi +%5', fx: { ws: 0.1, factory: 0.05 } },
-    wehrmacht: { n: 'Wehrmacht Doktrini', d: 'Kara saldırısı +%12, zırhlı saldırı +%10, moral +%10 (1943 başına dek)', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
+    wehrmacht: { n: 'Wehrmacht Doktrini', d: 'Kara saldırısı +%12, zırhlı saldırı +%10, moral +%10 (1943 ortasına dek)', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
     sichelschnitt: { n: 'Orak Darbesi', d: 'Batı Seferi: kara saldırısı +%20, zırhlı saldırı +%15, hız +%10', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
     fra_shock: { n: 'Savaş Şoku', d: 'Savunma -%15, moral -%15', fx: { landDef: -0.15, org: -0.15 } },
     barb_surprise: { n: 'Barbarossa Baskını', d: 'Savunma -%25, moral -%20, saldırı -%10', fx: { landDef: -0.25, org: -0.2, landAtk: -0.1 } },
@@ -137,8 +137,8 @@
     ost_crisis: { n: 'Doğu Cephesi Yıpranması', d: 'İnsan gücü -%15, moral -%5', fx: { mp: -0.15, org: -0.05 } },
     nat_aid: { n: 'Lejyon Kondor ve CTV', d: 'Alman ve İtalyan gönüllüler, Faslı birlikler: kara saldırısı +%10, moral +%10, insan gücü +%100', fx: { landAtk: 0.1, org: 0.1, mp: 1.0 } },
     rep_chaos: { n: 'Cumhuriyetçi Bölünme', d: 'Anarşist, komünist ve cumhuriyetçi milisler arasında çekişme: moral -%10, saldırı -%10', fx: { org: -0.1, landAtk: -0.1 } },
-    chi_scorched: { n: 'Yanık Toprak ve Derinlik', d: 'Çin\'in uçsuz bucaksız iç bölgeleri: savunma +%20, moral +%10', fx: { landDef: 0.2, org: 0.1 } },
-    jap_overext: { n: 'Çin Bataklığı', d: 'Japon ordusu Çin\'de aşırı yayıldı: saldırı -%12, ikmal -%20', fx: { landAtk: -0.12, supply: -0.2 } },
+    chi_scorched: { n: 'Yanık Toprak ve Derinlik', d: 'Çin\'in uçsuz bucaksız iç bölgeleri: savunma +%30, moral +%10', fx: { landDef: 0.3, org: 0.1 } },
+    jap_overext: { n: 'Çin Bataklığı', d: 'Japon ordusu Çin\'de aşırı yayıldı: saldırı -%12, ikmal -%20, insan gücü -%25', fx: { landAtk: -0.12, supply: -0.2, mp: -0.25 } },
     resistance: { n: 'Direniş Ruhu', d: 'Savunma +%10, istikrar +%5', fx: { landDef: 0.1, stab: 0.05 } },
   };
 

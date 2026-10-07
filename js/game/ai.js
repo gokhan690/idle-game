@@ -162,6 +162,7 @@
   };
 
   // ---------- Ordu ----------
+  const WESTERN = new Set(['USA', 'ENG', 'CAN', 'AST', 'NZL', 'SAF', 'RAJ']);
   function provThreat(n, tag) {
     let v = 0; const L = G.unitsAt[n]; if (!L) return 0;
     for (const u of L) if (G.atWar(u.t, tag)) v += G.unitPower(u);
@@ -196,6 +197,8 @@
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
         if (opts.front && !opts.front.has(i)) continue;
         if (st.opts.hist && tag === 'JAP' && tag !== st.player && P[i].lon < 65) continue; // Japonya Hindistan'ın batısında savaşmaz
+        // tarihî mod: Batılı Müttefikler Sovyet cephelerinde, Sovyetler Batılı müttefik cephelerinde savaşmaz
+        if (st.opts.hist && tag !== st.player && pr.c !== tag && ((WESTERN.has(tag) && pr.c === 'SOV') || (tag === 'SOV' && WESTERN.has(pr.c)))) continue;
         let threat = 0, enemyAdj = [];
         // müttefik toprağından ancak o müttefik de o düşmanla savaştaysa cephe açılır (tarafsız müttefikten saldırı yok)
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (pr.c === tag || G.atWar(pr.c, ec)) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
@@ -235,19 +238,34 @@
         for (const u of idle) { if (u.loc >= NP) continue; (byLoc.get(u.loc) || byLoc.set(u.loc, []).get(u.loc)).push(u); }
         const sr = G.supRatio[tag];
         let dist = null;
+        const fnOf = (j) => { let k = 0; for (const x of P[j].a) if (isFr(x)) k++; return k; };
+        const busy = (u) => G.inBattle && G.inBattle.has(u);
         for (const [n, L] of byLoc) {
           let fn = 0, en = 0;
           for (const j of P[n].a) { if (isFr(j)) fn++; else if (G.atWar(tag, st.prov[j].c)) en++; }
           if (!en) continue;
-          if (fn === 0) {
+          const sup = sr ? sr[n] : 1;
+          // en iyi geri çekilme yeri: iyi bağlantılı (en az 2 dost komşu), ikmali yüksek, kalabalık olmayan dost eyalet
+          let back = -1, bb = -Infinity;
+          for (const j of P[n].a) {
+            if (!isFr(j)) continue;
+            const f2 = fnOf(j); if (f2 < 2) continue;
+            const v = f2 + (sr ? sr[j] : 1) * 3 - (G.unitsAt[j] || []).filter((x) => x.t === tag).length * 0.3;
+            if (v > bb) { bb = v; back = j; }
+          }
+          if (fn === 0 || (sup < 0.12 && en >= 3 && back < 0)) {
+            // cep: en yakın dost toprağa doğru yarma
             if (!dist) dist = friendDist(isFr);
             let best = -1, bv = Infinity;
             for (const j of P[n].a) { if (!G.atWar(tag, st.prov[j].c)) continue; const v = dist[j] * 10 + provThreat(j, tag) * 0.05; if (v < bv) { bv = v; best = j; } }
             if (best < 0) continue;
-            for (const u of L) if (u.org > u._s.org * 0.25) { u.path = [best]; committed.add(u); }
-          } else if (fn === 1 && en >= 3 && sr && sr[n] < 0.5 && P[n].vp < 10 && !L.some((u) => G.inBattle && G.inBattle.has(u))) {
-            const back = P[n].a.find(isFr);
-            for (const u of L) { u.path = [back]; committed.add(u); }
+            for (const u of L) if (!busy(u) && u.org > u._s.org * 0.25) { u.path = [best]; committed.add(u); }
+          } else if (back >= 0 && en >= 3 && fn <= 2 && sup < 0.5 && P[n].vp < 10) {
+            // kuşatılmak üzere olan ikmalsiz çıkıntı: muharebede olmayanlar çekilir
+            for (const u of L) if (!busy(u)) { u.path = [back]; committed.add(u); }
+          } else if (sup < 0.3 && L.length > 8 && back >= 0) {
+            // ikmalsiz eyalette aşırı yığılma: fazlası geri gönderilir
+            for (const u of L.slice(8)) if (!busy(u)) { u.path = [back]; committed.add(u); }
           }
         }
       }
@@ -266,14 +284,16 @@
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
       // tarihî mod: "Garip Savaş" — Almanya Sarı Durum'a (Mayıs 1940) dek Fransa'ya saldırmaz
       const sitz = tag === 'GER' && tag !== st.player && st.opts.hist && !st.ev.gelb;
+      // tarihî mod: Japonya ve Mançukuo Çin'de tarihî kazanım çizgisini aşınca savunmaya geçer (1939-44 durgunluğu)
+      const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02 && st.day < G.dayOf('1944-04-01');
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
       // kazanma eşiği: saldıranın moral süresi / savunanın moral süresi (muharebe tahmini)
       const margin = aggr / 1.3;
       for (const t of tlist) {
         const avail = [];
-        for (const fi of t.from) for (const u of byFront.get(fi) || []) if (!committed.has(u) && u.org > u._s.org * 0.7 && u.str > 0.5 && G.supplyRatio(u) > 0.3) avail.push(u);
+        for (const fi of t.from) for (const u of byFront.get(fi) || []) if (!committed.has(u) && u.org > u._s.org * 0.7 && u.str > 0.5 && G.supplyRatio(u) > 0.45) avail.push(u);
         if (!avail.length) continue;
         if (t.def === 0) {
           // boş eyalet: piyade hat hâlinde ilerler (en az iki dost komşu); zırhlı/motorize derinlemesine sızabilir
@@ -370,7 +390,12 @@
         const landOK = new Set();
         for (let pass = 0; pass < 5 && pending.length; pass++) {
           const naval = pass === 4;
-          const srcs = fl.filter((f) => (deficit.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
+          // tarihî mod: Batılı Müttefikler Avrupa cephelerine deniz yoluyla ancak Sicilya'dan sonra İtalya'ya,
+          // D-Günü'nden sonra her yere asker taşır
+          const euroBan = naval && st.opts.hist && WESTERN.has(tag) && tag !== st.player && st.day < G.dayOf('1944-06-06');
+          const srcs = fl.filter((f) => (deficit.get(f.i) || 0) > 0)
+            .filter((f) => !euroBan || !(P[f.i].lon > -12 && P[f.i].lon < 40 && P[f.i].lat > 36) || (st.day >= G.dayOf('1943-07-10') && st.prov[f.i].o === 'ITA'))
+            .map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
           if (!srcs.length) break;
           // deniz yolu: yalnızca karadan hiçbir cepheye ulaşamayan birlikler, konvoy varsa;
           // kıta ülkeleri denizaşırı cephelere ordusunun en fazla ~%6'sını (en çok 12 tümen) gönderir (HOI4 YZ: Afrika Kolordusu ölçeği)
@@ -402,10 +427,19 @@
         // cepheler doluysa kalanlar cephe gerisinde yedek olarak toplanır (uzak arka bölgelerde boşta beklemez)
         if (pending.length && fl.length) {
           const ff = G.flowField(tag, fl.map((f) => ({ i: f.i, c: 0 })), {});
+          // yedekler tek bir eyalete yığılmaz (kuşatılınca bütün yedek kaybolur): eyalet başına en çok 4,
+          // fazlası yol boyunca daha geriye dağılır
+          const rc = new Map();
+          const here = (n) => (rc.get(n) || 0) + (G.unitsAt[n] || []).filter((x) => x.t === tag).length;
           for (const u of pending) {
             if (ff.dist[u.loc] === Infinity || ff.dist[u.loc] < 8) continue;
             const path = G.followField(ff, u.loc);
-            if (path.length > 1) u.path = path.slice(0, path.length - 1); // cephenin bir gerisi
+            if (path.length <= 1) continue;
+            let cut = path.length - 1; // cephenin bir gerisi
+            while (cut > 1 && here(path[cut - 1]) >= 4) cut--;
+            if (here(path[cut - 1]) >= 4) continue;
+            u.path = path.slice(0, cut);
+            rc.set(path[cut - 1], (rc.get(path[cut - 1]) || 0) + 1);
           }
         }
       }
@@ -446,7 +480,6 @@
     }
   }
 
-  const WESTERN = new Set(['USA', 'ENG', 'CAN', 'AST', 'NZL', 'SAF', 'RAJ']);
   function aiInvasion(c, idle) {
     const st = G.st, tag = c.tag;
     if (idle.length < 3) return;

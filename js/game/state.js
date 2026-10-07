@@ -182,7 +182,8 @@
       const d = cap >= 0 ? G.dist(i, cap) : 0;
       // büyük ülkelerde (SSCB, Çin) uzak bölgeler de önemlidir: Urallar ve iç bölgeler teslim olmayı geciktirir
       const big = c && (c.tag === 'SOV' || c.tag === 'CHI' || c.tag === 'USA');
-      G.cw[i] = (P[i].vp + 1) * (d < 160 ? 1 : d < 420 ? 0.5 : big ? 0.4 : 0.15);
+      // Çin: hükümet iç bölgelere çekilerek direndi (Chongqing); teslim için iç bölgeler de kıyı kadar önemli
+      G.cw[i] = (P[i].vp + 1) * (c && c.tag === 'CHI' ? 1 : d < 160 ? 1 : d < 420 ? 0.5 : big ? 0.4 : 0.15);
     }
     G.cwDirty = 0;
   };

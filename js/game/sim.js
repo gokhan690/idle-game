@@ -297,7 +297,9 @@
         if (k === 'tank') { if (u.lv.tq && G.vecLevel('tank', G.stockVec(c, 'tank')) <= G.vecLevel('tank', u.lv.tq) + 0.04) continue; } else if (sl <= u.lv[k] + 0.04) continue;
         const need = T.eq[e] * 0.04;
         if (c._rf == null || c._rfDay !== st.day) { c._rf = {}; c._rfDay = st.day; }
-        const budget = c._rf[e] ?? ((c.stock[e] || 0) - T.eq[e] * 2) * 0.03;
+        // takviye önceliklidir: yalnızca ordunun ihtiyacının üstündeki stok modernizasyona gider
+        if (c._ae == null || c._aeDay !== st.day) { c._ae = {}; c._aeDay = st.day; for (const x of st.units) if (x.t === c.tag) { const tx = G.T(x.t, x.u); for (const [q, v] of Object.entries(tx.eq)) c._ae[q] = (c._ae[q] || 0) + v; } }
+        const budget = c._rf[e] ?? Math.max(0, (c.stock[e] || 0) - (c._ae[e] || 0) * (c.enemies.length ? 0.2 : 0.05)) * 0.015;
         if (budget < need) continue;
         c._rf[e] = budget - need;
         c.stock[e] -= need;
@@ -346,18 +348,20 @@
   // Vatan savunması: asli topraklarında savunan ülke, teslim olmaya yaklaştıkça daha inatçı direnir (HOI4: seferberlik, Volkssturm, Büyük Vatanseverlik)
   // Tarihî akış dengesi (yalnızca tarihî YZ modunda, YZ'ye karşı YZ muharebelerinde):
   // kilit cephelerde savunanın asli toprak kaybı tarihî eğriden çok saparsa, geride kalan taraf
-  // muharebede kademeli üstünlük kazanır (en çok %30). Oyuncunun muharebelerine uygulanmaz.
+  // muharebede kademeli üstünlük kazanır (en çok %30-50). Oyuncunun muharebelerine uygulanmaz.
   // [saldıran, savunan, saldıran herhangi bir düşman mı, [tarih, savunanın asli kayıp oranı]...]
   const HIST_COURSE = [
     // [saldıran, savunan, herhangi düşman, eğri, en çok destek (saldıran geride / saldıran önde)]
-    ['GER', 'SOV', 0, [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], [0.3, 0.3]],
-    ['JAP', 'CHI', 0, [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], [0.12, 0.35]],
-    ['*', 'GER', 1, [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], [0.3, 0.3]],
+    ['GER', 'SOV', 0, [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], [0.3, 0.45]],
+    ['JAP', 'CHI', 0, [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], [0.05, 0.5]],
+    ['*', 'GER', 1, [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], [0.3, 0.45]],
   ];
   HIST_COURSE.forEach((h) => { h[3] = h[3].map(([d, v]) => [G.dayOf(d), v]); });
   const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
+  // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
+  G.histAhead = (a, d) => { const x = G._hcs && G._hcs[a + '>' + d]; return x ? x.loss - x.ref : null; };
   G.histCourse = () => {
-    const st = G.st; G._hc = [];
+    const st = G.st; G._hc = []; G._hcs = {};
     if (!st.opts.hist) return;
     for (const [a, d, any, pts, km] of HIST_COURSE) {
       if (st.day < pts[0][0] || !st.C[d]?.alive) continue;
@@ -366,6 +370,7 @@
       let h = 0, w = 0;
       for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) h += x; }
       const e = (1 - h / Math.max(1, w)) - refAt(pts, st.day); // + : saldıran tarihten önde
+      G._hcs[a + '>' + d] = { loss: 1 - h / Math.max(1, w), ref: refAt(pts, st.day) };
       if (Math.abs(e) < 0.05) continue;
       G._hc.push({ a, d, any, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? km[1] : km[0]) });
     }
@@ -375,13 +380,15 @@
     const st = G.st; if (!G._hc || !G._hc.length || x === st.player || y === st.player) return 1;
     const inA = (t, a, any, d) => (any ? G.atWar(t, d) : t === a || G.sameFaction(t, a));
     const inD = (t, d) => t === d;
+    // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
+    let m = 1;
     for (const h of G._hc) {
       let side = null;
       if (inA(x, h.a, h.any, h.d) && inD(y, h.d)) side = 'a'; else if (inD(x, h.d) && inA(y, h.a, h.any, h.d)) side = 'd';
       if (!side) continue;
-      return side === h.fav ? 1 + h.k : 1 - h.k / 2;
+      m *= side === h.fav ? 1 + h.k : 1 - h.k / 2;
     }
-    return 1;
+    return Math.max(0.55, Math.min(1.6, m));
   };
   G.homeDef = (tag, n) => { const pr = G.st.prov[n]; if (pr.core !== tag) return 1; const c = G.st.C[tag]; return 1 + 0.35 * Math.min(1, c.surrender || 0); };
   function fight(b) {

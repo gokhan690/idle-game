@@ -678,7 +678,9 @@
       return h + '</div></div>';
     };
     const mine = b.att === st.player || G.sameFaction(b.att, st.player);
-    const adv = mine ? b.adv : 1 - b.adv;
+    const theirs = b.def === st.player || G.sameFaction(b.def, st.player);
+    const neutral = !mine && !theirs;
+    const adv = mine || neutral ? b.adv : 1 - b.adv;
     const mods = [];
     if (te.atk) mods.push([`Arazi: ${te.n}`, `saldırı ${te.atk > 0 ? '+' : ''}${Math.round(te.atk * 100)}%`]);
     if (b.fort) mods.push(['Tahkimat', `savunma +${b.fort * 15}%`]);
@@ -699,7 +701,7 @@
     if (b.hmD && b.hmD !== 1) mods.push(['Tarihî akış dengesi (savunan)', `${b.hmD > 1 ? '+' : '−'}%${Math.round(Math.abs(b.hmD - 1) * 100)}`]);
     if (G.wx.snow[n] > 0.3 || G.wx.mud[n] > 0.3) mods.push([`Hava: ${G.weatherName(n)}`, `saldırı −%${Math.round((1 - G.wxAtk(n)) * 100)}`]);
     let html = `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
-    html += `<div class="row" style="gap:8px;align-items:center"><b class="${adv > 0.55 ? 'good' : adv < 0.45 ? 'bad' : 'warn'}">${adv > 0.6 ? 'Kazanıyoruz' : adv < 0.4 ? 'Kaybediyoruz' : 'Denge'}</b><div class="grow">${bar(adv, adv > 0.55 ? 'g' : adv < 0.45 ? 'r' : '')}</div><span class="small">%${Math.round(adv * 100)}</span></div>`;
+    html += `<div class="row" style="gap:8px;align-items:center"><b class="${neutral ? 'warn' : adv > 0.55 ? 'good' : adv < 0.45 ? 'bad' : 'warn'}">${neutral ? (adv > 0.6 ? 'Saldıran önde' : adv < 0.4 ? 'Savunan önde' : 'Denge') : adv > 0.6 ? 'Kazanıyoruz' : adv < 0.4 ? 'Kaybediyoruz' : 'Denge'}</b><div class="grow">${bar(adv, adv > 0.55 ? 'g' : adv < 0.45 ? 'r' : '')}</div><span class="small">%${Math.round(adv * 100)}</span></div>`;
     html += `<div class="bgrid">${side(b.att, b.atts, b.A, true)}${side(b.def, b.defs, b.D, false)}</div>`;
     html += sec('Etkenler', mods.length ? `<div class="mods">${mods.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Özel etken yok.</p>');
     html += `<p class="muted small" style="margin:0">Günlük vuruş: saldıran ${r1(b.hitD)} · savunan ${r1(b.hitA)}. Moral ve gücü biten tümenler geri çekilir; çekilecek yeri kalmayan tümenler imha olur.</p>`;
