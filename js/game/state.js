@@ -209,6 +209,7 @@
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
     const OLD = { doc_mob: 'm1', doc_mob2: 'm2', doc_fire: 'f1', doc_fire2: 'f2', doc_grand: 'g1', doc_grand2: 'g2', doc_mass: 'a1', doc_mass2: 'a2' };
     for (const c of Object.values(st.C)) {
+      if (c.laws && c.laws.occ == null) c.laws.occ = 1;
       if (Object.keys(c.tech).some((id) => OLD[id])) {
         const pref = G.docPref(c);
         for (const [o, n] of Object.entries(OLD)) if (c.tech[o]) { delete c.tech[o]; if (n[0] === pref) c.tech['d' + n] = 1; }

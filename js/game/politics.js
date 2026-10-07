@@ -18,6 +18,7 @@
     else { c.pop = { dem: 0.1, fas: 0.1, com: 0.1, neu: 0.1 }; c.pop[c.ideo] = 0.7; }
     c.spirits = (p.sp || []).slice();
     c.laws.trade = p.trade ?? 1;
+    c.laws.occ = 1;
     c.adv = {};
     c.rb = [];
     c.stab = c.stab0; c.ws = c.ws0;
@@ -292,6 +293,11 @@
   };
   G.aiLaws = (c) => {
     const atWar = c.enemies.length > 0;
+    // işgal yasası: faşistler sert baskı, demokrasiler sivil yönetim (geniş işgal topraklarında)
+    if (G.occSummary && atWar && c.pp >= g.LAW_COST + 30) {
+      const want = c.ideo === 'fas' ? 0 : c.ideo === 'dem' ? 2 : 1;
+      if ((c.laws.occ ?? 1) !== want && G.occSummary(c.tag).n >= 10) { c.pp -= g.LAW_COST; c.laws.occ = want; }
+    }
     for (const k of ['eco', 'mob']) {
       const nx = c.laws[k] + 1;
       if (nx >= g.LAWS[k].opts.length || c.pp < g.LAW_COST + 30) continue;

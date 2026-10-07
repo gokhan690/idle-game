@@ -291,7 +291,8 @@
       if (st.prov[c.cap]?.o !== L) c.cap = G.anyOwnProvince(L);
       const d = g.COUNTRY_DEFS[L];
       for (let i = 0; i < NP; i++) if (st.prov[i].o === L && (P[i].n === d.cap || (P[i].cs || []).includes(d.cap))) c.cap = i;
-      c.startW = G.coreWeight(L, true); c.surrender = 0;
+      // kalan devlet yeni bir başlangıç ölçüsüyle devam eder (ör. sürgündeki Hollanda hükümeti ve Doğu Hint Adaları)
+      c.startW = G.coreWeight(L, false) || G.coreWeight(L, true); c.surrender = 0;
       G.defaultLines && G.defaultLines(c);
     }
     if (st.contrib) delete st.contrib[L];

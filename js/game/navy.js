@@ -53,8 +53,15 @@
         if (friend) mine += p; else theirs += p;
       }
     }
-    return mine / (mine + theirs);
+    let v = mine / (mine + theirs);
+    // tarihî mod: Pearl Harbor'dan Midway'e dek Batı Pasifik'te Japon deniz üstünlüğü (Müttefikler Filipinler'e,
+    // Malaya'ya ve Doğu Hint Adaları'na takviye taşıyamaz)
+    if (st.opts.hist && st.day >= KB0 && st.day < KB1 && zone >= NP && G.atWar(tag, 'JAP') && tag !== st.player) {
+      const z = G.SEAS[zone - NP]; if (z && z.lon > 95 && z.lat < 30 && z.lat > -15) v = Math.min(v, 0.3);
+    }
+    return v;
   };
+  const KB0 = G.dayOf('1941-12-07'), KB1 = G.dayOf('1942-06-04');
 
   G.fleetPath = (from, to, tag) => {
     // yalnızca deniz düğümleri; düşman kontrolündeki boğazlardan geçilmez

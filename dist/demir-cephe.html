@@ -760,6 +760,12 @@ window.IDEOLOGIES = {
       { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35 },
       { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
     ] },
+    occ: { n: 'İşgal Yasası', opts: [
+      { n: 'Sert Baskı', d: 'Direniş -%25, uyum artışı -%50, garnizon kayıpları +%50', rs: 0.75, cp: 0.5, gl: 1.5, pr: 1 },
+      { n: 'Askerî Yönetim', d: 'Dengeli işgal yönetimi', rs: 1, cp: 1, gl: 1, pr: 1 },
+      { n: 'Sivil Yönetim', d: 'Direniş +%10, uyum artışı +%60, işgal üretimi +%10', rs: 1.1, cp: 1.6, gl: 1, pr: 1.1 },
+      { n: 'Yerel Öz Yönetim', d: 'Direniş -%15, uyum artışı +%100, işgal üretimi -%15', rs: 0.85, cp: 2, gl: 0.8, pr: 0.85, ws: 0 },
+    ] },
     trade: { n: 'Ticaret Yasası', opts: [
       { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5; kaynakların %80\'i satılabilir', factory: 0.1, research: 0.05, exp: 0.8 },
       { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2; kaynakların %50\'si satılabilir', factory: 0.05, research: 0.02, exp: 0.5 },
@@ -1912,6 +1918,7 @@ window.IDEOLOGIES = {
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
     const OLD = { doc_mob: 'm1', doc_mob2: 'm2', doc_fire: 'f1', doc_fire2: 'f2', doc_grand: 'g1', doc_grand2: 'g2', doc_mass: 'a1', doc_mass2: 'a2' };
     for (const c of Object.values(st.C)) {
+      if (c.laws && c.laws.occ == null) c.laws.occ = 1;
       if (Object.keys(c.tech).some((id) => OLD[id])) {
         const pref = G.docPref(c);
         for (const [o, n] of Object.entries(OLD)) if (c.tech[o]) { delete c.tech[o]; if (n[0] === pref) c.tech['d' + n] = 1; }
@@ -2283,44 +2290,69 @@ window.IDEOLOGIES = {
   // Tarihî akış dengesi (yalnızca tarihî YZ modunda, YZ'ye karşı YZ muharebelerinde):
   // kilit cephelerde savunanın asli toprak kaybı tarihî eğriden çok saparsa, geride kalan taraf
   // muharebede kademeli üstünlük kazanır (en çok %30-50). Oyuncunun muharebelerine uygulanmaz.
-  // [saldıran, savunan, saldıran herhangi bir düşman mı, [tarih, savunanın asli kayıp oranı]...]
+  // Eğri türleri:
+  //  - ülke: savunanın asli toprak kaybı (oran) tarihî eğriyle karşılaştırılır
+  //  - bölge: saldıran tarafın belirli şehirleri kontrol oranı (ör. Güneydoğu Asya kaynak bölgesi)
+  // aMax: saldıran geride kalınca en çok destek, dMax: saldıran önde gidince savunana en çok destek,
+  // aFrom: saldırana destek bu tarihten önce verilmez (erken taarruz dönemi)
   const HIST_COURSE = [
-    // [saldıran, savunan, herhangi düşman, eğri, en çok destek (saldıran geride / saldıran önde)]
-    ['GER', 'SOV', 0, [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], [0.3, 0.45]],
-    ['JAP', 'CHI', 0, [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], [0.05, 0.5]],
-    ['*', 'GER', 1, [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], [0.3, 0.45]],
+    { a: 'GER', d: 'SOV', pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
+    { a: 'JAP', d: 'CHI', pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
+    { a: '*', d: 'GER', pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.45 },
+    // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
+    { a: 'JAP', set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
+      pts: [['1941-12-07', 0], ['1942-01-20', 0.45], ['1942-04-01', 0.9], ['1944-10-01', 0.9], ['1945-03-15', 0.6], ['1945-08-15', 0.45]], aMax: 0.4, dMax: 0.4,
+      region: (n) => n < NP && ((P[n].lon > 90 && P[n].lat < 24 && P[n].lat > -15) || P[n].lon > 140 || P[n].lon < -150) },
   ];
-  HIST_COURSE.forEach((h) => { h[3] = h[3].map(([d, v]) => [G.dayOf(d), v]); });
+  for (const h of HIST_COURSE) {
+    h.pts = h.pts.map(([d, v]) => [G.dayOf(d), v]);
+    h.aFromD = h.aFrom ? G.dayOf(h.aFrom) : 0;
+    h.key = h.a + '>' + (h.d || 'bölge');
+  }
+  let SETS = null;
   const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
   // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
   G.histAhead = (a, d) => { const x = G._hcs && G._hcs[a + '>' + d]; return x ? x.loss - x.ref : null; };
   G.histCourse = () => {
     const st = G.st; G._hc = []; G._hcs = {};
     if (!st.opts.hist) return;
-    for (const [a, d, any, pts, km] of HIST_COURSE) {
-      if (st.day < pts[0][0] || !st.C[d]?.alive) continue;
-      if (!any && !(st.C[a]?.alive && G.atWar(a, d))) continue;
-      if (any && !st.C[d].enemies.length) continue;
-      let h = 0, w = 0;
-      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) h += x; }
-      const e = (1 - h / Math.max(1, w)) - refAt(pts, st.day); // + : saldıran tarihten önde
-      G._hcs[a + '>' + d] = { loss: 1 - h / Math.max(1, w), ref: refAt(pts, st.day) };
-      if (Math.abs(e) < 0.05) continue;
-      G._hc.push({ a, d, any, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? km[1] : km[0]) });
-    }
+    if (!SETS) SETS = HIST_COURSE.map((h) => (h.set ? h.set.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0) : null));
+    HIST_COURSE.forEach((h, hi) => {
+      if (st.day < h.pts[0][0]) return;
+      let v; // saldıranın ilerleme ölçüsü (ülke: savunanın kaybı, bölge: saldıranın kontrol oranı)
+      if (h.set) {
+        if (!st.C[h.a]?.alive || !st.C[h.a].enemies.length) return;
+        let w = 0, x = 0;
+        for (const i of SETS[hi]) { const k = 1 + P[i].vp; w += k; const pc = st.prov[i].c; if (pc === h.a || (G.sameFaction(pc, h.a) && !G.atWar(pc, h.a))) x += k; }
+        v = w ? x / w : 0;
+      } else {
+        const d = h.d;
+        if (!st.C[d]?.alive) return;
+        if (h.a === '*' ? !st.C[d].enemies.length : !(st.C[h.a]?.alive && G.atWar(h.a, d))) return;
+        let hh = 0, w = 0;
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) hh += x; }
+        v = 1 - hh / Math.max(1, w);
+      }
+      const ref = refAt(h.pts, st.day), e = v - ref; // + : saldıran tarihten önde
+      G._hcs[h.key] = { loss: v, ref };
+      if (Math.abs(e) < 0.05) return;
+      if (e < 0 && st.day < h.aFromD) return;
+      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
+    });
   };
-  // taraf çarpanı: x tarafı y'ye karşı
-  G.histMul = (x, y) => {
+  // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
+  G.histMul = (x, y, n) => {
     const st = G.st; if (!G._hc || !G._hc.length || x === st.player || y === st.player) return 1;
-    const inA = (t, a, any, d) => (any ? G.atWar(t, d) : t === a || G.sameFaction(t, a));
-    const inD = (t, d) => t === d;
     // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
     let m = 1;
-    for (const h of G._hc) {
+    for (const { h, fav, k } of G._hc) {
+      if (h.region && (n == null || !h.region(n))) continue;
+      const inA = (t) => (h.a === '*' ? G.atWar(t, h.d) : t === h.a || G.sameFaction(t, h.a));
+      const inD = (t) => (h.set ? G.atWar(t, h.a) : t === h.d);
       let side = null;
-      if (inA(x, h.a, h.any, h.d) && inD(y, h.d)) side = 'a'; else if (inD(x, h.d) && inA(y, h.a, h.any, h.d)) side = 'd';
+      if (inA(x) && inD(y)) side = 'a'; else if (inD(x) && inA(y)) side = 'd';
       if (!side) continue;
-      m *= side === h.fav ? 1 + h.k : 1 - h.k / 2;
+      m *= side === fav ? 1 + k : 1 - k / 2;
     }
     return Math.max(0.55, Math.min(1.6, m));
   };
@@ -2350,7 +2382,7 @@ window.IDEOLOGIES = {
     const aAA = aaOf(A), dAA = aaOf(D);
     const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
-    const hmA = G.histMul(attTag, defs[0].t), hmD = G.histMul(defs[0].t, attTag);
+    const hmA = G.histMul(attTag, defs[0].t, n), hmD = G.histMul(defs[0].t, attTag, n);
     let hitD = 0, hitA = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
@@ -2429,7 +2461,7 @@ window.IDEOLOGIES = {
     const fit = (L, wmax) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > wmax) break; out.push(u); w += uw; } return out; };
     const A = fit(us, width), D = fit(Dall, baseW);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
-    const hmA = G.histMul(tag, D[0].t), hmD = G.histMul(D[0].t, tag);
+    const hmA = G.histMul(tag, D[0].t, n), hmD = G.histMul(D[0].t, tag, n);
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
     let aTot = 0, dTot = 0;
@@ -3108,7 +3140,7 @@ window.IDEOLOGIES = {
         if (opts.front && !opts.front.has(i)) continue;
         if (st.opts.hist && tag === 'JAP' && tag !== st.player && P[i].lon < 65) continue; // Japonya Hindistan'ın batısında savaşmaz
         // tarihî mod: Batılı Müttefikler Sovyet cephelerinde, Sovyetler Batılı müttefik cephelerinde savaşmaz
-        if (st.opts.hist && tag !== st.player && pr.c !== tag && ((WESTERN.has(tag) && pr.c === 'SOV') || (tag === 'SOV' && WESTERN.has(pr.c)))) continue;
+        if (st.opts.hist && tag !== st.player && pr.c !== tag && ((WESTERN.has(tag) && (pr.c === 'SOV' || pr.c === 'CHI')) || (tag === 'SOV' && WESTERN.has(pr.c)))) continue;
         let threat = 0, enemyAdj = [];
         // müttefik toprağından ancak o müttefik de o düşmanla savaştaysa cephe açılır (tarafsız müttefikten saldırı yok)
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (pr.c === tag || G.atWar(pr.c, ec)) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
@@ -3195,7 +3227,7 @@ window.IDEOLOGIES = {
       // tarihî mod: "Garip Savaş" — Almanya Sarı Durum'a (Mayıs 1940) dek Fransa'ya saldırmaz
       const sitz = tag === 'GER' && tag !== st.player && st.opts.hist && !st.ev.gelb;
       // tarihî mod: Japonya ve Mançukuo Çin'de tarihî kazanım çizgisini aşınca savunmaya geçer (1939-44 durgunluğu)
-      const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02 && st.day < G.dayOf('1944-04-01');
+      const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
       const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
@@ -3901,6 +3933,7 @@ window.IDEOLOGIES = {
     else { c.pop = { dem: 0.1, fas: 0.1, com: 0.1, neu: 0.1 }; c.pop[c.ideo] = 0.7; }
     c.spirits = (p.sp || []).slice();
     c.laws.trade = p.trade ?? 1;
+    c.laws.occ = 1;
     c.adv = {};
     c.rb = [];
     c.stab = c.stab0; c.ws = c.ws0;
@@ -4175,6 +4208,11 @@ window.IDEOLOGIES = {
   };
   G.aiLaws = (c) => {
     const atWar = c.enemies.length > 0;
+    // işgal yasası: faşistler sert baskı, demokrasiler sivil yönetim (geniş işgal topraklarında)
+    if (G.occSummary && atWar && c.pp >= g.LAW_COST + 30) {
+      const want = c.ideo === 'fas' ? 0 : c.ideo === 'dem' ? 2 : 1;
+      if ((c.laws.occ ?? 1) !== want && G.occSummary(c.tag).n >= 10) { c.pp -= g.LAW_COST; c.laws.occ = want; }
+    }
     for (const k of ['eco', 'mob']) {
       const nx = c.laws[k] + 1;
       if (nx >= g.LAWS[k].opts.length || c.pp < g.LAW_COST + 30) continue;
@@ -4486,8 +4524,15 @@ window.IDEOLOGIES = {
         if (friend) mine += p; else theirs += p;
       }
     }
-    return mine / (mine + theirs);
+    let v = mine / (mine + theirs);
+    // tarihî mod: Pearl Harbor'dan Midway'e dek Batı Pasifik'te Japon deniz üstünlüğü (Müttefikler Filipinler'e,
+    // Malaya'ya ve Doğu Hint Adaları'na takviye taşıyamaz)
+    if (st.opts.hist && st.day >= KB0 && st.day < KB1 && zone >= NP && G.atWar(tag, 'JAP') && tag !== st.player) {
+      const z = G.SEAS[zone - NP]; if (z && z.lon > 95 && z.lat < 30 && z.lat > -15) v = Math.min(v, 0.3);
+    }
+    return v;
   };
+  const KB0 = G.dayOf('1941-12-07'), KB1 = G.dayOf('1942-06-04');
 
   G.fleetPath = (from, to, tag) => {
     // yalnızca deniz düğümleri; düşman kontrolündeki boğazlardan geçilmez
@@ -5424,7 +5469,8 @@ window.IDEOLOGIES = {
       if (st.prov[c.cap]?.o !== L) c.cap = G.anyOwnProvince(L);
       const d = g.COUNTRY_DEFS[L];
       for (let i = 0; i < NP; i++) if (st.prov[i].o === L && (P[i].n === d.cap || (P[i].cs || []).includes(d.cap))) c.cap = i;
-      c.startW = G.coreWeight(L, true); c.surrender = 0;
+      // kalan devlet yeni bir başlangıç ölçüsüyle devam eder (ör. sürgündeki Hollanda hükümeti ve Doğu Hint Adaları)
+      c.startW = G.coreWeight(L, false) || G.coreWeight(L, true); c.surrender = 0;
       G.defaultLines && G.defaultLines(c);
     }
     if (st.contrib) delete st.contrib[L];
@@ -5867,18 +5913,20 @@ window.IDEOLOGIES = {
       const pr = st.prov[i];
       if (!G.isOccupied(i)) { if (pr.rs != null) { delete pr.rs; delete pr.cp; delete pr.sab; } continue; }
       const c = st.C[pr.c];
+      const law = lawOf(c);
       if (pr.rs == null) { pr.rs = 0; pr.cp = 0; }
       // garnizon
       const gar = has(i, pr.c) ? 1 : P[i].a.some((j) => has(j, pr.c)) ? 0.6 : 0;
       const core = st.C[pr.core];
       const exile = core && core.alive && G.atWar(pr.core, pr.c);
       let tgt = 0.2 + (exile ? 0.15 : 0) + (PARTISAN[pr.core] || 0) + (P[i].vp >= 10 ? 0.08 : 0) + (c.mods.resist || 0);
-      tgt *= (1 - 0.45 * gar) * (1 - 0.7 * pr.cp);
+      tgt *= (1 - 0.45 * gar) * (1 - 0.7 * pr.cp) * law.rs;
       tgt = clamp(tgt, 0, 0.9);
       pr.rs += (tgt - pr.rs) * 0.08;
-      pr.cp = clamp(pr.cp + (pr.rs < 0.25 ? 0.008 : pr.rs > 0.45 ? -0.006 : 0.002) + (c.mods.comply || 0) * 0.01, 0, 0.8);
+      const dcp = pr.rs < 0.25 ? 0.008 : pr.rs > 0.45 ? -0.006 : 0.002;
+      pr.cp = clamp(pr.cp + (dcp > 0 ? dcp * law.cp : dcp) + (c.mods.comply || 0) * 0.01, 0, 0.8);
       // garnizon kayıpları (insan gücü)
-      c.dead += pr.rs * pr.rs * 0.4;
+      c.dead += pr.rs * pr.rs * 0.4 * law.gl;
       // sabotaj: demiryolu ve ikmal merkezleri bir süre aksar
       if (pr.rs > 0.4 && (!pr.sab || pr.sab < st.day) && G.rand() < (pr.rs - 0.4) * 0.3) {
         pr.sab = st.day + 30;
@@ -5890,7 +5938,8 @@ window.IDEOLOGIES = {
     if (pl && sab[pl]) G.log(`Direniş: işgal altındaki topraklarımızda ${sab[pl]} sabotaj eylemi; demiryolları bir süre aksayacak.`, [pl], 'warn');
   };
   // üretim çarpanı (updateSummaries) ve ikmal çarpanı (logistics)
-  G.occMul = (pr) => (pr.rs == null ? 1 : (1 - 0.6 * pr.rs) * (1 + 0.8 * pr.cp));
+  const lawOf = (c) => g.LAWS.occ.opts[(c && c.laws.occ) ?? 1] || g.LAWS.occ.opts[1];
+  G.occMul = (pr) => (pr.rs == null ? 1 : (1 - 0.6 * pr.rs) * (1 + 0.8 * pr.cp) * lawOf(G.st.C[pr.c]).pr);
   G.occSup = (pr, day) => (pr.rs == null ? 1 : (1 - 0.5 * pr.rs) * (pr.sab && pr.sab >= day ? 0.6 : 1));
   // ülke özeti
   G.occSummary = (tag) => {
@@ -5915,6 +5964,8 @@ window.IDEOLOGIES = {
     if (facOf('GER')) return facOf('GER');
     return G.createFaction('GER', 'Mihver');
   };
+  // ABD asli topraklarının en az bu kadarını tutuyor mu (atom bombası koşulu)
+  const usaHolds = (f) => { const st = G.st; let a = 0, h = 0; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.core !== 'USA') continue; a++; if (pr.c === 'USA') h++; } return a && h / a >= f; };
   const joinAxis = (t) => { const f = ensureAxis(); if (f && alive(t) && facOf(t) !== f) G.joinFaction(t, f); };
   const war = (a, b) => { if (alive(a) && alive(b) && !G.atWar(a, b) && !G.sameFaction(a, b)) G.declareWar(a, b); };
 
@@ -6062,7 +6113,15 @@ window.IDEOLOGIES = {
     { id: 'jsnap', date: '1941-04-13', actor: 'JAP', title: 'Sovyet-Japon Tarafsızlık Paktı',
       text: 'Matsuoka Moskova\'da: Japonya ile Sovyetler Birliği birbirine saldırmama sözü veriyor.',
       cond: () => alive('JAP') && alive('SOV') && !G.atWar('JAP', 'SOV') && G.st.player !== 'SOV',
-      opts: [{ n: 'Paktı imzala', fx: () => { G.st.pacts[G.pairKey('JAP', 'SOV')] = 'nap'; G.log('Sovyet-Japon Tarafsızlık Paktı imzalandı.', ['JAP', 'SOV'], 'major'); } }, { n: 'İmzalama', fx: () => {} }] },
+      opts: [{ n: 'Paktı imzala', fx: () => {
+        // pakt Japonya'nın kuklası Mançukuo'yu ve Sovyet uydusu Moğolistan'ı da kapsar
+        for (const [x, y] of [['JAP', 'SOV'], ['MAN', 'SOV'], ['JAP', 'MON'], ['MAN', 'MON']]) if (alive(x) && alive(y) && !G.atWar(x, y)) G.st.pacts[G.pairKey(x, y)] = 'nap';
+        G.log('Sovyet-Japon Tarafsızlık Paktı imzalandı.', ['JAP', 'SOV'], 'major');
+      } }, { n: 'İmzalama', fx: () => {} }] },
+    { id: 'indochina', date: '1941-07-24', actor: 'JAP', title: 'Fransız Çinhindi',
+      text: 'Japonya, Fransız Çinhindi\'nde askerî üsler talep ediyor.',
+      cond: () => alive('JAP') && alive('FRA') && !G.atWar('JAP', 'FRA') && G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA' && G.st.player !== 'FRA',
+      opts: [{ n: 'Üsleri talep et', fx: () => { G.st.access['JAP>FRA'] = 1; G.log('Japon birlikleri Fransız Çinhindi\'ne girdi.', ['JAP', 'FRA'], 'major'); } }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'barbarossa', date: '1941-06-22', actor: 'GER', title: 'Barbarossa Harekâtı',
       text: 'Tarihin en büyük işgal ordusu Sovyet sınırında. Saldırı emri verilsin mi?',
       cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.st.player === 'GER' || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
@@ -6070,7 +6129,21 @@ window.IDEOLOGIES = {
     { id: 'pearl', date: '1941-12-07', actor: 'JAP', title: 'Pearl Harbor',
       text: 'ABD petrol ambargosu uyguluyor. Donanma, Pasifik Filosu\'na ani bir baskın planladı.',
       cond: () => alive('JAP') && alive('USA') && !G.atWar('JAP', 'USA'),
-      opts: [{ n: 'Saldır', fx: () => { war('JAP', 'USA'); if (alive('ENG')) war('JAP', 'ENG'); if (alive('HOL')) war('JAP', 'HOL'); if (alive('USA') && ai('USA') && !facOf('USA') && G.st.factions.allies) G.joinFaction('USA', 'allies'); } }, { n: 'Diplomasiyi dene', fx: () => {} }] },
+      opts: [{ n: 'Saldır', fx: () => {
+        war('JAP', 'USA'); if (alive('ENG')) war('JAP', 'ENG'); if (alive('HOL')) war('JAP', 'HOL');
+        if (alive('USA') && ai('USA') && !facOf('USA') && G.st.factions.allies) G.joinFaction('USA', 'allies');
+        // Siyam Japonya'ya geçit verir ve İngiltere'ye savaş açar (Ocak 1942)
+        if (alive('SIA') && ai('SIA') && !G.atWar('SIA', 'JAP')) { G.st.access['JAP>SIA'] = 1; G.st.access['SIA>JAP'] = 1; if (alive('ENG')) G.setWar('SIA', 'ENG'); }
+        // Güneye ilerleme: Malaya, Filipinler, Hong Kong ve Pasifik adaları
+        if (G.st.opts.hist && ai('JAP')) { const n = G.landing(['JAP'], ['Kota Bharu', 'Manila', 'Hong Kong', 'Guam', 'Wake'], 16, 'landing'); if (n) G.log(`Japonya Malaya, Filipinler ve Hong Kong'a çıkarma yaptı (${n} tümen).`, ['JAP'], 'major'); }
+      } }, { n: 'Diplomasiyi dene', fx: () => {} }] },
+    { id: 'midway', date: '1942-06-04', actor: 'USA', title: 'Midway Muharebesi', text: 'ABD şifre çözücüleri Japon saldırı planını okudu: Midway\'de pusu.',
+      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist,
+      opts: [{ n: 'Pusuyu kur', fx: () => { let k = 4; for (const f of G.st.C.JAP.fleets || []) { const x = Math.min(k, f.sh.cv || 0); f.sh.cv -= x; k -= x; } G.log('Midway Muharebesi: Japonya dört uçak gemisini kaybetti; Pasifik\'te deniz üstünlüğü el değiştirdi.', ['USA', 'JAP'], 'major'); } }, { n: 'Bekle', fx: () => {} }] },
+    { id: 'dei', date: '1942-01-11', actor: 'JAP', title: 'Güney Kaynak Bölgesi',
+      text: 'Hollanda Doğu Hint Adaları\'nın petrolü Japon savaş makinesi için hayati.',
+      cond: () => alive('JAP') && G.st.opts.hist && (G.atWar('JAP', 'HOL') || G.atWar('JAP', 'ENG')), retryUntil: '1942-06-01',
+      opts: [{ n: 'Çıkarma yap', fx: () => { const n = G.landing(['JAP'], ['Balikpapan', 'Palembang', 'Medan', 'Kuching', 'Rabaul', 'Batavya'], 12, 'landing'); if (n) G.log(`Japonya Hollanda Doğu Hint Adaları ve Yeni Gine'ye çıktı (${n} tümen).`, ['JAP'], 'major'); } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'usager', date: '1941-12-11', actor: 'GER', title: 'ABD\'ye Savaş İlanı',
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
@@ -6085,7 +6158,15 @@ window.IDEOLOGIES = {
     const st = G.st;
     const tgt = names.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0 && G.atWar(tags[0], st.prov[i].c));
     if (!tgt.length) return 0;
-    const pool = st.units.filter((u) => tags.includes(u.t) && u.loc < NP && !u.gar && !u.path.length && !(G.inBattle && G.inBattle.has(u)) && u.str > 0.7 && !P[u.loc].a.some((j) => G.atWar(u.t, st.prov[j].c)));
+    // cephe gerisindeki birlikler ve kalabalık cephe eyaletlerindeki fazlalık (eyalette en az 2 tümen kalır)
+    const here = (n) => (G.unitsAt[n] || []).filter((x) => tags.includes(x.t)).length;
+    const taken = new Map();
+    const pool = st.units.filter((u) => {
+      if (!tags.includes(u.t) || u.loc >= NP || u.gar || u.path.length || (G.inBattle && G.inBattle.has(u)) || u.str <= 0.7) return false;
+      if (!P[u.loc].a.some((j) => G.atWar(u.t, st.prov[j].c))) return true;
+      const k = taken.get(u.loc) || 0; if (here(u.loc) - k <= 2) return false;
+      taken.set(u.loc, k + 1); return true;
+    });
     pool.sort((a, b) => G.unitPower(b) - G.unitPower(a));
     let k = 0;
     for (const u of pool.slice(0, n)) {
@@ -6101,6 +6182,25 @@ window.IDEOLOGIES = {
     { id: 'husky', date: '1943-07-10', actor: 'ENG', title: 'Husky Harekâtı', text: 'Müttefik kuvvetleri Sicilya\'ya çıkarma yapmaya hazır.',
       cond: () => alive('ITA') && alive('ENG') && G.atWar('ENG', 'ITA') && G.st.opts.hist, retryUntil: '1944-03-01',
       opts: [{ n: 'Sicilya\'ya çık', fx: () => { const n = G.landing(['USA', 'ENG', 'CAN'].filter((t) => alive(t) && G.atWar(t, 'ITA')), ['Palermo', 'Catania'], 8, 'landing'); if (n) G.log(`Müttefikler Sicilya\'ya çıktı (${n} tümen).`, ['ENG', 'ITA'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    // Pasifik'te ABD karşı taarruzu ve savaşın sonu
+    { id: 'saipan', date: '1944-06-15', actor: 'USA', title: 'Marianalar Harekâtı', text: 'ABD deniz piyadeleri Saipan ve Guam\'a çıkmaya hazır.',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && ['Saipan', 'Guam'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-01-01',
+      opts: [{ n: 'Çıkarma yap', fx: () => { const n = G.landing(['USA'], ['Saipan', 'Guam'], 6, 'landing'); if (n) G.log(`ABD Marianalar'a çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'leyte', date: '1944-10-20', actor: 'USA', title: 'Leyte Körfezi', text: 'MacArthur Filipinler\'e dönmeye hazır: "Geri döndüm."',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && ['Manila', 'Cebu City'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-06-01',
+      opts: [{ n: 'Filipinler\'e çık', fx: () => { const n = G.landing(['USA', 'AST'].filter((t) => alive(t) && G.atWar(t, 'JAP')), ['Cebu City', 'San Jose', 'Manila'], 12, 'landing'); if (n) G.log(`ABD Filipinler'e çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'okinawa', date: '1945-04-01', actor: 'USA', title: 'Buzdağı Harekâtı', text: 'Japon anayurduna giden yolda son durak: Okinawa.',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist, retryUntil: '1945-08-01',
+      opts: [{ n: 'Okinawa\'ya çık', fx: () => { const n = G.landing(['USA'], ['Okinawa', 'Iwo Jima'], 10, 'landing'); if (n) G.log(`ABD Okinawa ve Iwo Jima'ya çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'augstorm', date: '1945-08-08', actor: 'SOV', title: 'Ağustos Fırtınası', text: 'Yalta\'da verilen söz: Sovyetler Birliği Japonya\'ya savaş açıyor ve Mançurya\'ya giriyor.',
+      cond: () => alive('SOV') && alive('JAP') && !G.atWar('SOV', 'JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && !G.st.C.GER?.enemies.length,
+      opts: [{ n: 'Mançurya\'ya gir', fx: () => { for (const k of [G.pairKey('JAP', 'SOV'), G.pairKey('MAN', 'SOV'), G.pairKey('JAP', 'MON'), G.pairKey('MAN', 'MON')]) delete G.st.pacts[k]; war('SOV', 'JAP'); if (alive('MAN') && !G.atWar('SOV', 'MAN')) war('SOV', 'MAN'); } }, { n: 'Bekle', fx: () => {} }] },
+    { id: 'jsurrender', date: '1945-08-15', actor: 'USA', title: 'Japonya\'nın Teslimi', text: 'Hiroşima ve Nagazaki\'ye atom bombası atıldı. İmparator teslim olmayı kabul ediyor.',
+      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist && G.st.player !== 'JAP' && !G.st.C.GER?.enemies.length && usaHolds(0.9), retryUntil: '1946-12-31',
+      opts: [{ n: 'Teslimi kabul et', fx: () => { G.log('Hiroşima ve Nagazaki\'ye atom bombası atıldı: Japonya koşulsuz teslim oldu.', ['JAP', 'USA'], 'major'); G.capitulate('JAP'); } }, { n: 'Savaşa devam', fx: () => {} }] },
+    { id: 'mansurrender', date: '1945-08-16', actor: 'MAN', title: 'Mançukuo\'nun Çöküşü', text: 'Japonya teslim oldu; Mançukuo ayakta kalamaz.',
+      cond: () => alive('MAN') && G.st.C.MAN.enemies.length > 0 && G.st.opts.hist && !(alive('JAP') && G.st.C.JAP.enemies.length) && !G.st.conf, retryUntil: '1946-06-01',
+      opts: [{ n: 'Teslim ol', fx: () => G.capitulate('MAN') }, { n: 'Direnmeye devam', fx: () => {} }] },
     { id: 'overlord', date: '1944-06-06', actor: 'USA', title: 'Overlord Harekâtı (D-Günü)', text: 'Tarihin en büyük çıkarma harekâtı Normandiya kıyılarında başlamak üzere.',
       cond: () => alive('GER') && alive('USA') && G.atWar('USA', 'GER') && G.st.opts.hist && ['Caen', 'Cherbourg'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-01-01',
       opts: [{ n: 'Normandiya\'ya çık', fx: () => { const n = G.landing(['USA', 'ENG', 'CAN'].filter((t) => alive(t) && G.atWar(t, 'GER')), ['Caen', 'Cherbourg', 'Rouen'], 16, 'landing'); if (n) G.log(`D-Günü: Müttefikler Normandiya\'ya çıktı (${n} tümen).`, ['USA', 'GER'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
@@ -7172,7 +7272,7 @@ window.IDEOLOGIES = {
     // yasalar
     let lh = '<div class="list">';
     for (const [k, L] of Object.entries(g.LAWS)) {
-      const o = L.opts[c.laws[k]];
+      const o = L.opts[c.laws[k] ?? 1] || L.opts[0];
       lh += `<button class="item" data-act="sub" data-v="law:${k}"><div class="grow"><div class="d">${L.n}</div><div class="t">${o.n}</div><div class="d">${o.d}</div></div><span class="muted">›</span></button>`;
     }
     html += sec('Yasalar', lh + '</div>');
@@ -7253,7 +7353,7 @@ window.IDEOLOGIES = {
     const L = g.LAWS[k];
     let html = `<p class="muted small" style="margin:0">Yasa değişikliği ${g.LAW_COST} siyasi güç ister. Seçenekler savaş desteğine (şu an ${pct(c.ws ?? 0)}) bağlıdır; bazıları yalnızca savaşta açılır.</p><div class="list">`;
     L.opts.forEach((o, i) => {
-      const cur = c.laws[k] === i;
+      const cur = (c.laws[k] ?? 1) === i;
       const r = G.lawAllowed(c, k, i);
       let ok = r.ok, why = r.why || '';
       if (ok && c.pp < g.LAW_COST) { ok = false; why = `${g.LAW_COST} siyasi güç gerekli`; }
@@ -7599,7 +7699,7 @@ window.IDEOLOGIES = {
     oh += `</div><div class="btns"><button class="btn pri" data-act="armynew">${R.sel.units.size ? `Seçili ${R.sel.units.size} tümenden ordu kur` : 'Ordusuz tümenlerden ordu kur'}</button><button class="btn" data-act="sub" data-v="gens">Komutanlar (${c.gens.length})</button></div>`;
     html += sec('Ordular', oh, enemies.length ? `${enemies.length} düşman` : 'barış');
     const oc = G.occSummary ? G.occSummary(c.tag) : null;
-    if (oc && oc.n) html += sec('İşgal altındaki topraklar', kv([['Eyalet', oc.n], ['Ort. direniş', pct(oc.rs), oc.rs > 0.4 ? 'bad' : ''], ['Ort. uyum', pct(oc.cp)], ['Sabotaj', oc.sab, oc.sab ? 'bad' : '']]) + `<p class="muted small" style="margin:0">Direniş, işgal ettiğin yerlerden gelen sanayiyi ve ikmali düşürür. Eyalette ya da yanında tümen bulundurmak (garnizon) direnişi bastırır; zamanla uyum artar. Harita modu “Direniş” ile bak.</p>`);
+    if (oc && oc.n) html += sec('İşgal altındaki topraklar', kv([['Eyalet', oc.n], ['Ort. direniş', pct(oc.rs), oc.rs > 0.4 ? 'bad' : ''], ['Ort. uyum', pct(oc.cp)], ['Sabotaj', oc.sab, oc.sab ? 'bad' : ''], ['İşgal yasası', g.LAWS.occ.opts[c.laws.occ ?? 1].n]]) + `<p class="muted small" style="margin:0">Direniş, işgal ettiğin yerlerden gelen sanayiyi ve ikmali düşürür. Eyalette ya da yanında tümen bulundurmak (garnizon) direnişi bastırır; zamanla uyum artar. Harita modu “Direniş” ile bak.</p>`);
     // şablonlar ve eğitim
     const tpl = G.templatesOf(c);
     let th = '<div class="list">';
@@ -7872,7 +7972,7 @@ window.IDEOLOGIES = {
   <section class="sec"><h3 class="sec-h">Barış konferansı</h3><p class="small" style="margin:0">Bir ülke teslim olunca ona karşı savaşan herkes konferansa katılır. Muharebelerde verdiğin hasar ve işgal ettiğin topraklar oranında puan alırsın. Sırayla bölge talep edilir (sıra her turda en çok puanı kalana geçer). Haritadaki rakam senin için maliyettir: kendi işgal ettiğin yer ucuz, başka bir galibin işgali pahalı, eski asli toprakların yarı fiyat. Puanını kukla devlet kurmak ya da yok olmuş ulusları serbest bırakmak için de harcayabilirsin. Kimsenin almadığı topraklar teslim olan ülkede kalır. Konferans sürerken zaman durur.</p></section>
   <section class="sec"><h3 class="sec-h">Hava kuvvetleri</h3><p class="small" style="margin:0">Dünya, HOI4\'teki gibi hava bölgelerine ayrılmıştır (Hava panelindeki ya da “Hava” harita modundaki kesikli çizgiler). Ürettiğin uçaklar stoka girer; Hava panelinden 100 uçaklık kanatlar kurarsın. Her kanada bir bölge ve görev ver: <b>Hava üstünlüğü</b> (avcı) düşman uçaklarıyla çarpışır ve o bölgedeki kara muharebelerine saldırı/savunma bonusu sağlar; <b>Önleme</b> düşman bombacılarını avlar; <b>Yakın hava desteği</b> bölgedeki muharebelerde tümenlerine ek saldırı verir; <b>Stratejik bombardıman</b> düşman fabrikalarını vurur, üretimini ve savaş desteğini düşürür; <b>Deniz saldırısı</b> düşman filolarını ve konvoylarını hedef alır. “Bölge seç” düğmesine basıp haritada bir yere dokunarak kanadı gönderirsin. <b>Hava üsleri:</b> her kanat bir hava üssüne konuşlanır (haritada ✈ simgesi; rakam üs seviyesi ve oradaki kanat sayısı). Üs seviyesi başına 100 uçak barınır; dolu üste etkinlik düşer. Kanat yalnızca uçağın menzili içindeki bölgelerde görev yapar (avcı ~700 km, YDU ~840 km, bombacı ~1400 km; atılabilir yakıt tankı ve dört motor menzili artırır). Bölge seçerken menzil dışındaysa kanat uygun bir üsse kendiliğinden taşınır; “Üs seç” ile üssü elle de belirleyebilirsin. Üssü düşman ele geçirirse kanat en yakın üsse çekilir. İnşaat panelinden hava üssü kurup büyütebilirsin; stratejik bombardıman düşman üslerini de vurur. Kayıplar stoktan kendiliğinden takviye edilir. “Hava kurmayı” açıkken kanatlar cephelere kendiliğinden dağıtılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita, şehirler ve boğazlar</h3><p class="small" style="margin:0">Eyaletler gerçek şehirlerin etrafında kuruludur ve 1936\'daki adlarıyla anılır (Danzig, Breslau, Königsberg, Leningrad, Stalingrad…). Yakınlaştıkça daha çok şehir adı görünür. Gemiler Türk Boğazları, Cebelitarık, Danimarka Boğazları, Kiel ve Süveyş kanalları, Panama, Kerç ve Messina\'dan geçebilir; ancak boğazı kontrol eden eyaletlerden biri düşman elindeyse geçemez.</p></section>
-  <section class="sec"><h3 class="sec-h">İşgal: direniş ve uyum</h3><p class="small" style="margin:0">Asli toprağın olmayan her işgal edilmiş ya da ilhak edilmiş eyalette HOI4'teki gibi <b>direniş</b> birikir; sürgündeki hükümeti hâlâ savaşan halklarda ve Sovyet, Yugoslav, Çin, Polonya gibi güçlü partizan hareketlerinde daha hızlı. Eyalette ya da komşusunda tümenin varsa (garnizon) direniş bastırılır. Direniş düşük kaldıkça <b>uyum</b> artar. Direniş eyaletten aldığın sanayi ve kaynağı, ikmal merkezlerini ve yerel ikmali düşürür; yüksek direniş demiryollarını sabote eder ve garnizonuna insan gücü kaybettirir. Uyum ise üretimi geri kazandırır. Harita modu “Direniş” işgal bölgelerini gösterir.</p></section>
+  <section class="sec"><h3 class="sec-h">İşgal: direniş ve uyum</h3><p class="small" style="margin:0">Asli toprağın olmayan her işgal edilmiş ya da ilhak edilmiş eyalette HOI4'teki gibi <b>direniş</b> birikir; sürgündeki hükümeti hâlâ savaşan halklarda ve Sovyet, Yugoslav, Çin, Polonya gibi güçlü partizan hareketlerinde daha hızlı. Eyalette ya da komşusunda tümenin varsa (garnizon) direniş bastırılır. Direniş düşük kaldıkça <b>uyum</b> artar. Direniş eyaletten aldığın sanayi ve kaynağı, ikmal merkezlerini ve yerel ikmali düşürür; yüksek direniş demiryollarını sabote eder ve garnizonuna insan gücü kaybettirir. Uyum ise üretimi geri kazandırır. Siyaset panelindeki <b>İşgal Yasası</b> bu dengeyi belirler: Sert Baskı direnişi bastırır ama uyumu yavaşlatır ve garnizonu yıpratır; Sivil Yönetim ve Yerel Öz Yönetim uyumu hızlandırır. Harita modu “Direniş” işgal bölgelerini gösterir.</p></section>
   <section class="sec"><h3 class="sec-h">İkmal, altyapı ve hava</h3><p class="small" style="margin:0">İkmal başkentten ve büyük şehirlerdeki ikmal merkezlerinden demiryolu ve altyapı boyunca akar; uzaklaştıkça azalır. Bir eyalette ikmalin kaldırabileceğinden fazla tümen yığarsan ya da düşman topraklarında çok derine inersen birliklerin saldırı gücü ve toparlanması düşer, ikmalsiz kalanlar yıpranır. İşgal ettiğin şehirler yarım kapasiteyle ikmal merkezi olur; anakaradan kopuk bölgeler yalnızca limanla, konvoy ve deniz üstünlüğüyle beslenir. “İkmal” harita modunda kırmızı yetersiz, yeşil bol ikmali gösterir; kutular ikmal merkezleridir. İnşaat panelinden altyapı kurarak ikmali ve hareket hızını artırabilirsin. Kuzeyde kışın kar ve tipi saldırıyı, hareketi ve ikmali zorlaştırır, kışa hazırlıksız ordular yıpranır; Doğu Avrupa\'da ilkbahar ve sonbaharda çamur, Asya\'da muson vardır.</p></section>
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden (mühendis, keşif, destek topçusu, tanksavar, uçaksavar, lojistik, sahra hastanesi) oluşur. Piyade savunma ve dayanıklılık, topçu yumuşak saldırı, tank atılım, sert saldırı ve zırh getirir. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>

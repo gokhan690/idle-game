@@ -30,18 +30,20 @@
       const pr = st.prov[i];
       if (!G.isOccupied(i)) { if (pr.rs != null) { delete pr.rs; delete pr.cp; delete pr.sab; } continue; }
       const c = st.C[pr.c];
+      const law = lawOf(c);
       if (pr.rs == null) { pr.rs = 0; pr.cp = 0; }
       // garnizon
       const gar = has(i, pr.c) ? 1 : P[i].a.some((j) => has(j, pr.c)) ? 0.6 : 0;
       const core = st.C[pr.core];
       const exile = core && core.alive && G.atWar(pr.core, pr.c);
       let tgt = 0.2 + (exile ? 0.15 : 0) + (PARTISAN[pr.core] || 0) + (P[i].vp >= 10 ? 0.08 : 0) + (c.mods.resist || 0);
-      tgt *= (1 - 0.45 * gar) * (1 - 0.7 * pr.cp);
+      tgt *= (1 - 0.45 * gar) * (1 - 0.7 * pr.cp) * law.rs;
       tgt = clamp(tgt, 0, 0.9);
       pr.rs += (tgt - pr.rs) * 0.08;
-      pr.cp = clamp(pr.cp + (pr.rs < 0.25 ? 0.008 : pr.rs > 0.45 ? -0.006 : 0.002) + (c.mods.comply || 0) * 0.01, 0, 0.8);
+      const dcp = pr.rs < 0.25 ? 0.008 : pr.rs > 0.45 ? -0.006 : 0.002;
+      pr.cp = clamp(pr.cp + (dcp > 0 ? dcp * law.cp : dcp) + (c.mods.comply || 0) * 0.01, 0, 0.8);
       // garnizon kayıpları (insan gücü)
-      c.dead += pr.rs * pr.rs * 0.4;
+      c.dead += pr.rs * pr.rs * 0.4 * law.gl;
       // sabotaj: demiryolu ve ikmal merkezleri bir süre aksar
       if (pr.rs > 0.4 && (!pr.sab || pr.sab < st.day) && G.rand() < (pr.rs - 0.4) * 0.3) {
         pr.sab = st.day + 30;
@@ -53,7 +55,8 @@
     if (pl && sab[pl]) G.log(`Direniş: işgal altındaki topraklarımızda ${sab[pl]} sabotaj eylemi; demiryolları bir süre aksayacak.`, [pl], 'warn');
   };
   // üretim çarpanı (updateSummaries) ve ikmal çarpanı (logistics)
-  G.occMul = (pr) => (pr.rs == null ? 1 : (1 - 0.6 * pr.rs) * (1 + 0.8 * pr.cp));
+  const lawOf = (c) => g.LAWS.occ.opts[(c && c.laws.occ) ?? 1] || g.LAWS.occ.opts[1];
+  G.occMul = (pr) => (pr.rs == null ? 1 : (1 - 0.6 * pr.rs) * (1 + 0.8 * pr.cp) * lawOf(G.st.C[pr.c]).pr);
   G.occSup = (pr, day) => (pr.rs == null ? 1 : (1 - 0.5 * pr.rs) * (pr.sab && pr.sab >= day ? 0.6 : 1));
   // ülke özeti
   G.occSummary = (tag) => {
