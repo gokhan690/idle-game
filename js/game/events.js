@@ -196,6 +196,21 @@
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
       opts: [{ n: 'Savaş ilan et', fx: () => war('GER', 'USA') }, { n: 'Bekle', fx: () => {} }] },
+    // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
+    // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
+    { id: 'volkssturm', date: '1939-09-01', actor: 'GER', title: 'Volkssturm',
+      text: 'Düşman ordular Reich\'ın sınırlarına dayandı. 16 ile 60 yaş arasındaki bütün erkekler halk milisine çağrılıyor.',
+      cond: () => alive('GER') && G.st.C.GER.enemies.length > 0 && (G.st.C.GER.surrender || 0) >= 0.12, retryUntil: '1949-12-31',
+      opts: [{ n: 'Volkssturm\'u kur', fx: () => {
+        const st = G.st, c = st.C.GER;
+        if (!c.spirits.includes('volkssturm')) { c.spirits.push('volkssturm'); G.recomputeMods(c); }
+        const L = []; for (let i = 0; i < NP; i++) if (st.prov[i].c === 'GER' && st.prov[i].core === 'GER') L.push(i);
+        L.sort((a, b) => P[b].vp - P[a].vp || b - a);
+        const n = Math.min(24, L.length * 2);
+        for (let k = 0; k < n; k++) { const u = G.makeUnit('GER', 'inf', L[k % Math.min(12, L.length)], 0.8); u.xp = 0.05; st.units.push(u); }
+        if (n) G.rebuildUnitIndex();
+        G.log(`Almanya Volkssturm\'u kurdu: ${n} milis tümeni.`, ['GER'], 'major');
+      } }, { n: 'Reddet', fx: () => {} }] },
     { id: 'usajoin', date: '1942-03-01', actor: 'USA', title: 'Demokrasinin Cephaneliği',
       text: 'Avrupa\'daki savaş ABD\'yi de içine çekiyor. Müttefiklere katılalım mı?',
       cond: () => alive('USA') && !facOf('USA') && G.st.factions.allies && G.st.factions.allies.members.some((t) => G.st.C[t].enemies.length),

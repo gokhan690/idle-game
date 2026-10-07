@@ -142,6 +142,7 @@
     total_war: { n: 'Topyekûn Seferberlik', h: 'Bütün ulus savaş için seferber.', fx: { mp: 0.15, ws: 0.1 } },
     sichelschnitt: { n: 'Orak Darbesi', h: 'Batı Seferi: Ardenler üzerinden zırhlı yarma.', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
     barb_drive: { n: 'Doğu Seferi', h: 'Barbarossa\'nın ilk aylarındaki ivme.', fx: { landAtk: 0.15, armAtk: 0.1 } },
+    volkssturm: { n: 'Volkssturm', h: 'Yaşlılar ve gençlerden oluşan halk milisi yurt topraklarını savunuyor.', fx: { mp: 0.3, landDef: 0.1 } },
     ost_crisis: { n: 'Doğu Cephesi Yıpranması', h: 'Uzun savaş Alman insan gücünü tüketiyor.', fx: { mp: -0.15, org: -0.05 } },
     // İtalya
     ethiopia: { n: 'Habeşistan Harekâtı', h: 'Doğu Afrika\'daki savaş kaynakları tüketiyor.', fx: { ws: 0.1, ppM: -0.1 }, rm: ['ita_ethiopia'] },
