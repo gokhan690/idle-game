@@ -107,7 +107,11 @@
       else if (P[i].vp >= 5 && pr.inf >= 2) cap = 6 + Math.min(12, P[i].vp / 2) + 2 * pr.inf;
       else continue;
       if (!own) cap *= 0.6;
-      else if (pr.core !== tag) cap *= 0.5; // işgal edilen şehir: demiryolu onarımı ve direniş
+      else if (pr.core !== tag) {
+        // işgal edilen şehir: demiryolu onarımı (Sovyet hat genişliği dönüşümü) ve direniş; zamanla toparlanır
+        cap *= 0.5;
+        if (pr.o !== tag) { const held = st.day - (pr.cd ?? -999); cap *= 0.2 + 0.8 * Math.min(1, held / 150); if (pr.oc === 'SOV' && tag !== 'SOV') cap *= 0.7; }
+      }
       if (own && !conn[i]) {
         // anakaradan kopuk: yalnızca limanla, konvoy ve deniz üstünlüğüne bağlı
         if (P[i].c && P[i].s.length) { const sup = G.navalSupremacy ? G.navalSupremacy(tag, NP + P[i].s[0]) : 1; cap *= 0.55 * convR * (sup > 0.4 ? 1 : 0.4); }
@@ -162,7 +166,7 @@
     if (r >= 0.999) return 1;
     const s = u._s || G.unitStats(u);
     const red = Math.min(0.7, (s.t.sup || 0) + (s.gb ? s.gb.sup : 0) + (G.st.C[u.t].mods.supply || 0));
-    return Math.max(0.4, 1 - (1 - r) * 0.5 * (1 - red));
+    return Math.max(0.35, 1 - (1 - r) * 0.7 * (1 - red));
   };
   // Günlük yıpranma: ikmalsizlik ve kış
   G.attrition = (u) => {
@@ -170,7 +174,7 @@
     const st = G.st;
     const r = G.supplyRatio(u);
     let loss = 0;
-    if (r < 0.6) loss += 0.0025 * (0.6 - r) / 0.6;
+    if (r < 0.7) loss += 0.004 * (0.7 - r) / 0.7;
     const sn = G.wx.snow[u.loc];
     if (sn > 0.5) {
       const pr = st.prov[u.loc];

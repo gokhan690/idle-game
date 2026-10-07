@@ -252,7 +252,7 @@
     for (const s of conf.states) for (const n of s.p) {
       const pr = st.prov[n], o = conf.own[n];
       if (o && o.t !== L) {
-        pr.o = o.t; pr.core = o.t;
+        pr.o = o.t; if (pr.oc === o.t) pr.core = o.t; // ilhak edilen yabancı toprak asli olmaz (HOI4)
         if (!G.atWar(o.t, pr.c)) pr.c = o.t;
         gained[o.by || o.t] = (gained[o.by || o.t] || 0) + 1;
       } else pr.c = L; // işgal sona erer
@@ -277,7 +277,7 @@
       if (rem < conf.startW * 0.1) {
         // küçük artık: işgal edenine, yoksa en büyük katkı sahibine
         full = true;
-        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o !== L) continue; const k = conf.parts.some((p) => p.t === conf.ctrl[i] && st.C[p.t]?.alive) ? conf.ctrl[i] : top; pr.o = pr.c = pr.core = k; gained[k] = (gained[k] || 0) + 1; }
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o !== L) continue; const k = conf.parts.some((p) => p.t === conf.ctrl[i] && st.C[p.t]?.alive) ? conf.ctrl[i] : top; pr.o = pr.c = k; if (pr.oc === k) pr.core = k; gained[k] = (gained[k] || 0) + 1; }
       }
     }
     // başka ülkelerin topraklarındaki L birlikleri dağılır

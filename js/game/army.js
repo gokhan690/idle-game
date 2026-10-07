@@ -17,27 +17,45 @@
   };
   // Seviye çarpanları: piyade/topçu %15, tank %25 (model başına)
   G.lvMul = (kind, l) => (kind === 'tank' ? 1 + 0.25 * (l - 1) : kind === 'art' || kind === 'inf' ? 1 + 0.15 * (l - 1) : 1);
+  // Tank şasi seviyeleri (HOI4: hafif → orta → ağır → modern; zırh ve delme hızla artar)
+  const TANK_TIERS = [null,
+    { a: 1, d: 1, r: 1, p: 1, s: 1, rel: 0.9 },
+    { a: 1.6, d: 1.4, r: 3, p: 2.8, s: 1, rel: 0.9 },
+    { a: 1.85, d: 1.6, r: 5, p: 3.6, s: 0.85, rel: 0.88 },
+    { a: 2.4, d: 2, r: 6, p: 4.6, s: 1.05, rel: 0.92 }];
+  G.tankBase = (L) => {
+    L = Math.max(1, Math.min(4, L || 1));
+    const lo = Math.floor(L), hi = Math.min(4, lo + 1), f = L - lo, A = TANK_TIERS[lo], B = TANK_TIERS[hi], o = {};
+    for (const k of Object.keys(A)) o[k] = A[k] + (B[k] - A[k]) * f;
+    return o;
+  };
+  G.tankLevelOf = (a) => { for (let L = 1; L < 4; L++) { const A = TANK_TIERS[L].a, B = TANK_TIERS[L + 1].a; if (a <= B) return L + Math.max(0, (a - A) / (B - A)); } return 4; };
+  // HOI4 tümen istatistikleri: saldırı/savunma/atılım toplanır; sertlik ortalama; zırh 0,3·maks+0,7·ort; delme 0,4·maks+0,6·ort
+  const ST4 = ['sa', 'ha', 'df', 'bt'];
   G.computeTemplate = (c, src) => {
-    const atkK = { inf: 0, art: 0, tank: 0, flat: 0 }, defK = { inf: 0, art: 0, tank: 0, flat: 0 };
-    let orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSumT = 0, prcMaxT = 0, prcSumO = 0, prcMaxO = 0, tanks = 0, mob = 0, amph = 0;
+    const K = { inf: { sa: 0, ha: 0, df: 0, bt: 0 }, art: { sa: 0, ha: 0, df: 0, bt: 0 }, tank: { sa: 0, ha: 0, df: 0, bt: 0 }, flat: { sa: 0, ha: 0, df: 0, bt: 0 } };
+    let orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSumT = 0, prcMaxT = 0, prcSumO = 0, prcMaxO = 0, tanks = 0, mob = 0, amph = 0, hdS = 0, hp = 0;
     const eq = {}, bonusRaw = {};
     for (const [k, cnt] of Object.entries(src.b || {})) {
       const b = g.BATS[k]; if (!b || !cnt) continue;
-      atkK[b.kind] += b.atk * cnt; defK[b.kind] += b.def * cnt; orgS += b.org * cnt; nb += cnt;
+      for (const f of ST4) K[b.kind][f] += (b[f] || 0) * cnt;
+      orgS += b.org * cnt; nb += cnt; hdS += (b.hd || 0) * cnt; hp += (b.hp || 10) * cnt;
       spd = Math.min(spd, b.spd); mp += b.mp * cnt; w += b.w * cnt;
-      armSum += b.arm * cnt; armMax = Math.max(armMax, b.arm);
-      if (b.kind === 'tank') { prcSumT += b.prc * cnt; prcMaxT = Math.max(prcMaxT, b.prc); tanks += cnt; } else { prcSumO += b.prc * cnt; prcMaxO = Math.max(prcMaxO, b.prc); }
+      armSum += (b.ap || 0) * cnt; armMax = Math.max(armMax, b.ap || 0);
+      if (b.kind === 'tank') { prcSumT += b.pc * cnt; prcMaxT = Math.max(prcMaxT, b.pc); tanks += cnt; } else { prcSumO += b.pc * cnt; prcMaxO = Math.max(prcMaxO, b.pc); }
       if (b.mob) mob += cnt;
       if (b.amph) amph += cnt;
       for (const [e, q] of Object.entries(b.eq)) eq[e] = (eq[e] || 0) + q * cnt;
       if (b.bonus) for (const [te, v] of Object.entries(b.bonus)) bonusRaw[te] = (bonusRaw[te] || 0) + v * cnt;
     }
-    if (!nb) { nb = 1; spd = 4; orgS = 10; }
+    if (!nb) { nb = 1; spd = 4; orgS = 10; hp = 10; }
     let ent = 0, spdM = 0, prcAdd = 0, aa = 0, sup = 0, cas = 0;
     for (const [k, on] of Object.entries(src.s || {})) {
       const s2 = g.SUPPORTS[k]; if (!s2 || !on) continue;
-      atkK[s2.kind === 'art' ? 'art' : 'flat'] += s2.atk || 0; defK.flat += s2.def || 0; ent += s2.ent || 0; spdM += s2.spdM || 0; prcAdd += s2.prcAdd || 0;
-      aa += s2.aa || 0; sup += s2.sup || 0; cas += s2.cas || 0; mp += s2.mp || 0;
+      const kk = s2.kind === 'art' ? 'art' : 'flat';
+      for (const f of ST4) K[kk][f] += s2[f] || 0;
+      ent += s2.ent || 0; spdM += s2.spdM || 0; prcAdd += s2.prcAdd || 0;
+      aa += s2.aa || 0; sup += s2.sup || 0; cas += s2.cas || 0; mp += s2.mp || 0; hp += 2;
       for (const [e, q] of Object.entries(s2.eq)) eq[e] = (eq[e] || 0) + q;
     }
     const bonus = {};
@@ -50,22 +68,27 @@
     const tankShare = tanks / nb;
     const t = {
       n: src.n, s: shortOf(), mp: Math.round(mp * 10) / 10, eq, days: Math.round(30 + 4 * nb + 8 * tanks),
-      atkK, defK, org: orgS / nb, spd, armBase: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
-      prcT: tanks ? (0.4 * prcMaxT + 0.6 * prcSumT / nb) : 0, prcO: (1 - tankShare) * (0.4 * prcMaxO + 0.6 * prcSumO / Math.max(1, nb - tanks)) + prcAdd,
-      w, bonus, amph: amph / nb, mob: mob / nb, tanks, ent, spdM, aa, sup, cas, nb,
+      K, org: orgS / nb, spd, hd: hdS / nb, hp, armBase: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
+      prcT: tanks ? tankShare * (0.4 * prcMaxT + 0.6 * prcSumT / tanks) : 0, prcO: (1 - tankShare) * (0.4 * prcMaxO + 0.6 * prcSumO / Math.max(1, nb - tanks)) + prcAdd,
+      w, bonus, amph: amph / nb, mob: mob / nb, tanks, ent, spdM, aa, sup, cas, nb, atS: prcAdd > 0 ? 1 : 0,
     };
     // ülkenin mevcut teçhizat seviyesiyle gösterim değerleri
     const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank'), tq: tanks && G.stockVec ? G.stockVec(c, 'tank') : null };
     Object.assign(t, G.levelStats(t, L));
     return t;
   };
+  // Teçhizat seviyesine göre tümen değerleri (tank: tasarım vektörü a=yumuşak, p=sert saldırı ve delme, d=savunma/atılım, r=zırh)
   G.levelStats = (t, L) => {
-    let atk = t.atkK.flat, def = t.defK.flat;
-    for (const k of ['inf', 'art']) { const m = G.lvMul(k, L[k] || 1); atk += t.atkK[k] * m; def += t.defK[k] * m; }
-    // tank: tasarım vektörü (saldırı, yarma, zırh, delme) ya da eski seviye çarpanı
-    const tq = L.tq, tm = G.lvMul('tank', L.tank || 1);
-    atk += t.atkK.tank * (tq ? tq.a : tm); def += t.defK.tank * (tq ? tq.d : tm);
-    return { atk, def, arm: t.armBase * (t.tanks ? (tq ? tq.r : tm) : 1), prc: t.prcO + t.prcT * (tq ? tq.p : tm) };
+    const mi = G.lvMul('inf', L.inf || 1), ma = G.lvMul('art', L.art || 1), tq = L.tq || (t.tanks ? G.tankBase(L.tank || 1) : null);
+    const T = t.K.tank, fa = tq ? tq.a : 1, fp = tq ? tq.p : 1, fd = tq ? tq.d : 1;
+    const o = {};
+    for (const f of ST4) o[f] = t.K.flat[f] + t.K.inf[f] * mi + t.K.art[f] * ma;
+    o.sa += T.sa * fa; o.ha += T.ha * fp; o.df += T.df * fd; o.bt += T.bt * fd;
+    o.arm = t.armBase * (t.tanks ? tq.r : 1);
+    o.prc = t.prcO * (1 + (mi - 1) * 0.5) + t.prcT * fp;
+    // eski alanlar (arayüz özetleri için)
+    o.atk = o.sa + o.ha; o.def = o.df;
+    return o;
   };
   G.invalidateTemplates = (c) => { c._tc = {}; };
 
@@ -168,8 +191,10 @@
     const t = G.T(u.t, u.u), c = G.st.C[u.t], m = c.mods;
     const ls = u.lv ? G.levelStats(t, u.lv) : t;
     const xm = G.xpMul(u.xp);
-    let atk = ls.atk * (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob) * xm;
-    let def = ls.def * (1 + (m.landDef || 0)) * xm;
+    const aM = (1 + (m.landAtk || 0) + (m.armAtk || 0) * t.mob) * xm;
+    let sa = ls.sa * aM, ha = ls.ha * aM;
+    let df = ls.df * (1 + (m.landDef || 0)) * xm;
+    let bt = ls.bt * (1 + (m.landAtk || 0) * 0.5 + (m.brk || 0) + (m.armAtk || 0) * t.mob) * xm;
     const org = t.org * (1 + (m.org || 0));
     let spd = t.spd * (1 + (m.speed || 0) + t.spdM) * 2.4;
     if (t.tanks && u.lv && u.lv.tq) spd *= 1 + (u.lv.tq.s - 1) * Math.min(1, 2 * t.tanks / t.nb);
@@ -178,10 +203,12 @@
     if (gen) {
       gb = G.genBonus(gen);
       const k = u.army ? 1 : 0.35; // YZ komutanı genel etki
-      atk *= 1 + k * (gb.atk + gb.armAtk * t.mob); def *= 1 + k * gb.def; spd *= 1 + k * gb.speed;
+      const ak = 1 + k * (gb.atk + gb.armAtk * t.mob);
+      sa *= ak; ha *= ak; bt *= ak; df *= 1 + k * gb.def; spd *= 1 + k * gb.speed;
     }
     u._sd = G.st.day;
-    return (u._s = { atk, def, org, arm: ls.arm, prc: ls.prc + (m.prc || 0) * (1 - t.mob * 0.6), spd, t, gb });
+    // tanksavar teknolojisi yalnızca tanksavar desteği olan tümenlerin delmesini tam artırır (HOI4: AT teçhizatı)
+    return (u._s = { sa, ha, df, bt, atk: sa + ha, def: df, hd: t.hd, hp: t.hp, org, arm: ls.arm, prc: ls.prc + (m.prc || 0) * (t.atS ? 1 : 0.25) * (1 - t.mob * 0.6), spd, t, gb });
   };
 
   // ---------- Ordular ----------

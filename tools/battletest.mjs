@@ -38,3 +38,8 @@ run({ inf: 6 }, { inf: 3 }, { fort: 3 });
 run({ arm: 3, inf: 3 }, { inf: 3 }, { fort: 3 });
 run({ inf: 6 }, { inf: 2 }, { te: 3 });
 run({ inf: 8 }, { inf: 4 }, { ent: 0 });
+run({ inf: 1 }, { inf: 1 });
+run({ inf: 2 }, { inf: 1 });
+run({ arm: 1 }, { inf: 1 });
+run({ arm: 2 }, { inf: 1 });
+run({ arm: 2, inf: 4 }, { inf: 3 }, { te: 1 });

@@ -31,7 +31,7 @@
 
   // Teçhizat: maliyet (IC), fabrika türü, fabrika başına günlük kaynak ihtiyacı (res)
   g.EQUIP = {
-    inf: { n: 'Piyade Teçhizatı', s: 'Piyade T.', cost: 0.5, fac: 'mil', res: { steel: 0.5 } },
+    inf: { n: 'Piyade Teçhizatı', s: 'Piyade T.', cost: 0.43, fac: 'mil', res: { steel: 0.5 } },
     sup: { n: 'Destek Teçhizatı', s: 'Destek T.', cost: 4, fac: 'mil', res: { steel: 0.4 } },
     art: { n: 'Topçu', s: 'Topçu', cost: 3.5, fac: 'mil', res: { steel: 0.6, tun: 0.3 } },
     at: { n: 'Tanksavar Topu', s: 'Tanksavar', cost: 4, fac: 'mil', res: { steel: 0.4, tun: 0.4 }, req: 'at1' },
@@ -59,21 +59,23 @@
   g.PLANES = ['fig', 'cas', 'bom'];
 
   // Tümen tasarımcısı: taburlar (çizgi birimleri) ve destek bölükleri
+  // HOI4 tarzı tabur değerleri (1936 teçhizatıyla): sa yumuşak saldırı, ha sert saldırı, df savunma, bt atılım,
+  // hd sertlik (0-1), ap zırh, pc zırh delme, hp can (güç), org moral, w genişlik
   g.BATS = {
-    inf: { n: 'Piyade', s: 'PİY', w: 2, atk: 1.6, def: 3.0, org: 60, spd: 4, mp: 1.5, eq: { inf: 150 }, arm: 0, prc: 2, kind: 'inf' },
-    art: { n: 'Topçu', s: 'TOP', w: 3, atk: 3.8, def: 0.6, org: 20, spd: 4, mp: 0.5, eq: { inf: 20, art: 18 }, arm: 0, prc: 6, kind: 'art' },
-    mtn: { n: 'Dağ Piyadesi', s: 'DAĞ', w: 2, atk: 1.6, def: 3.3, org: 70, spd: 4, mp: 1.5, eq: { inf: 170 }, arm: 0, prc: 2, kind: 'inf', bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
-    cav: { n: 'Süvari', s: 'SÜV', w: 2, atk: 1.4, def: 2.4, org: 60, spd: 6, mp: 1.2, eq: { inf: 120 }, arm: 0, prc: 1, kind: 'inf' },
-    mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, atk: 1.7, def: 3.0, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, arm: 2, prc: 3, kind: 'inf', mob: 1, req: 'mot1' },
-    arm: { n: 'Tank', s: 'TNK', w: 2, atk: 7.5, def: 2.0, org: 30, spd: 9, mp: 0.6, eq: { tank: 40 }, arm: 30, prc: 35, kind: 'tank', mob: 1, req: 'tank1' },
-    mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, atk: 1.6, def: 2.8, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, arm: 0, prc: 2, kind: 'inf', amph: 1, req: 'mar1' },
+    inf: { n: 'Piyade', s: 'PİY', w: 2, sa: 6, ha: 1, df: 22, bt: 3, hd: 0, ap: 0, pc: 4, hp: 25, org: 60, spd: 4, mp: 1.5, eq: { inf: 150 }, kind: 'inf' },
+    art: { n: 'Topçu', s: 'TOP', w: 3, sa: 25, ha: 2, df: 10, bt: 6, hd: 0, ap: 0, pc: 5, hp: 5, org: 20, spd: 4, mp: 0.5, eq: { inf: 20, art: 18 }, kind: 'art' },
+    mtn: { n: 'Dağ Piyadesi', s: 'DAĞ', w: 2, sa: 6, ha: 1, df: 25, bt: 3.5, hd: 0, ap: 0, pc: 4, hp: 25, org: 70, spd: 4, mp: 1.5, eq: { inf: 170 }, kind: 'inf', bonus: { mountain: 0.35, hills: 0.2 }, req: 'mtn1' },
+    cav: { n: 'Süvari', s: 'SÜV', w: 2, sa: 5, ha: 1, df: 18, bt: 3, hd: 0, ap: 0, pc: 3, hp: 25, org: 70, spd: 6, mp: 1.2, eq: { inf: 120 }, kind: 'inf' },
+    mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, sa: 6, ha: 1, df: 22, bt: 3, hd: 0.1, ap: 0, pc: 4, hp: 25, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, kind: 'inf', mob: 1, req: 'mot1' },
+    arm: { n: 'Tank', s: 'TNK', w: 2, sa: 18, ha: 6, df: 4, bt: 36, hd: 0.8, ap: 10, pc: 15, hp: 2, org: 10, spd: 9, mp: 0.6, eq: { tank: 40 }, kind: 'tank', mob: 1, req: 'tank1' },
+    mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, sa: 6, ha: 1, df: 20, bt: 3, hd: 0, ap: 0, pc: 4, hp: 25, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, kind: 'inf', amph: 1, req: 'mar1' },
   };
   g.SUPPORTS = {
-    eng: { n: 'İstihkâm', d: '+2 savunma, siper hızı +%30', def: 2, ent: 0.3, mp: 0.3, eq: { sup: 10 } },
-    rec: { n: 'Keşif', d: '+0,8 saldırı, hız +%10', atk: 0.8, spdM: 0.1, mp: 0.2, eq: { sup: 8, inf: 20 } },
-    sart: { n: 'Destek Topçusu', d: '+2,5 saldırı', atk: 2.5, mp: 0.3, eq: { art: 12 }, kind: 'art' },
-    sat: { n: 'Tanksavar', d: '+15 zırh delme', prcAdd: 15, atk: 0.4, mp: 0.3, eq: { at: 12 }, req: 'at1' },
-    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +0,5 savunma', aa: 0.15, def: 0.5, mp: 0.3, eq: { aa: 12 }, req: 'aa1' },
+    eng: { n: 'İstihkâm', d: '+4 savunma, +1 atılım, siper hızı +%30', df: 4, bt: 1, ent: 0.3, mp: 0.3, eq: { sup: 10 } },
+    rec: { n: 'Keşif', d: '+1 yumuşak saldırı, hız +%10', sa: 1, df: 1, spdM: 0.1, mp: 0.2, eq: { sup: 8, inf: 20 } },
+    sart: { n: 'Destek Topçusu', d: '+12 yumuşak saldırı, +2 atılım', sa: 12, ha: 1, df: 3, bt: 2, mp: 0.3, eq: { art: 12 }, kind: 'art' },
+    sat: { n: 'Tanksavar', d: '+8 sert saldırı, +15 zırh delme', sa: 1, ha: 8, df: 2, bt: 1, prcAdd: 15, mp: 0.3, eq: { at: 12 }, req: 'at1' },
+    saa: { n: 'Uçaksavar', d: 'Düşman hava etkisi -%15, +2 yumuşak saldırı', sa: 2, ha: 1, df: 2, aa: 0.15, mp: 0.3, eq: { aa: 12 }, req: 'aa1' },
     log: { n: 'Lojistik', d: 'İkmal cezası -%35', sup: 0.35, mp: 0.3, eq: { sup: 10, mot: 10 }, req: 'mot1' },
     hos: { n: 'Sahra Hastanesi', d: 'Kayıplar -%30', cas: 0.3, mp: 0.3, eq: { sup: 8 }, req: 'sup1' },
   };
@@ -83,13 +85,15 @@
     mtn: { n: 'Dağ Tümeni', b: { mtn: 6 }, s: { eng: 1 } },
     cav: { n: 'Süvari Tümeni', b: { cav: 6 }, s: {} },
     mot: { n: 'Motorize Tümen', b: { mot: 6, art: 1 }, s: {} },
-    arm: { n: 'Zırhlı Tümen', b: { arm: 3, mot: 2 }, s: { rec: 1 } },
+    arm: { n: 'Zırhlı Tümen', b: { arm: 3, mot: 2, art: 1 }, s: { rec: 1 } },
     mar: { n: 'Deniz Piyadesi Tümeni', b: { mar: 5, art: 1 }, s: {} },
   };
 
   // Teknolojiler: cat, year, pre (önkoşul), fx (etkiler)
   const T = (id, n, cat, year, pre, fx, d) => ({ id, n, cat, year, pre, fx, d });
-  g.TECH_CATS = { inf: 'Piyade', art: 'Topçu', arm: 'Zırh', air: 'Hava', nav: 'Deniz', ind: 'Sanayi', doc: 'Doktrin' };
+  g.TECH_CATS = { inf: 'Piyade', art: 'Topçu', arm: 'Zırh', air: 'Hava', nav: 'Deniz', ind: 'Sanayi', elec: 'Elektronik', doc: 'Doktrin' };
+  // kara doktrini dalları (yalnızca biri)
+  g.DOC_TREES = { m: 'Mobil Savaş', f: 'Üstün Ateş Gücü', g: 'Büyük Savaş Planı', a: 'Kitle Saldırısı' };
   g.TECHS = [
     T('inf1', 'Piyade Teçhizatı I', 'inf', 1936, [], { eq_inf: 1 }, 'Temel tüfek ve makineli tüfekler.'),
     T('sup1', 'Destek Bölükleri', 'inf', 1936, [], { org: 0.05, landDef: 0.05 }, 'İstihkâm ve keşif bölükleri: +%5 savunma ve moral.'),
@@ -124,7 +128,7 @@
     T('dd2', 'Muhrip II', 'nav', 1940, ['dd1'], { eq_dd: 2 }, ''),
     T('ss2', 'Denizaltı II', 'nav', 1940, ['ss1'], { eq_ss: 2 }, ''),
     T('bb2', 'Zırhlı Gemi II', 'nav', 1940, ['bb1'], { eq_bb: 2, eq_cr: 2 }, ''),
-    T('radar', 'Radar', 'nav', 1941, ['dd2'], { navy: 0.15, air: 0.1 }, 'Deniz gücü +%15, hava +%10.'),
+    T('radar', 'Radar', 'elec', 1941, ['radio1'], { navy: 0.15, air: 0.1 }, 'Deniz gücü +%15, hava +%10.'),
     T('ind1', 'Sanayi Teknikleri I', 'ind', 1936, [], { factory: 0.1 }, 'Fabrika verimi +%10.'),
     T('con1', 'İnşaat Teknikleri I', 'ind', 1936, [], { construct: 0.1 }, 'İnşaat hızı +%10.'),
     T('eff1', 'Üretim Verimliliği I', 'ind', 1937, ['ind1'], { effCap: 0.1 }, 'Üretim verim tavanı +%10.'),
@@ -133,21 +137,44 @@
     T('syn1', 'Sentetik Yakıt', 'ind', 1939, ['ind2'], { oil: 20 }, 'Günlük +20 petrol.'),
     T('eff2', 'Üretim Verimliliği II', 'ind', 1939, ['eff1'], { effCap: 0.1 }, ''),
     T('ind3', 'Sanayi Teknikleri III', 'ind', 1940, ['ind2'], { factory: 0.1 }, ''),
-    T('comp', 'Elektromekanik Hesaplama', 'ind', 1940, ['ind2'], { research: 0.1 }, 'Araştırma hızı +%10.'),
+    T('comp', 'Elektromekanik Hesaplama', 'elec', 1940, ['radio1'], { research: 0.1 }, 'Araştırma hızı +%10.'),
     T('con3', 'İnşaat Teknikleri III', 'ind', 1940, ['con2'], { construct: 0.15 }, ''),
     T('ind4', 'Sanayi Teknikleri IV', 'ind', 1942, ['ind3'], { factory: 0.1 }, ''),
     T('eff3', 'Üretim Verimliliği III', 'ind', 1941, ['eff2'], { effCap: 0.1 }, ''),
-    T('atom', 'Atom Araştırması', 'ind', 1944, ['comp'], { research: 0.1 }, ''),
-    T('doc_mob', 'Seri Harp (Blitzkrieg)', 'doc', 1936, [], { armAtk: 0.15, speed: 0.1 }, 'Zırhlı ve motorize saldırısı +%15, hız +%10.'),
-    T('doc_fire', 'Üstün Ateş Gücü', 'doc', 1936, [], { landAtk: 0.1 }, 'Tüm kara birlikleri saldırı +%10.'),
-    T('doc_mass', 'Kitle Saldırısı', 'doc', 1936, [], { mp: 0.15, landDef: 0.05 }, 'İnsan gücü +%15, savunma +%5.'),
-    T('doc_grand', 'Büyük Savaş Planı', 'doc', 1936, [], { entrench: 0.5, landDef: 0.1 }, 'Tahkimat hızı +%50, savunma +%10.'),
-    T('doc_air', 'Hava Üstünlüğü', 'doc', 1937, [], { air: 0.25 }, 'Hava gücü +%25.'),
+    T('atom', 'Atom Araştırması', 'elec', 1944, ['comp'], { research: 0.1 }, ''),
+    // Kara doktrinleri (HOI4): dört daldan yalnızca biri seçilebilir
+    T('dm1', 'Mobil Savaş: Hareketli Savunma', 'doc', 1936, [], { armAtk: 0.1, speed: 0.05 }, 'Zırhlı ve motorize saldırısı +%10, hız +%5.'),
+    T('dm2', 'Mobil Savaş: Yıldırım Harbi', 'doc', 1938, ['dm1'], { armAtk: 0.1, brk: 0.1 }, 'Zırhlı saldırı +%10, atılım +%10.'),
+    T('dm3', 'Mobil Savaş: Derin Sızma', 'doc', 1940, ['dm2'], { armAtk: 0.1, org: 0.05, speed: 0.05 }, 'Zırhlı saldırı +%10, moral +%5, hız +%5.'),
+    T('dm4', 'Mobil Savaş: Birleşik Silahlar', 'doc', 1942, ['dm3'], { landAtk: 0.05, brk: 0.1 }, 'Kara saldırısı +%5, atılım +%10.'),
+    T('df1', 'Üstün Ateş Gücü: Ateş Desteği', 'doc', 1936, [], { landAtk: 0.08 }, 'Kara saldırısı +%8.'),
+    T('df2', 'Üstün Ateş Gücü: Ağır Topçu', 'doc', 1938, ['df1'], { landAtk: 0.07, landDef: 0.05 }, 'Saldırı +%7, savunma +%5.'),
+    T('df3', 'Üstün Ateş Gücü: Entegre Destek', 'doc', 1940, ['df2'], { landAtk: 0.08, org: 0.05 }, 'Saldırı +%8, moral +%5.'),
+    T('df4', 'Üstün Ateş Gücü: Ateş Barajı', 'doc', 1942, ['df3'], { landAtk: 0.1 }, 'Kara saldırısı +%10.'),
+    T('dg1', 'Büyük Savaş Planı: Tahkimli Hatlar', 'doc', 1936, [], { entrench: 0.5, landDef: 0.08 }, 'Siper hızı +%50, savunma +%8.'),
+    T('dg2', 'Büyük Savaş Planı: Planlı Taarruz', 'doc', 1938, ['dg1'], { plan: 0.1, landDef: 0.05 }, 'Planlama tavanı +%10, savunma +%5.'),
+    T('dg3', 'Büyük Savaş Planı: Derinlemesine Savunma', 'doc', 1940, ['dg2'], { landDef: 0.1, org: 0.05 }, 'Savunma +%10, moral +%5.'),
+    T('dg4', 'Büyük Savaş Planı: Metodik Savaş', 'doc', 1942, ['dg3'], { plan: 0.1, landAtk: 0.08 }, 'Planlama +%10, saldırı +%8.'),
+    T('da1', 'Kitle Saldırısı: Kitle Seferberliği', 'doc', 1936, [], { mp: 0.15, org: 0.05 }, 'İnsan gücü +%15, moral +%5.'),
+    T('da2', 'Kitle Saldırısı: Derin Muharebe', 'doc', 1938, ['da1'], { landDef: 0.05, armAtk: 0.05, org: 0.05 }, 'Savunma +%5, zırhlı +%5, moral +%5.'),
+    T('da3', 'Kitle Saldırısı: Halk Savaşı', 'doc', 1940, ['da2'], { mp: 0.15, landDef: 0.08 }, 'İnsan gücü +%15, savunma +%8.'),
+    T('da4', 'Kitle Saldırısı: Muhafız Tümenleri', 'doc', 1942, ['da3'], { landAtk: 0.1, org: 0.05 }, 'Saldırı +%10, moral +%5.'),
+    T('doc_air', 'Hava Üstünlüğü Doktrini', 'doc', 1937, [], { air: 0.25 }, 'Hava gücü +%25.'),
     T('doc_nav', 'Deniz Doktrini', 'doc', 1937, [], { navy: 0.2, invasion: 0.25 }, 'Deniz gücü +%20, çıkarma cezası azalır.'),
-    T('doc_mob2', 'Derin Taarruz', 'doc', 1940, ['doc_mob'], { armAtk: 0.15, org: 0.05 }, ''),
-    T('doc_fire2', 'Entegre Destek', 'doc', 1940, ['doc_fire'], { landAtk: 0.1 }, ''),
-    T('doc_mass2', 'Halk Savaşı', 'doc', 1940, ['doc_mass'], { mp: 0.15, landDef: 0.1 }, ''),
-    T('doc_grand2', 'Tahkimli Savunma', 'doc', 1940, ['doc_grand'], { landDef: 0.15 }, ''),
+    // Ek HOI4 teknolojileri
+    T('sup3', 'Gelişmiş Destek Bölükleri', 'inf', 1942, ['sup2'], { org: 0.05, landDef: 0.05 }, 'Moral ve savunma +%5.'),
+    T('inf4', 'Piyade Teçhizatı IV', 'inf', 1944, ['inf3'], { eq_inf: 4 }, 'Modern piyade teçhizatı.'),
+    T('art4', 'Topçu IV', 'art', 1944, ['art3'], { eq_art: 4 }, 'Kendinden hareketli topçu.'),
+    T('aa2', 'Gelişmiş Uçaksavar', 'art', 1941, ['aa1'], { aa: 0.2 }, 'Düşman hava etkisi -%20.'),
+    T('cas3', 'Yakın Destek III', 'air', 1943, ['cas2'], { eq_cas: 3 }, ''),
+    T('bom3', 'Bombardıman III', 'air', 1943, ['bom2'], { eq_bom: 3 }, ''),
+    T('con4', 'İnşaat Teknikleri IV', 'ind', 1942, ['con3'], { construct: 0.15 }, ''),
+    T('eff4', 'Üretim Verimliliği IV', 'ind', 1943, ['eff3'], { effCap: 0.1 }, ''),
+    T('syn2', 'Gelişmiş Sentetik Yakıt', 'ind', 1942, ['syn1'], { oil: 20 }, 'Günlük +20 petrol.'),
+    T('radio1', 'Muharebe Telsizi', 'elec', 1936, [], { org: 0.03 }, 'Moral +%3.'),
+    T('enc1', 'Şifreleme', 'elec', 1938, ['radio1'], { landDef: 0.03 }, 'Düşman şifre çözmesine karşı: savunma +%3.'),
+    T('dec1', 'Şifre Çözme', 'elec', 1939, ['enc1'], { landAtk: 0.03 }, 'Düşman telsiz trafiği okunur: saldırı +%3.'),
+    T('comp2', 'Gelişmiş Hesaplama', 'elec', 1942, ['comp'], { research: 0.1 }, 'Araştırma hızı +%10.'),
   ];
   g.TECH_BY_ID = Object.fromEntries(g.TECHS.map((t) => [t.id, t]));
   // Başlangıç teknolojileri (ülke tl seviyesine göre)
@@ -155,7 +182,7 @@
     ['inf1', 'art1', 'fig1', 'dd1', 'ss1'],
     ['sup1', 'bb1', 'cas1', 'con1'],
     ['mot1', 'tank1', 'ind1', 'bom1', 'mtn1'],
-    ['eff1', 'doc_mob'],
+    ['eff1', 'DOC1'],
   ];
 
   g.FOCUS_DAYS = 70;

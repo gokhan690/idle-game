@@ -3,14 +3,15 @@
   const G = g.G;
   const { P, NP } = G;
 
-  const TECH_PRIORITY = ['ind1', 'con1', 'inf1', 'art1', 'sup1', 'ind2', 'con2', 'eff1', 'doc_fire', 'doc_grand', 'doc_mass', 'doc_mob', 'mot1', 'tank1', 'fig1', 'inf2', 'art2', 'at1', 'tank2', 'aa1', 'fig2', 'cas1', 'eff2', 'ind3', 'con3', 'syn1', 'mtn1', 'sup2', 'doc_air', 'comp', 'cas2', 'tank3', 'inf3', 'art3', 'at2', 'eff3', 'ind4', 'fig3', 'doc_fire2', 'doc_mob2', 'doc_grand2', 'doc_mass2', 'bom1', 'bom2', 'tank4', 'jet', 'mar1', 'dd1', 'ss1', 'dd2', 'ss2', 'bb1', 'bb2', 'cv1', 'radar', 'doc_nav', 'atom'];
+  const TECH_PRIORITY = ['ind1', 'con1', 'inf1', 'art1', 'sup1', 'ind2', 'con2', 'eff1', 'D1', 'radio1', 'mot1', 'tank1', 'fig1', 'inf2', 'art2', 'at1', 'tank2', 'aa1', 'fig2', 'cas1', 'D2', 'eff2', 'ind3', 'con3', 'syn1', 'mtn1', 'sup2', 'doc_air', 'comp', 'cas2', 'tank3', 'inf3', 'art3', 'at2', 'eff3', 'D3', 'ind4', 'fig3', 'enc1', 'dec1', 'aa2', 'sup3', 'D4', 'con4', 'eff4', 'syn2', 'bom1', 'bom2', 'tank4', 'inf4', 'art4', 'cas3', 'bom3', 'comp2', 'jet', 'mar1', 'dd1', 'ss1', 'dd2', 'ss2', 'bb1', 'bb2', 'cv1', 'radar', 'doc_nav', 'atom'];
 
   G.aiResearch = (c) => {
     const yr = G.year(G.st.day);
     while (c.res.length < c.mods.slots) {
       let pick = null;
-      for (const id of TECH_PRIORITY) {
-        const t = g.TECH_BY_ID[id];
+      for (const id0 of TECH_PRIORITY) {
+        const id = /^D[1-4]$/.test(id0) ? 'd' + (G.docTree(c) || G.docPref(c)) + id0[1] : id0;
+        const t = g.TECH_BY_ID[id]; if (!t) continue;
         if (!G.techAvailable(c, id) || t.year > yr + 1) continue;
         if (t.cat === 'nav' && (c.sum.dock || 0) < 2) continue;
         pick = id; break;
@@ -62,19 +63,23 @@
 
   G.aiProduction = (c) => {
     // eksik teçhizata göre hatları yeniden dağıt
-    const need = { inf: 0, art: 0, mot: 0, tank: 0 };
+    const need = { inf: 0, art: 0, mot: 0, tank: 0, at: 0, sup: 0, aa: 0 };
     for (const u of G.st.units) if (u.t === c.tag) for (const [e, n] of Object.entries(G.T(u.t, u.u).eq)) need[e] += n * (1 - u.str) + n * 0.15;
     for (const t of c.train) for (const [e, n] of Object.entries(G.T(c.tag, t.u).eq)) need[e] += n;
     const s = c.sum;
     const total = s.mil;
     if (!total) { c.lines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock'); }
     const w = {};
-    const def = c.major ? { inf: 0.3, sup: 0.03, art: 0.14, at: 0.02, mot: 0.08, tank: 0.15, fig: 0.18, cas: 0.06, bom: 0.04 } : { inf: 0.48, sup: 0.02, art: 0.22, fig: 0.18, cas: 0.1 };
+    const def = c.major ? { inf: 0.3, sup: 0.03, art: 0.14, at: 0.03, mot: 0.1, tank: 0.12, fig: 0.17, cas: 0.06, bom: 0.04 } : { inf: 0.48, sup: 0.02, art: 0.22, at: 0.02, fig: 0.16, cas: 0.1 };
     for (const [e, v] of Object.entries(def)) if (c.mods.unlockEq[e]) w[e] = v;
-    for (const e of ['inf', 'art', 'mot', 'tank']) if (w[e] != null) {
+    for (const e of ['inf', 'art', 'mot', 'tank', 'at']) if (w[e] != null) {
       const stock = c.stock[e] || 0; const ratio = need[e] > 0 ? need[e] / (stock + 1) : 0;
-      if (ratio > 1) w[e] *= 1 + Math.min(1.5, (ratio - 1) * 0.5); else if (stock > need[e] * 3 + 2000) w[e] *= 0.5;
+      if (ratio > 1) w[e] *= 1 + Math.min(c.enemies.length ? 3 : 1.5, (ratio - 1) * 0.5); else if (stock > need[e] * 3 + 2000) w[e] *= 0.5;
+      if (need[e] < 1 && stock > 300) w[e] *= 0.1; // şablonlarda kullanılmayan teçhizat üretilmez
     }
+    // savaşta kara teçhizatı açığı varsa uçak üretimi kısılır
+    const landShort = ['inf', 'art'].some((e) => need[e] > (c.stock[e] || 0) * 1.2);
+    if (c.enemies.length && landShort) for (const e of ['fig', 'cas', 'bom']) if (w[e]) w[e] *= c.major ? 0.6 : 0.3;
     const sum = Object.values(w).reduce((a, b) => a + b, 0) || 1;
     const lines = c.lines.filter((l) => g.EQUIP[l.e].fac === 'dock');
     let used = 0;
@@ -108,14 +113,24 @@
     const atWar = c.enemies.length > 0;
     // otoriter büyük güçler gerginlik yükseldikçe hızla silahlanır (1937-39 Almanya, Japonya, İtalya)
     const rearm = c.major && (c.ideo === 'fas' || c.ideo === 'com') && st.tension > 25 ? 1.35 : 1;
-    const target = Math.min(c.major ? 260 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm));
-    if (units >= target || c.train.length >= Math.max(2, Math.ceil(s.mil / (rearm > 1 ? 3 : 4)))) return;
+    // hedef tümen sayısı: sanayi + depodaki fazla teçhizat (savaşta stok varsa insan gücüyle milis kurulur)
+    const spare = atWar ? Math.floor(Math.max(0, (c.stock.inf || 0) - 3000) / 2500) : 0;
+    const target = Math.min(c.major ? 260 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm) + spare);
+    // eğitim kuyruğu: teçhizatı bekleyen tümenler insan gücünü kilitlemesin
+    const waiting = c.train.filter((t) => t.d <= 0).length;
+    if (units >= target || waiting >= 3 || c.train.length >= Math.max(2, Math.ceil(s.mil / (rearm > 1 ? 5 : 7)))) return;
     if ((c.mpAvail || 0) < 15) return;
+    // kuyruktaki tümenlerin teçhizatı ayrıldıktan sonra kalan stok
+    const left = Object.assign({}, c.stock);
+    for (const t of c.train) for (const [e, n] of Object.entries(G.T(c.tag, t.u).eq)) left[e] = (left[e] || 0) - n;
+    const can = (type) => Object.entries(G.T(c.tag, type).eq).every(([e, n]) => (left[e] || 0) >= n);
+    // hedef bileşim (HOI4 YZ şablon oranları): büyük güçlerde zırhlı ve motorize pay
+    const have = {}; for (const u of st.units) if (u.t === c.tag) have[u.u] = (have[u.u] || 0) + 1; for (const t of c.train) have[t.u] = (have[t.u] || 0) + 1;
+    const share = (k) => (have[k] || 0) / Math.max(1, units);
+    const want = c.major ? { arm: c.ideo === 'fas' ? 0.12 : 0.08, mot: 0.08, mtn: 0.04 } : { arm: 0.02, mot: 0.02, mtn: 0.05 };
     let type = 'inf';
-    const r = G.rand();
-    if (c.mods.unlock.arm && c.major && r < 0.18 && (c.stock.tank || 0) > 60) type = 'arm';
-    else if (c.mods.unlock.mot && c.major && r < 0.28 && (c.stock.mot || 0) > 150) type = 'mot';
-    else if (c.mods.unlock.mtn && r > 0.9) type = 'mtn';
+    for (const k of ['arm', 'mot', 'mtn']) if (c.mods.unlock[k] && share(k) < want[k] && can(k)) { type = k; break; }
+    if (type === 'inf' && !can('inf') && (c.stock.inf || 0) < 500) return;
     c.train.push({ u: type, d: G.T(c.tag, type).days });
   };
 
@@ -173,8 +188,20 @@
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
         if (opts.front && !opts.front.has(i)) continue;
         let threat = 0, enemyAdj = [];
-        for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
+        // müttefik toprağından ancak o müttefik de o düşmanla savaştaysa cephe açılır (tarafsız müttefikten saldırı yok)
+        for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (pr.c === tag || G.atWar(pr.c, ec)) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
         if (enemyAdj.length) { front.push({ i, threat, enemyAdj, own: pr.c === tag }); frontSet.add(i); }
+      }
+      // tarihî harekât hazırlığı: hedef ülke sınırı da yığınak cephesi sayılır (saldırı yok)
+      const prep = G.prepTargets ? G.prepTargets(tag) : [];
+      if (prep.length && !opts.army) {
+        const ps = new Set(prep);
+        for (let i = 0; i < NP; i++) {
+          if (frontSet.has(i) || st.prov[i].c !== tag) continue;
+          let th = 0, hit = false;
+          for (const j of P[i].a) if (ps.has(st.prov[j].c)) { hit = true; for (const u of G.unitsAt[j] || []) if (ps.has(u.t)) th += G.unitPower(u); }
+          if (hit) { front.push({ i, threat: th + 8, enemyAdj: [], own: true, prep: 1 }); frontSet.add(i); }
+        }
       }
       // potansiyel tehdit: düşmanın toplam ordusu cephe uzunluğuna bölünür (sınırda henüz birliği olmasa bile)
       const flen = {}, epow = {};
@@ -203,13 +230,14 @@
       const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
+      // tarihî mod: "Garip Savaş" — Almanya Sarı Durum'a (Mayıs 1940) dek Fransa'ya saldırmaz
+      const sitz = tag === 'GER' && tag !== st.player && st.opts.hist && !st.ev.gelb;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
+      // kazanma eşiği: saldıranın moral süresi / savunanın moral süresi (muharebe tahmini)
+      const margin = aggr / 1.3;
       for (const t of tlist) {
-        const te = g.TERRAIN[P[t.e].te];
-        const fortMul = 1 + 0.15 * st.prov[t.e].fort;
-        const need = t.def * aggr * fortMul / Math.max(0.4, 1 + te.atk);
         const avail = [];
         for (const fi of t.from) for (const u of byFront.get(fi) || []) if (!committed.has(u) && u.org > u._s.org * 0.7 && u.str > 0.5 && G.supplyRatio(u) > 0.3) avail.push(u);
         if (!avail.length) continue;
@@ -218,17 +246,19 @@
           avail.sort((a, b) => b._s.spd - a._s.spd);
           const u = avail[0];
           const friendNb = P[t.e].a.reduce((k, j) => k + (st.prov[j].c === tag || (G.friendly(tag, st.prov[j].c) && !G.atWar(tag, st.prov[j].c)) ? 1 : 0), 0);
-          if (friendNb < 2 && u._s.t.mob < 0.5 && P[t.e].vp < 10 && G.supplyRatio(u) < 0.7) continue;
+          // çıkıntı/cep oluşturma: piyade en az iki dost komşu ister; mekanize en az bir ve iyi ikmal
+          if (friendNb < 2 && (u._s.t.mob < 0.5 || G.supplyRatio(u) < 0.6) && P[t.e].vp < 10) continue;
           if (G.supplyRatio(u) < 0.45) continue; // ikmali kopmuş öncü durur
           const left = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u).length;
           const otherThreat = P[u.loc].a.some((j) => j !== t.e && provThreat(j, tag) > 0);
           if (left === 0 && otherThreat) continue;
           u.path = [t.e]; committed.add(u); continue;
         }
-        let pow = 0; const go = [];
-        avail.sort((a, b) => G.unitPower(b) - G.unitPower(a));
-        for (const u of avail) { pow += G.unitPower(u) * (u._s.atk / ((u._s.atk + u._s.def) / 2)); go.push(u); if (pow > need * 1.3) break; }
-        if (pow >= need) {
+        const go = [];
+        avail.sort((a, b) => (b._s.sa + b._s.ha + b._s.bt * 0.3) * b.str - (a._s.sa + a._s.ha + a._s.bt * 0.3) * a.str);
+        let pr = null;
+        for (const u of avail) { go.push(u); if (go.length < Math.min(2, avail.length)) continue; pr = G.predictBattle(go, t.e, tag); if (pr.ratio >= margin * 1.25) break; }
+        if (pr && pr.ratio >= margin) {
           for (const u of go) {
             const rest = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u && !go.includes(x)).length;
             const otherThreat = P[u.loc].a.some((j) => j !== t.e && provThreat(j, tag) > 0);
@@ -257,10 +287,10 @@
       for (const f of front) {
         const here = (byFront.get(f.i) || []).filter((u) => !committed.has(u)); if (here.length < 2) continue;
         here.sort((a, b) => G.unitPower(b) - G.unitPower(a));
-        let kept = 0; const need = f.threat * 1.6 + 4;
+        let kept = 0; const need = f.threat * 2.2 + 6;
         for (const u of here) { if (kept >= need && kept > 0) released.add(u); else kept += G.unitPower(u); }
       }
-      const free = idle.filter((u) => !committed.has(u) && (!frontSet.has(u.loc) || released.has(u) || (byFront.get(u.loc) || []).length > 3));
+      const free = idle.filter((u) => !committed.has(u) && !u.gar && (!frontSet.has(u.loc) || released.has(u)));
       if (free.length) {
         const fl = front.map((f) => ({ ...f, have: myPowerAt(f.i, tag, () => true) }));
         // yurt savunması: düşman birlikleri yaklaşan başkent ve büyük şehirler savunma noktası olur
@@ -274,35 +304,68 @@
         }
         // cephe önemi: yurda (başkent ve çekirdek topraklar) yakın cepheler önce savunulur
         const capI = c.cap >= 0 ? c.cap : -1;
-        for (const f of fl) { const near = capI >= 0 ? Math.max(0, 1 - G.dist(f.i, capI) / 900) : 0.3; f.imp = 1 + 2.5 * near + (st.prov[f.i].core === tag ? 1 : 0); f.threat *= f.imp; }
-        const totalNeed = fl.reduce((s2, f) => s2 + f.threat + 6, 0) || 1;
+        for (const f of fl) { const near = capI >= 0 ? Math.max(0, 1 - G.dist(f.i, capI) / 900) : 0.3; f.imp = 1 + 1.5 * near + (st.prov[f.i].core === tag ? 1 : 0); }
         // saldırı yönü: zayıf savunulan düşman eyaletlerine bakan cepheler ek takviye alır
         for (const f of fl) { let weak = 0; for (const e of f.enemyAdj) { const th = provThreat(e, tag); if (th < f.have * 0.8) weak += 1 + P[e].vp * 0.1; } f.push = weak; }
-        // aşırı yığılmayı önle: cephe eyaleti başına en fazla ~8 tümen (ikmal ve genişlik); fazlası yedekte kalır
-        const quota = new Map(fl.map((f) => { const present = (G.unitsAt[f.i] || []).filter((u) => u.t === tag).length; const q = Math.max(1, Math.ceil(((f.threat + 6 + f.push * 4) / totalNeed) * (free.length + mine.length * 0.5)) - Math.round(f.have / 15)); return [f.i, Math.max(0, Math.min(q, 8 - present))]; }));
-        let pending = free.filter((u) => !frontSet.has(u.loc) || released.has(u) || (byFront.get(u.loc) || []).length > 3);
+        // hedef dağılım: tüm birlikler cephe eyaletlerine tehdit ağırlığıyla paylaştırılır;
+        // eyalet başına üst sınır arazi genişliğine göre (~1,6 kat cephe genişliği: cephe + yedek)
+        // kuşatılmış (dost komşusu olmayan) ya da ikmalsiz cephe eyaletlerine birlik gönderilmez
+        const fnb = (i) => P[i].a.reduce((k, j) => k + (st.prov[j].c === tag || (G.friendly(tag, st.prov[j].c) && !G.atWar(tag, st.prov[j].c)) ? 1 : 0), 0);
+        const supAt = G.supRatio[tag];
+        const W = (f) => (fnb(f.i) === 0 ? 0 : 1) * (supAt && supAt[f.i] < 0.35 ? 0.3 : 1) * (f.threat + 6 + f.push * 4) * f.imp * (goal != null ? (G.dist(f.i, goal) < d0 + 70 ? 2 : 0.7) : 1);
+        const totW = fl.reduce((s2, f) => s2 + W(f), 0) || 1;
+        const pool = mine.filter((u) => !u.gar && u.loc < NP).length;
+        const enRoute = new Map(); for (const u of mine) if (u.path.length) { const e = u.path[u.path.length - 1]; enRoute.set(e, (enRoute.get(e) || 0) + 1); }
+        const deficit = new Map();
+        for (const f of fl) {
+          const cap = Math.max(2, Math.ceil(((g.TERRAIN[P[f.i].te].width + (P[f.i].ar > 1500 ? 1 : 0)) * 20 * 1.6) / 15));
+          if (W(f) <= 0) continue;
+          // düşman birliği bitişikte yoksa ve asli toprak değilse (ör. boş çöl cephesi) asgari bir tümen şartı yok
+          const live = f.enemyAdj.some((j) => provThreat(j, tag) > 0) || st.prov[f.i].core === tag || f.prep;
+          const want = Math.min(cap, Math.max(live ? 1 : 0, Math.round(W(f) / totW * pool)));
+          if (want <= 0) continue;
+          const present = (G.unitsAt[f.i] || []).filter((u) => u.t === tag).length + (enRoute.get(f.i) || 0);
+          if (want > present) deficit.set(f.i, want - present);
+        }
+        let pending = free.slice();
         const landOK = new Set();
-        for (let pass = 0; pass < 3 && pending.length; pass++) {
-          const srcs = fl.filter((f) => (quota.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) * (goal != null ? (G.dist(f.i, goal) < d0 + 70 ? 0.5 : 1.6) : 1) }));
+        for (let pass = 0; pass < 5 && pending.length; pass++) {
+          const naval = pass === 4;
+          const srcs = fl.filter((f) => (deficit.get(f.i) || 0) > 0).map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
           if (!srcs.length) break;
-          const naval = pass === 2;
-          // deniz yolu: yalnızca karadan hiçbir cepheye ulaşamayan birlikler, konvoy varsa
+          // deniz yolu: yalnızca karadan hiçbir cepheye ulaşamayan birlikler, konvoy varsa;
+          // kıta ülkeleri denizaşırı cephelere ordusunun en fazla ~%10'unu gönderir (HOI4 YZ: Afrika Kolordusu ölçeği)
           let convLeft = naval ? Math.floor(((c.ships.conv || 0) - G.convoyNeed(tag)) / 5) : 0;
+          if (naval && !['ENG', 'USA', 'JAP'].includes(tag) && c.cap >= 0) {
+            const home = G.landmass[c.cap]; const over = mine.filter((u) => u.loc < NP && G.landmass[u.loc] !== home).length;
+            convLeft = Math.min(convLeft, Math.max(0, Math.round(mine.length * 0.1) - over));
+          }
           if (naval && convLeft <= 0) break;
           const ff = G.flowField(tag, srcs, { naval });
           const rest = [];
+          // en yakın birlikler önce atanır
+          pending.sort((x, y) => ff.dist[x.loc] - ff.dist[y.loc]);
           for (const u of pending) {
             if (naval && landOK.has(u)) continue;
             if (ff.dist[u.loc] === Infinity) { rest.push(u); continue; }
             if (!naval) landOK.add(u);
-            if (naval) { const p0 = G.followField(ff, u.loc); const sea = p0.filter((x) => x >= NP); if (!sea.length || convLeft <= 0 || sea.some((z) => G.navalSupremacy(tag, z) < 0.45)) continue; convLeft--; }
             const tgt = ff.src[u.loc];
             if (tgt === u.loc) continue;
-            if ((quota.get(tgt) || 0) <= 0) { rest.push(u); continue; }
+            if ((deficit.get(tgt) || 0) <= 0) { rest.push(u); continue; }
+            if (naval) { const p0 = G.followField(ff, u.loc); const sea = p0.filter((x) => x >= NP); if (!sea.length || convLeft <= 0 || sea.some((z) => G.navalSupremacy(tag, z) < 0.45)) continue; convLeft--; }
             const path = G.followField(ff, u.loc);
-            if (path.length) { u.path = path; quota.set(tgt, quota.get(tgt) - 1); }
+            if (path.length) { u.path = path; deficit.set(tgt, deficit.get(tgt) - 1); }
           }
           pending = rest;
+        }
+        // cepheler doluysa kalanlar cephe gerisinde yedek olarak toplanır (uzak arka bölgelerde boşta beklemez)
+        if (pending.length && fl.length) {
+          const ff = G.flowField(tag, fl.map((f) => ({ i: f.i, c: 0 })), {});
+          for (const u of pending) {
+            if (ff.dist[u.loc] === Infinity || ff.dist[u.loc] < 8) continue;
+            const path = G.followField(ff, u.loc);
+            if (path.length > 1) u.path = path.slice(0, path.length - 1); // cephenin bir gerisi
+          }
         }
       }
     } else if (atWar && !opts.army) {
@@ -318,11 +381,17 @@
     c.ai.hg = st.day;
     for (const u of mine) if (u.gar && st.prov[u.gar - 1]?.c !== tag) u.gar = 0;
     const lmE = new Set(); for (const e of c.enemies) { const ec = st.C[e]; if (ec && ec.cap >= 0) lmE.add(G.landmass[ec.cap]); for (const u of st.units) if (u.t === e && u.loc < NP) lmE.add(G.landmass[u.loc]); }
+    // düşman kontrolündeki en yakın eyalete uzaklık: yalnızca tehdit altındaki şehirlere garnizon (HOI4 YZ gibi cepheye öncelik)
+    const enemyProv = []; for (let i = 0; i < NP; i++) if (G.atWar(tag, st.prov[i].c)) enemyProv.push(i);
+    const nearEnemy = (i) => { let d = Infinity; for (const j of enemyProv) { const x = G.dist(i, j); if (x < d) d = x; } return d; };
     const spots = [];
-    if (c.cap >= 0 && st.prov[c.cap].c === tag && lmE.has(G.landmass[c.cap])) spots.push([c.cap, Math.max(2, Math.round(mine.length * 0.07))]);
-    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (i !== c.cap && pr.c === tag && pr.core === tag && P[i].vp >= 10 && lmE.has(G.landmass[i])) spots.push([i, P[i].vp >= 20 ? 2 : 1]); }
+    if (c.cap >= 0 && st.prov[c.cap].c === tag && lmE.has(G.landmass[c.cap])) { const d = nearEnemy(c.cap); spots.push([c.cap, d < 250 ? Math.max(2, Math.round(mine.length * 0.05)) : d < 600 ? 2 : 1]); }
+    for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (i !== c.cap && pr.c === tag && pr.core === tag && P[i].vp >= 10 && lmE.has(G.landmass[i]) && nearEnemy(i) < 300) spots.push([i, P[i].vp >= 20 ? 2 : 1]); }
+    // gereğinden fazla garnizon serbest kalır
+    for (const u of mine) if (u.gar && !spots.some(([i]) => i === u.gar - 1)) u.gar = 0;
+    for (const [i, need] of spots) { const L = mine.filter((u) => u.gar === i + 1); for (let k = need; k < L.length; k++) L[k].gar = 0; }
     if (!spots.length || mine.length < 12) return;
-    const budget = Math.round(mine.length * 0.15);
+    const budget = Math.round(mine.length * 0.08);
     let used = mine.filter((u) => u.gar).length;
     for (const [i, need] of spots) {
       let have = mine.filter((u) => u.gar === i + 1).length;
@@ -339,6 +408,8 @@
   function aiInvasion(c, idle) {
     const st = G.st, tag = c.tag;
     if (idle.length < 3) return;
+    // tarihî modda yalnızca deniz güçleri (İngiltere, ABD, Japonya) uzak çıkarma yapar; diğerleri yakın kıyılara
+    const naval = ['ENG', 'USA', 'JAP'].includes(tag) || !st.opts.hist;
     if (c.ai.inv && st.day - c.ai.inv < 45) return;
     c.ai.inv = st.day;
     const myNavy = G.navyPower(c);
@@ -351,6 +422,9 @@
     let best = -1, bv = -Infinity;
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i]; if (!P[i].c || !G.atWar(tag, pr.c)) continue;
+      if (!naval && (c.cap < 0 || G.dist(i, c.cap) > 350)) continue;
+      // ABD ve İngiltere tarihî modda 1943 öncesi Avrupa'ya çıkarma yapmaz (Torch/Overlord öncesi)
+      if (st.opts.hist && (tag === 'USA' || tag === 'ENG') && st.day < G.dayOf('1942-11-01') && P[i].lon > -12 && P[i].lon < 40 && P[i].lat > 36) continue;
       const d = Math.hypot(G.nodeX[i] - ux, G.nodeY[i] - uy);
       const v = P[i].vp * 0.5 - provThreat(i, tag) * 0.4 - d / 120 + (st.C[pr.c].major ? 3 : 0);
       if (v > bv) { bv = v; best = i; }
@@ -375,6 +449,7 @@
     for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) own.push(i);
     if (!own.length) return;
     const threatOf = {};
+    const prepT = G.prepTargets ? G.prepTargets(tag) : [];
     const spots = [];
     for (const i of own) {
       let w = 0;
@@ -384,6 +459,7 @@
         if (threatOf[t] == null) {
           const o = st.C[t]; let th = 0.3;
           if (G.atWar(tag, t)) th = 5;
+          else if (prepT.includes(t)) th = 6;
           else if (st.goals[t + '>' + tag] != null || o.just?.t === tag) th = 4;
           else if (c.just?.t === t || st.goals[tag + '>' + t] != null) th = 2.5;
           else if (G.opinion(tag, t) < 0) th = 1.5;
@@ -436,7 +512,7 @@
       }
     }
     // tarihî modda serbest saldırganlık 1943'ten önce kapalı
-    const dynamic = !st.opts.hist || yr >= 1943;
+    const dynamic = !st.opts.hist || yr >= 1946;
     if (!dynamic) return;
     if (c.ideo === 'dem' || c.ideo === 'neu') return;
     if (!c.major && c.sum.mil < 10) return;
