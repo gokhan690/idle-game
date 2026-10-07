@@ -272,10 +272,25 @@
   G.popupQueue = [];
   G.queuePopup = (p) => { G.popupQueue.push(p); if (G.onPopup) G.onPopup(); };
 
+  // Oyuncu bu olayların aktörüyse olay tarihinde kendiliğinden çıkmaz: ilgili ulusal odakla gerçekleşir (HOI4).
+  // Böylece savaşlar oyuncunun odak ağacı hazır olmadan başlamaz; tarihte yalnızca hatırlatma düşülür.
+  const FOCUS_EV = { axis: 'ger_axis', anschluss: 'ger_anschluss', sudeten: 'ger_sudeten', czeend: 'ger_czech', mr: 'ger_mr', poland: 'ger_danzig', weser: 'ger_weser', gelb: 'ger_west', barbarossa: 'ger_barbarossa', china: 'jap_china', pearl: 'jap_pearl', albania: 'ita_albania', greece: 'ita_greece', itajoin: 'ita_egypt', winter: 'sov_winter', baltic: 'sov_baltic', bessarabia: 'sov_bessarabia', guarpol: 'eng_guarantee', usajoin: 'usa_join', hunjoin: 'hun_axis', romjoin: 'rom_axis', buljoin: 'bul_axis' };
+  G.FOCUS_EV = FOCUS_EV;
+  G.EV_OF_FOCUS = Object.fromEntries(Object.entries(FOCUS_EV).map(([e, f]) => [f, e]));
   G.checkEvents = () => {
     const st = G.st;
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
+      const lf = FOCUS_EV[e.id], pc = st.C[st.player];
+      if (lf && e.actor === st.player && pc && G.focusById(pc, lf)) {
+        st.evHint = st.evHint || {};
+        if (!st.evHint[e.id] && e.cond()) {
+          st.evHint[e.id] = 1;
+          const f = G.focusById(pc, lf);
+          G.log(`Tarihte bugün: ${e.title}. ${pc.focus.done[lf] ? '' : pc.focus.cur === lf ? `"${f.n}" odağın sürüyor.` : `Bunu "${f.n}" ulusal odağıyla başlatabilirsin.`}`, [st.player], 'info');
+        }
+        continue;
+      }
       if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
       st.ev[e.id] = 1;
       if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
@@ -332,12 +347,25 @@
     if (st.tsp) st.tsp = st.tsp.filter((x) => st.day < x.until);
     const drop = (t, sp) => { const c = st.C[t]; if (c && c.spirits.includes(sp)) { c.spirits = c.spirits.filter((x) => x !== sp); G.recomputeMods(c); return true; } return false; };
     const add = (t, sp) => { const c = st.C[t]; if (c && c.alive && !c.spirits.includes(sp)) { c.spirits.push(sp); G.recomputeMods(c); return true; } return false; };
-    if (st.day >= G.dayOf('1943-07-01') && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
+    // tarihli (until) ve savaşla (war) kalkan ruhlar; savaşta geçen gün sayacı
+    for (const c of Object.values(st.C)) {
+      if (!c.alive) continue;
+      if (c.enemies.length && c.warDays != null) c.warDays += 5;
+      for (const s of c.spirits.slice()) {
+        const S = g.SPIRITS[s];
+        if (!S || !((S.until && st.day >= G.dayOf(S.until)) || (S.war && c.enemies.length))) continue;
+        drop(c.tag, s);
+        if (c.tag === st.player) G.log(`Ulusal ruh sona erdi: ${S.n}.`, [c.tag], 'info');
+      }
+    }
+    // Müttefikler savaşarak öğrenir: Almanya yaklaşık dört yıl savaştıktan sonra (tarihte 1943 ortası)
+    if (st.day >= G.dayOf('1943-07-01') && (st.C.GER?.warDays ?? 9999) >= 1200 && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
     // Doğu Cephesi: Kızıl Ordu reformları ve Alman yıpranması (tarihî tarihlerde, savaş sürüyorsa)
     const wgs = st.wars[G.pairKey('GER', 'SOV')];
     if (wgs) {
-      if (st.day >= G.dayOf('1942-11-15') && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
-      if (st.day >= G.dayOf('1943-07-01') && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
+      // savaşın başlangıcına göre (tarihte 1942-11 ve 1943-07): oyuncu Barbarossa'yı geciktirirse kayar
+      if (st.day - wgs.since >= 510 && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
+      if (st.day - wgs.since >= 740 && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
       if (st.day - wgs.since > 540) add('GER', 'ost_crisis');
     }
     // İspanya İç Savaşı: aylık dış yardım

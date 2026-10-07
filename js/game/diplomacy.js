@@ -20,6 +20,7 @@
     const k = G.pairKey(a, b);
     if (st.wars[k]) return;
     st.wars[k] = { since: st.day };
+    st.wstart = st.wstart || {}; if (st.wstart[k] == null) st.wstart[k] = st.day; // ilk başlangıç (tarihî eğri çapası)
     G.supDirty = 1;
     delete st.pacts[k];
     delete st.access[a + '>' + b]; delete st.access[b + '>' + a];

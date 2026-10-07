@@ -107,6 +107,12 @@
     body.innerHTML = out.html;
     sheet.hidden = false;
     sheet.classList.toggle('half', UI.panel === 'peace');
+    // odak ağacı HOI4'teki gibi tam ekran açılır (dikeyde ve yatayda)
+    sheet.classList.toggle('full', UI.panel === 'pol' && UI.sub === 'tree');
+    // dikey ekranda panel büyütülebilir (tasarımcılar ve uzun listeler için)
+    sheet.classList.toggle('tall', !!UI.tall && UI.panel !== 'peace');
+    $('sheet-tall').textContent = UI.tall ? '⤡' : '⤢';
+    $('sheet-tall').setAttribute('aria-label', UI.tall ? 'Paneli küçült' : 'Paneli büyüt');
     const ft = body.querySelector('.ftree');
     if (!reset) { body.scrollTop = scroll; if (ft && UI.ftScroll) { ft.scrollLeft = UI.ftScroll[0]; ft.scrollTop = UI.ftScroll[1]; } }
     else {
@@ -148,7 +154,7 @@
     html += sec('Parti desteği', ph);
     // ulusal ruhlar
     const sp = c.spirits.filter((s) => g.SPIRITS[s]);
-    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
+    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => spiritHtml(s, c)).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>', sp.length ? `${sp.length}` : '');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / G.focusDays(cur))}<div class="d">${Math.ceil(G.focusDays(cur) - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Odaklar 35 ya da 70 günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
@@ -240,7 +246,12 @@
     if (sf) {
       const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
       const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(G.focusDays(sf) - c.focus.p)} gün kaldı.` : avail ? `${G.focusDays(sf)} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
-      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div><div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
+      const addS = sf.fx.spirit && g.SPIRITS[sf.fx.spirit];
+      const rmS = c.spirits.filter((s) => g.SPIRITS[s] && (sf.fx.rmSpirit === s || (g.SPIRITS[s].rm || []).includes(sf.id))).map((s) => g.SPIRITS[s].n);
+      const hev = G.EV_OF_FOCUS && G.EV_OF_FOCUS[sf.id] && G.EVENTS.find((e) => e.id === G.EV_OF_FOCUS[sf.id]);
+      const histD = hev && !done ? `<div class="d muted">Tarihte: ${esc(hev.title)} · ${G.fmtDate(hev.day)}${G.st.ev[hev.id] ? ' (gerçekleşti)' : ''}</div>` : '';
+      const sfx = histD + (addS ? `<div class="d">Ulusal ruh ekler: <b>${esc(addS.n)}</b></div><div class="fxl">${fxChips(addS.fx)}</div>` : '') + (rmS.length && !done ? `<div class="d good">Kaldırır: ${rmS.map(esc).join(', ')}</div>` : '');
+      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div>${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
@@ -291,10 +302,29 @@
     html += lh + '</div>';
     return { title: 'Araştırma', html };
   };
-  function fxText(fx) {
-    const N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama' };
-    return Object.entries(fx).filter(([k]) => N[k]).map(([k, v]) => `${N[k]} +%${Math.round(v * 100)}`).join(', ');
-  }
+  // Etki metni (HOI4 tarzı, işaretli). Yüzde olmayan anahtarlar mutlak değerdir; INV: artışı kötü olanlar.
+  const FX_N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama', stab: 'İstikrar', ws: 'Savaş desteği', ppM: 'Siyasi güç kazanımı', pp: 'Günlük siyasi güç', supply: 'İkmal', resist: 'İşgalde direniş', comply: 'İşgalde uyum', justify: 'Savaş gerekçesi hızı', xpGain: 'Tecrübe kazanımı', slots: 'Araştırma yuvası', steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
+  const FX_ABS = new Set(['pp', 'slots', 'steel', 'oil', 'al', 'rub', 'tun', 'chr']), FX_INV = new Set(['resist']);
+  const fxParts = (fx) => Object.entries(fx || {}).filter(([k, v]) => FX_N[k] && typeof v === 'number' && v).map(([k, v]) => {
+    const s = v > 0 ? '+' : '−', a = Math.abs(v);
+    return { t: `${FX_N[k]} ${FX_ABS.has(k) ? s + (Math.round(a * 100) / 100) : s + '%' + Math.round(a * 100)}`, good: (v > 0) !== FX_INV.has(k) };
+  });
+  function fxText(fx) { return fxParts(fx).map((x) => x.t).join(', '); }
+  const fxChips = (fx) => fxParts(fx).map((x) => `<span class="fxc ${x.good ? 'good' : 'bad'}">${x.t}</span>`).join('');
+  // ulusal ruh kartı: ad, tarihî açıklama, etkiler ve nasıl kalkacağı
+  const spiritHtml = (id, c) => {
+    const S = g.SPIRITS[id]; if (!S) return '';
+    const rm = [];
+    if (S.until) rm.push(`${G.fmtDate(G.dayOf(S.until))} tarihinde sona erer`);
+    if (S.war) rm.push('savaşa girince kalkar');
+    const fs = (S.rm || []).map((f) => c && G.focusById(c, f)).filter(Boolean);
+    if (fs.length) rm.push('kaldıran odak: ' + fs.map((f) => esc(f.n)).join(' / '));
+    const tm = c && (G.st.tsp || []).find((x) => x.t === c.tag && x.sp === id);
+    if (tm) rm.push(`${Math.max(0, tm.until - G.st.day)} gün sonra kalkar`);
+    const bad = fxParts(S.fx).filter((x) => !x.good).length, good = fxParts(S.fx).length - bad;
+    return `<div class="item spirit ${bad && !good ? 'neg' : good && !bad ? 'pos' : ''}"><div class="grow"><div class="t">${esc(S.n)}</div>${S.h ? `<div class="d">${esc(S.h)}</div>` : ''}<div class="fxl">${fxChips(S.fx)}</div>${rm.length ? `<div class="d muted">${rm.join(' · ')}</div>` : ''}</div></div>`;
+  };
+  UI.spiritHtml = spiritHtml;
 
   // Üretim
   // ---------- Tasarım bürosu (tank ve uçak tasarımcısı) ----------
@@ -802,6 +832,8 @@
     const ratio = G.armyPower(tag) / (G.armyPower(c.tag) + 1);
     html += kv([['Tümen', divs], ['Sivil fab.', x.sum.civ], ['Askerî fab.', x.sum.mil], ['Eyalet', x.sum.provs], ['Ordu gücü', ratio > 1.3 ? 'Bizden güçlü' : ratio < 0.7 ? 'Bizden zayıf' : 'Denk', ratio > 1.3 ? 'bad' : ratio < 0.7 ? 'good' : ''], ['Görüş', G.opinion(tag, c.tag) > 20 ? 'Dostane' : G.opinion(tag, c.tag) < -20 ? 'Düşmanca' : 'Nötr']]);
     if (x.enemies.length) html += `<p class="small" style="margin:0">Savaşta: ${x.enemies.map((t) => esc(G.cname(t))).join(', ')}</p>`;
+    const xsp = (x.spirits || []).filter((s) => g.SPIRITS[s]);
+    if (xsp.length) html += sec('Ulusal ruhlar', `<div class="list">${xsp.map((s) => spiritHtml(s, x)).join('')}</div>`, `${xsp.length}`);
     const acts = [];
     const atWar = G.atWar(c.tag, tag);
     if (!atWar) {
@@ -850,7 +882,7 @@
     }
     html += sec('Kayıt', sh + '</div>', 'Bu cihazda saklanır');
     const modes = UI.MODE_N;
-    html += sec('Harita modu', `<div class="seg">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
+    html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
     html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
@@ -873,6 +905,9 @@
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden (mühendis, keşif, destek topçusu, tanksavar, uçaksavar, lojistik, sahra hastanesi) oluşur. Piyade savunma ve dayanıklılık, topçu yumuşak saldırı, tank atılım, sert saldırı ve zırh getirir. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
   <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
+  <section class="sec"><h3 class="sec-h">Ulusal ruhlar (buff ve debuff)</h3><p class="small" style="margin:0">HOI4'teki gibi her ülke kendine özgü ulusal ruhlarla başlar: Sovyetlerde Büyük Temizlik, ABD'de Büyük Buhran, Macaristan'da Trianon kısıtlamaları, İsviçre'de Ulusal Kale… Yeşil etkiler güçlendirir, kırmızılar zayıflatır. Her kartta ruhun nasıl kalkacağı yazar: bir <b>odakla</b> (odak ayrıntısında “Kaldırır” satırı), bir <b>tarihte</b> (ör. Bled Anlaşması) ya da <b>savaşa girince</b> (tarafsızlık ruhları). Savaş sırasında yeni ruhlar da gelir (Barbarossa Baskını, Stavka reformları, Çin Bataklığı). Başka ülkelerin ruhlarını Diplomasi panelinde ülkeye dokunarak görebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Odaklar ve tarihî olaylar</h3><p class="small" style="margin:0">Yönettiğin ülkenin tarihî hamleleri (Anschluss, Münih, Danzig, Barbarossa, Marco Polo Köprüsü, Pearl Harbor, Kış Savaşı…) sabit bir tarihte kendiliğinden olmaz; HOI4'teki gibi ilgili <b>ulusal odağı</b> tamamladığında gerçekleşir. Böylece savaş, odak ağacın ve ordun hazır olmadan başlamaz. Odak ayrıntısında olayın tarihteki günü yazar; o gün geldiğinde olay günlüğüne bir hatırlatma düşer. Odak tamamlanınca karar penceresi açılır: “Bekle” dersen savaş gerekçesini alır, zamanı sen seçersin. Diğer ülkelerin olayları tarihî takvimle sürer.</p></section>
+  <section class="sec"><h3 class="sec-h">Değişen tarih</h3><p class="small" style="margin:0">Tarihî gidişat modunda yapay zekâ cepheleri tarihe yakın ilerler. Bu denge savaşların gerçek başlangıcına göre kayar: Barbarossa'yı bir yıl geciktirirsen Doğu Cephesi takvimi de bir yıl kayar. Senin taraf olduğun cephelerde denge büyük ölçüde gevşer; sonuç senin hamlelerine bağlıdır. Kendi muharebelerine hiçbir zaman uygulanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
@@ -1068,6 +1103,7 @@
   ACT.panel = (d) => UI.open(d.p);
   ACT.alert = (d) => { if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
+  ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
@@ -1265,6 +1301,7 @@
   // ---------- Başlangıç ekranı ----------
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
+  try { UI.tall = localStorage.getItem('dc_tall') === '1'; } catch (e) {}
   UI.startOpts = { hist: 1, diff: 1 };
   UI.showStart = () => {
     $('start').hidden = false;
@@ -1289,6 +1326,8 @@
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
       <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
       <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
+    const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
+    if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
     html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
     $('start-body').innerHTML = html;
   };
