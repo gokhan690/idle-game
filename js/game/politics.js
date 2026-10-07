@@ -383,7 +383,12 @@
     if (st.day % 120 === 17) for (const c of Object.values(st.C)) {
       if (!c.alive || !c.major || c.tag === st.player || (c.ideo !== 'fas' && c.ideo !== 'com') || c.pp < 200) continue;
       const cands = Object.values(st.C).filter((x) => x.alive && !x.major && x.ideo !== c.ideo && G.dist(x.cap, c.cap) < 500);
-      if (cands.length) { const x = cands[Math.floor(G.rand() * cands.length)]; G.startOp(c.tag, x.tag, (x.pop[c.ideo] || 0) >= 0.3 && st.tension > 40 ? 'coup' : 'support'); }
+      if (cands.length) {
+        const x = cands[Math.floor(G.rand() * cands.length)];
+        // tarihî modda YZ darbe yapmaz ve savaşan/komünist Çin gibi kilit ülkelerde ideoloji oynamaz
+        if (st.opts.hist && (x.enemies.length || x.fac || x.overlord || ['PRC', 'CHI', 'SPR', 'SPN'].includes(x.tag))) continue;
+        G.startOp(c.tag, x.tag, !st.opts.hist && (x.pop[c.ideo] || 0) >= 0.3 && st.tension > 40 ? 'coup' : 'support');
+      }
     }
   };
 

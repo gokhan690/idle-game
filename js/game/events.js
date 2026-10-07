@@ -55,7 +55,11 @@
     { id: 'china', date: '1937-07-07', actor: 'JAP', title: 'Marco Polo Köprüsü Olayı',
       text: 'Pekin yakınlarında Japon ve Çin birlikleri çatıştı. Tokyo\'daki şahinler topyekûn savaş istiyor.',
       cond: () => alive('JAP') && alive('CHI') && !G.atWar('JAP', 'CHI'),
-      opts: [{ n: 'Çin\'e savaş ilan et', fx: () => war('JAP', 'CHI') }, { n: 'Barışı koru', fx: () => {} }] },
+      opts: [{ n: 'Çin\'e savaş ilan et', fx: () => {
+        war('JAP', 'CHI');
+        // Mançukuo (Japon kuklası) savaşa katılır; Kwantung Ordusu Mançurya'dan Kuzey Çin'e iner
+        if (alive('MAN') && G.atWar('JAP', 'CHI')) { G.st.access['JAP>MAN'] = 1; G.st.access['MAN>JAP'] = 1; if (G.st.player !== 'MAN') war('MAN', 'CHI'); }
+      } }, { n: 'Barışı koru', fx: () => {} }] },
     { id: 'scw', date: '1936-07-17', actor: 'SPR', title: 'İspanya İç Savaşı',
       text: 'General Franco liderliğindeki milliyetçi subaylar Fas\'ta ayaklandı. Ülke ikiye bölündü: Cumhuriyetçiler Madrid ve Barselona\'yı, milliyetçiler kuzeybatıyı, Endülüs\'ü ve Fas\'ı tutuyor.',
       cond: () => alive('SPR') && !alive('SPN'),
@@ -204,6 +208,8 @@
     GER: [['POL', '1939-07-10', 'poland'], ['BEL', '1940-03-20', 'gelb'], ['HOL', '1940-03-20', 'gelb'], ['LUX', '1940-03-20', 'gelb'], ['YUG', '1941-03-10', 'yugo'], ['SOV', '1941-04-10', 'barbarossa']],
     JAP: [['CHI', '1937-05-15', 'china']],
     ITA: [['GRE', '1940-09-20', 'greece']],
+    // savunma hazırlığı: İngiltere, İtalya savaşa girene dek Mısır-Libya sınırını tutar
+    ENG: [['ITA', '1939-09-01', 'itajoin']],
     SOV: [['FIN', '1939-10-20', 'winter'], ['POL', '1939-09-05', 'sovpol']],
   };
   G.prepTargets = (tag) => {
@@ -227,6 +233,38 @@
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
       } else e.opts[0].fx();
     }
+  };
+  // [anahtar, tarih, ülke, tümen, hedef eyaletler, yeni birlik mi, son tarih]
+  const DEPLOY = [
+    ['wdf', '1939-09-03', 'ENG', 3, ['Mersa Matruh', 'İskenderiye', 'Kahire'], 1],
+    ['sdf', '1939-09-03', 'ENG', 1, ['Hartum', 'Port Sudan'], 1],
+    ['kar', '1939-09-03', 'ENG', 2, ['Nairobi', 'Mombasa'], 1],
+    ['saf1', '1940-06-15', 'SAF', 2, ['Nairobi', 'Mombasa'], 0],
+    ['raj1', '1940-08-01', 'RAJ', 2, ['Hartum', 'Port Sudan', 'Kahire'], 0],
+    ['ast1', '1940-11-15', 'AST', 2, ['İskenderiye', 'Kahire', 'Süveyş'], 0],
+    ['nzl1', '1941-01-15', 'NZL', 1, ['Kahire', 'Süveyş'], 0],
+    ['raj2', '1941-03-01', 'RAJ', 2, ['Kahire', 'Süveyş', 'Kudüs'], 0],
+    ['ast2', '1941-04-01', 'AST', 1, ['İskenderiye', 'Kahire', 'Süveyş'], 0],
+    ['saf2', '1941-06-01', 'SAF', 1, ['Kahire', 'Süveyş'], 0],
+  ];
+  const DEPN = { wdf: 'Mısır (Batı Çölü Kuvveti)', sdf: 'Sudan', kar: 'Kenya', saf1: 'Kenya', raj1: 'Sudan ve Mısır', ast1: 'Mısır', nzl1: 'Mısır', raj2: 'Mısır', ast2: 'Mısır', saf2: 'Mısır' };
+  // Birlikleri deniz yoluyla dost bir eyalete gönder (ya da orada yeni sömürge tümeni kur)
+  G.deploy = (tag, n, names, spawn) => {
+    const st = G.st, c = st.C[tag];
+    const ok = (i) => { if (i < 0) return false; const pc = st.prov[i].c; return (pc === tag || (G.friendly(tag, pc) && !G.atWar(tag, pc))) && !G.hostileIn(i, tag); };
+    const dests = names.map((nm) => P.findIndex((p) => p.n === nm)).filter(ok);
+    if (!dests.length) return 0;
+    let sent = 0;
+    if (spawn) {
+      for (let k = 0; k < n; k++) { const u = G.makeUnit(tag, 'inf', dests[k % dests.length], 1); u.xp = 0.2; st.units.push(u); sent++; }
+    } else {
+      const home = c.cap >= 0 ? G.landmass[c.cap] : -1;
+      const pool = st.units.filter((u) => u.t === tag && u.loc < NP && !u.path.length && G.landmass[u.loc] === home && u.str > 0.6 && !(G.inBattle && G.inBattle.has(u))).sort((a, b) => b.str - a.str);
+      const keep = Math.max(1, Math.ceil(pool.length * 0.2));
+      for (const u of pool.slice(0, Math.max(0, Math.min(n, pool.length - keep)))) { u.loc = dests[sent % dests.length]; u.path = []; u.prog = 0; u.gar = 0; u.army = 0; sent++; }
+    }
+    if (sent) G.rebuildUnitIndex();
+    return sent;
   };
   // Zamana bağlı ulusal ruhlar (HOI4'teki tarihî ruh değişimleri)
   // Süreli ruh: belirli gün sonra kendiliğinden kalkar
@@ -264,8 +302,21 @@
     }
     // Çin'e dış yardım: Sovyet yardımı (1937-41), Burma Yolu ve ABD/İngiliz ödünç verme (1939-)
     if (st.day % 30 === 15 && G.atWar('CHI', 'JAP') && st.C.CHI?.alive) {
-      if (st.C.SOV?.alive && st.player !== 'SOV' && !G.atWar('GER', 'SOV')) { G.lend('SOV', 'CHI', 'inf', 700); G.lend('SOV', 'CHI', 'art', 10); }
-      if (st.day >= G.dayOf('1939-01-01')) for (const t of ['USA', 'ENG']) if (st.C[t]?.alive && st.player !== t) G.lend(t, 'CHI', 'inf', 500);
+      const low = (st.C.CHI.stock.inf || 0) < 5000; // stok tükenince yardım artar
+      if (st.C.SOV?.alive && st.player !== 'SOV' && !G.atWar('GER', 'SOV')) { G.lend('SOV', 'CHI', 'inf', low ? 2200 : 1100); G.lend('SOV', 'CHI', 'art', 15); }
+      if (st.day >= G.dayOf('1939-01-01')) for (const t of ['USA', 'ENG']) if (st.C[t]?.alive && st.player !== t) G.lend(t, 'CHI', 'inf', st.day >= G.dayOf('1941-03-11') ? 900 : 500);
+    }
+    // İngiliz Milletler Topluluğu konuşlanmaları (tarihî): sömürge tümenleri ve dominyon seferî kuvvetleri
+    if (st.opts.hist) {
+      st.dep = st.dep || {};
+      for (const [k, d, t, n, dest, spawn, until] of DEPLOY) {
+        if (st.dep[k] || st.day < G.dayOf(d)) continue;
+        if (st.day > G.dayOf(until || '1942-12-31')) { st.dep[k] = 1; continue; }
+        const c = st.C[t]; if (!c?.alive) { st.dep[k] = 1; continue; }
+        if (!spawn && (t === st.player || !(G.atWar(t, 'ITA') || G.atWar(t, 'GER')))) continue;
+        const sent = G.deploy(t, n, dest, spawn);
+        if (sent) { st.dep[k] = 1; G.log(`${G.cname(t)}: ${sent} tümen ${DEPN[k]} bölgesine konuşlandı.`, [t], 'info'); }
+      }
     }
     // Çin-Japon Savaşı: Çin'in derinliği, Japonya'nın aşırı yayılması
     const wcj = st.wars[G.pairKey('CHI', 'JAP')];

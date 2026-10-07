@@ -138,7 +138,7 @@
     nat_aid: { n: 'Lejyon Kondor ve CTV', d: 'Alman ve İtalyan gönüllüler, Faslı birlikler: kara saldırısı +%10, moral +%10, insan gücü +%100', fx: { landAtk: 0.1, org: 0.1, mp: 1.0 } },
     rep_chaos: { n: 'Cumhuriyetçi Bölünme', d: 'Anarşist, komünist ve cumhuriyetçi milisler arasında çekişme: moral -%10, saldırı -%10', fx: { org: -0.1, landAtk: -0.1 } },
     chi_scorched: { n: 'Yanık Toprak ve Derinlik', d: 'Çin\'in uçsuz bucaksız iç bölgeleri: savunma +%20, moral +%10', fx: { landDef: 0.2, org: 0.1 } },
-    jap_overext: { n: 'Çin Bataklığı', d: 'Japon ordusu Çin\'de aşırı yayıldı: saldırı -%10', fx: { landAtk: -0.1 } },
+    jap_overext: { n: 'Çin Bataklığı', d: 'Japon ordusu Çin\'de aşırı yayıldı: saldırı -%12, ikmal -%20', fx: { landAtk: -0.12, supply: -0.2 } },
     resistance: { n: 'Direniş Ruhu', d: 'Savunma +%10, istikrar +%5', fx: { landDef: 0.1, stab: 0.05 } },
   };
 
