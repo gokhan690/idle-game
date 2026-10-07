@@ -349,44 +349,69 @@
   // Tarihî akış dengesi (yalnızca tarihî YZ modunda, YZ'ye karşı YZ muharebelerinde):
   // kilit cephelerde savunanın asli toprak kaybı tarihî eğriden çok saparsa, geride kalan taraf
   // muharebede kademeli üstünlük kazanır (en çok %30-50). Oyuncunun muharebelerine uygulanmaz.
-  // [saldıran, savunan, saldıran herhangi bir düşman mı, [tarih, savunanın asli kayıp oranı]...]
+  // Eğri türleri:
+  //  - ülke: savunanın asli toprak kaybı (oran) tarihî eğriyle karşılaştırılır
+  //  - bölge: saldıran tarafın belirli şehirleri kontrol oranı (ör. Güneydoğu Asya kaynak bölgesi)
+  // aMax: saldıran geride kalınca en çok destek, dMax: saldıran önde gidince savunana en çok destek,
+  // aFrom: saldırana destek bu tarihten önce verilmez (erken taarruz dönemi)
   const HIST_COURSE = [
-    // [saldıran, savunan, herhangi düşman, eğri, en çok destek (saldıran geride / saldıran önde)]
-    ['GER', 'SOV', 0, [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], [0.3, 0.45]],
-    ['JAP', 'CHI', 0, [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], [0.05, 0.5]],
-    ['*', 'GER', 1, [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], [0.3, 0.45]],
+    { a: 'GER', d: 'SOV', pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
+    { a: 'JAP', d: 'CHI', pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
+    { a: '*', d: 'GER', pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.45 },
+    // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
+    { a: 'JAP', set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
+      pts: [['1941-12-07', 0], ['1942-01-20', 0.45], ['1942-04-01', 0.9], ['1944-10-01', 0.9], ['1945-03-15', 0.6], ['1945-08-15', 0.45]], aMax: 0.4, dMax: 0.4,
+      region: (n) => n < NP && ((P[n].lon > 90 && P[n].lat < 24 && P[n].lat > -15) || P[n].lon > 140 || P[n].lon < -150) },
   ];
-  HIST_COURSE.forEach((h) => { h[3] = h[3].map(([d, v]) => [G.dayOf(d), v]); });
+  for (const h of HIST_COURSE) {
+    h.pts = h.pts.map(([d, v]) => [G.dayOf(d), v]);
+    h.aFromD = h.aFrom ? G.dayOf(h.aFrom) : 0;
+    h.key = h.a + '>' + (h.d || 'bölge');
+  }
+  let SETS = null;
   const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
   // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
   G.histAhead = (a, d) => { const x = G._hcs && G._hcs[a + '>' + d]; return x ? x.loss - x.ref : null; };
   G.histCourse = () => {
     const st = G.st; G._hc = []; G._hcs = {};
     if (!st.opts.hist) return;
-    for (const [a, d, any, pts, km] of HIST_COURSE) {
-      if (st.day < pts[0][0] || !st.C[d]?.alive) continue;
-      if (!any && !(st.C[a]?.alive && G.atWar(a, d))) continue;
-      if (any && !st.C[d].enemies.length) continue;
-      let h = 0, w = 0;
-      for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) h += x; }
-      const e = (1 - h / Math.max(1, w)) - refAt(pts, st.day); // + : saldıran tarihten önde
-      G._hcs[a + '>' + d] = { loss: 1 - h / Math.max(1, w), ref: refAt(pts, st.day) };
-      if (Math.abs(e) < 0.05) continue;
-      G._hc.push({ a, d, any, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? km[1] : km[0]) });
-    }
+    if (!SETS) SETS = HIST_COURSE.map((h) => (h.set ? h.set.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0) : null));
+    HIST_COURSE.forEach((h, hi) => {
+      if (st.day < h.pts[0][0]) return;
+      let v; // saldıranın ilerleme ölçüsü (ülke: savunanın kaybı, bölge: saldıranın kontrol oranı)
+      if (h.set) {
+        if (!st.C[h.a]?.alive || !st.C[h.a].enemies.length) return;
+        let w = 0, x = 0;
+        for (const i of SETS[hi]) { const k = 1 + P[i].vp; w += k; const pc = st.prov[i].c; if (pc === h.a || (G.sameFaction(pc, h.a) && !G.atWar(pc, h.a))) x += k; }
+        v = w ? x / w : 0;
+      } else {
+        const d = h.d;
+        if (!st.C[d]?.alive) return;
+        if (h.a === '*' ? !st.C[d].enemies.length : !(st.C[h.a]?.alive && G.atWar(h.a, d))) return;
+        let hh = 0, w = 0;
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) hh += x; }
+        v = 1 - hh / Math.max(1, w);
+      }
+      const ref = refAt(h.pts, st.day), e = v - ref; // + : saldıran tarihten önde
+      G._hcs[h.key] = { loss: v, ref };
+      if (Math.abs(e) < 0.05) return;
+      if (e < 0 && st.day < h.aFromD) return;
+      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
+    });
   };
-  // taraf çarpanı: x tarafı y'ye karşı
-  G.histMul = (x, y) => {
+  // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
+  G.histMul = (x, y, n) => {
     const st = G.st; if (!G._hc || !G._hc.length || x === st.player || y === st.player) return 1;
-    const inA = (t, a, any, d) => (any ? G.atWar(t, d) : t === a || G.sameFaction(t, a));
-    const inD = (t, d) => t === d;
     // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
     let m = 1;
-    for (const h of G._hc) {
+    for (const { h, fav, k } of G._hc) {
+      if (h.region && (n == null || !h.region(n))) continue;
+      const inA = (t) => (h.a === '*' ? G.atWar(t, h.d) : t === h.a || G.sameFaction(t, h.a));
+      const inD = (t) => (h.set ? G.atWar(t, h.a) : t === h.d);
       let side = null;
-      if (inA(x, h.a, h.any, h.d) && inD(y, h.d)) side = 'a'; else if (inD(x, h.d) && inA(y, h.a, h.any, h.d)) side = 'd';
+      if (inA(x) && inD(y)) side = 'a'; else if (inD(x) && inA(y)) side = 'd';
       if (!side) continue;
-      m *= side === h.fav ? 1 + h.k : 1 - h.k / 2;
+      m *= side === fav ? 1 + k : 1 - k / 2;
     }
     return Math.max(0.55, Math.min(1.6, m));
   };
@@ -416,7 +441,7 @@
     const aAA = aaOf(A), dAA = aaOf(D);
     const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
-    const hmA = G.histMul(attTag, defs[0].t), hmD = G.histMul(defs[0].t, attTag);
+    const hmA = G.histMul(attTag, defs[0].t, n), hmD = G.histMul(defs[0].t, attTag, n);
     let hitD = 0, hitA = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
@@ -495,7 +520,7 @@
     const fit = (L, wmax) => { const out = []; let w = 0; for (const u of L) { const uw = u._s.t.w || 15; if (out.length && w + uw > wmax) break; out.push(u); w += uw; } return out; };
     const A = fit(us, width), D = fit(Dall, baseW);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
-    const hmA = G.histMul(tag, D[0].t), hmD = G.histMul(D[0].t, tag);
+    const hmA = G.histMul(tag, D[0].t, n), hmD = G.histMul(D[0].t, tag, n);
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
     let aTot = 0, dTot = 0;

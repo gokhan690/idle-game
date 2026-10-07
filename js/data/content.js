@@ -203,6 +203,12 @@
       { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35 },
       { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
     ] },
+    occ: { n: 'İşgal Yasası', opts: [
+      { n: 'Sert Baskı', d: 'Direniş -%25, uyum artışı -%50, garnizon kayıpları +%50', rs: 0.75, cp: 0.5, gl: 1.5, pr: 1 },
+      { n: 'Askerî Yönetim', d: 'Dengeli işgal yönetimi', rs: 1, cp: 1, gl: 1, pr: 1 },
+      { n: 'Sivil Yönetim', d: 'Direniş +%10, uyum artışı +%60, işgal üretimi +%10', rs: 1.1, cp: 1.6, gl: 1, pr: 1.1 },
+      { n: 'Yerel Öz Yönetim', d: 'Direniş -%15, uyum artışı +%100, işgal üretimi -%15', rs: 0.85, cp: 2, gl: 0.8, pr: 0.85, ws: 0 },
+    ] },
     trade: { n: 'Ticaret Yasası', opts: [
       { n: 'Serbest Ticaret', d: 'Fabrika +%10, araştırma +%5; kaynakların %80\'i satılabilir', factory: 0.1, research: 0.05, exp: 0.8 },
       { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2; kaynakların %50\'si satılabilir', factory: 0.05, research: 0.02, exp: 0.5 },

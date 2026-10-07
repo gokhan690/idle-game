@@ -12,6 +12,8 @@
     if (facOf('GER')) return facOf('GER');
     return G.createFaction('GER', 'Mihver');
   };
+  // ABD asli topraklarının en az bu kadarını tutuyor mu (atom bombası koşulu)
+  const usaHolds = (f) => { const st = G.st; let a = 0, h = 0; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.core !== 'USA') continue; a++; if (pr.c === 'USA') h++; } return a && h / a >= f; };
   const joinAxis = (t) => { const f = ensureAxis(); if (f && alive(t) && facOf(t) !== f) G.joinFaction(t, f); };
   const war = (a, b) => { if (alive(a) && alive(b) && !G.atWar(a, b) && !G.sameFaction(a, b)) G.declareWar(a, b); };
 
@@ -159,7 +161,15 @@
     { id: 'jsnap', date: '1941-04-13', actor: 'JAP', title: 'Sovyet-Japon Tarafsızlık Paktı',
       text: 'Matsuoka Moskova\'da: Japonya ile Sovyetler Birliği birbirine saldırmama sözü veriyor.',
       cond: () => alive('JAP') && alive('SOV') && !G.atWar('JAP', 'SOV') && G.st.player !== 'SOV',
-      opts: [{ n: 'Paktı imzala', fx: () => { G.st.pacts[G.pairKey('JAP', 'SOV')] = 'nap'; G.log('Sovyet-Japon Tarafsızlık Paktı imzalandı.', ['JAP', 'SOV'], 'major'); } }, { n: 'İmzalama', fx: () => {} }] },
+      opts: [{ n: 'Paktı imzala', fx: () => {
+        // pakt Japonya'nın kuklası Mançukuo'yu ve Sovyet uydusu Moğolistan'ı da kapsar
+        for (const [x, y] of [['JAP', 'SOV'], ['MAN', 'SOV'], ['JAP', 'MON'], ['MAN', 'MON']]) if (alive(x) && alive(y) && !G.atWar(x, y)) G.st.pacts[G.pairKey(x, y)] = 'nap';
+        G.log('Sovyet-Japon Tarafsızlık Paktı imzalandı.', ['JAP', 'SOV'], 'major');
+      } }, { n: 'İmzalama', fx: () => {} }] },
+    { id: 'indochina', date: '1941-07-24', actor: 'JAP', title: 'Fransız Çinhindi',
+      text: 'Japonya, Fransız Çinhindi\'nde askerî üsler talep ediyor.',
+      cond: () => alive('JAP') && alive('FRA') && !G.atWar('JAP', 'FRA') && G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA' && G.st.player !== 'FRA',
+      opts: [{ n: 'Üsleri talep et', fx: () => { G.st.access['JAP>FRA'] = 1; G.log('Japon birlikleri Fransız Çinhindi\'ne girdi.', ['JAP', 'FRA'], 'major'); } }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'barbarossa', date: '1941-06-22', actor: 'GER', title: 'Barbarossa Harekâtı',
       text: 'Tarihin en büyük işgal ordusu Sovyet sınırında. Saldırı emri verilsin mi?',
       cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.st.player === 'GER' || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
@@ -167,7 +177,21 @@
     { id: 'pearl', date: '1941-12-07', actor: 'JAP', title: 'Pearl Harbor',
       text: 'ABD petrol ambargosu uyguluyor. Donanma, Pasifik Filosu\'na ani bir baskın planladı.',
       cond: () => alive('JAP') && alive('USA') && !G.atWar('JAP', 'USA'),
-      opts: [{ n: 'Saldır', fx: () => { war('JAP', 'USA'); if (alive('ENG')) war('JAP', 'ENG'); if (alive('HOL')) war('JAP', 'HOL'); if (alive('USA') && ai('USA') && !facOf('USA') && G.st.factions.allies) G.joinFaction('USA', 'allies'); } }, { n: 'Diplomasiyi dene', fx: () => {} }] },
+      opts: [{ n: 'Saldır', fx: () => {
+        war('JAP', 'USA'); if (alive('ENG')) war('JAP', 'ENG'); if (alive('HOL')) war('JAP', 'HOL');
+        if (alive('USA') && ai('USA') && !facOf('USA') && G.st.factions.allies) G.joinFaction('USA', 'allies');
+        // Siyam Japonya'ya geçit verir ve İngiltere'ye savaş açar (Ocak 1942)
+        if (alive('SIA') && ai('SIA') && !G.atWar('SIA', 'JAP')) { G.st.access['JAP>SIA'] = 1; G.st.access['SIA>JAP'] = 1; if (alive('ENG')) G.setWar('SIA', 'ENG'); }
+        // Güneye ilerleme: Malaya, Filipinler, Hong Kong ve Pasifik adaları
+        if (G.st.opts.hist && ai('JAP')) { const n = G.landing(['JAP'], ['Kota Bharu', 'Manila', 'Hong Kong', 'Guam', 'Wake'], 16, 'landing'); if (n) G.log(`Japonya Malaya, Filipinler ve Hong Kong'a çıkarma yaptı (${n} tümen).`, ['JAP'], 'major'); }
+      } }, { n: 'Diplomasiyi dene', fx: () => {} }] },
+    { id: 'midway', date: '1942-06-04', actor: 'USA', title: 'Midway Muharebesi', text: 'ABD şifre çözücüleri Japon saldırı planını okudu: Midway\'de pusu.',
+      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist,
+      opts: [{ n: 'Pusuyu kur', fx: () => { let k = 4; for (const f of G.st.C.JAP.fleets || []) { const x = Math.min(k, f.sh.cv || 0); f.sh.cv -= x; k -= x; } G.log('Midway Muharebesi: Japonya dört uçak gemisini kaybetti; Pasifik\'te deniz üstünlüğü el değiştirdi.', ['USA', 'JAP'], 'major'); } }, { n: 'Bekle', fx: () => {} }] },
+    { id: 'dei', date: '1942-01-11', actor: 'JAP', title: 'Güney Kaynak Bölgesi',
+      text: 'Hollanda Doğu Hint Adaları\'nın petrolü Japon savaş makinesi için hayati.',
+      cond: () => alive('JAP') && G.st.opts.hist && (G.atWar('JAP', 'HOL') || G.atWar('JAP', 'ENG')), retryUntil: '1942-06-01',
+      opts: [{ n: 'Çıkarma yap', fx: () => { const n = G.landing(['JAP'], ['Balikpapan', 'Palembang', 'Medan', 'Kuching', 'Rabaul', 'Batavya'], 12, 'landing'); if (n) G.log(`Japonya Hollanda Doğu Hint Adaları ve Yeni Gine'ye çıktı (${n} tümen).`, ['JAP'], 'major'); } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'usager', date: '1941-12-11', actor: 'GER', title: 'ABD\'ye Savaş İlanı',
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
@@ -182,7 +206,15 @@
     const st = G.st;
     const tgt = names.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0 && G.atWar(tags[0], st.prov[i].c));
     if (!tgt.length) return 0;
-    const pool = st.units.filter((u) => tags.includes(u.t) && u.loc < NP && !u.gar && !u.path.length && !(G.inBattle && G.inBattle.has(u)) && u.str > 0.7 && !P[u.loc].a.some((j) => G.atWar(u.t, st.prov[j].c)));
+    // cephe gerisindeki birlikler ve kalabalık cephe eyaletlerindeki fazlalık (eyalette en az 2 tümen kalır)
+    const here = (n) => (G.unitsAt[n] || []).filter((x) => tags.includes(x.t)).length;
+    const taken = new Map();
+    const pool = st.units.filter((u) => {
+      if (!tags.includes(u.t) || u.loc >= NP || u.gar || u.path.length || (G.inBattle && G.inBattle.has(u)) || u.str <= 0.7) return false;
+      if (!P[u.loc].a.some((j) => G.atWar(u.t, st.prov[j].c))) return true;
+      const k = taken.get(u.loc) || 0; if (here(u.loc) - k <= 2) return false;
+      taken.set(u.loc, k + 1); return true;
+    });
     pool.sort((a, b) => G.unitPower(b) - G.unitPower(a));
     let k = 0;
     for (const u of pool.slice(0, n)) {
@@ -198,6 +230,25 @@
     { id: 'husky', date: '1943-07-10', actor: 'ENG', title: 'Husky Harekâtı', text: 'Müttefik kuvvetleri Sicilya\'ya çıkarma yapmaya hazır.',
       cond: () => alive('ITA') && alive('ENG') && G.atWar('ENG', 'ITA') && G.st.opts.hist, retryUntil: '1944-03-01',
       opts: [{ n: 'Sicilya\'ya çık', fx: () => { const n = G.landing(['USA', 'ENG', 'CAN'].filter((t) => alive(t) && G.atWar(t, 'ITA')), ['Palermo', 'Catania'], 8, 'landing'); if (n) G.log(`Müttefikler Sicilya\'ya çıktı (${n} tümen).`, ['ENG', 'ITA'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    // Pasifik'te ABD karşı taarruzu ve savaşın sonu
+    { id: 'saipan', date: '1944-06-15', actor: 'USA', title: 'Marianalar Harekâtı', text: 'ABD deniz piyadeleri Saipan ve Guam\'a çıkmaya hazır.',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && ['Saipan', 'Guam'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-01-01',
+      opts: [{ n: 'Çıkarma yap', fx: () => { const n = G.landing(['USA'], ['Saipan', 'Guam'], 6, 'landing'); if (n) G.log(`ABD Marianalar'a çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'leyte', date: '1944-10-20', actor: 'USA', title: 'Leyte Körfezi', text: 'MacArthur Filipinler\'e dönmeye hazır: "Geri döndüm."',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && ['Manila', 'Cebu City'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-06-01',
+      opts: [{ n: 'Filipinler\'e çık', fx: () => { const n = G.landing(['USA', 'AST'].filter((t) => alive(t) && G.atWar(t, 'JAP')), ['Cebu City', 'San Jose', 'Manila'], 12, 'landing'); if (n) G.log(`ABD Filipinler'e çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'okinawa', date: '1945-04-01', actor: 'USA', title: 'Buzdağı Harekâtı', text: 'Japon anayurduna giden yolda son durak: Okinawa.',
+      cond: () => alive('JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist, retryUntil: '1945-08-01',
+      opts: [{ n: 'Okinawa\'ya çık', fx: () => { const n = G.landing(['USA'], ['Okinawa', 'Iwo Jima'], 10, 'landing'); if (n) G.log(`ABD Okinawa ve Iwo Jima'ya çıktı (${n} tümen).`, ['USA', 'JAP'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
+    { id: 'augstorm', date: '1945-08-08', actor: 'SOV', title: 'Ağustos Fırtınası', text: 'Yalta\'da verilen söz: Sovyetler Birliği Japonya\'ya savaş açıyor ve Mançurya\'ya giriyor.',
+      cond: () => alive('SOV') && alive('JAP') && !G.atWar('SOV', 'JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && !G.st.C.GER?.enemies.length,
+      opts: [{ n: 'Mançurya\'ya gir', fx: () => { for (const k of [G.pairKey('JAP', 'SOV'), G.pairKey('MAN', 'SOV'), G.pairKey('JAP', 'MON'), G.pairKey('MAN', 'MON')]) delete G.st.pacts[k]; war('SOV', 'JAP'); if (alive('MAN') && !G.atWar('SOV', 'MAN')) war('SOV', 'MAN'); } }, { n: 'Bekle', fx: () => {} }] },
+    { id: 'jsurrender', date: '1945-08-15', actor: 'USA', title: 'Japonya\'nın Teslimi', text: 'Hiroşima ve Nagazaki\'ye atom bombası atıldı. İmparator teslim olmayı kabul ediyor.',
+      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist && G.st.player !== 'JAP' && !G.st.C.GER?.enemies.length && usaHolds(0.9), retryUntil: '1946-12-31',
+      opts: [{ n: 'Teslimi kabul et', fx: () => { G.log('Hiroşima ve Nagazaki\'ye atom bombası atıldı: Japonya koşulsuz teslim oldu.', ['JAP', 'USA'], 'major'); G.capitulate('JAP'); } }, { n: 'Savaşa devam', fx: () => {} }] },
+    { id: 'mansurrender', date: '1945-08-16', actor: 'MAN', title: 'Mançukuo\'nun Çöküşü', text: 'Japonya teslim oldu; Mançukuo ayakta kalamaz.',
+      cond: () => alive('MAN') && G.st.C.MAN.enemies.length > 0 && G.st.opts.hist && !(alive('JAP') && G.st.C.JAP.enemies.length) && !G.st.conf, retryUntil: '1946-06-01',
+      opts: [{ n: 'Teslim ol', fx: () => G.capitulate('MAN') }, { n: 'Direnmeye devam', fx: () => {} }] },
     { id: 'overlord', date: '1944-06-06', actor: 'USA', title: 'Overlord Harekâtı (D-Günü)', text: 'Tarihin en büyük çıkarma harekâtı Normandiya kıyılarında başlamak üzere.',
       cond: () => alive('GER') && alive('USA') && G.atWar('USA', 'GER') && G.st.opts.hist && ['Caen', 'Cherbourg'].some((nm) => { const i = P.findIndex((p) => p.n === nm); return i >= 0 && G.atWar('USA', G.st.prov[i].c); }), retryUntil: '1945-01-01',
       opts: [{ n: 'Normandiya\'ya çık', fx: () => { const n = G.landing(['USA', 'ENG', 'CAN'].filter((t) => alive(t) && G.atWar(t, 'GER')), ['Caen', 'Cherbourg', 'Rouen'], 16, 'landing'); if (n) G.log(`D-Günü: Müttefikler Normandiya\'ya çıktı (${n} tümen).`, ['USA', 'GER'], 'major'); } }, { n: 'Ertele', fx: () => {} }] },
