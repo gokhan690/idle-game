@@ -204,10 +204,14 @@
       opts: [{ n: 'Volkssturm\'u kur', fx: () => {
         const st = G.st, c = st.C.GER;
         if (!c.spirits.includes('volkssturm')) { c.spirits.push('volkssturm'); G.recomputeMods(c); }
-        const L = []; for (let i = 0; i < NP; i++) if (st.prov[i].c === 'GER' && st.prov[i].core === 'GER') L.push(i);
+        // milisler düşmanın yaklaştığı asli illere (iki adım içinde düşman kontrolü) yerleşir; yoksa büyük şehirlere
+        const own = (i) => st.prov[i].c === 'GER' && st.prov[i].core === 'GER';
+        const hot = (i) => P[i].a.some((j) => G.atWar('GER', st.prov[j].c) || P[j].a.some((k2) => G.atWar('GER', st.prov[k2].c)));
+        let L = []; for (let i = 0; i < NP; i++) if (own(i) && hot(i)) L.push(i);
+        if (L.length < 4) { L = []; for (let i = 0; i < NP; i++) if (own(i)) L.push(i); }
         L.sort((a, b) => P[b].vp - P[a].vp || b - a);
-        const n = Math.min(24, L.length * 2);
-        for (let k = 0; k < n; k++) { const u = G.makeUnit('GER', 'inf', L[k % Math.min(12, L.length)], 0.8); u.xp = 0.05; st.units.push(u); }
+        const n = Math.min(30, L.length * 3);
+        for (let k = 0; k < n; k++) { const u = G.makeUnit('GER', 'inf', L[k % Math.min(15, L.length)], 0.8); u.xp = 0.05; st.units.push(u); }
         if (n) G.rebuildUnitIndex();
         G.log(`Almanya Volkssturm\'u kurdu: ${n} milis tümeni.`, ['GER'], 'major');
       } }, { n: 'Reddet', fx: () => {} }] },
