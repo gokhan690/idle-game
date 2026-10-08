@@ -54,7 +54,7 @@
   G.nuke = (tag, n) => {
     const st = G.st, c = st.C[tag], pr = st.prov[n], v = pr.c, vc = st.C[v];
     if (!c || !(c.nukes > 0) || !vc || !G.atWar(tag, v)) return false;
-    c.nukes--;
+    c.nukes--; pr.nk = st.day;
     pr.civ = Math.floor(pr.civ * 0.4); pr.mil = Math.floor(pr.mil * 0.4); pr.dock = Math.floor(pr.dock * 0.5);
     pr.inf = Math.max(1, (pr.inf || 1) - 2); if (pr.rail != null) pr.rail = Math.max(0, pr.rail - 2); pr.fort = Math.max(0, pr.fort - 2);
     for (const u of G.unitsAt[n] || []) { u.str *= 0.4; u.org = 0; }
@@ -70,9 +70,11 @@
   G.aiProjects = (c) => {
     const st = G.st;
     if (!c.major || c.tag === st.player) return;
-    if (!(c.proj && c.proj.cur) && c.pp >= 180) for (const id of ['radar', 'crypto', 'penicillin', 'jet', 'atom']) if (G.projAvailable(c, id).ok) { G.projStart(c, id); break; }
+    // atom programı yalnızca büyük sanayili güçlere göre (tarihte yalnızca ABD 1945'e yetişti)
+    const rich = c.sum.civ + c.sum.mil >= 80;
+    if (!(c.proj && c.proj.cur) && c.pp >= 180) for (const id of ['radar', 'crypto', 'penicillin', 'jet', 'atom']) if ((id !== 'atom' || rich) && G.projAvailable(c, id).ok) { G.projStart(c, id); break; }
     if (!st.opts.hist && c.nukes > 0 && c.enemies.length && !(c.nukeCd > st.day)) {
-      const t = G.nukeTargets(c.tag).find((i) => st.C[st.prov[i].c]?.major); if (t != null) { G.nuke(c.tag, t); c.nukeCd = st.day + 30; }
+      const t = G.nukeTargets(c.tag).find((i) => st.C[st.prov[i].c]?.major && !(st.prov[i].nk > st.day - 365)); if (t != null) { G.nuke(c.tag, t); c.nukeCd = st.day + 60; }
     }
   };
 })(window);
