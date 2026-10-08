@@ -416,3 +416,12 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 /* Yakıt deposu */
 .fuelbar { margin: 0 0 6px; }
 .fuelbar .bar { height: 10px; }
+/* muharebe taktikleri */
+.tacs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+.tac { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tac small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.tac b { overflow-wrap: anywhere; }
+.tac .d { font-size: 12px; color: var(--muted); }
+.tac.win { border-color: var(--good); }
+.tac.lost { opacity: 0.6; border-style: dashed; }
+.tac .pill { align-self: flex-start; }

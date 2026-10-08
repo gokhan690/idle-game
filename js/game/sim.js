@@ -489,6 +489,9 @@
       atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       hitA += atk; G.contrib(attTag, u.t, atk);
     }
+    // muharebe taktikleri (HOI4): iki günde bir seçilir, sayaçlar ve evreler
+    const tac = G.battleTactics(n, A, D, attTag, defs[0].t, dirs, rivAvg);
+    hitD *= tac.mA; hitA *= tac.mD;
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
     const wOf = (L) => L.reduce((s, u) => s + (u._s.t.w || 15), 0);
     const wA = wOf(A), wD = wOf(D);
@@ -535,7 +538,7 @@
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
-      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD, riv: rivAvg });
+      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD, riv: rivAvg, tac: { ta: tac.b.ta, td: tac.b.td, cnt: tac.b.cnt, phase: tac.b.phase, hist: tac.b.hist.slice(), sa: tac.b.sa, sd: tac.b.sd, mA: tac.mA, mD: tac.mD } });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
@@ -771,7 +774,7 @@
     G.decTick();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
-    if (st.day % 10 === 7) G.enclaves();
+    if (st.day % 10 === 7) { G.enclaves(); G.tacticsGC(); }
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (G.volTick) G.volTick(); // gönüllü kuvvetler
