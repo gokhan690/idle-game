@@ -335,7 +335,7 @@
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
       else if (e.targetPrompt === st.player) {
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
-      } else e.opts[0].fx();
+      } else { e.opts[0].fx(); if (G.newsFor) G.newsFor(e); }
     }
   };
   // [anahtar, tarih, ülke, tümen, hedef eyaletler, yeni birlik mi, son tarih]

@@ -47,7 +47,7 @@
   };
   G.elecDate = (c) => { const d = G.dateOf(G.elecInit(c).next); return `${G.AYLAR[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
   // Seçimi olan ülke mi (demokrasi, kukla/teslim/iç savaş dışı)
-  G.hasElections = (c) => c.alive && c.ideo === 'dem' && !c.capd && !c.overlord && !(G.st.civil || []).some((p) => p.includes(c.tag));
+  G.hasElections = (c) => c.alive && c.ideo === 'dem' && !c.capd && !(c.overlord && G.autoLevel(c) < 2) && !(G.st.civil || []).some((p) => p.includes(c.tag));
 
   // Oy dağılımı: parti desteği, istikrarsızlık protestosu ve rastgele dalgalanma
   G.elecShares = (c, noise) => {

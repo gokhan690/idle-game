@@ -65,7 +65,7 @@
       F('tur_legacy', 'Atatürk\'ün Mirası', 3, 0, [], { stab: 0.05, pp: 0.25 }, 'Cumhuriyetin temelleri sağlam. İstikrar +%5.'),
       F('tur_montreux', 'Montrö Sözleşmesi', 1, 1, ['tur_legacy'], { spirit: 'montreux', fn: ['fortRegion', 'straits', 3] }, 'Boğazlar yeniden Türk egemenliğinde: Boğaz eyaletlerine 3 kademe tahkimat.'),
       F('tur_six_arrows', 'Altı Ok', 3, 1, ['tur_legacy'], { stab: 0.1, pop: { neu: 0.05 } }, 'Cumhuriyetçilik, milliyetçilik, halkçılık, devletçilik, laiklik, inkılapçılık.'),
-      F('tur_hatay', 'Hatay Meselesi', 5, 1, ['tur_legacy'], { fn: ['demand', 'FRA', 'hatay'] }, 'Fransa\'dan Hatay\'ı talep et. Reddederse savaş gerekçesi kazanılır.', { req: 'alive:FRA' }),
+      F('tur_hatay', 'Hatay Meselesi', 5, 1, ['tur_legacy'], { fn: ['event', 'hatay'] }, 'Hatay Devleti\'nin Türkiye\'ye katılması: istikrar, savaş desteği ve siyasi güç (Fransa ile ilişkiler bozulur).', { req: 'year:1938' }),
       F('tur_straits', 'Boğazların Tahkimi', 0, 2, ['tur_montreux'], { forts: 1, landDef: 0.05 }, 'Sınır tahkimatı, savunma +%5.'),
       F('tur_cakmak', 'Çakmak Hattı', 1, 2, ['tur_montreux'], { fn: ['fortRegion', 'thrace', 3], landDef: 0.05 }, 'Trakya savunma hattı.'),
       F('tur_etatism', 'Devletçilik', 3, 2, ['tur_six_arrows'], { addCiv: 3, rmSpirit: 'econ_tur' }, '+3 sivil fabrika, Ekonomik Darlık sona erer.'),
