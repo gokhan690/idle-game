@@ -130,6 +130,7 @@
     // başlangıç savaşı: İtalya - Etiyopya
     if (st.C.ITA.alive && st.C.ETH.alive) G.setWar('ITA', 'ETH');
     G.initSubjects(); // tarihî bağlı devletler (Mançukuo, Britanya Hindistanı, dominyonlar)
+    if (G.initBop) G.initBop(); // güç dengesi
     st.tension = 8;
     G.rebuildUnitIndex();
     G.updateSummaries();

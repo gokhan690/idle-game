@@ -69,6 +69,7 @@
     mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, sa: 6, ha: 1, df: 22, bt: 3, hd: 0.1, ap: 0, pc: 4, hp: 25, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, kind: 'inf', mob: 1, req: 'mot1' },
     arm: { n: 'Tank', s: 'TNK', w: 2, sa: 18, ha: 6, df: 4, bt: 36, hd: 0.8, ap: 10, pc: 15, hp: 2, org: 10, spd: 9, mp: 0.6, eq: { tank: 40 }, kind: 'tank', mob: 1, req: 'tank1' },
     mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, sa: 6, ha: 1, df: 20, bt: 3, hd: 0, ap: 0, pc: 4, hp: 25, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, kind: 'inf', amph: 1, req: 'mar1' },
+    para: { n: 'Paraşütçü', s: 'PRŞ', w: 2, sa: 6, ha: 1, df: 19, bt: 3, hd: 0, ap: 0, pc: 4, hp: 22, org: 70, spd: 4, mp: 1.3, eq: { inf: 170 }, kind: 'inf', para: 1, req: 'para1' },
   };
   g.SUPPORTS = {
     eng: { n: 'İstihkâm', d: '+4 savunma, +1 atılım, siper hızı +%30', df: 4, bt: 1, ent: 0.3, mp: 0.3, eq: { sup: 10 } },
@@ -87,6 +88,7 @@
     mot: { n: 'Motorize Tümen', b: { mot: 6, art: 1 }, s: {} },
     arm: { n: 'Zırhlı Tümen', b: { arm: 3, mot: 2, art: 1 }, s: { rec: 1 } },
     mar: { n: 'Deniz Piyadesi Tümeni', b: { mar: 5, art: 1 }, s: {} },
+    para: { n: 'Paraşüt Tümeni', b: { para: 6 }, s: {} },
   };
 
   // Teknolojiler: cat, year, pre (önkoşul), fx (etkiler)
@@ -101,6 +103,7 @@
     T('mtn1', 'Dağ Piyadesi', 'inf', 1936, ['sup1'], { unlock: 'mtn' }, 'Dağlık arazide uzman tümenler.'),
     T('inf2', 'Piyade Teçhizatı II', 'inf', 1939, ['inf1'], { eq_inf: 2 }, 'Yarı otomatik tüfekler: piyade +%15 saldırı.'),
     T('mar1', 'Deniz Piyadesi', 'inf', 1938, ['sup1'], { unlock: 'mar' }, 'Çıkarma harekâtına özel tümenler.'),
+    T('para1', 'Hava İndirme', 'inf', 1939, ['sup1'], { unlock: 'para' }, 'Paraşüt tümenleri: hava üssünden 500 km içine atlar.'),
     T('sup2', 'Gelişmiş Lojistik', 'inf', 1940, ['sup1'], { org: 0.1, speed: 0.1 }, '+%10 moral ve hareket hızı.'),
     T('inf3', 'Piyade Teçhizatı III', 'inf', 1942, ['inf2'], { eq_inf: 3 }, 'Taarruz tüfekleri.'),
     T('art1', 'Topçu I', 'art', 1936, [], { eq_art: 1 }, 'Sahra topları.'),

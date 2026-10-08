@@ -778,6 +778,7 @@
     if (st.day % 10 === 7) { G.enclaves(); G.tacticsGC(); }
     if (st.day % 10 === 3 && G.autoTick) G.autoTick();
     if (G.projTick) G.projTick();
+    if (G.bopTick) G.bopTick();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (G.volTick) G.volTick(); // gönüllü kuvvetler

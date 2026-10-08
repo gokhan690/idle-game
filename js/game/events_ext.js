@@ -46,6 +46,7 @@
   };
 
   // ---------- Türkiye ----------
+  const bop = (v) => { if (G.bopShift && G.st.C.TUR) G.bopShift(G.st.C.TUR, v, 'olay'); };
   const tur = () => G.st.C.TUR;
   const EXT = [
     { id: 'hatay', date: '1939-06-29', actor: 'TUR', title: 'Hatay Türkiye\'ye Katılıyor',
@@ -61,12 +62,12 @@
     { id: 'ucluittifak', date: '1939-10-19', actor: 'TUR', title: 'Üçlü İttifak Antlaşması',
       text: 'İngiltere ve Fransa, Akdeniz\'de bir saldırı olursa karşılıklı yardım öngören bir antlaşma öneriyor. Türkiye\'ye silah ve kredi verilecek.',
       cond: () => alive('TUR') && alive('ENG') && !tur().fac && !tur().enemies.length && G.atWar('ENG', 'GER'),
-      opts: [{ n: 'Antlaşmayı imzala', fx: () => { const c = tur(); rel('ENG', 'TUR', 25); if (alive('FRA')) rel('FRA', 'TUR', 20); c.stock.inf = (c.stock.inf || 0) + 1500; c.stock.art = (c.stock.art || 0) + 40; c.stock.fig = (c.stock.fig || 0) + 30; G.log('Üçlü İttifak Antlaşması imzalandı: İngiliz silah ve uçak yardımı.', ['TUR', 'ENG'], 'info'); } },
-        { n: 'Tam tarafsız kal', fx: () => { tur().stabX += 0.03; } }] },
+      opts: [{ n: 'Antlaşmayı imzala', fx: () => { const c = tur(); rel('ENG', 'TUR', 25); if (alive('FRA')) rel('FRA', 'TUR', 20); c.stock.inf = (c.stock.inf || 0) + 1500; c.stock.art = (c.stock.art || 0) + 40; c.stock.fig = (c.stock.fig || 0) + 30; G.log('Üçlü İttifak Antlaşması imzalandı: İngiliz silah ve uçak yardımı.', ['TUR', 'ENG'], 'info'); bop(0.25); } },
+        { n: 'Tam tarafsız kal', fx: () => { tur().stabX += 0.03; bop(-0.1); } }] },
     { id: 'turger', date: '1941-06-18', actor: 'TUR', title: 'Türk-Alman Dostluk Antlaşması',
       text: 'Almanya Balkanları ele geçirdi ve sınırlarımıza dayandı. Berlin bir saldırmazlık ve dostluk antlaşması öneriyor.',
       cond: () => alive('TUR') && alive('GER') && !G.atWar('TUR', 'GER') && !G.sameFaction('TUR', 'GER'),
-      opts: [{ n: 'Antlaşmayı imzala', fx: () => { G.st.pacts[G.pairKey('TUR', 'GER')] = 'nap'; rel('GER', 'TUR', 20); G.log('Türk-Alman Dostluk Antlaşması imzalandı.', ['TUR', 'GER'], 'info'); } },
+      opts: [{ n: 'Antlaşmayı imzala', fx: () => { G.st.pacts[G.pairKey('TUR', 'GER')] = 'nap'; rel('GER', 'TUR', 20); G.log('Türk-Alman Dostluk Antlaşması imzalandı.', ['TUR', 'GER'], 'info'); bop(-0.25); } },
         { n: 'Reddet', fx: () => { rel('GER', 'TUR', -15); tur().wsX += 0.03; } }] },
     { id: 'varlik', date: '1942-11-11', actor: 'TUR', title: 'Varlık Vergisi',
       text: 'Seferberlik altındaki ordu ve yükselen enflasyon hazineyi zorluyor. Hükümet büyük servetlere bir defalık olağanüstü vergi koymayı tartışıyor; uygulamada ağır ve adaletsiz olacağı uyarıları da var.',
@@ -76,7 +77,7 @@
     { id: 'adana', date: '1943-01-30', actor: 'TUR', title: 'Adana Görüşmesi',
       text: 'Churchill, İnönü ile Adana\'da görüşmek için geldi. İngiltere Türkiye\'yi silahlandırmayı ve savaşa yaklaştırmayı istiyor.',
       cond: () => alive('TUR') && alive('ENG') && !G.atWar('TUR', 'ENG') && !G.sameFaction('TUR', 'GER'),
-      opts: [{ n: 'Müttefik yardımını kabul et', fx: () => { const c = tur(); c.stock.inf = (c.stock.inf || 0) + 2500; c.stock.art = (c.stock.art || 0) + 80; c.stock.fig = (c.stock.fig || 0) + 60; c.stock.tank = (c.stock.tank || 0) + 40; rel('ENG', 'TUR', 15); G.log('Adana Görüşmesi: İngiltere tank, top ve uçak gönderiyor.', ['TUR', 'ENG'], 'good'); } },
+      opts: [{ n: 'Müttefik yardımını kabul et', fx: () => { const c = tur(); c.stock.inf = (c.stock.inf || 0) + 2500; c.stock.art = (c.stock.art || 0) + 80; c.stock.fig = (c.stock.fig || 0) + 60; c.stock.tank = (c.stock.tank || 0) + 40; rel('ENG', 'TUR', 15); G.log('Adana Görüşmesi: İngiltere tank, top ve uçak gönderiyor.', ['TUR', 'ENG'], 'good'); bop(0.2); } },
         { n: 'Mesafeli dur', fx: () => { rel('ENG', 'TUR', -10); } }] },
     { id: 'kahire', date: '1943-12-04', actor: 'TUR', title: 'Kahire Konferansı',
       text: 'Roosevelt ve Churchill, Türkiye\'nin savaşa girmesini istiyor. İnönü ordunun hazır olmadığını ve Alman hava saldırılarına açık olduğumuzu düşünüyor.',
@@ -86,7 +87,7 @@
     { id: 'turdow', date: '1945-02-23', actor: 'TUR', title: 'Birleşmiş Milletler Kararı',
       text: 'San Francisco konferansına katılmak için 1 Mart\'a kadar Mihvere savaş ilan etmek gerekiyor. Almanya çöküşün eşiğinde.',
       cond: () => alive('TUR') && alive('GER') && G.st.C.GER.enemies.length > 0 && !G.atWar('TUR', 'GER') && !G.sameFaction('TUR', 'GER'),
-      opts: [{ n: 'Almanya ve Japonya\'ya savaş ilan et', fx: () => { if (G.st.factions.allies && !tur().fac) G.joinFaction('TUR', 'allies'); for (const t of ['GER', 'JAP']) if (alive(t) && !G.atWar('TUR', t)) G.setWar('TUR', t); G.log('Türkiye Almanya ve Japonya\'ya savaş ilan etti.', ['TUR'], 'major'); } },
+      opts: [{ n: 'Almanya ve Japonya\'ya savaş ilan et', fx: () => { if (G.st.factions.allies && !tur().fac) G.joinFaction('TUR', 'allies'); for (const t of ['GER', 'JAP']) if (alive(t) && !G.atWar('TUR', t)) G.setWar('TUR', t); G.log('Türkiye Almanya ve Japonya\'ya savaş ilan etti.', ['TUR'], 'major'); bop(0.5); } },
         { n: 'Tarafsız kal', fx: () => { tur().stabX += 0.02; } }] },
     // ---------- Orta Doğu 1941 ----------
     { id: 'iraq', date: '1941-05-02', actor: 'IRQ', title: 'Reşid Ali Darbesi',

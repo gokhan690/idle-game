@@ -172,7 +172,7 @@
       const mine = (G.unitsAt[node] || []).filter((u) => u.t === st.player);
       if (!mine.length) return false;
       R.sel.units = new Set(mine.map((u) => u.id));
-      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null;
+      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false;
       // dikey ekranda seçili yığın kartın altında kalmasın
       const sp = R.toScreen(G.nodeX[node], G.nodeY[node]);
       if (R.h > R.w && sp.y > R.h * 0.42) { R.cam.y += (sp.y - R.h * 0.3) / R.cam.z; R.clamp(); }
@@ -190,6 +190,8 @@
       UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
       return true;
     };
+    // hava indirme modu
+    if (UI.paraMode) { if (n >= 0 && n < NP) UI.paraTo(n); else { UI.paraMode = false; UI.renderSel(); } return; }
     // taarruz oku modu
     if (UI.goalMode) {
       const a = G.armyById(pc, UI.goalMode); UI.goalMode = null;

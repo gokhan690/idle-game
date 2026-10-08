@@ -34,7 +34,7 @@
   const ST4 = ['sa', 'ha', 'df', 'bt'];
   G.computeTemplate = (c, src) => {
     const K = { inf: { sa: 0, ha: 0, df: 0, bt: 0 }, art: { sa: 0, ha: 0, df: 0, bt: 0 }, tank: { sa: 0, ha: 0, df: 0, bt: 0 }, flat: { sa: 0, ha: 0, df: 0, bt: 0 } };
-    let orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSumT = 0, prcMaxT = 0, prcSumO = 0, prcMaxO = 0, tanks = 0, mob = 0, amph = 0, hdS = 0, hp = 0;
+    let orgS = 0, nb = 0, spd = 99, mp = 0, w = 0, armSum = 0, armMax = 0, prcSumT = 0, prcMaxT = 0, prcSumO = 0, prcMaxO = 0, tanks = 0, mob = 0, amph = 0, para = 0, hdS = 0, hp = 0;
     const eq = {}, bonusRaw = {};
     for (const [k, cnt] of Object.entries(src.b || {})) {
       const b = g.BATS[k]; if (!b || !cnt) continue;
@@ -45,6 +45,7 @@
       if (b.kind === 'tank') { prcSumT += b.pc * cnt; prcMaxT = Math.max(prcMaxT, b.pc); tanks += cnt; } else { prcSumO += b.pc * cnt; prcMaxO = Math.max(prcMaxO, b.pc); }
       if (b.mob) mob += cnt;
       if (b.amph) amph += cnt;
+      if (b.para) para += cnt;
       for (const [e, q] of Object.entries(b.eq)) eq[e] = (eq[e] || 0) + q * cnt;
       if (b.bonus) for (const [te, v] of Object.entries(b.bonus)) bonusRaw[te] = (bonusRaw[te] || 0) + v * cnt;
     }
@@ -71,7 +72,7 @@
       n: src.n, s: shortOf(), mp: Math.round(mp * 10) / 10, eq, days: Math.round(30 + 4 * nb + 8 * tanks),
       K, org: orgS / nb, spd, hd: hdS / nb, hp, armBase: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
       prcT: tanks ? tankShare * (0.4 * prcMaxT + 0.6 * prcSumT / tanks) : 0, prcO: (1 - tankShare) * (0.4 * prcMaxO + 0.6 * prcSumO / Math.max(1, nb - tanks)) + prcAdd,
-      w, bonus, amph: amph / nb, mob: mob / nb, tanks, eng, ent, spdM, aa, sup, cas, nb, atS: prcAdd > 0 ? 1 : 0,
+      w, bonus, amph: amph / nb, para: para / nb, mob: mob / nb, tanks, eng, ent, spdM, aa, sup, cas, nb, atS: prcAdd > 0 ? 1 : 0,
     };
     // ülkenin mevcut teçhizat seviyesiyle gösterim değerleri
     const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank'), tq: tanks && G.stockVec ? G.stockVec(c, 'tank') : null };
