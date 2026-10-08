@@ -93,7 +93,7 @@
   // Kenar maliyeti (gün)
   G.edgeDays = (a, b, spd) => {
     const d = G.dist(a, b);
-    if (a < NP && b < NP) return (d * g.TERRAIN[P[b].te].move) / spd;
+    if (a < NP && b < NP) return (d * g.TERRAIN[P[b].te].move * G.RIVER_MOVE[G.riverEdge(a, b)]) / spd; // nehir geçişi yavaştır
     if (a < NP && b >= NP) return (d + 40) / SEA_SPEED;
     if (a >= NP && b < NP) return (d + 20) / SEA_SPEED;
     return d / SEA_SPEED;

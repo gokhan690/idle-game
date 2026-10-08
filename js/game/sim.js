@@ -467,7 +467,7 @@
     const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
     const hmA = G.histMul(attTag, defs[0].t, n), hmD = G.histMul(defs[0].t, attTag, n);
-    let hitD = 0, hitA = 0;
+    let hitD = 0, hitA = 0, rivSum = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdD) + s.ha * hdD) * u.str;
@@ -477,8 +477,10 @@
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       const wx = G.WINTER_READY.has(u.t) ? 1 - 0.2 * G.wx.snow[n] - 0.3 * G.wx.mud[n] : G.wxAtk(n);
       atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
+      const rp = G.riverPen(u, s, n); rivSum += rp; atk *= 1 - rp; // nehir geçişi: geldiği kenara göre
       hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
+    const rivAvg = rivSum / A.length;
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdA) + s.ha * hdA) * u.str;
@@ -493,7 +495,7 @@
     for (const u of D) {
       const s = u._s;
       const inc = hitD * rD * (s.t.w || 15) / wD;
-      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD;
+      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
       const h = hits(inc, dv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
@@ -529,7 +531,7 @@
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
-      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD });
+      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD, riv: rivAvg });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
@@ -549,13 +551,15 @@
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
     let aTot = 0, dTot = 0;
-    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * aAir; }
+    let rivSum = 0;
+    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; const rp = G.riverPen(u, s, n); rivSum += rp; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * aAir * (1 - rp); }
     for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * dAir; }
+    const rivAvg = rivSum / A.length;
     const wA = A.reduce((s2, u) => s2 + (u._s.t.w || 15), 0), wD = D.reduce((s2, u) => s2 + (u._s.t.w || 15), 0);
     const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
     let defT = 0, attT = 0;
     for (const u of D) {
-      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD;
+      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
       const armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       defT += Math.max(0, u.org) / Math.max(0.01, hits(aTot * (s.t.w || 15) / wD, dv) * CB.kOrg * armF);
     }
