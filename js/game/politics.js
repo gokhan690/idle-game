@@ -339,7 +339,7 @@
     for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag && pr.o === over) { pr.o = pr.c = pr.core = tag; n++; } }
     if (!n) return false;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     c.cap = G.anyOwnProvince(tag);

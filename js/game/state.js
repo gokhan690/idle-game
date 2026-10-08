@@ -129,6 +129,7 @@
     G.refreshEnemies();
     // başlangıç savaşı: İtalya - Etiyopya
     if (st.C.ITA.alive && st.C.ETH.alive) G.setWar('ITA', 'ETH');
+    G.initSubjects(); // tarihî bağlı devletler (Mançukuo, Britanya Hindistanı, dominyonlar)
     st.tension = 8;
     G.rebuildUnitIndex();
     G.updateSummaries();
@@ -233,6 +234,7 @@
     if (!st.vol) st.vol = {};
     if (G.volFix) G.volFix();
     for (const c of Object.values(st.C)) if (c.alive && c.ideo === 'dem' && !c.el && G.elecInit) G.elecInit(c);
+    for (const c of Object.values(st.C)) if (c.overlord && c.auto == null) c.auto = 30; // eski kayıtlar: özerklik
     for (const c of Object.values(st.C)) if (c.alive) { G.econCalc(c); G.fuelInit(c); } // yakıt deposu varsayılanı
     return st;
   };

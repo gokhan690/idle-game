@@ -311,7 +311,7 @@
     const st = G.st, c = st.C[tag], o = st.C[over];
     if (!o) return;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     if (!(c.cap >= 0 && st.prov[c.cap].o === tag)) c.cap = G.anyOwnProvince(tag);
