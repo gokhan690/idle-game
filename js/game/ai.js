@@ -150,8 +150,20 @@
     if ((st.day + i) % 10 === 0) { if (c.auto.air) G.aiAir(c); else if (!c.wings) G.initWings(c); }
     if ((st.day + i) % 2 === 0) {
       if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
+      // savaş başlayınca beklemedeki ordular cepheyi tutar (HOI4'te ordu cephesiz kalınca oyuncular en çok burada takılır)
+      const nw = c.enemies.length;
+      if (nw && !c._warN) {
+        const idleA = (c.armies || []).filter((a) => a.ord === 'hold' && !G.armyUnits(c, a.id).some((u) => u.path.length));
+        for (const a of idleA) a.ord = 'def';
+        if (idleA.length) { c._frontsDirty = 1; G.log(`Savaş başladı: ${idleA.length} ordu cepheyi tutmaya geçti.`, [c.tag], 'info'); }
+      }
+      c._warN = nw;
       // ordular: cephe ve taarruz planına göre komutan yönetir
-      if ((st.day + i) % 6 === 0 || c._frontsDirty) { G.computeFronts(c); c._frontsDirty = 0; }
+      if ((st.day + i) % 6 === 0 || c._frontsDirty) {
+        // emir değişince ordular beklemeden yeniden konuşlanır
+        if (c._frontsDirty && c.ai) for (const a of c.armies || []) delete c.ai['gar' + a.id];
+        G.computeFronts(c); c._frontsDirty = 0;
+      }
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
         G.aiMilitary(c, (u) => u.army === a.id && !u.sr, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
@@ -194,7 +206,8 @@
     if (!mine.length) return;
     for (const u of mine) u._s = G.unitStats(u);
     c.ai = c.ai || {};
-    const atWar = c.enemies.length > 0;
+    // ordu savaşta olmadığı bir ülkeye karşı cephe tutuyorsa barış düzeninde sınıra yığılır
+    const atWar = c.enemies.length > 0 && !(opts.army && opts.vs && !G.atWar(tag, opts.vs));
     // cephe eyaletleri
     const front = []; const frontSet = new Set();
     if (atWar) {
@@ -452,7 +465,8 @@
       // kara cephesi yok: deniz çıkarması dene
       aiInvasion(c, idle);
     }
-    if ((!atWar || !front.length) && !(opts.army && atWar)) aiGarrison(c, idle, atWar, opts);
+    // ordunun ulaşabileceği cephe yoksa (başka kıtada, kopuk bölgede) tümenler en yakın düşman sınırına yürür
+    if ((!atWar || !front.length) && !(opts.army && atWar && front.length)) aiGarrison(c, idle, atWar, opts);
   };
 
   function aiHomeGuard(c, mine) {

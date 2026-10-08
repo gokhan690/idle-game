@@ -75,7 +75,15 @@
     pause.classList.toggle('paused', !!st.paused);
     document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
     $('btn-mapmode').title = UI.MODE_N[R.mode];
+    UI.placeToasts();
   };
+  // bildirimler üst şeridin (uyarılar dahil) altında çıkar; uyarıların önünü kapatmaz
+  UI.placeToasts = () => {
+    const hud = $('hud'); if (!hud || hud.hidden) return;
+    const b = Math.round(hud.getBoundingClientRect().bottom);
+    if (b !== UI._hudB) { UI._hudB = b; document.documentElement.style.setProperty('--hud-b', b + 'px'); }
+  };
+  g.addEventListener('resize', () => setTimeout(() => UI.placeToasts && UI.placeToasts(), 60));
 
   // ---------- Panel çerçevesi ----------
   UI.open = (p, sub) => {
@@ -111,7 +119,24 @@
       body.scrollTop = 0;
       if (ft) { const n = ft.querySelector('.fn.active') || ft.querySelector('.fn.avail'); if (n) { ft.scrollLeft = Math.max(0, n.offsetLeft - ft.clientWidth / 2 + n.offsetWidth / 2); ft.scrollTop = Math.max(0, n.offsetTop - 40); } }
     }
-    if (ft) ft.onscroll = () => { UI.ftScroll = [ft.scrollLeft, ft.scrollTop]; };
+    if (ft) {
+      // yatay ekranda ayrıntı paneli ağacın hizasından başlar
+      const fd = body.querySelector('.fdetail'); if (fd && sheet.classList.contains('full') && innerWidth > innerHeight) fd.style.top = ft.offsetTop + 'px';
+      ft.onscroll = () => { UI.ftScroll = [ft.scrollLeft, ft.scrollTop]; };
+      // iki parmakla yakınlaştırma (odak ağacı)
+      let pd = 0;
+      const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      ft.ontouchstart = (e) => { if (e.touches.length === 2) pd = dist(e); };
+      ft.ontouchmove = (e) => {
+        if (e.touches.length !== 2 || !pd) return;
+        e.preventDefault();
+        const r = dist(e) / pd; if (r > 0.8 && r < 1.25) return;
+        const rc = ft.getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rc.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rc.top;
+        const z = UI.ftZoom(); let i = FT_Z.findIndex((x) => x >= z - 0.001); if (i < 0) i = FT_Z.length - 1;
+        const nz = FT_Z[Math.max(0, Math.min(FT_Z.length - 1, i + (r > 1 ? 1 : -1)))];
+        pd = 0; if (nz !== z) UI.ftSetZoom(nz, mx, my);
+      };
+    }
     for (const cv of body.querySelectorAll('canvas.nato')) { const x = cv.getContext('2d'); x.fillStyle = cv.dataset.c; x.fillRect(0, 0, cv.width, cv.height); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0'); }
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
@@ -236,10 +261,25 @@
     return { title: g.ADV_ROLE_N[role], html: html + '</div>' };
   }
 
+  // odak türü (HOI4'teki simge renkleri): sanayi, kara, hava/deniz, siyaset, diplomasi
+  const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara kuvvetleri', '#c9614a'], sea: ['Hava ve deniz', '#5f9bd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
+  const focusCat = (f) => {
+    const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
+    if (['demand', 'demandMany', 'guar', 'invite', 'joinFac', 'mkFac', 'pact', 'goal', 'gift'].includes(fn)) return 'dip';
+    if (k.some((x) => ['addCiv', 'addMil', 'construct', 'factory', 'effCap', 'addInfra', 'synth', 'stock', 'steel', 'oil', 'al', 'rub', 'tun', 'chr', 'research'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'ind' || r[0] === 'elec')) return 'ind';
+    if (k.some((x) => ['addPlanes', 'addBombers', 'addCas', 'air', 'navy', 'ships', 'addDock', 'addConv', 'invasion'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'air' || r[0] === 'nav')) return 'sea';
+    if (k.some((x) => ['landAtk', 'landDef', 'armAtk', 'org', 'units', 'forts', 'tech', 'plan', 'entrench', 'brk', 'train', 'mp', 'speed', 'xpGain'].includes(x)) || fn === 'general' || fn === 'fortRegion' || (fx.rb || []).length) return 'land';
+    return 'pol';
+  };
+  // varsayılan yakınlaştırma: dikeyde birkaç sütun, yatayda daha fazlası sığsın
+  const FT_Z = [0.45, 0.6, 0.75, 0.9, 1.1];
+  UI.ftZoom = () => UI.ftZ || (innerWidth < innerHeight ? 0.6 : 0.75);
   function focusTree(c) {
     const list = G.focusList(c);
-    const k = UI.ftZ || 1;
-    const NW = Math.round(128 * k), NH = Math.round((k < 0.8 ? 44 : 74) * Math.max(k, 0.8)), GX = Math.round(140 * k), GY = Math.round((k < 0.8 ? 66 : 104) * Math.max(k, 0.8)), PAD = 14;
+    const k = UI.ftZoom(), mini = k < 0.6;
+    // genişlik yakınlaştırmayla ölçeklenir; yükseklik yazı boyuna göre sabit (iki satır başlık + süre)
+    const fz = k < 0.6 ? 10 : k < 0.7 ? 10.5 : k < 0.85 ? 11.5 : 12.5;
+    const NW = Math.round((mini ? 104 : 140) * k), NH = mini ? 34 : Math.round(fz * 2.4 + 30), GX = NW + Math.round(Math.max(8, 14 * k)), GY = NH + (mini ? 18 : 26), PAD = 12;
     const maxX = Math.max(...list.map((f) => f.x)), maxY = Math.max(...list.map((f) => f.y));
     const W = Math.ceil((maxX + 1) * GX + PAD * 2), H = Math.ceil((maxY + 1) * GY + PAD * 2);
     const pos = (f) => ({ x: PAD + f.x * GX, y: PAD + f.y * GY });
@@ -252,7 +292,8 @@
         for (const pid of group) {
           const a = byId[pid]; if (!a) continue;
           const s = pos(a);
-          const x1 = s.x + NW / 2, y1 = s.y + NH, x2 = b.x + NW / 2, y2 = b.y, my = (y1 + y2) / 2;
+          // yatay parça hedefin hemen üstündeki boşluktan geçer: aradaki düğümlerin üstünü çizmez
+          const x1 = s.x + NW / 2, y1 = s.y + NH, x2 = b.x + NW / 2, y2 = b.y, my = y2 - Math.round((GY - NH) / 2);
           const done = c.focus.done[pid];
           lines += `<path d="M${x1} ${y1}V${my}H${x2}V${y2}" class="${done ? 'ln done' : 'ln'}${Array.isArray(p) ? ' or' : ''}"/>`;
         }
@@ -261,7 +302,7 @@
         const o = byId[e]; if (!o || o.id < f.id || o.y !== f.y) continue;
         const a = pos(f), b2 = pos(o);
         const x = (Math.min(a.x, b2.x) + NW + Math.max(a.x, b2.x)) / 2, y = a.y + NH / 2;
-        lines += `<g class="excl"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 4}" text-anchor="middle">⇄</text></g>`;
+        lines += `<g class="excl"><circle cx="${x}" cy="${y}" r="${mini ? 7 : 9}"/><text x="${x}" y="${y + 4}" text-anchor="middle">⇄</text></g>`;
       }
     }
     let nodes = '';
@@ -269,13 +310,14 @@
       const p = pos(f);
       const done = c.focus.done[f.id], active = c.focus.cur === f.id, avail = G.focusAvailable(c, f), excl = G.focusExcluded(c, f) && !done;
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px" data-act="focus" data-v="${f.id}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span><span class="d">${esc(f.d)}</span>${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      const cat = FOCUS_CAT[focusCat(f)][1];
+      const days = active ? `${Math.ceil(G.focusDays(f) - c.focus.p)} gün kaldı` : done ? 'Tamamlandı' : `${G.focusDays(f)} gün`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
-    let html = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)} · ${Math.ceil(G.focusDays(cur) - c.focus.p)} gün</div>${bar(c.focus.p / G.focusDays(cur))}</div></div>` : '<p class="muted small" style="margin:0">Parlak = seçilebilir · ⇄ birbirini dışlar · odağa dokun → Başlat</p>';
     const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
-    html += `<div class="ftbar"><button class="btn sm" data-act="ftzoom" data-v="-1" aria-label="Uzaklaştır">−</button><button class="btn sm" data-act="ftzoom" data-v="1" aria-label="Yakınlaştır">+</button><button class="btn sm" data-act="ftnext">Seçilebilir odaklar (${nAvail}) ›</button><span class="muted small">${Object.keys(c.focus.done).length}/${list.length} tamamlandı</span></div>`;
-    html += `<div class="ftree ${k < 0.8 ? 'compact' : ''}" id="ftree"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
+    let html = `<div class="ftbar"><button class="btn sm" data-act="ftzoom" data-v="-1" aria-label="Uzaklaştır" ${k <= FT_Z[0] ? 'disabled' : ''}>−</button><button class="btn sm" data-act="ftzoom" data-v="1" aria-label="Yakınlaştır" ${k >= FT_Z[FT_Z.length - 1] ? 'disabled' : ''}>+</button><button class="btn sm ${nAvail && !cur ? 'pri' : ''}" data-act="ftnext">Seçilebilir (${nAvail}) ›</button><span class="muted small">${Object.keys(c.focus.done).length}/${list.length}</span>${cur ? `<span class="ftcur" data-act="focus" data-v="${cur.id}"><b>${esc(cur.n)}</b> · ${Math.ceil(G.focusDays(cur) - c.focus.p)} gün</span>` : ''}<div class="ftleg">${Object.values(FOCUS_CAT).map(([n, col]) => `<span><i style="background:${col}"></i>${n}</span>`).join('')}<span>⇄ birbirini dışlar</span></div></div>`;
+    html += `<div class="ftree ${mini ? 'compact' : ''}" id="ftree" style="--fz:${fz}px"><div class="ftree-in" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${lines}</svg>${nodes}</div></div>`;
     const sf = UI.fsel ? G.focusById(c, UI.fsel) : null;
     if (sf) {
       const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
@@ -285,7 +327,7 @@
       const hev = G.EV_OF_FOCUS && G.EV_OF_FOCUS[sf.id] && G.EVENTS.find((e) => e.id === G.EV_OF_FOCUS[sf.id]);
       const histD = hev && !done ? `<div class="d muted">Tarihte: ${esc(hev.title)} · ${G.fmtDate(hev.day)}${G.st.ev[hev.id] ? ' (gerçekleşti)' : ''}</div>` : '';
       const sfx = histD + (addS ? `<div class="d">Ulusal ruh ekler: <b>${esc(addS.n)}</b></div><div class="fxl">${fxChips(addS.fx)}</div>` : '') + (rmS.length && !done ? `<div class="d good">Kaldırır: ${rmS.map(esc).join(', ')}</div>` : '');
-      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div>${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
+      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d"><span class="fcat" style="--fc:${FOCUS_CAT[focusCat(sf)][1]}">${FOCUS_CAT[focusCat(sf)][0]}</span> ${esc(sf.d)}</div>${fxParts(sf.fx).length ? `<div class="fxl">${fxChips(sf.fx)}</div>` : ''}${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
@@ -313,13 +355,15 @@
       if (r) {
         const t = g.TECH_BY_ID[r.id], cost = G.techCost(c, r.id);
         const days = Math.ceil((cost - r.p) / (G.resSpeed(c, r.id) * (1 + (r.b || 0))));
-        sh += `<div class="item active"><div class="grow"><div class="t">${esc(t.n)}</div>${bar(r.p / cost)}<div class="d">${days} gün kaldı</div></div><button class="btn sm" data-act="rescancel" data-v="${r.id}" aria-label="İptal">✕</button></div>`;
-      } else sh += `<div class="item"><div class="grow"><div class="t muted">Boş yuva</div><div class="d">Aşağıdan bir teknoloji seç</div></div></div>`;
+        sh += `<div class="item active${UI.resFlash === r.id ? ' slot-in' : ''}"><div class="grow"><div class="t">${esc(t.n)}</div>${bar(r.p / cost)}<div class="d">${days} gün kaldı</div></div><button class="btn sm" data-act="rescancel" data-v="${r.id}" aria-label="İptal">✕</button></div>`;
+      } else sh += `<button class="item slot-empty" data-act="slotpick"><div class="grow"><div class="t">＋ Boş araştırma yuvası</div><div class="d">Dokun: seçilebilir teknolojiler yansın</div></div></button>`;
     }
     if ((c.rb || []).length) sh += `<div class="d good" style="font-size:13px">Araştırma bonusları: ${c.rb.map(([cat, v]) => `${g.TECH_CATS[cat]} +%${Math.round(v * 100)}`).join(' · ')}</div>`;
     html += sec('Araştırma yuvaları', sh + '</div>', `Hız +%${Math.round((m.research || 0) * 100)}`);
     const tab = UI.tab.res;
-    html += `<div class="tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}</button>`).join('')}<button class="${tab === 'proj' ? 'on' : ''}" data-act="tab" data-k="res" data-v="proj">Projeler</button></div>`;
+    const freeSlot = c.res.length < m.slots, glow = UI.slotPick && Date.now() - UI.slotPick < 4000;
+    const nAv = (k) => g.TECHS.filter((x) => x.cat === k && G.techAvailable(c, x.id) && !c.res.some((r) => r.id === x.id)).length;
+    html += `<div class="tabs" id="res-tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => { const a = freeSlot ? nAv(k) : 0; return `<button class="${k === tab ? 'on' : ''}${a && glow ? ' glow' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}${a ? ` <span class="tcount">${a}</span>` : ''}</button>`; }).join('')}<button class="${tab === 'proj' ? 'on' : ''}" data-act="tab" data-k="res" data-v="proj">Projeler</button></div>`;
     if (tab === 'proj') return { title: 'Araştırma', html: html + projHtml(c) };
     const yr = G.year(G.st.day);
     let lh = '<div class="list">';
@@ -332,7 +376,7 @@
       const tr = G.docTreeOf(t.id), curTr = G.docTree(c);
       const pre = !done && !avail && !active ? (tr && curTr && curTr !== tr ? `<span class="warn">Başka bir doktrin dalı seçildi (${g.DOC_TREES[curTr]})</span>` : `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}`) : esc(t.d || fxText(t.fx));
       const bon = (c.rb || []).find((x) => x[0] === t.cat);
-      lh += `<button class="item ${cls}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
+      lh += `<button class="item ${cls}${avail && !active && glow ? ' glow' : ''}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
     }
     html += lh + '</div>';
     return { title: 'Araştırma', html };
@@ -1176,7 +1220,17 @@
     UI.open('air'); return true;
   };
 
-  ACT.ftzoom = (d) => { const Z = [0.5, 0.65, 0.8, 1]; const i = Z.indexOf(UI.ftZ || 1); UI.ftZ = Z[Math.max(0, Math.min(Z.length - 1, i + +d.v))]; UI.render(false); };
+  // yakınlaştırırken ekranın ortasındaki nokta yerinde kalır
+  UI.ftSetZoom = (z, fx, fy) => {
+    const ft = document.getElementById('ftree'); const old = UI.ftZoom();
+    if (!ft || z === old) return;
+    const cx = (ft.scrollLeft + (fx ?? ft.clientWidth / 2)) / old, cy = (ft.scrollTop + (fy ?? ft.clientHeight / 2)) / old;
+    UI.ftZ = z; UI.render(false);
+    const f2 = document.getElementById('ftree'); if (!f2) return;
+    f2.scrollLeft = cx * z - (fx ?? f2.clientWidth / 2); f2.scrollTop = cy * z - (fy ?? f2.clientHeight / 2);
+    UI.ftScroll = [f2.scrollLeft, f2.scrollTop];
+  };
+  ACT.ftzoom = (d) => { const z = UI.ftZoom(); let i = FT_Z.findIndex((x) => x >= z - 0.001); if (i < 0) i = FT_Z.length - 1; UI.ftSetZoom(FT_Z[Math.max(0, Math.min(FT_Z.length - 1, i + +d.v))]); };
   ACT.ftnext = () => {
     const ft = document.getElementById('ftree'); if (!ft) return;
     const L = [...ft.querySelectorAll('.fn.avail')]; if (!L.length) { UI.toast('Şu an seçilebilir odak yok.'); return; }
@@ -1251,7 +1305,24 @@
   ACT.projstart = (d) => { if (G.projStart(me(), d.v)) UI.toast('Proje başladı: ' + g.PROJECTS[d.v].n, 'good'); UI.render(true); UI.hud(); };
   ACT.nuke = (d) => { const n = +d.v; G.queuePopup({ title: 'Atom Bombası', text: `${G.pname(n)} şehrine atom bombası atılsın mı? Şehir yerle bir olur ve dünya gerginliği artar.`, opts: [{ n: 'Bombayı at', fx: () => { G.nuke(me().tag, n); UI.render(true); UI.hud(); } }, { n: 'Vazgeç', fx: () => {} }] }); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
-  ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
+  ACT.research = (d) => {
+    const c = me();
+    if (c.res.some((r) => r.id === d.v)) return;
+    if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); const el = document.querySelector('#sheet-body .list'); if (el) { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 500); } return; }
+    G.startResearch(c, d.v); UI.resFlash = d.v; UI.slotPick = c.res.length < c.mods.slots ? UI.slotPick : 0;
+    UI.toast('Araştırma başladı: ' + g.TECH_BY_ID[d.v].n, 'good');
+    UI.render(); $('sheet-body').scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { UI.resFlash = null; }, 1500);
+  };
+  // boş yuvaya dokununca: seçilebilir teknolojisi olan sekmeye geç, sekmeler ve teknolojiler yansın
+  ACT.slotpick = () => {
+    const c = me();
+    const has = (k) => g.TECHS.some((x) => x.cat === k && G.techAvailable(c, x.id) && !c.res.some((r) => r.id === x.id));
+    if (UI.tab.res === 'proj' || !has(UI.tab.res)) { const k = Object.keys(g.TECH_CATS).find(has); if (k) UI.tab.res = k; }
+    UI.slotPick = Date.now(); UI.render();
+    const tb = $('res-tabs'); if (tb) tb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => { if (UI.panel === 'res') UI.render(); }, 4100);
+  };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
   ACT.line = (d) => {
     const c = me(); const l = c.lines[+d.i]; if (!l) return;
@@ -1314,10 +1385,12 @@
     if (!ids.length) ids = st.units.filter((u) => u.t === c.tag && !u.army).slice(0, 24).map((u) => u.id);
     if (!ids.length) { UI.toast('Ordu kurmak için tümen yok.', 'warn'); return; }
     const a = G.createArmy(c, ids);
-    for (const u of st.units) if (ids.includes(u.id)) u.auto = 0;
-    UI.toast(`${a.n} kuruldu (${ids.length} tümen).`, 'good'); UI.render(); R.dirty = 1;
+    for (const u of st.units) if (ids.includes(u.id)) { u.auto = 0; u.gar = 0; }
+    // savaştaysan yeni ordu hemen cepheyi tutar; barışta beklemede kalır
+    if (c.enemies.length) { a.ord = 'def'; c._frontsDirty = 1; G.computeFronts(c); }
+    UI.toast(`${a.n} kuruldu (${ids.length} tümen)${a.ord === 'def' ? ', cepheyi tutuyor' : '. Emir ver: Cepheyi tut ya da Taarruz'}.`, 'good'); UI.render(); R.dirty = 1;
   };
-  ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; } UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
+  ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; u.gar = 0; } c._frontsDirty = 1; UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
   ACT.armydel = (d) => { G.disbandArmy(me(), +d.v); UI.render(); };
   ACT.armyord = (d) => {
     const c = me(), a = armyOf(d.k); a.ord = d.v; c._frontsDirty = 1;
