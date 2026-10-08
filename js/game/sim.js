@@ -30,7 +30,7 @@
   G.manpower = (c, fresh) => {
     const max = c.sum.pop * 1000 * c.mods.mpRate * (1 + (c.mods.mp || 0));
     let used = c.dead;
-    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if (u.t === c.tag) v += G.T(u.t, u.u).mp * u.str; c._mpu = v; }
+    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if ((u.vol || u.t) === c.tag) v += G.T(u.vol || u.t, u.u).mp * u.str; c._mpu = v; }
     used += c._mpu;
     for (const t of c.train) used += G.T(c.tag, t.u).mp;
     return { max, used, avail: Math.max(0, max - used) };
@@ -38,7 +38,7 @@
   function precomputeManpower() {
     const st = G.st;
     for (const c of Object.values(st.C)) c._mpu = 0;
-    for (const u of st.units) st.C[u.t]._mpu += G.T(u.t, u.u).mp * u.str;
+    for (const u of st.units) st.C[u.vol || u.t]._mpu += G.T(u.vol || u.t, u.u).mp * u.str;
   }
 
   // ---------- İkmal: logistics.js (ikmal merkezleri, altyapı, hava) ----------
@@ -83,7 +83,7 @@
       q.prog += n * 5 * (1 + (m.construct || 0) + stabF);
       const b = g.BUILDINGS[q.b];
       if (q.prog >= b.cost) {
-        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else if (q.b === 'inf') { pr.inf = Math.min(5, (pr.inf || 1) + 1); G.supDirty = 1; } else pr[q.b]++;
+        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else if (q.b === 'inf') { pr.inf = Math.min(5, (pr.inf || 1) + 1); G.supDirty = 1; } else if (q.b === 'rail') { pr.rail = Math.min(5, (pr.rail || 0) + 1); G.supDirty = 1; } else if (q.b === 'hub') { pr.hub = 1; G.supDirty = 1; } else pr[q.b]++;
         c.constr.splice(i, 1); i--;
         if (c.tag === st.player) G.log(`${b.n} tamamlandı: ${G.pname(q.p)}`, [c.tag], 'good');
         G.needSummary = 1;
@@ -144,7 +144,7 @@
     c.mpAvail = mp.avail; c.mpMax = mp.max;
     for (let i = 0; i < c.train.length; i++) {
       const t = c.train[i];
-      if (t.d > 0) { t.d--; continue; }
+      if (t.d > 0) { t.d -= 1 + (m.train || 0); continue; }
       const def = G.T(c.tag, t.u);
       let ratio = 1;
       for (const [e, n] of Object.entries(def.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
@@ -253,7 +253,7 @@
       }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
-      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : 1);
+      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : G.fuelMul(u));
       if (u.sr) u.org = Math.min(u.org, stats.org * 0.1);
       if (seaLeg && u.loc >= NP) {
         // denizde düşman üstünlüğü varsa kayıp
@@ -310,7 +310,7 @@
   }
   // Takviye (HOI4: muharebede ve harekette de sürer; ikmal ve dost toprak gerekir)
   function reinforce(u, still) {
-    const st = G.st, c = st.C[u.t];
+    const st = G.st, c = st.C[u.vol || u.t]; // gönüllüler gönderenin stokundan ve insan gücünden takviye alır
     if (u.loc >= NP || u.str >= 1) return;
     const pr = st.prov[u.loc];
     if (!(pr.c === u.t || G.friendly(u.t, pr.c))) return;
@@ -361,6 +361,8 @@
     { a: 'GER', d: 'SOV', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
     { a: 'JAP', d: 'CHI', anc: ['JAP', 'CHI', '1937-07-07'], pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
     { a: '*', d: 'GER', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.6 },
+    // İspanya İç Savaşı: Milliyetçilerin İspanya topraklarını ele geçirme oranı (başta ~%35'i ellerinde; Madrid Mart 1939'da düşer)
+    { a: 'SPN', d: 'SPR', anc: ['SPN', 'SPR', '1936-07-17'], pts: [['1936-07-17', 0.35], ['1937-06-01', 0.48], ['1938-06-01', 0.62], ['1939-01-15', 0.78], ['1939-03-28', 0.95]], aMax: 0.4, dMax: 0.4 },
     // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
     { a: 'JAP', anc: ['JAP', 'USA', '1941-12-07'], set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
       pts: [['1941-12-07', 0], ['1942-01-20', 0.45], ['1942-04-01', 0.9], ['1944-10-01', 0.9], ['1945-03-15', 0.6], ['1945-08-15', 0.45]], aMax: 0.4, dMax: 0.4,
@@ -467,7 +469,7 @@
     const aAirM = G.airCombatMod(attTag, n), dAirM = G.airCombatMod(defs[0].t, n);
     const hdA = sideHard(A), hdD = sideHard(D), prcA = sidePrc(A), prcD = sidePrc(D);
     const hmA = G.histMul(attTag, defs[0].t, n), hmD = G.histMul(defs[0].t, attTag, n);
-    let hitD = 0, hitA = 0;
+    let hitD = 0, hitA = 0, rivSum = 0;
     for (const u of A) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdD) + s.ha * hdD) * u.str;
@@ -476,13 +478,15 @@
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       const wx = G.WINTER_READY.has(u.t) ? 1 - 0.2 * G.wx.snow[n] - 0.3 * G.wx.mud[n] : G.wxAtk(n);
-      atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
+      atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
+      const rp = G.riverPen(u, s, n); rivSum += rp; atk *= 1 - rp; // nehir geçişi: geldiği kenara göre
       hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
+    const rivAvg = rivSum / A.length;
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdA) + s.ha * hdA) * u.str;
-      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       hitA += atk; G.contrib(attTag, u.t, atk);
     }
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
@@ -493,11 +497,11 @@
     for (const u of D) {
       const s = u._s;
       const inc = hitD * rD * (s.t.w || 15) / wD;
-      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD;
+      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
       const h = hits(inc, dv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
-      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
+      u.str -= sl; st.C[u.vol || u.t].dead += sl * s.t.mp * casMul(s);
     }
     for (const u of A) {
       const s = u._s;
@@ -506,11 +510,13 @@
       const h = hits(inc, bv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcD / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
-      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
+      u.str -= sl; st.C[u.vol || u.t].dead += sl * s.t.mp * casMul(s);
     }
     // tümen tecrübesi (muharebede çarpışan tümenler)
     for (const u of A) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.004 * (st.C[u.t].mods.xpGain ? 1 + st.C[u.t].mods.xpGain : 1));
     for (const u of D) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.003);
+    // gönüllüler: muharebe deneyimi gönderen ülkenin kara tecrübesine eklenir
+    for (const u of A.concat(D)) if (u.vol && st.C[u.vol]) st.C[u.vol].axp = Math.min(500, (st.C[u.vol].axp ?? 30) + 0.05);
     // komutan tecrübesi
     const gens = new Set();
     for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
@@ -529,7 +535,7 @@
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
     const aPow = A.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
-      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD });
+      A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD, riv: rivAvg });
     if (!remaining) for (const u of atts) if (!u.dead) u.prog = Math.max(u.prog, G.edgeDays(u.loc, n, 1) * (u.loc >= NP ? G.SEA_SPEED : 1) * 0.6);
   }
 
@@ -549,13 +555,15 @@
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
     let aTot = 0, dTot = 0;
-    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * aAir; }
-    for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * dAir; }
+    let rivSum = 0;
+    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; const rp = G.riverPen(u, s, n); rivSum += rp; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * G.fuelMul(u) * aAir * (1 - rp); }
+    for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * G.fuelMul(u) * dAir; }
+    const rivAvg = rivSum / A.length;
     const wA = A.reduce((s2, u) => s2 + (u._s.t.w || 15), 0), wD = D.reduce((s2, u) => s2 + (u._s.t.w || 15), 0);
     const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
     let defT = 0, attT = 0;
     for (const u of D) {
-      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD;
+      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
       const armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       defT += Math.max(0, u.org) / Math.max(0.01, hits(aTot * (s.t.w || 15) / wD, dv) * CB.kOrg * armF);
     }
@@ -597,6 +605,8 @@
     if (pr.o !== tag && st.C[pr.o]?.alive && G.sameFaction(tag, pr.o) && !G.atWar(tag, pr.o)) nc = pr.o;
     else if (pr.core !== tag && st.C[pr.core]?.alive && G.sameFaction(tag, pr.core) && !G.atWar(tag, pr.core)) nc = pr.core;
     pr.c = nc; pr.cd = st.day;
+    // geri çekilen savunmacı demiryolunu tahrip eder: etkin seviye onarılana dek düşer, ara sıra kalıcı hasar da kalır
+    if (pr.rail > 0 && pr.o !== nc && (n + st.day) % 3 === 0) pr.rail--;
     G.mapDirty = 1; G.needSummary = 1;
     // Sovyet sanayisinin doğuya taşınması: düşen asli eyaletteki fabrikaların bir kısmı Urallara ve Sibirya'ya kaçırılır
     if (prev === 'SOV' && pr.core === 'SOV' && (pr.mil + pr.civ) > 0 && st.C.SOV?.alive && st.C.SOV.tag !== st.player) G.relocate('SOV', n, 0.6, 0.4);
@@ -664,6 +674,7 @@
 
   G.capitulate = (tag) => {
     const st = G.st, c = st.C[tag];
+    if (G.volReturnTo) G.volReturnTo(tag); // gönüllüler eve döner
     const enemies = c.enemies.filter((t) => st.C[t]?.alive);
     // iç savaş: kaybeden taraf tamamen ilhak edilir (HOI4)
     const cw = (st.civil || []).find((p) => p.includes(tag) && enemies.includes(p[0] === tag ? p[1] : p[0]));
@@ -672,6 +683,7 @@
       st.civil = st.civil.filter((p) => p !== cw);
       for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
       G.refreshEnemies();
+      for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) st.prov[i].c = win; // kaybeden tarafın elindeki öbür taraf illeri de geçer
       G.annex(win, tag);
       for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag || pr.oc === win) { if (pr.o === win) pr.core = win; } }
       G.cwDirty = 1; st.C[win].startW = G.coreWeight(win, true);
@@ -713,6 +725,7 @@
   G.killCountry = (tag) => {
     const st = G.st, c = st.C[tag];
     if (!c.alive) return;
+    if (G.volReturnTo) G.volReturnTo(tag);
     c.alive = 0;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
     if (c.fac) G.leaveFaction(tag);
@@ -750,15 +763,19 @@
       if ((st.day + i) % 15 === 0) G.aiDiplomacy(c);
     }
     moveAndFight();
+    G.fuelTick();
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
     if (st.day % 5 === 0) G.timedSpirits();
+    G.decTick();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
     if (st.day % 10 === 7) G.enclaves();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
+    if (G.volTick) G.volTick(); // gönüllü kuvvetler
+    if (G.elecTick) G.elecTick(); // seçimler
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
   };
 })(window);

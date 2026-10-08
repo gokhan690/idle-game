@@ -4,7 +4,7 @@ import vm from 'node:vm';
 const ROOT = new URL('..', import.meta.url).pathname;
 const ctx = { console, Math, Date, JSON, Object, Array, Set, Map, Float32Array, Float64Array, Int32Array, Uint8Array, performance };
 ctx.window = ctx; vm.createContext(ctx);
-for (const f of ['js/data/map.js', 'js/data/countries.js', 'js/data/content.js', 'js/data/leaders.js', 'js/data/focus.js', 'js/data/focus_ext.js', 'js/game/core.js', 'js/game/state.js', 'js/game/sim.js', 'js/game/diplomacy.js', 'js/game/ai.js', 'js/game/army.js', 'js/game/politics.js', 'js/game/trade.js', 'js/game/navy.js', 'js/game/logistics.js', 'js/game/airwar.js', 'js/game/peace.js', 'js/game/design.js', 'js/game/airbase.js', 'js/game/occupation.js', 'js/game/events.js'])
+for (const f of ['js/data/map.js', 'js/data/countries.js', 'js/data/content.js', 'js/data/leaders.js', 'js/data/focus.js', 'js/data/focus_ext.js', 'js/data/rivers.js', 'js/data/decisions.js', 'js/game/core.js', 'js/game/rivers.js', 'js/game/state.js', 'js/game/sim.js', 'js/game/diplomacy.js', 'js/game/ai.js', 'js/game/army.js', 'js/game/politics.js', 'js/game/trade.js', 'js/game/navy.js', 'js/game/logistics.js', 'js/game/airwar.js', 'js/game/peace.js', 'js/game/design.js', 'js/game/airbase.js', 'js/game/occupation.js', 'js/game/decisions.js', 'js/game/events.js', 'js/game/fuel.js', 'js/game/volunteers.js', 'js/game/elections.js'])
   vm.runInContext(readFileSync(ROOT + f, 'utf8'), ctx, { filename: f });
 const G = ctx.G;
 const days = +(process.argv[2] || 2200), player = process.argv[3] || 'NONE';

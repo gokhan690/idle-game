@@ -38,6 +38,9 @@
       if (best < 0) break;
       c.constr.push({ b: type, p: best, prog: 0 });
     }
+    // savaşta ikmali kötü cephe bölgelerine ikmal merkezi ve demiryolu
+    if (atWar && G.aiSupplyBuild) G.aiSupplyBuild(c);
+    G.aiFuelBuild(c); // yakıt azsa sentetik rafineri
     // savaşta cephe gerisine hava üssü (kanatlar menzilde kalsın)
     if ((atWar || st.tension > 60) && c.wings && c.wings.length >= 3 && c.constr.length < 5 && !c.constr.some((q) => q.b === 'ab') && G.rand() < 0.2) {
       const near = new Uint8Array(NP);
@@ -138,7 +141,7 @@
 
   const st0 = () => G.st;
   G.aiEconomy = (c) => {
-    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c); G.aiAdvisors(c);
+    G.aiResearch(c); G.aiFocus(c); G.aiConstruction(c); G.aiProduction(c); G.aiTraining(c); G.aiLaws(c); G.aiAdvisors(c); G.aiDecisions(c);
     if (c.gens.length < Math.min(6, 1 + st0().units.filter((u) => u.t === c.tag).length / 20) && c.pp > 300) { c.pp -= 50; G.newGeneral(c); }
   };
 

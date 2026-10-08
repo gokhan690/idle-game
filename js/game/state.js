@@ -39,6 +39,7 @@
     // ülkeye özel başlangıç şablonları (ör. Çin'in topçusuz, eksik tümenleri)
     if (d.tpl) Object.assign(c.tpl, JSON.parse(JSON.stringify(d.tpl)));
     c.armies = [];
+    c.dec = []; c.decCd = {}; // kararlar: süren liste, bekleme günleri
     G.initPolitics(c);
     G.recomputeMods(c);
     G.initGenerals(c);
@@ -209,6 +210,9 @@
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
     const OLD = { doc_mob: 'm1', doc_mob2: 'm2', doc_fire: 'f1', doc_fire2: 'f2', doc_grand: 'g1', doc_grand2: 'g2', doc_mass: 'a1', doc_mass2: 'a2' };
     for (const c of Object.values(st.C)) {
+      // eski kayıtlarda c.dec {karar: gün} sözlüğüydü: bekleme süresine taşı
+      if (!Array.isArray(c.dec)) { c.decCd = Object.assign({}, c.dec || {}, c.decCd || {}); c.dec = []; }
+      c.decCd ??= {};
       if (c.laws && c.laws.occ == null) c.laws.occ = 1;
       if (Object.keys(c.tech).some((id) => OLD[id])) {
         const pref = G.docPref(c);
@@ -218,13 +222,18 @@
       c.res = (c.res || []).filter((r) => g.TECH_BY_ID[r.id]);
     }
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
+    G.ensureRefineries(); // eski kayıtlar: rafineri seviyesi
     G.refreshEnemies();
     G.cwDirty = 1;
     G.rebuildUnitIndex();
     G.updateSummaries();
     G.ensureInfra(); G.updateWeather(true); G.supDirty = 1;
     for (const c of Object.values(st.C)) if (c.alive && !c.wings) G.initWings(c);
-    for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
+    // gönüllüler ve seçimler (eski kayıtlar için varsayılanlar)
+    if (!st.vol) st.vol = {};
+    if (G.volFix) G.volFix();
+    for (const c of Object.values(st.C)) if (c.alive && c.ideo === 'dem' && !c.el && G.elecInit) G.elecInit(c);
+    for (const c of Object.values(st.C)) if (c.alive) { G.econCalc(c); G.fuelInit(c); } // yakıt deposu varsayılanı
     return st;
   };
 })(window);

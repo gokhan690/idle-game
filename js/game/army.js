@@ -49,12 +49,13 @@
       if (b.bonus) for (const [te, v] of Object.entries(b.bonus)) bonusRaw[te] = (bonusRaw[te] || 0) + v * cnt;
     }
     if (!nb) { nb = 1; spd = 4; orgS = 10; hp = 10; }
-    let ent = 0, spdM = 0, prcAdd = 0, aa = 0, sup = 0, cas = 0;
+    let ent = 0, spdM = 0, prcAdd = 0, aa = 0, sup = 0, cas = 0, eng = 0;
     for (const [k, on] of Object.entries(src.s || {})) {
       const s2 = g.SUPPORTS[k]; if (!s2 || !on) continue;
       const kk = s2.kind === 'art' ? 'art' : 'flat';
       for (const f of ST4) K[kk][f] += s2[f] || 0;
       ent += s2.ent || 0; spdM += s2.spdM || 0; prcAdd += s2.prcAdd || 0;
+      if (k === 'eng') eng = 1;
       aa += s2.aa || 0; sup += s2.sup || 0; cas += s2.cas || 0; mp += s2.mp || 0; hp += 2;
       for (const [e, q] of Object.entries(s2.eq)) eq[e] = (eq[e] || 0) + q;
     }
@@ -70,7 +71,7 @@
       n: src.n, s: shortOf(), mp: Math.round(mp * 10) / 10, eq, days: Math.round(30 + 4 * nb + 8 * tanks),
       K, org: orgS / nb, spd, hd: hdS / nb, hp, armBase: armMax ? 0.3 * armMax + 0.7 * armSum / nb : 0,
       prcT: tanks ? tankShare * (0.4 * prcMaxT + 0.6 * prcSumT / tanks) : 0, prcO: (1 - tankShare) * (0.4 * prcMaxO + 0.6 * prcSumO / Math.max(1, nb - tanks)) + prcAdd,
-      w, bonus, amph: amph / nb, mob: mob / nb, tanks, ent, spdM, aa, sup, cas, nb, atS: prcAdd > 0 ? 1 : 0,
+      w, bonus, amph: amph / nb, mob: mob / nb, tanks, eng, ent, spdM, aa, sup, cas, nb, atS: prcAdd > 0 ? 1 : 0,
     };
     // ülkenin mevcut teçhizat seviyesiyle gösterim değerleri
     const L = { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank'), tq: tanks && G.stockVec ? G.stockVec(c, 'tank') : null };

@@ -78,7 +78,31 @@
       if (R.mode === 'peace' && st.conf) { const sa = st.conf.sOf[bd.a], sb = st.conf.sOf[bd.b]; if (sa !== sb && (sa != null || sb != null)) addLine(regionBorder, bd.pts); }
     }
     buildLabels();
+    buildRails();
     R.mapDirty = 0;
+  }
+
+  // demiryolları (ikmal haritasında): seviye ≥ 2 komşu eyaletler arası çizgiler, seviyeye göre kalınlık
+  let railPaths = null;
+  function buildRails() {
+    railPaths = null;
+    const st = G.st, pl = st.player;
+    if (R.mode !== 'sup' || !pl || !G.railOf) return;
+    const ps = [null, null, new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    const ok = (i) => { const c = st.prov[i].c; return c === pl || (G.friendly(pl, c) && !G.atWar(pl, c)); };
+    const lv = new Int8Array(NP);
+    for (let i = 0; i < NP; i++) lv[i] = ok(i) ? Math.round(G.railOf(st.prov[i])) : 0;
+    const X = G.nodeX, Y = G.nodeY, HW2 = M.W / 2;
+    let n = 0;
+    for (let i = 0; i < NP; i++) {
+      if (lv[i] < 2) continue;
+      for (const j of P[i].a) {
+        if (j < i || lv[j] < 2 || Math.abs(X[i] - X[j]) > HW2) continue;
+        const k = Math.min(5, lv[i], lv[j]);
+        ps[k].moveTo(X[i], Y[i]); ps[k].lineTo(X[j], Y[j]); n++;
+      }
+    }
+    if (n) railPaths = ps;
   }
 
   function buildLabels() {
@@ -169,6 +193,30 @@
   const SUP_COLORS = ['#a8322a', '#cc6a2c', '#d6a73a', '#a9b54a', '#6fa84d', '#3f8f4f'];
   const IND_COLORS = ['#2e3a2a', '#4b5a33', '#6b7a35', '#94913a', '#c0a03c', '#d98a37', '#e0663a'];
 
+  // ---------- Nehirler (önceden izdüşümlenmiş Path2D; büyük ve küçük ayrı) ----------
+  let riverP = null;
+  function buildRivers() {
+    riverP = { big: new Path2D(), small: new Path2D() };
+    for (const r of G.riverPaths()) {
+      const pa = r.big ? riverP.big : riverP.small, q = r.pts, n = q.length / 2;
+      if (n < 2) continue;
+      pa.moveTo(q[0], q[1]);
+      // orta noktalardan geçen ikinci derece eğrilerle yumuşat
+      for (let i = 1; i < n - 1; i++) {
+        if (Math.abs(q[2 * i] - q[2 * i - 2]) > M.W / 2) { pa.moveTo(q[2 * i], q[2 * i + 1]); continue; }
+        pa.quadraticCurveTo(q[2 * i], q[2 * i + 1], (q[2 * i] + q[2 * i + 2]) / 2, (q[2 * i + 1] + q[2 * i + 3]) / 2);
+      }
+      pa.lineTo(q[2 * n - 2], q[2 * n - 1]);
+    }
+  }
+  function drawRivers(ctx, z) {
+    if (!riverP) buildRivers();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // küçük nehirler yakınlaşınca görünür; büyükler her zaman
+    if (z > 0.7) { ctx.strokeStyle = `rgba(104,170,226,${Math.min(0.9, 0.35 + (z - 0.7) * 0.6)})`; ctx.lineWidth = Math.min(1.7, 0.8 + z * 0.4) / z; ctx.stroke(riverP.small); }
+    ctx.strokeStyle = 'rgba(86,160,226,0.92)'; ctx.lineWidth = Math.min(3.6, 1.3 + z * 1.3) / z; ctx.stroke(riverP.big);
+  }
+
   // ---------- Çizim ----------
   R.draw = () => {
     const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
@@ -225,11 +273,21 @@
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
       ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
+      if (R.mode !== 'peace' && R.mode !== 'ind') drawRivers(ctx, z);
       if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); ctx.stroke(regionBorder); ctx.setLineDash([]); }
       if (R.mode === 'peace') {
         ctx.strokeStyle = 'rgba(20,18,12,0.95)'; ctx.lineWidth = 2.2 / z; ctx.stroke(regionBorder);
         const cf = st.conf, cs = G.UI && G.UI.cfSel, sel = cf && cs != null ? cf.states[cs] : null;
         if (sel) { ctx.fillStyle = 'rgba(255,240,190,0.28)'; for (const n of sel.p) ctx.fill(provPath[n], 'evenodd'); ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.6 / z; for (const n of sel.p) ctx.stroke(provPath[n]); }
+      }
+      if (railPaths) {
+        ctx.lineCap = 'round';
+        for (let k = 2; k <= 5; k++) {
+          const w = (0.7 + 0.45 * (k - 2)) * Math.max(1, Math.min(1.8, z)) ;
+          ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.lineWidth = (w + 1.2) / z; ctx.stroke(railPaths[k]);
+          ctx.strokeStyle = k >= 4 ? '#f6efcf' : '#d9d1b0'; ctx.lineWidth = w / z; ctx.stroke(railPaths[k]);
+        }
+        ctx.lineCap = 'butt';
       }
       if (R.mode !== 'peace') drawFronts(ctx, z);
       // seçili eyalet
@@ -346,9 +404,10 @@
     for (const [i, cap] of hubs) {
       const s = visible(G.nodeX[i], G.nodeY[i], 20); if (!s) continue;
       const big = i === st.C[st.player].cap;
+      const built = !big && st.prov[i].hub; // inşa edilmiş ikmal merkezi: turkuaz çerçeve
       const r = big ? 9 : 7;
       ctx.fillStyle = 'rgba(10,12,9,0.85)'; ctx.fillRect(s.x - r, s.y - r - 12, r * 2, r * 2);
-      ctx.strokeStyle = big ? '#f2d27a' : '#cfe3b0'; ctx.lineWidth = 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
+      ctx.strokeStyle = big ? '#f2d27a' : built ? '#6fd3c9' : '#cfe3b0'; ctx.lineWidth = built ? 2 : 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
       ctx.fillStyle = '#efe9d8'; ctx.fillText(String(Math.round(cap)), s.x, s.y - 12);
     }
   }
@@ -632,6 +691,7 @@
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    const vu = gl.find((u) => u.vol); if (vu) { ctx.fillStyle = R.ccolor(vu.vol); ctx.fillRect(x, y + h - 5, 5, 5); ctx.strokeStyle = 'rgba(10,10,8,0.9)'; ctx.lineWidth = 1; ctx.strokeRect(x, y + h - 5, 5, 5); } // gönüllü: gönderenin renginde köşe işareti
     return { w, h };
   }
   function drawUnits(ctx, z) {

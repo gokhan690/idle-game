@@ -93,7 +93,7 @@
   // Kenar maliyeti (gün)
   G.edgeDays = (a, b, spd) => {
     const d = G.dist(a, b);
-    if (a < NP && b < NP) return (d * g.TERRAIN[P[b].te].move) / spd;
+    if (a < NP && b < NP) return (d * g.TERRAIN[P[b].te].move * G.RIVER_MOVE[G.riverEdge(a, b)]) / spd; // nehir geçişi yavaştır
     if (a < NP && b >= NP) return (d + 40) / SEA_SPEED;
     if (a >= NP && b < NP) return (d + 20) / SEA_SPEED;
     return d / SEA_SPEED;
@@ -179,6 +179,8 @@
     add(c.fmods);
     for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
     for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);
+    // süren kararların değiştiricileri (js/data/decisions.js)
+    for (const x of Array.isArray(c.dec) ? c.dec : []) { const d = g.DEC_BY_ID && g.DEC_BY_ID[x.id]; if (d && d.mod) add(d.mod); }
     const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco], lt = g.LAWS.trade.opts[c.laws.trade ?? 1];
     m.factory = (m.factory || 0) + (lm.factory || 0) + (lt.factory || 0);
     m.research = (m.research || 0) + (lt.research || 0);

@@ -34,7 +34,7 @@
     if (f && e !== 'ss') f.sh[e] = (f.sh[e] || 0) + 1;
     else { const sf = (c.fleets || []).find((x) => x.sh.ss > 0 && e === 'ss'); if (sf) sf.sh.ss++; else c.ships[e] = (c.ships[e] || 0) + 1; }
   };
-  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3));
+  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3)) * G.fuelNavyMul(c);
   G.fleetShips = (f) => SH.reduce((a, e) => a + (f.sh[e] || 0), 0);
 
   // Bir bölgedeki deniz üstünlüğü (0..1): dost / (dost + düşman), komşu bölgeler yarım ağırlık

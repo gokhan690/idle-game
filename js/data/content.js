@@ -223,6 +223,8 @@
     mil: { n: 'Askerî Fabrika', cost: 7200, s: 'Askerî' },
     dock: { n: 'Tersane', cost: 6400, s: 'Tersane', coastal: 1 },
     fort: { n: 'Kara Tahkimatı', cost: 1800, s: 'Tahkimat', max: 5 },
-    inf: { n: 'Altyapı ve Demiryolu', cost: 3000, s: 'Altyapı', max: 5 },
+    inf: { n: 'Altyapı', cost: 3000, s: 'Altyapı', max: 5 },
+    rail: { n: 'Demiryolu', cost: 2500, s: 'Demiryolu', max: 5 },
+    hub: { n: 'İkmal Merkezi', cost: 3500, s: 'İkmal merkezi', max: 1 },
   };
 })(window);
