@@ -458,3 +458,14 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
   .sheet.full .sheet-body { position: relative; }
   .sheet.full .fdetail { position: absolute; right: 0; bottom: 0; top: 52px; width: min(330px, 42%); margin: 0; max-height: none; border-top: 0; border-left: 2px solid var(--brass); box-shadow: -8px 0 18px rgba(0,0,0,0.4); }
 }
+
+/* ---------- Güç dengesi ---------- */
+.bop { display: flex; flex-direction: column; gap: 6px; }
+.bop-ends { display: flex; justify-content: space-between; font-size: 13px; }
+.bop-ends b:first-child { color: var(--bl); } .bop-ends b:last-child { color: var(--br); }
+.bop-bar { position: relative; display: grid; grid-template-columns: 2fr 2fr 2fr 2fr 2fr; height: 16px; border-radius: 4px; overflow: visible; background: linear-gradient(90deg, var(--bl), #4a4f45 50%, var(--br)); border: 1px solid var(--rule); }
+.bop-bar i { border-right: 1px solid rgba(0,0,0,0.45); opacity: 0.55; background: rgba(0,0,0,0.35); }
+.bop-bar i:last-of-type { border-right: 0; }
+.bop-bar i.on { opacity: 0; }
+.bop-m { position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(255,255,255,0.6); }
+.bop-cur b { font-size: 14.5px; }

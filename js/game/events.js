@@ -330,7 +330,7 @@
         continue;
       }
       if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
-      st.ev[e.id] = 1;
+      st.ev[e.id] = 1; (st.evOk || (st.evOk = {}))[e.id] = 1; // gerçekten yaşanan olaylar (güç dengesi vb.)
       if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
       else if (e.targetPrompt === st.player) {

@@ -160,7 +160,7 @@
   add('USA', [
     F('usa_draft', 'Seçmeli Hizmet Yasası', 6, 0, [], { mp: 0.2, units: { inf: 6 } }, '+6 piyade tümeni, insan gücü +%20.', { req: 'tension:50' }),
     F('usa_armor', 'Zırhlı Kuvvet', 6, 1, ['usa_draft'], { tech: 'tank2', units: { arm: 3 } }, '+3 zırhlı tümen.'),
-    F('usa_airborne', 'Hava İndirme Tümenleri', 7, 1, ['usa_draft'], { invasion: 0.15, org: 0.05 }, 'Çıkarma +%15.'),
+    F('usa_airborne', 'Hava İndirme Tümenleri', 7, 1, ['usa_draft'], { tech: 'para1', invasion: 0.15, org: 0.05 }, 'Hava indirme teknolojisi, çıkarma +%15.'),
     F('usa_marines', 'Deniz Piyadeleri', 7, 2, ['usa_airborne'], { tech: 'mar1', units: { mar: 3 } }, '+3 deniz piyadesi tümeni.'),
     F('usa_mustang', 'P-51 Mustang', 8, 0, [], { addPlanes: 300, air: 0.05 }, '+300 avcı.', { req: 'year:1941' }),
     F('usa_b29', 'B-29 Süper Kale', 8, 1, ['usa_mustang'], { addBombers: 200 }, '+200 bombardıman.', { req: 'year:1942' }),

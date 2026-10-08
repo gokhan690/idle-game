@@ -173,6 +173,7 @@
     html += electionSection(c);
     // ulusal ruhlar
     const sp = c.spirits.filter((s) => g.SPIRITS[s]);
+    if (G.BOP && G.BOP[c.tag] && c.bop != null) html += bopHtml(c);
     html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => spiritHtml(s, c)).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>', sp.length ? `${sp.length}` : '');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
@@ -381,6 +382,21 @@
     html += lh + '</div>';
     return { title: 'Araştırma', html };
   };
+  // Güç dengesi (HOI4): iki iç güç arasındaki ibre, kademeler ve destek düğmeleri
+  function bopHtml(c) {
+    const B = G.BOP[c.tag], v = c.bop, bi = G.bopBand(c), st = G.st;
+    const seg = B.b.map((x, i) => `<i class="${i === bi ? 'on' : ''}" title="${esc(x[0])}"></i>`).join('');
+    const dr = B.dr(c, st) * 30;
+    const drT = Math.abs(dr) < 0.001 ? 'İbre şu an sabit' : `Ayda ${dr > 0 ? B.r[0] : B.l[0]} yönüne %${Math.abs(Math.round(dr * 50))} kayıyor`;
+    const can = G.bopAct && c.pp >= G.BOP_COST && !(c.bopCd > st.day);
+    const cd = c.bopCd > st.day ? ` · ${c.bopCd - st.day} gün bekle` : '';
+    const h = `<div class="bop" style="--bl:${B.l[1]};--br:${B.r[1]}"><div class="bop-ends"><b>${esc(B.l[0])}</b><b>${esc(B.r[0])}</b></div><div class="bop-bar">${seg}<span class="bop-m" style="left:${((v + 1) / 2 * 100).toFixed(1)}%"></span></div>
+      <div class="bop-cur"><b>${esc(B.b[bi][0])}</b>${fxParts(B.b[bi][1]).length ? `<div class="fxl">${fxChips(B.b[bi][1])}</div>` : '<span class="muted small"> · etkisi yok</span>'}</div>
+      <div class="muted small">${drT}. Olaylar ibreyi iter.</div>
+      <div class="btns"><button class="btn sm" data-act="bop" data-v="-1" ${can ? '' : 'disabled'}>‹ ${esc(B.l[0])}</button><button class="btn sm" data-act="bop" data-v="1" ${can ? '' : 'disabled'}>${esc(B.r[0])} ›</button></div>
+      <div class="muted small">Destek: ${G.BOP_COST} siyasi güç, ibreyi %${Math.round(G.BOP_STEP * 50)} iter${cd}.</div></div>`;
+    return sec('Güç dengesi', h, B.b[bi][0]);
+  }
   // Özel projeler (HOI4 1.12): uzun soluklu gizli programlar ve atom bombası
   function projHtml(c) {
     const pj = c.proj || { done: {} };
@@ -1076,6 +1092,8 @@
   <section class="sec"><h3 class="sec-h">Muharebe taktikleri</h3><p class="small" style="margin:0">HOI4'teki gibi her muharebede iki günde bir saldıran ve savunan birer <b>taktik</b> seçer: Taarruz, Şok Taarruzu, Topçu Barajı, Pusu, Kuşatma, Yarma; savunmada Elastik Savunma, Karşı Saldırı, Ters Darbe, Taktik Çekilme… Seçim tümenlerin bileşimine (zırh, topçu, piyade), doktrine, araziye ve kanatlara bağlıdır. Bazı taktikler rakibin taktiğini <b>sayaçlar</b> ve onu boşa çıkarır; komutanın planlama ile saldırı (ya da savunma) becerisi yüksekse rakibinin taktiğine göre doğru karşılığı seçme şansı artar. <b>Göğüs göğüse</b> evresinde zırh ve topçu zayıflar, <b>Atılım</b> evresinde zırhlılar öne çıkar. Muharebe panelinde iki tarafın taktiğini ve evreyi görürsün.</p></section>
   <section class="sec"><h3 class="sec-h">Dünya haberleri ve Türkiye</h3><p class="small" style="margin:0">Başka ülkelerin büyük tarihî hamleleri (Anschluss, Münih, Barbarossa, Pearl Harbor, D-Günü…) HOI4'teki gibi haber penceresi olarak gelir; Menü → Ayarlar'dan kapatabilirsin. Türkiye ile oynarken tarihî kararlar seni bekler: Hatay'ın katılması ("Hatay Meselesi" odağıyla), Üçlü İttifak Antlaşması, Türk-Alman Dostluk Antlaşması, Varlık Vergisi, Adana Görüşmesi, Kahire Konferansı ve 1945'te Mihvere savaş ilanı. Orta Doğu'da 1941'de Irak'taki Reşid Ali darbesi ve İngiliz-Sovyet İran harekâtı da tarihî akışta yer alır.</p></section>
   <section class="sec"><h3 class="sec-h">Kuklalar ve özerklik</h3><p class="small" style="margin:0">HOI4'teki gibi bazı devletler bir efendiye bağlıdır: 1936'da Mançukuo Japonya'ya, Britanya Hindistanı ve dominyonlar (Kanada, Avustralya, Yeni Zelanda, Güney Afrika) Britanya'ya. Barış konferansında kurduğun kuklalar da böyledir. Her bağlı devletin <b>özerklik</b> puanı vardır: Bütünleşik kukla, Kukla, Dominyon, Özerk. Seviye düştükçe efendi, bağlı devletin kaynaklarının ve askerî fabrikalarının daha büyük payını alır. Efendi savaşta çökmeye başlarsa ya da bağlı devlet güçlenirse özerklik artar; %100'de bağımsızlık ilan edilir. Diplomasi panelinde kontrolü siyasi güçle sıkılaştırabilir, özerklik tanıyabilir ya da bağımsızlık verebilirsin; bağlı devletsen daha fazla özerklik isteyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Güç dengesi</h3><p class="small" style="margin:0">HOI4'teki gibi bazı ülkelerde iki iç güç arasında bir ibre vardır: ABD'de Yalnızcılık–Müdahalecilik, Almanya'da Nazi Partisi–Generaller, Sovyetlerde Paranoya–Ordunun yükselişi, Japonya'da Kara Ordusu–Donanma, Britanya'da Yatıştırma–Direniş, Türkiye'de Tarafsızlık–Müttefiklere yakınlık, İtalya'da Büyük Konsey–Duçe, Fransa'da Halk Cephesi–Sağ blok. İbrenin bulunduğu kademe (beş kademe) ülkeye değiştirici verir. İbre zamanla kayar, tarihî olaylar onu iter; Siyaset panelinden siyasi güçle bir tarafı destekleyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Hava indirme</h3><p class="small" style="margin:0">"Hava İndirme" teknolojisi Paraşüt Tümeni şablonunu açar. Paraşüt tümenini hava üssü olan bir dost eyalete getir, seç ve "🪂 Hava indirme"ye bas; sonra en fazla 500 km uzaktaki bir eyalete dokun. Hedef bölgede en az %40 hava üstünlüğü gerekir ve düşman birliği bulunan eyalete atlanamaz. Tümen hedefi hemen ele geçirir ama morali çok düşük iner; düşman hattının gerisinde ikmalsiz kalabilir.</p></section>
   <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
@@ -1142,12 +1160,14 @@
     } else {
       // ---- Tümen seçimi ----
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
-      const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.' };
+      const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.', para: 'paraşüt' };
       html += `<div class="card-h"><div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
       html += `<div class="units">${sel.slice(0, 40).map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
       html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
-      html += `<div class="hint small">${auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
+      const paras = sel.filter((u) => G.isPara && G.isPara(u));
+      if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
+      html += `<div class="hint small">${UI.paraMode ? `İndirme yapılacak eyalete dokun (hava üssünden en fazla ${G.PARA_KM} km).` : auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
     }
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
@@ -1302,6 +1322,7 @@
   ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
   ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
   ACT.decide = (d) => { const c = me(), r = G.takeDecision(c, d.v, d.t || null); const D = g.DEC_BY_ID[d.v]; UI.toast(r.ok ? `${D.n} ${D.days > 0 ? 'başladı' : 'uygulandı'}.` : r.why, r.ok ? 'good' : 'warn'); G.updateSummaries(); UI.render(true); UI.hud(); };
+  ACT.bop = (d) => { const r = G.bopAct(+d.v); if (!r.ok) UI.toast(r.why, 'warn'); UI.render(); UI.hud(); };
   ACT.projstart = (d) => { if (G.projStart(me(), d.v)) UI.toast('Proje başladı: ' + g.PROJECTS[d.v].n, 'good'); UI.render(true); UI.hud(); };
   ACT.nuke = (d) => { const n = +d.v; G.queuePopup({ title: 'Atom Bombası', text: `${G.pname(n)} şehrine atom bombası atılsın mı? Şehir yerle bir olur ve dünya gerginliği artar.`, opts: [{ n: 'Bombayı at', fx: () => { G.nuke(me().tag, n); UI.render(true); UI.hud(); } }, { n: 'Vazgeç', fx: () => {} }] }); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
@@ -1425,6 +1446,17 @@
   ACT.divonly = (d) => { R.sel.units = new Set([+d.v]); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divrm = (d) => { R.sel.units.delete(+d.v); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divarmy = (d) => { const c = me(); const u = G.st.units.find((x) => x.id === +d.v); if (!u) return; const L = c.armies || []; const k = L.findIndex((a) => a.id === u.army); const nx = L[k + 1]; u.army = nx ? nx.id : 0; u.auto = 0; u.path = []; UI.render(); R.dirty = 1; };
+  ACT.paramode = () => { UI.paraMode = !UI.paraMode; if (UI.paraMode) UI.toast(`Paraşütçülerin atlayacağı eyalete dokun (en fazla ${G.PARA_KM} km).`); UI.renderSel(); };
+  // seçili paraşüt tümenlerini hedef eyalete indir
+  UI.paraTo = (n) => {
+    UI.paraMode = false;
+    const sel = G.st.units.filter((u) => R.sel.units.has(u.id) && G.isPara(u));
+    let ok = 0, why = '';
+    for (const u of sel) { const r = G.paraDrop(u, n); if (r.ok) ok++; else why = why || r.why; }
+    if (ok) { UI.toast(`${ok} paraşüt tümeni ${G.pname(n)} üzerine atladı!`, 'good'); G.log(`Hava indirme: ${ok} paraşüt tümeni ${G.pname(n)} üzerine atladı.`, [G.st.player], 'good'); }
+    else UI.toast(why || 'Hava indirme yapılamadı.', 'warn');
+    R.dirty = 1; UI.renderSel(); UI.hud();
+  };
   ACT.stratr = () => {
     const st = G.st; let n = 0;
     for (const u of st.units) if (R.sel.units.has(u.id) && u.path.length) { if (u.path.some((x) => x >= NP || G.atWar(u.t, st.prov[x]?.c))) continue; u.sr = 1; n++; }

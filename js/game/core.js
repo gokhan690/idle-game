@@ -178,6 +178,7 @@
     for (const id of Object.keys(c.tech)) if (g.TECH_BY_ID[id]) add(g.TECH_BY_ID[id].fx);
     add(c.fmods);
     for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
+    if (G.bopFx) { const bf = G.bopFx(c); if (bf) add(bf); } // güç dengesi kademesi
     for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);
     // süren kararların değiştiricileri (js/data/decisions.js)
     for (const x of Array.isArray(c.dec) ? c.dec : []) { const d = g.DEC_BY_ID && g.DEC_BY_ID[x.id]; if (d && d.mod) add(d.mod); }

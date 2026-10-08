@@ -654,7 +654,7 @@
   R.kindOf = (u) => {
     const t = G.T(u.t, u.u);
     if (t._k) return t._k;
-    return (t._k = t.tanks > 0 ? 'arm' : t.mob > 0.5 ? 'mot' : t.s === 'SÜV' ? 'cav' : t.s === 'DAĞ' ? 'mtn' : t.s === 'DNZ' ? 'mar' : 'inf');
+    return (t._k = t.tanks > 0 ? 'arm' : t.mob > 0.5 ? 'mot' : t.s === 'SÜV' ? 'cav' : t.s === 'DAĞ' ? 'mtn' : t.s === 'DNZ' ? 'mar' : t.para >= 0.75 ? 'para' : 'inf');
   };
   function drawNato(ctx, kind, x, y, w, h, ink) {
     ctx.strokeStyle = ink; ctx.fillStyle = ink; ctx.lineWidth = 1.3;
@@ -666,6 +666,7 @@
     if (kind === 'mot') { ctx.beginPath(); ctx.arc(x + w * 0.3, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.arc(x + w * 0.7, y + h + 2.2, 1.5, 0, Math.PI * 2); ctx.fill(); }
     else if (kind === 'mtn') { ctx.beginPath(); ctx.moveTo(x + w / 2, y + h * 0.55); ctx.lineTo(x + w / 2 + 3.5, y + h); ctx.lineTo(x + w / 2 - 3.5, y + h); ctx.closePath(); ctx.fill(); }
     else if (kind === 'mar') { ctx.beginPath(); ctx.arc(x + w / 2, y + h - 1, 3, 0, Math.PI); ctx.stroke(); }
+    else if (kind === 'para') { ctx.beginPath(); ctx.arc(x + w / 2 - 3.2, y + 3.4, 3.2, Math.PI, 0); ctx.arc(x + w / 2 + 3.2, y + 3.4, 3.2, Math.PI, 0); ctx.stroke(); }
   }
   R.drawNato = drawNato;
   function drawCounter(ctx, x, y, gl, tag, opts) {
