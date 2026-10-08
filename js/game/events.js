@@ -213,7 +213,7 @@
     // Madrid'in düşüşü (28 Mart 1939): Cumhuriyet toprağının önemli bölümünü yitirmişse teslim olur
     { id: 'madrid', date: '1939-03-28', actor: 'SPN', title: 'Madrid\'in Düşüşü',
       text: 'Cumhuriyet cephesi çöktü; Madrid\'de Casado darbesi direnişi sona erdirdi. Milliyetçiler zaferini ilan ediyor.',
-      cond: () => G.st.opts.hist && alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && G.st.player !== 'SPR' && ((G.st.C.SPR.surrender || 0) >= 0.35 || G.st.day >= G.dayOf('1940-06-01')), retryUntil: '1941-12-31',
+      cond: () => G.st.opts.hist && alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && G.st.player !== 'SPR' && ((G.st.C.SPR.surrender || 0) >= 0.35 || G.st.day >= G.dayOf('1939-04-15')), retryUntil: '1941-12-31',
       opts: [{ n: 'Zaferi ilan et', fx: () => { if (alive('SPR') && G.atWar('SPN', 'SPR')) G.capitulate('SPR'); } }, { n: 'Savaşa devam', fx: () => {} }] },
     // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
     // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
