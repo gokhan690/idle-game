@@ -210,6 +210,11 @@
         G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1; G.cwDirty = 1;
         G.log(`Achse Harekâtı: Almanya ${n} İtalyan ilini işgal etti; İtalya cephesi sürüyor.`, ['GER', 'ITA'], 'major');
       } }, { n: 'İtalya\'yı kendi hâline bırak', fx: () => {} }] },
+    // Madrid'in düşüşü (28 Mart 1939): Cumhuriyet toprağının önemli bölümünü yitirmişse teslim olur
+    { id: 'madrid', date: '1939-03-28', actor: 'SPN', title: 'Madrid\'in Düşüşü',
+      text: 'Cumhuriyet cephesi çöktü; Madrid savunması dağıldı. Milliyetçiler zaferini ilan ediyor.',
+      cond: () => G.st.opts.hist && alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && G.st.player !== 'SPR' && (G.st.C.SPR.surrender || 0) >= 0.35, retryUntil: '1941-12-31',
+      opts: [{ n: 'Zaferi ilan et', fx: () => { if (alive('SPR') && G.atWar('SPN', 'SPR')) G.capitulate('SPR'); } }, { n: 'Savaşa devam', fx: () => {} }] },
     // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
     // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
     { id: 'volkssturm', date: '1939-09-01', actor: 'GER', title: 'Volkssturm',
