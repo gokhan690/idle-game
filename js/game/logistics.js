@@ -23,8 +23,36 @@
       if (c && c.cap >= 0 && G.dist(i, c.cap) > 420) v -= 1; // sömürge ve uzak bölgeler
       pr.inf = Math.max(1, Math.min(5, v));
     }
+    G.initRail();
   };
-  G.ensureInfra = () => { if (G.st.prov[0].inf == null) G.initInfra(); };
+  // ---------- Demiryolu (0-5) ve ikmal merkezi ----------
+  // Başlangıç demiryolu altyapıdan türetilir: gelişmiş ülkelerin ana yurdunda bir kademe fazla; Sovyet, Çin ve sömürgelerde düşük.
+  const RAIL_DEV = new Set(['GER', 'ENG', 'FRA', 'BEL', 'HOL', 'CZE', 'SWI', 'ITA', 'JAP', 'USA', 'DEN', 'SWE']);
+  const RAIL_LOW = new Set(['SOV', 'CHI', 'PRC', 'MON', 'ETH', 'TIB', 'SIK', 'SAU', 'PER', 'IRQ', 'MAN']);
+  G.initRail = () => {
+    const st = G.st;
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i], c = st.C[pr.o], inf = pr.inf || 1;
+      let r = inf >= 3 ? inf - 1 : inf === 2 ? 1 : 0;
+      const home = c && c.cap >= 0 && G.dist(i, c.cap) <= 420;
+      if (home && inf >= 2 && (RAIL_DEV.has(pr.o) || (c._dens || 0) > 1.0)) r += 1;
+      if ((RAIL_LOW.has(pr.o) || !home) && r >= 2) r -= 1;
+      pr.rail = Math.max(0, Math.min(5, r));
+    }
+  };
+  G.ensureInfra = () => { const pr = G.st.prov[0]; if (pr.inf == null) G.initInfra(); else if (pr.rail == null) G.initRail(); };
+  // Etkin demiryolu: ele geçirilen eyaletlerde hasar görür, ele geçiren onarana dek (≈120 gün) etkisi azalır
+  G.railOf = (pr) => {
+    const r = pr.rail || 0;
+    if (!r || pr.cd == null) return r;
+    const held = G.st.day - pr.cd;
+    return held >= 120 ? r : r * (0.35 + 0.65 * Math.max(0, held) / 120);
+  };
+  // Doğal ikmal merkezi: başkent ya da altyapılı büyük şehir
+  G.isNaturalHub = (i) => { const pr = G.st.prov[i], c = G.st.C[pr.o]; return (c && c.cap === i) || (P[i].vp >= 5 && pr.inf >= 2); };
+  G.isHub = (i) => !!G.st.prov[i].hub || G.isNaturalHub(i);
+  // İkmal merkezi kurulabilir mi (kıyı ya da demiryolu bağlantısı, altyapı ≥ 2)
+  G.canHub = (i) => { const pr = G.st.prov[i]; return !pr.hub && !G.isNaturalHub(i) && (pr.inf || 1) >= 2 && (P[i].c || (pr.rail || 0) >= 1); };
 
   // ---------- Mevsim ve hava ----------
   // Kuzey yarımküre soğukluk eğrisi (Ocak en soğuk)
@@ -120,12 +148,13 @@
       let cap = 0;
       if (own && i === c.cap) cap = 60;
       else if (P[i].vp >= 5 && pr.inf >= 2) cap = 6 + Math.min(12, P[i].vp / 2) + 2 * pr.inf;
-      else continue;
+      else if (!pr.hub) continue;
+      if (pr.hub && i !== c.cap) cap = Math.max(cap, 11 + 2 * (pr.inf || 1) + G.railOf(pr)); // inşa edilmiş merkez
       if (!own) cap *= 0.6;
       else if (pr.core !== tag) {
         // işgal edilen şehir: demiryolu onarımı (Sovyet hat genişliği dönüşümü) ve direniş; zamanla toparlanır
-        cap *= 0.5;
-        if (pr.o !== tag) { const held = st.day - (pr.cd ?? -999); cap *= 0.2 + 0.8 * Math.min(1, held / 150); if (pr.oc === 'SOV' && tag !== 'SOV') cap *= 0.7; }
+        cap *= pr.hub ? 0.75 : 0.5;
+        if (pr.o !== tag) { const held = st.day - (pr.cd ?? -999); cap *= pr.hub ? 0.5 + 0.5 * Math.min(1, held / 150) : 0.2 + 0.8 * Math.min(1, held / 150); if (pr.oc === 'SOV' && tag !== 'SOV') cap *= 0.7; }
       }
       if (own && !conn[i]) {
         // anakaradan kopuk: yalnızca limanla, konvoy ve deniz üstünlüğüne bağlı
@@ -151,7 +180,8 @@
         const pr = st.prov[j];
         // HOI4: ikmal mesafeyle zayıflar; demiryolu olmayan (altyapısı düşük) geniş eyaletlerde (Afrika çölleri) çok daha hızlı
         const inf = pr.inf || 2;
-        const step = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * inf) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]) * (inf <= 1 ? 1 + ek[a] : 1) * (pr.sab >= st.day ? 1.6 : 1);
+        // demiryolu: kademe başına adım maliyeti ~%6,5 azalır (0 → ×1,07; 1 → ×1; 5 → ×0,74)
+        const step = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * inf) * (1.065 - 0.065 * G.railOf(pr)) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]) * (inf <= 1 ? 1 + ek[a] : 1) * (pr.sab >= st.day ? 1.6 : 1);
         const nk = k + step;
         if (nk < key[j]) { key[j] = nk; heapPush(h, nk, j); }
       }
@@ -188,6 +218,52 @@
     const red = Math.min(0.7, (s.t.sup || 0) + (s.gb ? s.gb.sup : 0) + (G.st.C[u.t].mods.supply || 0));
     return Math.max(0.35, 1 - (1 - r) * 0.7 * (1 - red));
   };
+  // YZ: ikmali kötü cephe bölgelerine yakın illere ikmal merkezi ya da demiryolu (en çok bir-iki proje, kuyruğun başına)
+  G.aiSupplyBuild = (c) => {
+    const st = G.st, tag = c.tag, sr = G.supRatio[tag];
+    const free = c.econ?.civFree || 0;
+    if (!sr || !c.enemies.length || free < 30) return; // küçük ekonomilerde fabrika inşasını kesme
+    if (c.constr.filter((q) => q.b === 'rail' || q.b === 'hub').length >= (free >= 70 ? 2 : 1)) return;
+    if (G.rand() > 0.45) return;
+    const low = new Map(); let tot = 0, nlow = 0;
+    for (const u of st.units) {
+      if (u.t !== tag || u.loc >= NP) continue;
+      tot++;
+      if (sr[u.loc] < 0.75) { nlow++; low.set(u.loc, (low.get(u.loc) || 0) + 1); }
+    }
+    if (nlow < 3 || nlow < tot * 0.1) return; // yeterince birlik ikmalsiz değil
+    const hubSet = new Set((G.hubs[tag] || []).map((h) => h[0]));
+    const mine = (j) => { const q = st.prov[j]; return q.c === tag; };
+    const score = new Map(); let near = 0, far = 0;
+    for (const [loc, w] of low) {
+      // cephe bölgesinden en çok 3 eyalet geriye uzanan kendi topraklarımız
+      const seen = new Map([[loc, 0]]); const q = [loc]; let hasHub = false;
+      for (let k = 0; k < q.length; k++) {
+        const n = q[k], h = seen.get(n);
+        if (hubSet.has(n)) hasHub = true;
+        score.set(n, (score.get(n) || 0) + w / (1 + h));
+        if (h >= 3) continue;
+        for (const j of P[n].a) if (!seen.has(j) && mine(j)) { seen.set(j, h + 1); q.push(j); }
+      }
+      if (hasHub) near += w; else far += w;
+    }
+    const wantHub = far > near * 0.6;
+    const queued = (i) => c.constr.some((q) => q.p === i && (q.b === 'rail' || q.b === 'hub'));
+    let best = -1, bv = 0, type = 'rail';
+    for (const [i, sc] of score) {
+      const pr = st.prov[i]; if (queued(i)) continue;
+      if (wantHub && G.canHub(i)) { const v = sc * (1 + P[i].vp * 0.25) * (P[i].vp >= 3 ? 1.5 : 1); if (v > bv) { bv = v; best = i; type = 'hub'; } }
+      else if (!wantHub && (pr.rail || 0) < 4) { const v = sc * (5 - (pr.rail || 0)) * (1 + (pr.inf || 1) * 0.15); if (v > bv) { bv = v; best = i; type = 'rail'; } }
+    }
+    // tercih edilen tür bulunamazsa diğerini dene
+    if (best < 0) for (const [i, sc] of score) {
+      const pr = st.prov[i]; if (queued(i)) continue;
+      if (wantHub && (pr.rail || 0) < 4) { const v = sc * (5 - (pr.rail || 0)); if (v > bv) { bv = v; best = i; type = 'rail'; } }
+      else if (!wantHub && G.canHub(i)) { const v = sc * (1 + P[i].vp * 0.25); if (v > bv) { bv = v; best = i; type = 'hub'; } }
+    }
+    if (best >= 0) c.constr.unshift({ b: type, p: best, prog: 0 });
+  };
+
   // Günlük yıpranma: ikmalsizlik ve kış
   G.attrition = (u) => {
     if (u.loc >= NP) return;
