@@ -6330,6 +6330,19 @@ window.IDEOLOGIES = {
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
       opts: [{ n: 'Savaş ilan et', fx: () => war('GER', 'USA') }, { n: 'Bekle', fx: () => {} }] },
+    // Achse Harekâtı (Eylül 1943): İtalya teslim olunca Almanya, Müttefiklerin almadığı İtalyan topraklarını
+    // işgal eder ve cepheyi İtalya'da tutar (Gustav ve Gotik hatları). Tarihe değil İtalya'nın teslimine bağlıdır.
+    { id: 'achse', date: '1939-09-01', actor: 'GER', title: 'Achse Harekâtı',
+      text: 'İtalya Müttefiklerle ateşkes imzaladı. Alman birlikleri İtalyan ordusunu silahsızlandırıp yarımadayı savunmaya hazır.',
+      cond: () => G.st.opts.hist && alive('GER') && alive('ITA') && G.st.C.ITA.capd && !G.st.C.ITA.enemies.length && !G.st.conf && G.st.player !== 'ITA' && ['ENG', 'USA'].some((t) => G.atWar('GER', t)), retryUntil: '1946-12-31',
+      opts: [{ n: 'İtalya\'yı işgal et', fx: () => {
+        const st = G.st; let n = 0;
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === 'ITA' && pr.c === 'ITA') { pr.c = 'GER'; pr.cd = st.day; n++; } }
+        // İtalyan ordusu silahsızlandırılır
+        st.units = st.units.filter((u) => !(u.t === 'ITA' && u.loc < NP && st.prov[u.loc].c === 'GER')); G.rebuildUnitIndex();
+        G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1;
+        G.log(`Achse Harekâtı: Almanya ${n} İtalyan ilini işgal etti; İtalya cephesi sürüyor.`, ['GER', 'ITA'], 'major');
+      } }, { n: 'İtalya\'yı kendi hâline bırak', fx: () => {} }] },
     // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
     // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
     { id: 'volkssturm', date: '1939-09-01', actor: 'GER', title: 'Volkssturm',
