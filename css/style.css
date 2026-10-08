@@ -413,3 +413,6 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .dec-tg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .item.dec .btn.sm { align-self: flex-start; }
 .item.dec .fxl { margin: 2px 0; }
+/* Yakıt deposu */
+.fuelbar { margin: 0 0 6px; }
+.fuelbar .bar { height: 10px; }

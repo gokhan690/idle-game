@@ -222,6 +222,7 @@
       c.res = (c.res || []).filter((r) => g.TECH_BY_ID[r.id]);
     }
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
+    G.ensureRefineries(); // eski kayıtlar: rafineri seviyesi
     G.refreshEnemies();
     G.cwDirty = 1;
     G.rebuildUnitIndex();
@@ -232,7 +233,7 @@
     if (!st.vol) st.vol = {};
     if (G.volFix) G.volFix();
     for (const c of Object.values(st.C)) if (c.alive && c.ideo === 'dem' && !c.el && G.elecInit) G.elecInit(c);
-    for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
+    for (const c of Object.values(st.C)) if (c.alive) { G.econCalc(c); G.fuelInit(c); } // yakıt deposu varsayılanı
     return st;
   };
 })(window);

@@ -253,7 +253,7 @@
       }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
-      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : 1);
+      u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : G.fuelMul(u));
       if (u.sr) u.org = Math.min(u.org, stats.org * 0.1);
       if (seaLeg && u.loc >= NP) {
         // denizde düşman üstünlüğü varsa kayıp
@@ -478,7 +478,7 @@
       if (u.army) { const ar = G.armyById(c, u.army); if (ar) { tm *= 1 + (ar.plan || 0); ar._fought = st.day; } }
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       const wx = G.WINTER_READY.has(u.t) ? 1 - 0.2 * G.wx.snow[n] - 0.3 * G.wx.mud[n] : G.wxAtk(n);
-      atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
+      atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
       const rp = G.riverPen(u, s, n); rivSum += rp; atk *= 1 - rp; // nehir geçişi: geldiği kenara göre
       hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
@@ -486,7 +486,7 @@
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdA) + s.ha * hdA) * u.str;
-      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
       hitA += atk; G.contrib(attTag, u.t, atk);
     }
     const rD = 0.85 + G.rand() * 0.3, rA = 0.85 + G.rand() * 0.3;
@@ -556,8 +556,8 @@
     const aAir = G.airCombatMod(tag, n) * hmA, dAir = G.airCombatMod(D[0].t, n) * hmD;
     let aTot = 0, dTot = 0;
     let rivSum = 0;
-    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; const rp = G.riverPen(u, s, n); rivSum += rp; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * aAir * (1 - rp); }
-    for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * dAir; }
+    for (const u of A) { const s = u._s; const c = st.C[u.t]; const ar = u.army ? G.armyById(c, u.army) : null; const rp = G.riverPen(u, s, n); rivSum += rp; aTot += (s.sa * (1 - hdD) + s.ha * hdD) * u.str * Math.max(0.25, (1 + te.atk) * terrainMul(s, te, lat, month) * (1 - 0.1 * pr.fort) * G.wxAtk(n)) * (1 + (ar?.plan || 0)) * G.supplyMul(u) * G.fuelMul(u) * aAir * (1 - rp); }
+    for (const u of D) { const s = u._s; dTot += (s.sa * (1 - hdA) + s.ha * hdA) * u.str * terrainMul(s, te, lat, month) * G.supplyMul(u) * G.fuelMul(u) * dAir; }
     const rivAvg = rivSum / A.length;
     const wA = A.reduce((s2, u) => s2 + (u._s.t.w || 15), 0), wD = D.reduce((s2, u) => s2 + (u._s.t.w || 15), 0);
     const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
@@ -762,6 +762,7 @@
       if ((st.day + i) % 15 === 0) G.aiDiplomacy(c);
     }
     moveAndFight();
+    G.fuelTick();
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
