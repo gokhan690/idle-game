@@ -319,7 +319,8 @@
     if ((c.rb || []).length) sh += `<div class="d good" style="font-size:13px">Araştırma bonusları: ${c.rb.map(([cat, v]) => `${g.TECH_CATS[cat]} +%${Math.round(v * 100)}`).join(' · ')}</div>`;
     html += sec('Araştırma yuvaları', sh + '</div>', `Hız +%${Math.round((m.research || 0) * 100)}`);
     const tab = UI.tab.res;
-    html += `<div class="tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}</button>`).join('')}</div>`;
+    html += `<div class="tabs">${Object.entries(g.TECH_CATS).map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-act="tab" data-k="res" data-v="${k}">${n}</button>`).join('')}<button class="${tab === 'proj' ? 'on' : ''}" data-act="tab" data-k="res" data-v="proj">Projeler</button></div>`;
+    if (tab === 'proj') return { title: 'Araştırma', html: html + projHtml(c) };
     const yr = G.year(G.st.day);
     let lh = '<div class="list">';
     if (tab === 'doc') lh += `<p class="muted small" style="margin:0">HOI4'teki gibi dört kara doktrini dalından yalnızca birini izleyebilirsin: ${Object.values(g.DOC_TREES).join(', ')}. İlk araştırma dalı belirler.${G.docTree(c) ? ` Seçilen dal: <b>${g.DOC_TREES[G.docTree(c)]}</b>.` : ''}</p>`;
@@ -336,6 +337,26 @@
     html += lh + '</div>';
     return { title: 'Araştırma', html };
   };
+  // Özel projeler (HOI4 1.12): uzun soluklu gizli programlar ve atom bombası
+  function projHtml(c) {
+    const pj = c.proj || { done: {} };
+    let h = '<p class="muted small" style="margin:0 0 8px">Özel projeler ön koşul teknolojisi araştırılınca siyasi güçle başlatılır. Aynı anda tek proje yürür; hızı araştırma hızına bağlıdır. Manhattan Projesi atom bombası üretimini açar.</p><div class="list">';
+    if (pj.cur) { const p = g.PROJECTS[pj.cur]; h += `<div class="item active"><div class="grow"><div class="t">${esc(p.n)}</div>${bar(pj.p / p.days)}<div class="d">~${Math.ceil((p.days - pj.p) / (1 + (c.mods.research || 0)))} gün kaldı</div></div></div>`; }
+    for (const [id, p] of Object.entries(g.PROJECTS)) {
+      if (pj.cur === id) continue;
+      const done = pj.done[id], a = G.projAvailable(c, id);
+      h += `<div class="item ${done ? 'done' : a.ok ? '' : 'locked'}"><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(p.n)} <span class="muted small">${p.days} gün · ${p.cost} SG</span></div><div class="d">${esc(p.d)}</div>${done ? '<div class="d good">Tamamlandı</div>' : a.ok ? '' : `<div class="d warn">${esc(a.why)}</div>`}</div>${done ? '' : `<button class="btn sm ${a.ok ? 'pri' : ''}" data-act="projstart" data-v="${id}" ${a.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
+    }
+    h += '</div>';
+    if (pj.done.atom) {
+      const tg = G.nukeTargets(c.tag).slice(0, 12);
+      let nh = `<p class="small" style="margin:0 0 8px">Hazır bomba: <b>${c.nukes || 0}</b> · sonraki ${G.fmtDate(c.nukeNext || 0)}. Atom bombası şehirdeki sanayi ve altyapıyı yıkar, oradaki birlikleri ezer; düşmanın savaş desteği ve istikrarı düşer.</p><div class="list">`;
+      if (!tg.length) nh += '<div class="item"><div class="grow"><div class="d muted">Savaşta olduğun bir düşmanın büyük şehri yok.</div></div></div>';
+      for (const n of tg) nh += `<div class="item"><div class="grow"><div class="t">${esc(G.pname(n))}</div><div class="d">${esc(G.cname(G.st.prov[n].c))} · zafer puanı ${G.P[n].vp}</div></div><button class="btn sm danger" data-act="nuke" data-v="${n}" ${c.nukes > 0 ? '' : 'disabled'}>Bomba at</button></div>`;
+      h += sec('Atom bombası', nh + '</div>');
+    }
+    return h;
+  }
   // Etki metni (HOI4 tarzı, işaretli). Yüzde olmayan anahtarlar mutlak değerdir; INV: artışı kötü olanlar.
   const FX_N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama', stab: 'İstikrar', ws: 'Savaş desteği', ppM: 'Siyasi güç kazanımı', pp: 'Günlük siyasi güç', supply: 'İkmal', resist: 'İşgalde direniş', comply: 'İşgalde uyum', justify: 'Savaş gerekçesi hızı', xpGain: 'Tecrübe kazanımı', slots: 'Araştırma yuvası', train: 'Eğitim hızı', civdef: 'Bombardıman direnci', steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
   const FX_ABS = new Set(['pp', 'slots', 'steel', 'oil', 'al', 'rub', 'tun', 'chr']), FX_INV = new Set(['resist']);
@@ -1011,6 +1032,7 @@
   <section class="sec"><h3 class="sec-h">Muharebe taktikleri</h3><p class="small" style="margin:0">HOI4'teki gibi her muharebede iki günde bir saldıran ve savunan birer <b>taktik</b> seçer: Taarruz, Şok Taarruzu, Topçu Barajı, Pusu, Kuşatma, Yarma; savunmada Elastik Savunma, Karşı Saldırı, Ters Darbe, Taktik Çekilme… Seçim tümenlerin bileşimine (zırh, topçu, piyade), doktrine, araziye ve kanatlara bağlıdır. Bazı taktikler rakibin taktiğini <b>sayaçlar</b> ve onu boşa çıkarır; komutanın planlama ile saldırı (ya da savunma) becerisi yüksekse rakibinin taktiğine göre doğru karşılığı seçme şansı artar. <b>Göğüs göğüse</b> evresinde zırh ve topçu zayıflar, <b>Atılım</b> evresinde zırhlılar öne çıkar. Muharebe panelinde iki tarafın taktiğini ve evreyi görürsün.</p></section>
   <section class="sec"><h3 class="sec-h">Dünya haberleri ve Türkiye</h3><p class="small" style="margin:0">Başka ülkelerin büyük tarihî hamleleri (Anschluss, Münih, Barbarossa, Pearl Harbor, D-Günü…) HOI4'teki gibi haber penceresi olarak gelir; Menü → Ayarlar'dan kapatabilirsin. Türkiye ile oynarken tarihî kararlar seni bekler: Hatay'ın katılması ("Hatay Meselesi" odağıyla), Üçlü İttifak Antlaşması, Türk-Alman Dostluk Antlaşması, Varlık Vergisi, Adana Görüşmesi, Kahire Konferansı ve 1945'te Mihvere savaş ilanı. Orta Doğu'da 1941'de Irak'taki Reşid Ali darbesi ve İngiliz-Sovyet İran harekâtı da tarihî akışta yer alır.</p></section>
   <section class="sec"><h3 class="sec-h">Kuklalar ve özerklik</h3><p class="small" style="margin:0">HOI4'teki gibi bazı devletler bir efendiye bağlıdır: 1936'da Mançukuo Japonya'ya, Britanya Hindistanı ve dominyonlar (Kanada, Avustralya, Yeni Zelanda, Güney Afrika) Britanya'ya. Barış konferansında kurduğun kuklalar da böyledir. Her bağlı devletin <b>özerklik</b> puanı vardır: Bütünleşik kukla, Kukla, Dominyon, Özerk. Seviye düştükçe efendi, bağlı devletin kaynaklarının ve askerî fabrikalarının daha büyük payını alır. Efendi savaşta çökmeye başlarsa ya da bağlı devlet güçlenirse özerklik artar; %100'de bağımsızlık ilan edilir. Diplomasi panelinde kontrolü siyasi güçle sıkılaştırabilir, özerklik tanıyabilir ya da bağımsızlık verebilirsin; bağlı devletsen daha fazla özerklik isteyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
@@ -1226,6 +1248,8 @@
   ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
   ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
   ACT.decide = (d) => { const c = me(), r = G.takeDecision(c, d.v, d.t || null); const D = g.DEC_BY_ID[d.v]; UI.toast(r.ok ? `${D.n} ${D.days > 0 ? 'başladı' : 'uygulandı'}.` : r.why, r.ok ? 'good' : 'warn'); G.updateSummaries(); UI.render(true); UI.hud(); };
+  ACT.projstart = (d) => { if (G.projStart(me(), d.v)) UI.toast('Proje başladı: ' + g.PROJECTS[d.v].n, 'good'); UI.render(true); UI.hud(); };
+  ACT.nuke = (d) => { const n = +d.v; G.queuePopup({ title: 'Atom Bombası', text: `${G.pname(n)} şehrine atom bombası atılsın mı? Şehir yerle bir olur ve dünya gerginliği artar.`, opts: [{ n: 'Bombayı at', fx: () => { G.nuke(me().tag, n); UI.render(true); UI.hud(); } }, { n: 'Vazgeç', fx: () => {} }] }); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
   ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
