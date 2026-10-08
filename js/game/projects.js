@@ -42,7 +42,7 @@
     for (const c of Object.values(st.C)) {
       if (!c.alive || !c.proj) continue;
       if (c.proj.cur) { c.proj.p += 1 + (c.mods.research || 0); if (c.proj.p >= g.PROJECTS[c.proj.cur].days) finish(c, c.proj.cur); }
-      if (c.proj.done.atom && st.day >= (c.nukeNext || 0)) { c.nukes = (c.nukes || 0) + 1; c.nukeNext = st.day + 120; if (c.tag === st.player) G.log('Bir atom bombası daha hazır.', [c.tag], 'good'); }
+      if (c.proj.done.atom && st.day >= (c.nukeNext || 0)) { c.nukes = Math.min(10, (c.nukes || 0) + 1); c.nukeNext = st.day + 120; if (c.tag === st.player) G.log('Bir atom bombası daha hazır.', [c.tag], 'good'); }
     }
   };
   // atom bombası hedefleri: düşmanın elindeki büyük şehirler
