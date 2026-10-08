@@ -10,10 +10,11 @@
       dr: (c, st) => (st.day >= G.dayOf('1939-09-01') ? 0.0005 : 0), ev: { poland: 0.15, gelb: 0.15, pearl: 0.8 } },
     GER: { l: ['Nazi Partisi', '#c0503c'], r: ['Generaller', '#8a9a7a'], s: 0, ai: -1,
       b: [['Parti tahakkümü', { ws: 0.1, ppM: 0.1, plan: -0.1, org: -0.05 }], ['Parti etkisi', { ws: 0.05, plan: -0.03 }], ['Parti ve ordu dengede', {}], ['Generallerin sözü', { plan: 0.05, landDef: 0.03 }], ['Ordu devleti', { plan: 0.1, landAtk: 0.05, ws: -0.08 }]],
-      dr: (c) => ((c.surrender || 0) > 0.3 ? 0.002 : -0.0003), ev: { anschluss: -0.1, barbarossa: -0.1 } },
+      dr: (c) => ((c.surrender || 0) > 0.3 ? 0.002 : -0.00015), ev: { anschluss: -0.1, barbarossa: -0.1 } },
     SOV: { l: ['Paranoya', '#a34a4a'], r: ['Ordunun yükselişi', '#c9a34a'], s: -0.7, ai: 1,
-      b: [['Büyük Tasfiye', { stab: 0.05, org: -0.15, plan: -0.15 }], ['Kuşku', { org: -0.07, plan: -0.05 }], ['Temkinli güven', {}], ['Stavka', { plan: 0.05, org: 0.03 }], ['Muzaffer Kızıl Ordu', { landAtk: 0.08, plan: 0.1, stab: -0.03 }]],
-      dr: (c) => (c.enemies.length ? 0.0006 : -0.0002), ev: { winter: 0.15, barbarossa: 0.2 } },
+      b: [['Terör', { stab: 0.03, plan: -0.05 }], ['Kuşku', { plan: -0.02 }], ['Temkinli güven', {}], ['Stavka', { plan: 0.05, org: 0.03 }], ['Muzaffer Kızıl Ordu', { landAtk: 0.05, plan: 0.08, stab: -0.03 }]],
+      // Büyük Temizlik ulusal ruh olarak ayrıca var; ibre tasfiyeden sonra (1939) yavaşça toparlanır
+      dr: (c, st) => (c.enemies.length ? 0.0006 : st.day < G.dayOf('1939-01-01') ? -0.0002 : 0.0003), ev: { winter: 0.15, barbarossa: 0.2 } },
     JAP: { l: ['Kara Ordusu', '#b8794a'], r: ['Donanma', '#5f8fb8'], s: -0.3, ai: 0,
       b: [['Ordunun tahakkümü', { landAtk: 0.08, navy: -0.08, stab: -0.05 }], ['Ordu öncelikli', { landAtk: 0.04, navy: -0.03 }], ['Karargâh uzlaşması', {}], ['Donanma öncelikli', { navy: 0.05, landAtk: -0.03 }], ['Donanmanın üstünlüğü', { navy: 0.1, air: 0.05, landAtk: -0.06 }]],
       dr: () => 0, ev: { china: -0.2, pearl: 0.25, midway: -0.25 } },
@@ -56,8 +57,8 @@
       for (const [id, v] of Object.entries(B.ev)) if (st.evOk && st.evOk[id] && !c.bopEv[id]) { c.bopEv[id] = 1; d += v; }
       if (d || c._bopB < 0) G.bopShift(c, d);
       if (c._bopB < 0) { c._bopB = band(c.bop); G.recomputeMods(c); }
-      // YZ: arada bir tercih ettiği tarafı destekler
-      if (t !== st.player && B.ai && c.pp >= 150 && (st.day + t.charCodeAt(0)) % 60 === 0 && Math.sign(B.ai) * c.bop < 0.65) { c.pp -= G.BOP_COST; G.bopShift(c, B.ai * G.BOP_STEP); }
+      // YZ: serbest modda arada bir tercih ettiği tarafı destekler (tarihî modda ibreyi yalnızca kayma ve olaylar yönetir)
+      if (!st.opts.hist && t !== st.player && B.ai && c.pp >= 150 && (st.day + t.charCodeAt(0)) % 120 === 0 && Math.sign(B.ai) * c.bop < 0.5) { c.pp -= G.BOP_COST; G.bopShift(c, B.ai * G.BOP_STEP); }
     }
   };
   G.bopAct = (dir) => {
