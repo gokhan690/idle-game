@@ -354,20 +354,40 @@
   //  - bölge: saldıran tarafın belirli şehirleri kontrol oranı (ör. Güneydoğu Asya kaynak bölgesi)
   // aMax: saldıran geride kalınca en çok destek, dMax: saldıran önde gidince savunana en çok destek,
   // aFrom: saldırana destek bu tarihten önce verilmez (erken taarruz dönemi)
+  // anc: çapa savaş [taraf, taraf, tarihî başlangıç]. Eğri, bu savaşın gerçek başlangıcına göre kayar:
+  // oyuncu Barbarossa'yı bir yıl geciktirirse Doğu Cephesi eğrisi de bir yıl kayar. Çapa savaşı hiç
+  // başlamadıysa eğri uygulanmaz. Oyuncunun taraf olduğu cephelerde eğri büyük ölçüde gevşer.
   const HIST_COURSE = [
-    { a: 'GER', d: 'SOV', pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
-    { a: 'JAP', d: 'CHI', pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
-    { a: '*', d: 'GER', pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.45 },
+    { a: 'GER', d: 'SOV', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
+    { a: 'JAP', d: 'CHI', anc: ['JAP', 'CHI', '1937-07-07'], pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
+    { a: '*', d: 'GER', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.6 },
     // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
-    { a: 'JAP', set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
+    { a: 'JAP', anc: ['JAP', 'USA', '1941-12-07'], set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
       pts: [['1941-12-07', 0], ['1942-01-20', 0.45], ['1942-04-01', 0.9], ['1944-10-01', 0.9], ['1945-03-15', 0.6], ['1945-08-15', 0.45]], aMax: 0.4, dMax: 0.4,
       region: (n) => n < NP && ((P[n].lon > 90 && P[n].lat < 24 && P[n].lat > -15) || P[n].lon > 140 || P[n].lon < -150) },
   ];
   for (const h of HIST_COURSE) {
     h.pts = h.pts.map(([d, v]) => [G.dayOf(d), v]);
     h.aFromD = h.aFrom ? G.dayOf(h.aFrom) : 0;
+    h.ancD = G.dayOf(h.anc[2]);
     h.key = h.a + '>' + (h.d || 'bölge');
   }
+  // çapa savaşının gerçek başlangıcı ile tarihî başlangıç arasındaki fark (gün); savaş hiç başlamadıysa null
+  const histShift = (h) => {
+    const st = G.st, k = G.pairKey(h.anc[0], h.anc[1]);
+    const d = (st.wstart && st.wstart[k]) ?? st.wars[k]?.since;
+    return d == null ? null : d - h.ancD;
+  };
+  // oyuncu bu cephede taraf mı
+  const playerIn = (h, hi) => {
+    const st = G.st, pl = st.player, pc = st.C[pl];
+    if (!pc || !pc.alive || !pc.enemies.length) return false;
+    if (h.set) return pl === h.a || G.sameFaction(pl, h.a) || (G.atWar(pl, h.a) && SETS[hi].some((i) => st.prov[i].core === pl));
+    if (pl === h.a || pl === h.d) return true;
+    if (G.atWar(pl, h.d) && (h.a === '*' || G.sameFaction(pl, h.a))) return true;
+    if (G.sameFaction(pl, h.d) && (h.a === '*' || G.atWar(pl, h.a))) return true;
+    return false;
+  };
   let SETS = null;
   const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
   // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
@@ -377,7 +397,10 @@
     if (!st.opts.hist) return;
     if (!SETS) SETS = HIST_COURSE.map((h) => (h.set ? h.set.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0) : null));
     HIST_COURSE.forEach((h, hi) => {
-      if (st.day < h.pts[0][0]) return;
+      const sh = histShift(h);
+      if (sh == null) return;
+      const day = st.day - sh; // tarihî takvime çevrilmiş gün
+      if (day < h.pts[0][0]) return;
       let v; // saldıranın ilerleme ölçüsü (ülke: savunanın kaybı, bölge: saldıranın kontrol oranı)
       if (h.set) {
         if (!st.C[h.a]?.alive || !st.C[h.a].enemies.length) return;
@@ -392,11 +415,13 @@
         for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) hh += x; }
         v = 1 - hh / Math.max(1, w);
       }
-      const ref = refAt(h.pts, st.day), e = v - ref; // + : saldıran tarihten önde
-      G._hcs[h.key] = { loss: v, ref };
-      if (Math.abs(e) < 0.05) return;
-      if (e < 0 && st.day < h.aFromD) return;
-      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
+      const ref = refAt(h.pts, day), e = v - ref; // + : saldıran tarihten önde
+      // oyuncu taraf olduğunda tarih onun elinde: geniş tolerans ve zayıf düzeltme
+      const pl = playerIn(h, hi), tol = pl ? 0.12 : 0.05, str = pl ? 0.35 : 1;
+      G._hcs[h.key] = { loss: v, ref, pl };
+      if (Math.abs(e) < tol) return;
+      if (e < 0 && day < h.aFromD) return;
+      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: str * Math.min(1, (Math.abs(e) - tol) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
     });
   };
   // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
@@ -578,6 +603,18 @@
     if (P[n].vp >= 10 && (tag === st.player || prev === st.player || pr.o === st.player)) G.log(`${G.pname(n)} ${G.cname(nc)} kontrolüne geçti.`, [nc, prev], prev === st.player ? 'bad' : 'good');
   };
 
+  // Gerideki boş düşman adacıkları: içinde düşman birliği olmayan ve bütün kara komşuları asli sahibinin
+  // (ya da dostlarının) kontrolünde olan eyalet asli sahibine döner (cephe geçtikten sonra arkada unutulan iller)
+  G.enclaves = () => {
+    const st = G.st;
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i], k = pr.core;
+      if (!k || pr.c === k || !st.C[k]?.alive || !G.atWar(k, pr.c)) continue;
+      const A = P[i].a; if (!A.length) continue;
+      if ((G.unitsAt[i] || []).some((u) => G.atWar(u.t, k))) continue;
+      if (A.every((j) => { const c = st.prov[j].c; return c === k || (G.friendly(k, c) && !G.atWar(k, c)); })) G.capture(i, k);
+    }
+  };
   // Fabrika tahliyesi: kaybedilen eyaletten askerî ve sivil fabrikaların bir kısmı uzak doğudaki asli eyaletlere
   G.relocate = (tag, n, fm, fc) => {
     const st = G.st, pr = st.prov[n], c = st.C[tag];
@@ -601,14 +638,20 @@
       if (!c || !c.enemies.length) continue;
       if (pr.c === core || (!c.eset.has(pr.c) && G.friendly(core, pr.c))) have[core] = (have[core] || 0) + G.cw[i];
     }
+    // ordusu tükenmiş ülke (en çok 2 tümen) topraklarının yarısından fazlasını yitirdiyse direnemez
+    // (ör. 1945'te Sardunya ve Arnavutluk'ta tek tümenle tutunan İtalya)
+    const divs = {}; for (const u of st.units) divs[u.t] = (divs[u.t] || 0) + 1;
     for (const c of Object.values(st.C)) {
       if (st.conf) return;
       if (!c.alive || !c.enemies.length) continue;
       const lost = 1 - (have[c.tag] || 0) / (c.startW || 1);
+      if (lost >= 0.55 && (divs[c.tag] || 0) + c.train.length <= 2 && c.tag !== st.player) { c.surrender = 1; G.capitulate(c.tag); continue; }
       // başkent düştüyse en değerli toprağa taşı
+      // (önce asli topraklar; asıl başkent geri alınınca başkent oraya döner)
+      if (c.cap0 >= 0 && c.cap !== c.cap0 && st.prov[c.cap0]?.c === c.tag) c.cap = c.cap0;
       if (c.cap >= 0 && st.prov[c.cap].c !== c.tag) {
         let best = -1, bv = -1;
-        for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].vp > bv) { bv = P[i].vp; best = i; }
+        for (let i = 0; i < NP; i++) { const q = st.prov[i]; if (q.c !== c.tag) continue; const v = P[i].vp + (q.core === c.tag ? 100 : 0); if (v > bv) { bv = v; best = i; } }
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
       // otoriter büyük güçler sonuna dek savaşır (HOI4: Almanya ve Japonya geç teslim olur)
@@ -713,6 +756,7 @@
     if (st.day % 5 === 0) G.timedSpirits();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
+    if (st.day % 10 === 7) G.enclaves();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);

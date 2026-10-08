@@ -105,7 +105,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--brass-
 @keyframes sheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .sheet-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--rule); flex: none; }
 .sheet-head h2 { margin: 0; flex: 1; font: 700 18px/1.1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.06em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sheet-close, .sheet-back { width: 36px; height: 36px; border-radius: 6px; font-size: 18px; color: var(--muted); flex: none; }
+.sheet-close, .sheet-back, .sheet-tall { width: 36px; height: 36px; border-radius: 6px; font-size: 18px; color: var(--muted); flex: none; }
 .sheet-back { font-size: 28px; line-height: 1; margin-left: -8px; }
 .sheet-body { overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 18px; touch-action: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 14px; user-select: text; -webkit-user-select: text; }
 .sec { display: flex; flex-direction: column; gap: 8px; }
@@ -229,6 +229,12 @@ button.item:active { background: var(--field-3); }
 .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .legend b { color: var(--paper); font-variant-numeric: tabular-nums; }
 .item.spirit { border-left: 3px solid var(--brass); }
+.item.spirit.pos { border-left-color: var(--good); }
+.item.spirit.neg { border-left-color: var(--bad); }
+.fxl { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.fxc { font-size: 11px; line-height: 1.2; padding: 2px 6px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.fxc.good { color: var(--good); }
+.fxc.bad { color: var(--bad); }
 .advgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
 .adv { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border-radius: 5px; border: 1px dashed var(--rule); background: rgba(32,39,31,0.5); text-align: left; min-height: 74px; min-width: 0; }
 .adv.on { border-style: solid; background: var(--field-2); }
@@ -381,6 +387,30 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .dzst .small { text-align: right; min-width: 40px; }
 .seg button:disabled { opacity: 0.32; text-decoration: line-through; text-decoration-thickness: 1px; }
 .seg.wrap button { border-top: 1px solid var(--rule); margin-top: -1px; }
+
+/* tam ekran panel (odak ağacı) */
+.sheet.full { left: 0; right: 0; width: auto; top: 0; padding-top: var(--safe-t); max-height: none; border-radius: 0; }
+@media (min-width: 760px) { .sheet.full { left: 12px; right: 12px; width: auto; top: 12px; max-height: none; border-radius: 6px; } }
+@media (orientation: landscape) and (max-height: 560px) {
+  .sheet.full { left: calc(var(--rail) + var(--safe-l)); right: 0; top: 0; bottom: 0; width: auto; }
+}
+.sheet.full .sheet-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.sheet.full .ftree { flex: 1 1 auto; min-height: 0; max-height: none; }
+.sheet.full .fdetail { position: static; flex: none; margin: 0 -14px -18px; max-height: 40%; overflow-y: auto; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .sheet.full .sheet-body > p.muted { display: none; }
+  .sheet.full .sheet-body { padding-top: 6px; gap: 6px; }
+}
+
+/* sekmeler telefonda kesilmesin: satır kaydır */
+.tabs { flex-wrap: wrap; overflow-x: visible; }
+/* büyütülmüş panel (dikey ekran): HUD'un altına kadar uzar */
+.sheet-tall { font-size: 20px; display: none; }
+@media (orientation: portrait) {
+  .sheet-tall { display: block; }
+  .sheet.full .sheet-tall { display: none; }
+  .sheet.tall:not(.full) { top: calc(var(--safe-t) + 6px); max-height: none; }
+}
 </style>
 </head>
 <body>
@@ -424,6 +454,7 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
     <div class="sheet-head">
       <button class="sheet-back" id="sheet-back" data-act="back" hidden aria-label="Geri">‹</button>
       <h2 id="sheet-title"></h2>
+      <button class="sheet-tall" id="sheet-tall" data-act="tall" aria-label="Paneli büyüt">⤢</button>
       <button class="sheet-close" data-act="close" aria-label="Kapat">✕</button>
     </div>
     <div class="sheet-body" id="sheet-body"></div>
@@ -886,47 +917,111 @@ window.IDEOLOGIES = {
   g.ADV_COST = { pol: 150, army: 100, navy: 100, air: 100, hc: 100, tank: 100, plane: 100, ship: 100, ind: 100, theo: 100 };
 
   // ---------- Ulusal ruhlar ----------
+  // h: tarihî açıklama; fx: etkiler (arayüz işaretli olarak gösterir);
+  // until: bu tarihte kendiliğinden kalkar; war: ülke savaşa girince kalkar; rm: kaldıran odaklar.
   g.SPIRITS = {
-    kemalist: { n: 'Kemalist Reformlar', d: 'İstikrar +%10, araştırma +%5', fx: { stab: 0.1, research: 0.05 } },
-    econ_tur: { n: 'Ekonomik Darlık', d: 'Fabrika verimi -%10', fx: { factory: -0.1 } },
-    montreux: { n: 'Montrö Sözleşmesi', d: 'Deniz gücü +%10, savunma +%5', fx: { navy: 0.1, landDef: 0.05 } },
-    inonu: { n: 'Millî Şef', d: 'İstikrar +%10, siyasi güç +%10', fx: { stab: 0.1, ppM: 0.1 } },
-    purge: { n: 'Büyük Temizlik', d: 'Kara saldırısı -%15, moral -%10, istikrar +%10', fx: { landAtk: -0.15, org: -0.1, stab: 0.1 } },
-    gpw: { n: 'Büyük Vatanseverlik Savaşı', d: 'Savaş desteği +%30, savunma +%15, insan gücü +%20', fx: { ws: 0.3, landDef: 0.15, mp: 0.2 } },
-    depression: { n: 'Büyük Buhran', d: 'Fabrika verimi -%20, istikrar -%10', fx: { factory: -0.2, stab: -0.1 } },
-    neutrality_act: { n: 'Tarafsızlık Yasaları', d: 'Savaş desteği -%20', fx: { ws: -0.2 } },
-    arsenal: { n: 'Demokrasinin Cephaneliği', d: 'Fabrika +%15, inşaat +%10', fx: { factory: 0.15, construct: 0.1 } },
-    pacifism: { n: 'Barışçı Kamuoyu', d: 'Savaş desteği -%15', fx: { ws: -0.15 } },
-    never_surrender: { n: 'Asla Teslim Olmayacağız', d: 'Savunma +%15, savaş desteği +%20', fx: { landDef: 0.15, ws: 0.2 } },
-    pol_div: { n: 'Siyasi Bölünme', d: 'İstikrar -%15, siyasi güç -%10', fx: { stab: -0.15, ppM: -0.1 } },
-    maginot: { n: 'Maginot Zihniyeti', d: 'Savunma +%10, saldırı -%10', fx: { landDef: 0.1, landAtk: -0.1 } },
-    autarky: { n: 'Otarşi Programı', d: 'Fabrika +%5, sentetik petrol +10', fx: { factory: 0.05, oil: 10 } },
-    rearm: { n: 'Yeniden Silahlanma', d: 'Savaş desteği +%10, askerî fabrika üretimi +%5', fx: { ws: 0.1, factory: 0.05 } },
-    wehrmacht: { n: 'Wehrmacht Doktrini', d: 'Kara saldırısı +%12, zırhlı saldırı +%10, moral +%10 (1943 ortasına dek)', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
-    sichelschnitt: { n: 'Orak Darbesi', d: 'Batı Seferi: kara saldırısı +%20, zırhlı saldırı +%15, hız +%10', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
-    fra_shock: { n: 'Savaş Şoku', d: 'Savunma -%15, moral -%15', fx: { landDef: -0.15, org: -0.15 } },
-    barb_surprise: { n: 'Barbarossa Baskını', d: 'Savunma -%25, moral -%20, saldırı -%10', fx: { landDef: -0.25, org: -0.2, landAtk: -0.1 } },
-    barb_drive: { n: 'Doğu Seferi', d: 'Kara saldırısı +%15, zırhlı saldırı +%10', fx: { landAtk: 0.15, armAtk: 0.1 } },
-    blitz: { n: 'Yıldırım Savaşı Ruhu', d: 'Zırhlı saldırı +%10, hız +%5', fx: { armAtk: 0.1, speed: 0.05 } },
-    ethiopia: { n: 'Habeşistan Harekâtı', d: 'Savaş desteği +%10, siyasi güç -%10', fx: { ws: 0.1, ppM: -0.1 } },
-    mare_nostrum: { n: 'Mare Nostrum', d: 'Deniz gücü +%15', fx: { navy: 0.15 } },
-    kwantung: { n: 'Kantō Ordusunun Bağımsızlığı', d: 'Saldırı +%5, istikrar -%10', fx: { landAtk: 0.05, stab: -0.1 } },
-    bushido: { n: 'Buşido Ruhu', d: 'Moral +%10, savunma +%5', fx: { org: 0.1, landDef: 0.05 } },
-    warlords: { n: 'Savaş Ağaları', d: 'İstikrar -%20, fabrika -%10', fx: { stab: -0.2, factory: -0.1 } },
-    china_depth: { n: 'Stratejik Derinlik', d: 'Savunma +%10, insan gücü +%20', fx: { landDef: 0.1, mp: 0.2 } },
-    sanacja: { n: 'Sanacja Rejimi', d: 'İstikrar +%5, savaş desteği +%10', fx: { stab: 0.05, ws: 0.1 } },
-    lend_lease: { n: 'Ödünç Verme-Kiralama', d: 'Fabrika verimi +%5, kaynak +10', fx: { factory: 0.05, steel: 10, oil: 10 } },
-    armed_neutrality: { n: 'Silahlı Tarafsızlık', d: 'Savunma +%15', fx: { landDef: 0.15 } },
-    total_war: { n: 'Topyekûn Seferberlik Ruhu', d: 'İnsan gücü +%15, savaş desteği +%10', fx: { mp: 0.15, ws: 0.1 } },
-    landing: { n: 'Müttefik Hava ve Deniz Üstünlüğü', d: 'Çıkarma harekâtı: kara saldırısı +%15, çıkarma cezası -%40', fx: { landAtk: 0.15, invasion: 0.4 } },
-    stavka: { n: 'Stavka Reformları', d: 'Uranüs Harekâtı dönemi: kara saldırısı +%10, moral +%5', fx: { landAtk: 0.1, org: 0.05 } },
-    deep_ops: { n: 'Derin Harekât', d: 'Bagration dönemi: zırhlı saldırı +%15, atılım +%10', fx: { armAtk: 0.15, brk: 0.1 } },
-    ost_crisis: { n: 'Doğu Cephesi Yıpranması', d: 'İnsan gücü -%15, moral -%5', fx: { mp: -0.15, org: -0.05 } },
-    nat_aid: { n: 'Lejyon Kondor ve CTV', d: 'Alman ve İtalyan gönüllüler, Faslı birlikler: kara saldırısı +%10, moral +%10, insan gücü +%100', fx: { landAtk: 0.1, org: 0.1, mp: 1.0 } },
-    rep_chaos: { n: 'Cumhuriyetçi Bölünme', d: 'Anarşist, komünist ve cumhuriyetçi milisler arasında çekişme: moral -%10, saldırı -%10', fx: { org: -0.1, landAtk: -0.1 } },
-    chi_scorched: { n: 'Yanık Toprak ve Derinlik', d: 'Çin\'in uçsuz bucaksız iç bölgeleri: savunma +%30, moral +%10', fx: { landDef: 0.3, org: 0.1 } },
-    jap_overext: { n: 'Çin Bataklığı', d: 'Japon ordusu Çin\'de aşırı yayıldı: saldırı -%12, ikmal -%20, insan gücü -%25', fx: { landAtk: -0.12, supply: -0.2, mp: -0.25 } },
-    resistance: { n: 'Direniş Ruhu', d: 'Savunma +%10, istikrar +%5', fx: { landDef: 0.1, stab: 0.05 } },
+    // Türkiye
+    kemalist: { n: 'Kemalist Reformlar', h: 'Laik ve modernleştirici devrimler devletin temelini oluşturuyor.', fx: { stab: 0.1, research: 0.05 } },
+    econ_tur: { n: 'Ekonomik Darlık', h: 'Sermaye ve sanayi birikimi yetersiz; ülke hâlâ savaş yıllarının yaralarını sarıyor.', fx: { factory: -0.1 }, rm: ['tur_etatism'] },
+    montreux: { n: 'Montrö Sözleşmesi', h: 'Boğazların denetimi yeniden Türkiye\'de.', fx: { navy: 0.1, landDef: 0.05 } },
+    inonu: { n: 'Millî Şef', h: 'İsmet İnönü\'nün temkinli ve otoriter liderliği.', fx: { stab: 0.1, ppM: 0.1 } },
+    // Sovyetler Birliği
+    purge: { n: 'Büyük Temizlik', h: 'Tuhaçevski ve binlerce subay tasfiye edildi; ordu deneyimli komutanlarından yoksun.', fx: { landAtk: -0.15, org: -0.1, stab: 0.1 }, rm: ['sov_purge_end'] },
+    pyatiletka: { n: 'Beş Yıllık Planlar', h: 'Ağır sanayiye dayalı zorlayıcı kalkınma.', fx: { construct: 0.1, factory: 0.05, stab: -0.05 } },
+    gpw: { n: 'Büyük Vatanseverlik Savaşı', h: 'Bütün ülke anayurt savunması için seferber oldu.', fx: { ws: 0.3, landDef: 0.15, mp: 0.2 } },
+    stavka: { n: 'Stavka Reformları', h: 'Uranüs Harekâtı dönemi: Kızıl Ordu savaşmayı öğrendi.', fx: { landAtk: 0.1, org: 0.05 } },
+    deep_ops: { n: 'Derin Harekât', h: 'Bagration dönemi: zırhlı kollar düşman cephesini derinlemesine yarıyor.', fx: { armAtk: 0.15, brk: 0.1 } },
+    barb_surprise: { n: 'Barbarossa Baskını', h: 'Kızıl Ordu hazırlıksız yakalandı.', fx: { landDef: -0.25, org: -0.2, landAtk: -0.1 } },
+    // Birleşik Krallık ve Milletler Topluluğu
+    pacifism: { n: 'Barışçı Kamuoyu', h: 'Büyük Savaş\'ın acıları unutulmadı; halk yeni bir savaş istemiyor.', fx: { ws: -0.15 }, rm: ['eng_opinion'] },
+    royal_navy: { n: 'Kraliyet Donanması', h: 'Dünyanın en büyük donanması denizlere hâkim.', fx: { navy: 0.1, invasion: 0.1 } },
+    never_surrender: { n: 'Asla Teslim Olmayacağız', h: 'Churchill\'in sarsılmaz kararlılığı.', fx: { landDef: 0.15, ws: 0.2 } },
+    conscription: { n: 'Zorunlu Askerlik Krizi', h: 'Fransızca konuşan Quebec denizaşırı zorunlu askerliğe karşı.', fx: { mp: -0.25, stab: -0.05 }, rm: ['why_we_fight', 'national_unity'] },
+    dominion: { n: 'Dominyon Statüsü', h: 'Westminster Statüsü ile kendi dış politikasını belirliyor; Londra\'ya bağlılık sürüyor.', fx: { ws: -0.1, ppM: -0.05 }, war: 1 },
+    saf_split: { n: 'Hertzog-Smuts Ayrılığı', h: 'Afrikaner milliyetçileri ile İngiltere yanlıları arasında derin bölünme.', fx: { stab: -0.1, ws: -0.15 }, war: 1 },
+    raj_indep: { n: 'Bağımsızlık Hareketi', h: 'Gandi ve Kongre Partisi İngiliz yönetimine karşı.', fx: { stab: -0.1, ppM: -0.1, factory: -0.05 } },
+    // Fransa
+    pol_div: { n: 'Siyasi Bölünme', h: 'Halk Cephesi ile sağ ligler arasında derin uçurum.', fx: { stab: -0.15, ppM: -0.1 }, rm: ['fra_unity'] },
+    maginot: { n: 'Maginot Zihniyeti', h: 'Ordu tahkimatların ardında savunmaya güveniyor.', fx: { landDef: 0.1, landAtk: -0.1 }, rm: ['fra_degaulle'] },
+    victors: { n: 'Büyük Savaş\'ın Galipleri', h: 'Zafer gururu sürüyor ama milyonlarca ölü yeni bir savaşı düşünülemez kılıyor.', fx: { stab: 0.05, ws: -0.1 } },
+    fra_shock: { n: 'Savaş Şoku', h: 'Alman yıldırım harekâtı Fransız komutasını felç etti.', fx: { landDef: -0.15, org: -0.15 } },
+    resistance: { n: 'Direniş Ruhu', h: 'İşgale karşı halk direnişi.', fx: { landDef: 0.1, stab: 0.05 } },
+    // ABD
+    depression: { n: 'Büyük Buhran', h: 'Ekonomi 1929 çöküşünden hâlâ toparlanamadı.', fx: { factory: -0.2, stab: -0.1 }, rm: ['usa_newdeal'] },
+    neutrality_act: { n: 'Tarafsızlık Yasaları', h: 'Kongre savaşan ülkelere silah satışını yasakladı.', fx: { ws: -0.2 }, rm: ['usa_neutral'] },
+    arsenal: { n: 'Demokrasinin Cephaneliği', h: 'Amerikan sanayisi savaş üretimine geçti.', fx: { factory: 0.15, construct: 0.1 } },
+    lend_lease: { n: 'Ödünç Verme-Kiralama', h: 'Amerikan teçhizatı ve hammaddesi geliyor.', fx: { factory: 0.05, steel: 10, oil: 10 } },
+    landing: { n: 'Müttefik Hava ve Deniz Üstünlüğü', h: 'Çıkarma harekâtı büyük hava ve deniz desteğiyle yapılıyor.', fx: { landAtk: 0.15, invasion: 0.4 } },
+    // Almanya
+    rearm: { n: 'Yeniden Silahlanma', h: 'Versay kısıtlamaları çiğnendi; ordu hızla büyüyor.', fx: { ws: 0.1, factory: 0.05 } },
+    wehrmacht: { n: 'Wehrmacht Doktrini', h: 'Görev taktikleri ve birlikte çalışan silahlar; 1943 ortasına dek üstünlük.', fx: { landAtk: 0.12, armAtk: 0.1, org: 0.1 } },
+    autarky: { n: 'Otarşi Programı', h: 'Dört Yıllık Plan: sentetik yakıt ve kendi kendine yetme.', fx: { factory: 0.05, oil: 10 } },
+    blitz: { n: 'Yıldırım Savaşı Ruhu', h: 'Hız ve yoğunlaşma.', fx: { armAtk: 0.1, speed: 0.05 } },
+    total_war: { n: 'Topyekûn Seferberlik', h: 'Bütün ulus savaş için seferber.', fx: { mp: 0.15, ws: 0.1 } },
+    sichelschnitt: { n: 'Orak Darbesi', h: 'Batı Seferi: Ardenler üzerinden zırhlı yarma.', fx: { landAtk: 0.2, armAtk: 0.15, speed: 0.1 } },
+    barb_drive: { n: 'Doğu Seferi', h: 'Barbarossa\'nın ilk aylarındaki ivme.', fx: { landAtk: 0.15, armAtk: 0.1 } },
+    volkssturm: { n: 'Volkssturm', h: 'Yaşlılar ve gençlerden oluşan halk milisi yurt topraklarını savunuyor.', fx: { mp: 0.3, landDef: 0.1 } },
+    ost_crisis: { n: 'Doğu Cephesi Yıpranması', h: 'Uzun savaş Alman insan gücünü tüketiyor.', fx: { mp: -0.15, org: -0.05 } },
+    // İtalya
+    ethiopia: { n: 'Habeşistan Harekâtı', h: 'Doğu Afrika\'daki savaş kaynakları tüketiyor.', fx: { ws: 0.1, ppM: -0.1 }, rm: ['ita_ethiopia'] },
+    duce: { n: 'Duce', h: 'Mussolini\'nin kişi kültü rejimi ayakta tutuyor.', fx: { ppM: 0.1, stab: 0.05 } },
+    ita_army: { n: 'Hazırlıksız Ordu', h: 'Eski teçhizat, zayıf lojistik ve motorsuz piyade.', fx: { org: -0.05, supply: -0.1 } },
+    mare_nostrum: { n: 'Mare Nostrum', h: 'Akdeniz İtalyan gölü olacak.', fx: { navy: 0.15 } },
+    // Japonya
+    kwantung: { n: 'Kantō Ordusunun Bağımsızlığı', h: 'Mançurya\'daki ordu Tokyo\'yu dinlemiyor.', fx: { landAtk: 0.05, stab: -0.1 }, rm: ['jap_kwantung'] },
+    bushido: { n: 'Buşido Ruhu', h: 'Teslim olmayı reddeden savaşçı ahlakı.', fx: { org: 0.1, landDef: 0.05 } },
+    jap_rivalry: { n: 'Ordu-Donanma Çekişmesi', h: 'Kara ordusu ile donanma kaynak ve strateji için çekişiyor.', fx: { research: -0.05, ppM: -0.1 } },
+    jap_overext: { n: 'Çin Bataklığı', h: 'Japon ordusu Çin\'de aşırı yayıldı.', fx: { landAtk: -0.12, supply: -0.2, mp: -0.25 } },
+    // Çin
+    warlords: { n: 'Savaş Ağaları', h: 'Taşra valileri Nanking\'e ancak sözde bağlı.', fx: { stab: -0.2, factory: -0.1 }, rm: ['chi_unity'] },
+    china_depth: { n: 'Stratejik Derinlik', h: 'Uçsuz bucaksız topraklar ve sonsuz insan gücü.', fx: { landDef: 0.1, mp: 0.2 } },
+    chi_corrupt: { n: 'Kuomintang Yolsuzluğu', h: 'Rüşvet ve kayırmacılık devleti kemiriyor.', fx: { construct: -0.15, ppM: -0.1 }, rm: ['chi_industry'] },
+    chi_scorched: { n: 'Yanık Toprak ve Derinlik', h: 'Çin\'in iç bölgeleri işgalciyi yutuyor.', fx: { landDef: 0.3, org: 0.1 } },
+    guerrilla: { n: 'Gerilla Savaşı', h: 'Uzun Yürüyüş\'ten çıkan Kızıl Ordu köylü desteğiyle savaşıyor.', fx: { org: 0.05, landDef: 0.05 } },
+    // Polonya
+    sanacja: { n: 'Sanacja Rejimi', h: 'Piłsudski\'nin mirasçıları ülkeyi sıkı denetimle yönetiyor.', fx: { stab: 0.05, ws: 0.1 } },
+    pol_two: { n: 'İki Düşman Arasında', h: 'Almanya ile Sovyetler arasında sıkışmış bir ulus.', fx: { ws: 0.1, mp: 0.05 } },
+    // İspanya
+    spr_violence: { n: 'Siyasi Şiddet', h: 'Sokaklarda sağ ve sol milisler çatışıyor.', fx: { stab: -0.15 }, until: '1939-04-01' },
+    nat_aid: { n: 'Lejyon Kondor ve CTV', h: 'Alman ve İtalyan gönüllüler, Faslı birlikler Milliyetçileri destekliyor.', fx: { landAtk: 0.1, org: 0.1, mp: 1.0 } },
+    rep_chaos: { n: 'Cumhuriyetçi Bölünme', h: 'Anarşist, komünist ve cumhuriyetçi milisler arasında çekişme.', fx: { org: -0.1, landAtk: -0.1 } },
+    // Orta ve Doğu Avrupa
+    cze_forts: { n: 'Çekoslovak Sınır Tahkimatı', h: 'Südet dağlarında modern beton istihkâmlar.', fx: { landDef: 0.1, entrench: 0.2 } },
+    skoda: { n: 'Škoda Fabrikaları', h: 'Avrupa\'nın en büyük silah üreticilerinden biri.', fx: { factory: 0.1 } },
+    stgermain: { n: 'Saint-Germain Antlaşması', h: 'Ordunun boyutu antlaşmayla sınırlandı.', fx: { mp: -0.3, ws: -0.1 } },
+    trianon: { n: 'Trianon Antlaşması', h: 'Ordu kısıtlamaları; 1938 Bled Anlaşması ile kalkar.', fx: { mp: -0.3, landAtk: -0.05 }, until: '1938-08-23', rm: ['hun_rearm'] },
+    revanchism: { n: 'Revizyonizm', h: 'Trianon\'da yitirilen toprakları geri alma özlemi.', fx: { ws: 0.1 } },
+    neuilly: { n: 'Neuilly Antlaşması', h: 'Ordu kısıtlamaları; 1938 Selanik Anlaşması ile kalkar.', fx: { mp: -0.3 }, until: '1938-07-31', rm: ['bul_army'] },
+    iron_guard: { n: 'Demir Muhafız Tehdidi', h: 'Faşist lejyonerler kralın otoritesine meydan okuyor.', fx: { stab: -0.1 }, rm: ['rom_carol', 'rom_guard'] },
+    yug_ethnic: { n: 'Etnik Gerilimler', h: 'Sırp merkeziyetçiliği ile Hırvat özerklik talepleri çatışıyor.', fx: { stab: -0.15, ws: -0.1 }, rm: ['yug_unity'] },
+    gre_debt: { n: 'Dış Borç Yükü', h: 'Uluslararası Mali Komisyon Yunan maliyesini denetliyor.', fx: { construct: -0.1, factory: -0.05 }, rm: ['gre_metaxas'] },
+    alb_italy: { n: 'İtalyan Nüfuzu', h: 'Ekonomi ve ordu İtalyan kredilerine bağımlı.', fx: { ppM: -0.15, factory: -0.1 } },
+    puppet: { n: 'Kukla Devlet', h: 'Gerçek güç efendi devletin elinde.', fx: { ppM: -0.2, stab: -0.1 } },
+    baltic_auth: { n: 'Otoriter Rejim', h: 'Darbe sonrası kurulan tek adam yönetimi; ülke tarafsızlığa sığınıyor.', fx: { stab: 0.05, ws: -0.1 } },
+    // Batı ve Kuzey Avrupa
+    neutral_state: { n: 'Kesin Tarafsızlık', h: 'Büyük güçlerin çatışmasından uzak durma politikası.', fx: { ws: -0.15, stab: 0.05 }, war: 1 },
+    den_disarm: { n: 'Silahsızlanma Politikası', h: 'Sosyal demokrat hükümet orduyu küçülttü.', fx: { landDef: -0.1, mp: -0.2 } },
+    swi_redoubt: { n: 'Ulusal Kale (Réduit)', h: 'Alp geçitlerinde tahkimatlı savunma ve milis ordusu.', fx: { landDef: 0.25, entrench: 0.2 } },
+    sisu: { n: 'Sisu', h: 'Fin kararlılığı ve kış savaşında ustalık.', fx: { landDef: 0.05, org: 0.05 } },
+    armed_neutrality: { n: 'Silahlı Tarafsızlık', h: 'Tarafsız ama saldırıya hazır.', fx: { landDef: 0.15 } },
+    estado_novo: { n: 'Estado Novo', h: 'Salazar\'ın korporatist ve tutucu düzeni.', fx: { stab: 0.1, ppM: 0.05 } },
+    // Orta Doğu, Afrika ve Asya
+    reza_reforms: { n: 'Rıza Şah\'ın Reformları', h: 'Zorlayıcı modernleşme ve merkezîleşme.', fx: { construct: 0.05, stab: -0.05 } },
+    iraq_brit: { n: 'İngiliz Nüfuzu', h: '1930 antlaşması İngiltere\'ye üsler ve geniş haklar tanıyor.', fx: { ppM: -0.1 } },
+    saudi_tribes: { n: 'Bedevi Kabileleri', h: 'Kabile savaşçıları sadakatle ama düzensiz savaşır.', fx: { mp: 0.1, stab: -0.05 } },
+    eth_feudal: { n: 'Feodal Ordu', h: 'Bölgesel ras\'ların silahlı adamları; modern teçhizat yok.', fx: { research: -0.1, factory: -0.1 } },
+    gurkha: { n: 'Gurka Geleneği', h: 'Dünyaca ünlü dağ savaşçıları.', fx: { org: 0.1 } },
+    sik_soviet: { n: 'Sovyet Nüfuzu', h: 'Şeng Şicay Moskova\'nın desteğine bağımlı.', fx: { ppM: -0.1 } },
+    siam_phibun: { n: 'Phibun\'un Milliyetçiliği', h: 'Ülke adını Tayland yapan milliyetçi askerî yönetim.', fx: { ws: 0.1, stab: 0.05 } },
+    mon_satellite: { n: 'Sovyet Uydusu', h: 'Moğol Halk Cumhuriyeti Moskova\'ya bağlı.', fx: { ppM: -0.1, speed: 0.05 } },
+    // Amerika kıtası
+    cardenas: { n: 'Cárdenas Reformları', h: 'Toprak reformu ve 1938\'de petrolün millîleştirilmesi.', fx: { stab: 0.05, construct: 0.05 } },
+    vargas: { n: 'Vargas Dönemi', h: 'Getúlio Vargas\'ın merkeziyetçi kalkınma rejimi.', fx: { stab: 0.05, construct: 0.05 } },
+    infamous: { n: 'Rezil On Yıl', h: 'Hileli seçimler ve oligarşik yönetim.', fx: { stab: -0.1, ppM: -0.1 }, rm: ['national_unity', 'liberty', 'collectivist'] },
+    chaco: { n: 'Chaco Savaşı Yorgunluğu', h: 'Bolivya-Paraguay savaşı ülkeyi tüketti; barış 1938\'de imzalanır.', fx: { mp: -0.2, ws: -0.2, stab: -0.05 }, until: '1938-07-21' },
+    banana: { n: 'Yabancı Şirket Nüfuzu', h: 'Ekonomi Amerikan meyve ve maden şirketlerinin elinde.', fx: { factory: -0.1, ppM: -0.05 }, rm: ['construction_effort_2'] },
+    caudillo: { n: 'Caudillo Rejimi', h: 'Ordunun desteklediği tek adam yönetimi.', fx: { stab: 0.05, ppM: 0.05 } },
+    agrarian: { n: 'Tarım Toplumu', h: 'Sanayi zayıf, nüfusun çoğu köylü.', fx: { research: -0.1, construct: -0.1 }, rm: ['construction_effort_2'] },
   };
 
   // ---------- Başlangıç siyaseti ----------
@@ -934,14 +1029,32 @@ window.IDEOLOGIES = {
   g.POLITICS = {
     TUR: { stab: 0.65, ws: 0.2, pop: { dem: 0.1, fas: 0.05, com: 0.05, neu: 0.8 }, sp: ['kemalist', 'econ_tur'] },
     GER: { stab: 0.6, ws: 0.35, pop: { dem: 0.08, fas: 0.82, com: 0.05, neu: 0.05 }, sp: ['rearm', 'wehrmacht'], trade: 1 },
-    SOV: { stab: 0.5, ws: 0.3, pop: { dem: 0.03, fas: 0.02, com: 0.9, neu: 0.05 }, sp: ['purge'], trade: 3 },
-    ENG: { stab: 0.75, ws: 0.1, pop: { dem: 0.8, fas: 0.04, com: 0.06, neu: 0.1 }, sp: ['pacifism'] },
-    FRA: { stab: 0.45, ws: 0.1, pop: { dem: 0.6, fas: 0.1, com: 0.2, neu: 0.1 }, sp: ['pol_div', 'maginot'] },
+    SOV: { stab: 0.5, ws: 0.3, pop: { dem: 0.03, fas: 0.02, com: 0.9, neu: 0.05 }, sp: ['purge', 'pyatiletka'], trade: 3 },
+    ENG: { stab: 0.75, ws: 0.1, pop: { dem: 0.8, fas: 0.04, com: 0.06, neu: 0.1 }, sp: ['pacifism', 'royal_navy'] },
+    FRA: { stab: 0.45, ws: 0.1, pop: { dem: 0.6, fas: 0.1, com: 0.2, neu: 0.1 }, sp: ['pol_div', 'maginot', 'victors'] },
     USA: { stab: 0.6, ws: 0.05, pop: { dem: 0.85, fas: 0.03, com: 0.04, neu: 0.08 }, sp: ['depression', 'neutrality_act'] },
-    ITA: { stab: 0.6, ws: 0.4, pop: { dem: 0.05, fas: 0.75, com: 0.05, neu: 0.15 }, sp: ['ethiopia'] },
-    JAP: { stab: 0.55, ws: 0.45, pop: { dem: 0.15, fas: 0.65, com: 0.02, neu: 0.18 }, sp: ['kwantung', 'bushido'] },
-    CHI: { stab: 0.35, ws: 0.4, pop: { dem: 0.1, fas: 0.05, com: 0.15, neu: 0.7 }, sp: ['warlords', 'china_depth'] },
-    POL: { stab: 0.55, ws: 0.3, pop: { dem: 0.15, fas: 0.05, com: 0.05, neu: 0.75 }, sp: ['sanacja'] },
+    ITA: { stab: 0.6, ws: 0.4, pop: { dem: 0.05, fas: 0.75, com: 0.05, neu: 0.15 }, sp: ['ethiopia', 'duce', 'ita_army'] },
+    JAP: { stab: 0.55, ws: 0.45, pop: { dem: 0.15, fas: 0.65, com: 0.02, neu: 0.18 }, sp: ['kwantung', 'bushido', 'jap_rivalry'] },
+    CHI: { stab: 0.35, ws: 0.4, pop: { dem: 0.1, fas: 0.05, com: 0.15, neu: 0.7 }, sp: ['warlords', 'china_depth', 'chi_corrupt'] },
+    POL: { stab: 0.55, ws: 0.3, pop: { dem: 0.15, fas: 0.05, com: 0.05, neu: 0.75 }, sp: ['sanacja', 'pol_two'] },
+  };
+
+  // Küçük devletlerin başlangıç ruhları
+  g.START_SPIRITS = {
+    CZE: ['cze_forts', 'skoda'], AUS: ['stgermain'], HUN: ['trianon', 'revanchism'], BUL: ['neuilly'], ROM: ['iron_guard'],
+    YUG: ['yug_ethnic'], GRE: ['gre_debt'], ALB: ['alb_italy'], SPR: ['spr_violence'], POR: ['estado_novo'],
+    SWI: ['swi_redoubt', 'neutral_state'], BEL: ['neutral_state'], HOL: ['neutral_state'], LUX: ['neutral_state'],
+    DEN: ['neutral_state', 'den_disarm'], NOR: ['neutral_state'], SWE: ['neutral_state'], FIN: ['sisu'], IRE: ['neutral_state'],
+    EST: ['baltic_auth'], LAT: ['baltic_auth'], LIT: ['baltic_auth'],
+    CAN: ['dominion', 'conscription'], AST: ['dominion'], NZL: ['dominion'], SAF: ['saf_split'], RAJ: ['raj_indep'],
+    PRC: ['guerrilla'], MAN: ['puppet'], SLO: ['puppet'], MON: ['mon_satellite'],
+    NEP: ['gurkha', 'agrarian'], TIB: ['agrarian'], SIK: ['sik_soviet', 'agrarian'], SIA: ['siam_phibun'],
+    PER: ['reza_reforms', 'agrarian'], IRQ: ['iraq_brit'], SAU: ['saudi_tribes', 'agrarian'], YEM: ['agrarian'], OMA: ['agrarian'],
+    AFG: ['agrarian'], ETH: ['eth_feudal'], LIB: ['agrarian', 'banana'],
+    MEX: ['cardenas'], GUA: ['banana', 'caudillo'], HON: ['banana'], ELS: ['banana', 'caudillo'], NIC: ['banana', 'caudillo'],
+    COS: ['banana'], PAN: ['banana'], CUB: ['caudillo'], HAI: ['agrarian'], DOM: ['caudillo'],
+    BRA: ['vargas', 'agrarian'], ARG: ['infamous'], CHL: ['agrarian'], PRU: ['agrarian'], BOL: ['chaco', 'agrarian'],
+    PAR: ['chaco', 'agrarian'], URU: ['agrarian'], VEN: ['agrarian'], COL: ['agrarian'], ECU: ['agrarian'],
   };
 
   // ---------- Alternatif liderler (ideoloji değişince) ----------
@@ -1066,14 +1179,14 @@ window.IDEOLOGIES = {
       F('ger_axis', 'Roma-Berlin Mihveri', 3, 1, ['ger_rhine'], { fn: ['mkFac', 'Mihver', ['ITA']] }, 'Mihver ittifakını kur ve İtalya\'yı davet et.', { ai: 0 }),
       F('ger_sudeten', 'Südet Bölgesi', 1, 2, ['ger_anschluss'], { fn: ['demand', 'CZE', 'sudeten'] }, 'Südetleri talep et.', { req: 'alive:CZE', ai: 0 }),
       F('ger_anticomintern', 'Anti-Komintern Paktı', 3, 2, ['ger_axis'], { fn: ['invite', ['JAP', 'HUN']] }, 'Japonya ve Macaristan\'ı ittifaka davet et.', { ai: 0 }),
-      F('ger_czech', 'Bohemya ve Moravya', 1, 3, ['ger_sudeten'], { fn: ['demand', 'CZE'] }, 'Kalan Çek topraklarını talep et.', { req: 'alive:CZE', ai: 0 }),
-      F('ger_danzig', 'Danzig ya da Savaş', 1, 4, ['ger_czech'], { fn: ['goal', ['POL']] }, 'Polonya\'ya karşı savaş gerekçesi.', { ai: 0 }),
-      F('ger_mr', 'Molotov-Ribbentrop Paktı', 2, 4, ['ger_czech'], { fn: ['pact', ['SOV']] }, 'Sovyetler Birliği ile saldırmazlık paktı.', { ai: 0, excl: ['ger_anti_sov'] }),
+      F('ger_czech', 'Bohemya ve Moravya', 1, 3, ['ger_sudeten'], { fn: ['event', 'czeend', ['demand', 'CZE']] }, 'Kalan Çek topraklarını talep et; Slovakya bağımsızlığını ilan eder.', { req: 'alive:CZE', ai: 0 }),
+      F('ger_danzig', 'Danzig ya da Savaş', 1, 4, ['ger_czech'], { fn: ['event', 'poland', ['goal', ['POL']]] }, 'Polonya\'ya saldırı emri ya da savaş gerekçesi.', { ai: 0 }),
+      F('ger_mr', 'Molotov-Ribbentrop Paktı', 2, 4, ['ger_czech'], { fn: ['event', 'mr'] }, 'Sovyetler Birliği ile saldırmazlık paktı.', { ai: 0, excl: ['ger_anti_sov'] }),
       F('ger_anti_sov', 'Doğu\'ya Haçlı Seferi', 3, 4, ['ger_anticomintern'], { fn: ['goal', ['SOV']], ws: 0.1 }, 'Sovyetler Birliği\'ne karşı erken savaş gerekçesi.', { ai: 0, excl: ['ger_mr'] }),
-      F('ger_west', 'Batı Taarruzu', 1, 5, ['ger_danzig'], { fn: ['goal', ['BEL', 'HOL', 'LUX', 'FRA']] }, 'Benelüks ve Fransa\'ya karşı savaş gerekçeleri.', { ai: 0 }),
-      F('ger_weser', 'Weserübung', 0, 5, ['ger_danzig'], { fn: ['goal', ['DEN', 'NOR']] }, 'Danimarka ve Norveç\'e karşı savaş gerekçesi.', { ai: 0 }),
+      F('ger_west', 'Batı Taarruzu', 1, 5, ['ger_danzig'], { fn: ['event', 'gelb', ['goal', ['BEL', 'HOL', 'LUX', 'FRA']]] }, 'Fransa ile savaştaysan Sarı Durum (Orak Darbesi); değilsen Benelüks ve Fransa\'ya karşı savaş gerekçeleri.', { ai: 0 }),
+      F('ger_weser', 'Weserübung', 0, 5, ['ger_danzig'], { fn: ['event', 'weser', ['goal', ['DEN', 'NOR']]] }, 'Danimarka ve Norveç\'in işgali ya da savaş gerekçesi.', { ai: 0 }),
       F('ger_balkans', 'Balkan Paktları', 3, 5, ['ger_anticomintern'], { fn: ['invite', ['ROM', 'BUL', 'YUG']] }, 'Balkan ülkelerini ittifaka davet et.', { ai: 0 }),
-      F('ger_barbarossa', 'Barbarossa', 2, 6, [['ger_west', 'ger_anti_sov']], { fn: ['goal', ['SOV']], landAtk: 0.05 }, 'Sovyetler Birliği\'ne karşı savaş gerekçesi, kara saldırısı +%5.', { req: 'year:1940', ai: 0 }),
+      F('ger_barbarossa', 'Barbarossa', 2, 6, [['ger_west', 'ger_anti_sov']], { fn: ['event', 'barbarossa', ['goal', ['SOV']]], landAtk: 0.05 }, 'Barbarossa Harekâtı ya da savaş gerekçesi; kara saldırısı +%5.', { req: 'year:1940', ai: 0 }),
       F('ger_total', 'Topyekûn Savaş', 4, 6, ['ger_blitz'], { spirit: 'total_war' }, 'İnsan gücü ve savaş desteği artar.', { req: 'war' }),
       F('ger_generals', 'Generallerin Komplosu', 0, 1, ['ger_rhine'], { fn: ['leader', 'neu'], stab: -0.1 }, 'Ordu Hitler\'i devirir. Ülke bağlantısız olur.', { excl: ['ger_anschluss'], ai: 0 }),
       F('ger_kaiser', 'Monarşinin İadesi', 0, 2, ['ger_generals'], { stab: 0.15, pp: 0.5 }, 'Kayzer döner; istikrar +%15.', { ai: 0 }),
@@ -1090,7 +1203,7 @@ window.IDEOLOGIES = {
       F('sov_deep', 'Derin Harekât', 1, 2, ['sov_reform'], Object.assign(rb('doc', 'doc'), { armAtk: 0.1 }), 'Doktrin bonusları, zırhlı saldırı +%10.'),
       F('sov_mr', 'Molotov-Ribbentrop Paktı', 7, 1, [], { fn: ['pact', ['GER']] }, 'Almanya ile saldırmazlık paktı.', { ai: 0, excl: ['sov_popfront'] }),
       F('sov_popfront', 'Halk Cephesi', 8, 1, [], { fn: ['pact', ['FRA', 'ENG']], ws: 0.05 }, 'Batı demokrasileriyle yakınlaşma.', { ai: 0, excl: ['sov_mr'] }),
-      F('sov_winter', 'Kış Savaşı', 7, 2, ['sov_mr'], { fn: ['goal', ['FIN']] }, 'Finlandiya\'ya karşı savaş gerekçesi.', { ai: 0 }),
+      F('sov_winter', 'Kış Savaşı', 7, 2, ['sov_mr'], { fn: ['event', 'winter', ['goal', ['FIN']]] }, 'Kış Savaşı ya da savaş gerekçesi.', { ai: 0 }),
       F('sov_baltic', 'Baltık Devletleri', 7, 3, ['sov_winter'], { fn: ['demandMany', ['EST', 'LAT', 'LIT']] }, 'Baltık ülkelerinin Birliğe katılmasını talep et.', { ai: 0 }),
       F('sov_bessarabia', 'Besarabya', 8, 3, ['sov_winter'], { fn: ['demand', 'ROM', 'bessarabia'] }, 'Romanya\'dan Besarabya\'yı talep et.', { ai: 0 }),
       F('sov_comintern', 'Komintern\'i Güçlendir', 8, 2, ['sov_popfront'], { fn: ['invite', ['PRC', 'MON']], pp: 0.5 }, 'Komünist hareketleri ittifaka çağır.', { ai: 0 }),
@@ -1132,8 +1245,8 @@ window.IDEOLOGIES = {
       F('ita_ethiopia', 'Habeşistan Zaferi', 2, 0, [], { rmSpirit: 'ethiopia', stab: 0.05, ws: 0.05 }, 'Habeşistan harekâtı biter.'),
       F('ita_albania', 'Arnavutluk', 1, 1, ['ita_ethiopia'], { fn: ['demand', 'ALB'] }, 'Arnavutluk\'u talep et.', { req: 'alive:ALB', ai: 0 }),
       F('ita_axis', 'Çelik Paktı', 3, 1, ['ita_ethiopia'], { fn: ['joinFac', 'GER'] }, 'Almanya\'nın ittifakına katıl.', { ai: 0, excl: ['ita_king'] }),
-      F('ita_greece', 'Yunanistan Hedefi', 1, 2, ['ita_albania'], { fn: ['goal', ['GRE']] }, 'Yunanistan\'a karşı savaş gerekçesi.', { ai: 0 }),
-      F('ita_egypt', 'Mısır Harekâtı', 2, 2, ['ita_axis'], { fn: ['goal', ['ENG']] }, 'Britanya\'ya karşı savaş gerekçesi.', { ai: 0, req: 'year:1939' }),
+      F('ita_greece', 'Yunanistan Hedefi', 1, 2, ['ita_albania'], { fn: ['event', 'greece', ['goal', ['GRE']]] }, 'Savaştaysan Yunanistan\'a saldırı; değilsen savaş gerekçesi.', { ai: 0 }),
+      F('ita_egypt', 'Mısır Harekâtı', 2, 2, ['ita_axis'], { fn: ['event', 'itajoin', ['goal', ['ENG']]] }, 'Almanya savaştaysa Müttefiklere savaş; değilsen Britanya\'ya karşı savaş gerekçesi.', { ai: 0, req: 'year:1939' }),
       F('ita_mare', 'Mare Nostrum', 5, 0, [], { spirit: 'mare_nostrum', addDock: 2 }, 'Deniz +%15, +2 tersane.'),
       F('ita_ansaldo', 'Ansaldo Tankları', 4, 1, ['ita_mare'], Object.assign(rb('arm', 'arm'), { addMil: 2 }), '+2 askerî fabrika.'),
       F('ita_regia', 'Regia Aeronautica', 5, 1, ['ita_mare'], Object.assign(rb('air'), { addPlanes: 100 }), '+100 avcı uçağı.'),
@@ -1143,11 +1256,11 @@ window.IDEOLOGIES = {
     ],
     JAP: [
       F('jap_kwantung', 'Kantō Ordusunu Dizginle', 2, 0, [], { rmSpirit: 'kwantung', stab: 0.05 }, 'Kantō Ordusunun bağımsızlığı sona erer.'),
-      F('jap_china', 'Çin Meselesi', 2, 1, ['jap_kwantung'], { fn: ['goal', ['CHI']] }, 'Çin\'e karşı savaş gerekçesi.', { ai: 0 }),
+      F('jap_china', 'Çin Meselesi', 2, 1, ['jap_kwantung'], { fn: ['event', 'china', ['goal', ['CHI']]] }, 'Marco Polo Köprüsü Olayı: Çin\'e savaş ya da savaş gerekçesi.', { ai: 0 }),
       F('jap_cps', 'Doğu Asya Refah Alanı', 1, 2, ['jap_china'], { fn: ['invite', ['SIA']], pp: 0.25 }, 'Siyam\'ı ittifaka davet et.', { ai: 0 }),
       F('jap_north', 'Kuzey Doktrini', 2, 2, ['jap_china'], { fn: ['goal', ['SOV', 'MON']] }, 'Sovyetler ve Moğolistan\'a karşı.', { excl: ['jap_south'], ai: 0 }),
       F('jap_south', 'Güney Doktrini', 3, 2, ['jap_china'], { fn: ['goal', ['HOL', 'ENG']] }, 'Hollanda ve Britanya\'nın Asya sömürgelerine karşı.', { excl: ['jap_north'], ai: 0 }),
-      F('jap_pearl', 'Pasifik Taarruzu', 3, 3, ['jap_south'], { fn: ['goal', ['USA']], invasion: 0.2 }, 'ABD\'ye karşı savaş gerekçesi, çıkarma +%20.', { ai: 0 }),
+      F('jap_pearl', 'Pasifik Taarruzu', 3, 3, ['jap_south'], { fn: ['event', 'pearl', ['goal', ['USA']]], invasion: 0.2 }, 'Pearl Harbor baskını ya da savaş gerekçesi; çıkarma +%20.', { ai: 0 }),
       F('jap_zaibatsu', 'Zaibatsu Seferberliği', 5, 0, [], { addMil: 4 }, '+4 askerî fabrika.'),
       F('jap_kaigun', 'Kaigun Genişlemesi', 5, 1, ['jap_zaibatsu'], { addDock: 3, ships: { cv: 1 }, navy: 0.1 }, '+3 tersane, +1 uçak gemisi.'),
       F('jap_zero', 'Sıfır Avcısı', 6, 1, ['jap_zaibatsu'], Object.assign(rb('air', 'air'), { addPlanes: 150 }), '+150 avcı uçağı.'),
@@ -2295,20 +2408,40 @@ window.IDEOLOGIES = {
   //  - bölge: saldıran tarafın belirli şehirleri kontrol oranı (ör. Güneydoğu Asya kaynak bölgesi)
   // aMax: saldıran geride kalınca en çok destek, dMax: saldıran önde gidince savunana en çok destek,
   // aFrom: saldırana destek bu tarihten önce verilmez (erken taarruz dönemi)
+  // anc: çapa savaş [taraf, taraf, tarihî başlangıç]. Eğri, bu savaşın gerçek başlangıcına göre kayar:
+  // oyuncu Barbarossa'yı bir yıl geciktirirse Doğu Cephesi eğrisi de bir yıl kayar. Çapa savaşı hiç
+  // başlamadıysa eğri uygulanmaz. Oyuncunun taraf olduğu cephelerde eğri büyük ölçüde gevşer.
   const HIST_COURSE = [
-    { a: 'GER', d: 'SOV', pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
-    { a: 'JAP', d: 'CHI', pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
-    { a: '*', d: 'GER', pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.45 },
+    { a: 'GER', d: 'SOV', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
+    { a: 'JAP', d: 'CHI', anc: ['JAP', 'CHI', '1937-07-07'], pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
+    { a: '*', d: 'GER', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.6 },
     // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
-    { a: 'JAP', set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
+    { a: 'JAP', anc: ['JAP', 'USA', '1941-12-07'], set: ['Manila', 'Cebu City', 'San Jose', 'Singapur', 'Kuala Lumpur', 'Kota Bharu', 'Hong Kong', 'Batavya', 'Palembang', 'Balikpapan', 'Medan', 'Surabaya', 'Semarang', 'Rangun', 'Rabaul', 'Guam', 'Wake', 'Kuching'],
       pts: [['1941-12-07', 0], ['1942-01-20', 0.45], ['1942-04-01', 0.9], ['1944-10-01', 0.9], ['1945-03-15', 0.6], ['1945-08-15', 0.45]], aMax: 0.4, dMax: 0.4,
       region: (n) => n < NP && ((P[n].lon > 90 && P[n].lat < 24 && P[n].lat > -15) || P[n].lon > 140 || P[n].lon < -150) },
   ];
   for (const h of HIST_COURSE) {
     h.pts = h.pts.map(([d, v]) => [G.dayOf(d), v]);
     h.aFromD = h.aFrom ? G.dayOf(h.aFrom) : 0;
+    h.ancD = G.dayOf(h.anc[2]);
     h.key = h.a + '>' + (h.d || 'bölge');
   }
+  // çapa savaşının gerçek başlangıcı ile tarihî başlangıç arasındaki fark (gün); savaş hiç başlamadıysa null
+  const histShift = (h) => {
+    const st = G.st, k = G.pairKey(h.anc[0], h.anc[1]);
+    const d = (st.wstart && st.wstart[k]) ?? st.wars[k]?.since;
+    return d == null ? null : d - h.ancD;
+  };
+  // oyuncu bu cephede taraf mı
+  const playerIn = (h, hi) => {
+    const st = G.st, pl = st.player, pc = st.C[pl];
+    if (!pc || !pc.alive || !pc.enemies.length) return false;
+    if (h.set) return pl === h.a || G.sameFaction(pl, h.a) || (G.atWar(pl, h.a) && SETS[hi].some((i) => st.prov[i].core === pl));
+    if (pl === h.a || pl === h.d) return true;
+    if (G.atWar(pl, h.d) && (h.a === '*' || G.sameFaction(pl, h.a))) return true;
+    if (G.sameFaction(pl, h.d) && (h.a === '*' || G.atWar(pl, h.a))) return true;
+    return false;
+  };
   let SETS = null;
   const refAt = (pts, day) => { if (day <= pts[0][0]) return pts[0][1]; for (let k = 1; k < pts.length; k++) if (day <= pts[k][0]) { const [d0, v0] = pts[k - 1], [d1, v1] = pts[k]; return v0 + (v1 - v0) * (day - d0) / (d1 - d0); } return pts[pts.length - 1][1]; };
   // saldıranın tarihî eğriye göre ne kadar önde olduğu (yoksa null)
@@ -2318,7 +2451,10 @@ window.IDEOLOGIES = {
     if (!st.opts.hist) return;
     if (!SETS) SETS = HIST_COURSE.map((h) => (h.set ? h.set.map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0) : null));
     HIST_COURSE.forEach((h, hi) => {
-      if (st.day < h.pts[0][0]) return;
+      const sh = histShift(h);
+      if (sh == null) return;
+      const day = st.day - sh; // tarihî takvime çevrilmiş gün
+      if (day < h.pts[0][0]) return;
       let v; // saldıranın ilerleme ölçüsü (ülke: savunanın kaybı, bölge: saldıranın kontrol oranı)
       if (h.set) {
         if (!st.C[h.a]?.alive || !st.C[h.a].enemies.length) return;
@@ -2333,11 +2469,13 @@ window.IDEOLOGIES = {
         for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc !== d) continue; const x = 1 + P[i].vp; w += x; if (pr.c === d || (G.sameFaction(d, pr.c) && !G.atWar(d, pr.c))) hh += x; }
         v = 1 - hh / Math.max(1, w);
       }
-      const ref = refAt(h.pts, st.day), e = v - ref; // + : saldıran tarihten önde
-      G._hcs[h.key] = { loss: v, ref };
-      if (Math.abs(e) < 0.05) return;
-      if (e < 0 && st.day < h.aFromD) return;
-      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: Math.min(1, (Math.abs(e) - 0.05) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
+      const ref = refAt(h.pts, day), e = v - ref; // + : saldıran tarihten önde
+      // oyuncu taraf olduğunda tarih onun elinde: geniş tolerans ve zayıf düzeltme
+      const pl = playerIn(h, hi), tol = pl ? 0.12 : 0.05, str = pl ? 0.35 : 1;
+      G._hcs[h.key] = { loss: v, ref, pl };
+      if (Math.abs(e) < tol) return;
+      if (e < 0 && day < h.aFromD) return;
+      G._hc.push({ h, fav: e > 0 ? 'd' : 'a', k: str * Math.min(1, (Math.abs(e) - tol) / 0.25) * (e > 0 ? h.dMax : h.aMax) });
     });
   };
   // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
@@ -2519,6 +2657,18 @@ window.IDEOLOGIES = {
     if (P[n].vp >= 10 && (tag === st.player || prev === st.player || pr.o === st.player)) G.log(`${G.pname(n)} ${G.cname(nc)} kontrolüne geçti.`, [nc, prev], prev === st.player ? 'bad' : 'good');
   };
 
+  // Gerideki boş düşman adacıkları: içinde düşman birliği olmayan ve bütün kara komşuları asli sahibinin
+  // (ya da dostlarının) kontrolünde olan eyalet asli sahibine döner (cephe geçtikten sonra arkada unutulan iller)
+  G.enclaves = () => {
+    const st = G.st;
+    for (let i = 0; i < NP; i++) {
+      const pr = st.prov[i], k = pr.core;
+      if (!k || pr.c === k || !st.C[k]?.alive || !G.atWar(k, pr.c)) continue;
+      const A = P[i].a; if (!A.length) continue;
+      if ((G.unitsAt[i] || []).some((u) => G.atWar(u.t, k))) continue;
+      if (A.every((j) => { const c = st.prov[j].c; return c === k || (G.friendly(k, c) && !G.atWar(k, c)); })) G.capture(i, k);
+    }
+  };
   // Fabrika tahliyesi: kaybedilen eyaletten askerî ve sivil fabrikaların bir kısmı uzak doğudaki asli eyaletlere
   G.relocate = (tag, n, fm, fc) => {
     const st = G.st, pr = st.prov[n], c = st.C[tag];
@@ -2542,14 +2692,20 @@ window.IDEOLOGIES = {
       if (!c || !c.enemies.length) continue;
       if (pr.c === core || (!c.eset.has(pr.c) && G.friendly(core, pr.c))) have[core] = (have[core] || 0) + G.cw[i];
     }
+    // ordusu tükenmiş ülke (en çok 2 tümen) topraklarının yarısından fazlasını yitirdiyse direnemez
+    // (ör. 1945'te Sardunya ve Arnavutluk'ta tek tümenle tutunan İtalya)
+    const divs = {}; for (const u of st.units) divs[u.t] = (divs[u.t] || 0) + 1;
     for (const c of Object.values(st.C)) {
       if (st.conf) return;
       if (!c.alive || !c.enemies.length) continue;
       const lost = 1 - (have[c.tag] || 0) / (c.startW || 1);
+      if (lost >= 0.55 && (divs[c.tag] || 0) + c.train.length <= 2 && c.tag !== st.player) { c.surrender = 1; G.capitulate(c.tag); continue; }
       // başkent düştüyse en değerli toprağa taşı
+      // (önce asli topraklar; asıl başkent geri alınınca başkent oraya döner)
+      if (c.cap0 >= 0 && c.cap !== c.cap0 && st.prov[c.cap0]?.c === c.tag) c.cap = c.cap0;
       if (c.cap >= 0 && st.prov[c.cap].c !== c.tag) {
         let best = -1, bv = -1;
-        for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag && P[i].vp > bv) { bv = P[i].vp; best = i; }
+        for (let i = 0; i < NP; i++) { const q = st.prov[i]; if (q.c !== c.tag) continue; const v = P[i].vp + (q.core === c.tag ? 100 : 0); if (v > bv) { bv = v; best = i; } }
         if (best >= 0) { if (c.tag === st.player) G.log(`Başkent ${G.pname(best)} şehrine taşındı.`, [c.tag], 'bad'); c.cap = best; }
       }
       // otoriter büyük güçler sonuna dek savaşır (HOI4: Almanya ve Japonya geç teslim olur)
@@ -2654,6 +2810,7 @@ window.IDEOLOGIES = {
     if (st.day % 5 === 0) G.timedSpirits();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
+    if (st.day % 10 === 7) G.enclaves();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
@@ -2683,6 +2840,7 @@ window.IDEOLOGIES = {
     const k = G.pairKey(a, b);
     if (st.wars[k]) return;
     st.wars[k] = { since: st.day };
+    st.wstart = st.wstart || {}; if (st.wstart[k] == null) st.wstart[k] = st.day; // ilk başlangıç (tarihî eğri çapası)
     G.supDirty = 1;
     delete st.pacts[k];
     delete st.access[a + '>' + b]; delete st.access[b + '>' + a];
@@ -3057,7 +3215,9 @@ window.IDEOLOGIES = {
     const rearm = c.major && (c.ideo === 'fas' || c.ideo === 'com') && st.tension > 25 ? 1.35 : 1;
     // hedef tümen sayısı: sanayi + depodaki fazla teçhizat (savaşta stok varsa insan gücüyle milis kurulur)
     const spare = atWar ? Math.floor(Math.max(0, (c.stock.inf || 0) - 3000) / 2500) : 0;
-    const target = Math.min(c.major ? 260 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm) + spare);
+    // tarihî mod: Batılı demokrasilerin kara ordusu tarihî büyüklükte kalır (ABD ~90, Britanya ~50 tümen; sanayi donanma ve hava gücüne gider)
+    const histCap = st.opts.hist ? ({ USA: 100, ENG: 75 })[c.tag] : null;
+    const target = Math.min(histCap || (c.major ? 260 : 90), Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm) + spare);
     // eğitim kuyruğu: teçhizatı bekleyen tümenler insan gücünü kilitlemesin
     const waiting = c.train.filter((t) => t.d <= 0).length;
     if (units >= target || waiting >= 3 || c.train.length >= Math.max(2, Math.ceil(s.mil / (rearm > 1 ? 5 : 7)))) return;
@@ -3931,9 +4091,10 @@ window.IDEOLOGIES = {
     c.stabX = 0; c.wsX = 0;
     if (p.pop) c.pop = Object.assign({}, p.pop);
     else { c.pop = { dem: 0.1, fas: 0.1, com: 0.1, neu: 0.1 }; c.pop[c.ideo] = 0.7; }
-    c.spirits = (p.sp || []).slice();
+    c.spirits = (p.sp || []).concat((g.START_SPIRITS || {})[c.tag] || []);
     c.laws.trade = p.trade ?? 1;
     c.laws.occ = 1;
+    c.warDays = 0;
     c.adv = {};
     c.rb = [];
     c.stab = c.stab0; c.ws = c.ws0;
@@ -4112,6 +4273,13 @@ window.IDEOLOGIES = {
         case 'fn': try { G.FX[v[0]](c, ...v.slice(1)); } catch (e) { console.error('focus fx', id, e); } break;
       }
     }
+    // bu odağın kaldırdığı ulusal ruhlar
+    for (const s of c.spirits.slice()) {
+      const S = g.SPIRITS[s];
+      if (S && S.rm && S.rm.includes(id)) { c.spirits = c.spirits.filter((x) => x !== s); if (c.tag === st.player) G.log(`Ulusal ruh kalktı: ${S.n}.`, [c.tag], 'info'); }
+    }
+    // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
+    if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
     G.recomputeMods(c);
     G.needSummary = 1;
     if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
@@ -4146,6 +4314,17 @@ window.IDEOLOGIES = {
       if (ok && !st.C[target].fac) accept(); else refuse();
     },
     demandMany(c, list) { for (const t of list) G.FX.demand(c, t); },
+    // tarihî olayı odakla tetikle (HOI4: "Danzig ya da Savaş" → savaş). Olay koşulu tutmazsa yedek etki
+    // uygulanır; oyuncu ertelerse yalnızca savaş gerekçesi türündeki yedek kalır (saldırı zamanını o seçer).
+    event(c, id, fb) {
+      const st = G.st, e = (G.EVENTS || []).find((x) => x.id === id);
+      const fallback = () => { if (fb) G.FX[fb[0]](c, ...fb.slice(1)); };
+      if (!e || st.ev[id] || !e.cond()) return fallback();
+      st.ev[id] = 1;
+      const later = fb && fb[0] === 'goal' ? fallback : () => {};
+      if (c.tag === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) });
+      else e.opts[0].fx();
+    },
     goal(c, list) {
       const st = G.st;
       for (const t of list) if (alive(t) && !G.atWar(c.tag, t) && !G.sameFaction(c.tag, t)) st.goals[c.tag + '>' + t] = st.day;
@@ -4155,6 +4334,7 @@ window.IDEOLOGIES = {
       for (const t of list) {
         if (!alive(t) || t === G.st.player) continue;
         const ok = G.proposePact(c.tag, t);
+        if (ok && [c.tag, t].sort().join() === 'GER,SOV') G.st.ev.mrPact = 1; // gizli protokol (Doğu Polonya)
         if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} pakt önerisini reddetti.`, [c.tag], 'warn');
       }
     },
@@ -4527,12 +4707,14 @@ window.IDEOLOGIES = {
     let v = mine / (mine + theirs);
     // tarihî mod: Pearl Harbor'dan Midway'e dek Batı Pasifik'te Japon deniz üstünlüğü (Müttefikler Filipinler'e,
     // Malaya'ya ve Doğu Hint Adaları'na takviye taşıyamaz)
-    if (st.opts.hist && st.day >= KB0 && st.day < KB1 && zone >= NP && G.atWar(tag, 'JAP') && tag !== st.player) {
+    // (pencere ABD-Japonya savaşının gerçek başlangıcından itibaren ~6 aydır; oyuncu Japonya ise uygulanmaz)
+    const kb = st.opts.hist && st.player !== 'JAP' && ((st.wstart && st.wstart[G.pairKey('JAP', 'USA')]) ?? st.wars[G.pairKey('JAP', 'USA')]?.since);
+    if (kb != null && kb !== false && st.day >= kb && st.day < kb + KBD && zone >= NP && G.atWar(tag, 'JAP') && tag !== st.player) {
       const z = G.SEAS[zone - NP]; if (z && z.lon > 95 && z.lat < 30 && z.lat > -15) v = Math.min(v, 0.3);
     }
     return v;
   };
-  const KB0 = G.dayOf('1941-12-07'), KB1 = G.dayOf('1942-06-04');
+  const KBD = G.dayOf('1942-06-04') - G.dayOf('1941-12-07'); // Pearl Harbor → Midway
 
   G.fleetPath = (from, to, tag) => {
     // yalnızca deniz düğümleri; düşman kontrolündeki boğazlardan geçilmez
@@ -6148,6 +6330,39 @@ window.IDEOLOGIES = {
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
       opts: [{ n: 'Savaş ilan et', fx: () => war('GER', 'USA') }, { n: 'Bekle', fx: () => {} }] },
+    // Achse Harekâtı (Eylül 1943): İtalya teslim olunca Almanya, Müttefiklerin almadığı İtalyan topraklarını
+    // işgal eder ve cepheyi İtalya'da tutar (Gustav ve Gotik hatları). Tarihe değil İtalya'nın teslimine bağlıdır.
+    { id: 'achse', date: '1939-09-01', actor: 'GER', title: 'Achse Harekâtı',
+      text: 'İtalya Müttefiklerle ateşkes imzaladı. Alman birlikleri İtalyan ordusunu silahsızlandırıp yarımadayı savunmaya hazır.',
+      cond: () => G.st.opts.hist && alive('GER') && alive('ITA') && G.st.C.ITA.capd && !G.st.C.ITA.enemies.length && !G.st.conf && G.st.player !== 'ITA' && ['ENG', 'USA'].some((t) => G.atWar('GER', t)), retryUntil: '1946-12-31',
+      opts: [{ n: 'İtalya\'yı işgal et', fx: () => {
+        const st = G.st; let n = 0;
+        // iller asli İtalyan toprağı olarak kalır (direniş birikir); Almanya teslim olunca İtalya barışta yeniden kurulabilir
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === 'ITA' && pr.c === 'ITA') { pr.o = pr.c = 'GER'; pr.cd = st.day; n++; } }
+        // İtalyan ordusu silahsızlandırılır
+        st.units = st.units.filter((u) => !(u.t === 'ITA' && u.loc < NP && st.prov[u.loc].c === 'GER')); G.rebuildUnitIndex();
+        G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1; G.cwDirty = 1;
+        G.log(`Achse Harekâtı: Almanya ${n} İtalyan ilini işgal etti; İtalya cephesi sürüyor.`, ['GER', 'ITA'], 'major');
+      } }, { n: 'İtalya\'yı kendi hâline bırak', fx: () => {} }] },
+    // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
+    // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
+    { id: 'volkssturm', date: '1939-09-01', actor: 'GER', title: 'Volkssturm',
+      text: 'Düşman ordular Reich\'ın sınırlarına dayandı. 16 ile 60 yaş arasındaki bütün erkekler halk milisine çağrılıyor.',
+      cond: () => alive('GER') && G.st.C.GER.enemies.length > 0 && (G.st.C.GER.surrender || 0) >= 0.12, retryUntil: '1949-12-31',
+      opts: [{ n: 'Volkssturm\'u kur', fx: () => {
+        const st = G.st, c = st.C.GER;
+        if (!c.spirits.includes('volkssturm')) { c.spirits.push('volkssturm'); G.recomputeMods(c); }
+        // milisler düşmanın yaklaştığı asli illere (iki adım içinde düşman kontrolü) yerleşir; yoksa büyük şehirlere
+        const own = (i) => st.prov[i].c === 'GER' && st.prov[i].core === 'GER';
+        const hot = (i) => P[i].a.some((j) => G.atWar('GER', st.prov[j].c) || P[j].a.some((k2) => G.atWar('GER', st.prov[k2].c)));
+        let L = []; for (let i = 0; i < NP; i++) if (own(i) && hot(i)) L.push(i);
+        if (L.length < 4) { L = []; for (let i = 0; i < NP; i++) if (own(i)) L.push(i); }
+        L.sort((a, b) => P[b].vp - P[a].vp || b - a);
+        const n = Math.min(30, L.length * 3);
+        for (let k = 0; k < n; k++) { const u = G.makeUnit('GER', 'inf', L[k % Math.min(15, L.length)], 0.8); u.xp = 0.05; st.units.push(u); }
+        if (n) G.rebuildUnitIndex();
+        G.log(`Almanya Volkssturm\'u kurdu: ${n} milis tümeni.`, ['GER'], 'major');
+      } }, { n: 'Reddet', fx: () => {} }] },
     { id: 'usajoin', date: '1942-03-01', actor: 'USA', title: 'Demokrasinin Cephaneliği',
       text: 'Avrupa\'daki savaş ABD\'yi de içine çekiyor. Müttefiklere katılalım mı?',
       cond: () => alive('USA') && !facOf('USA') && G.st.factions.allies && G.st.factions.allies.members.some((t) => G.st.C[t].enemies.length),
@@ -6224,10 +6439,25 @@ window.IDEOLOGIES = {
   G.popupQueue = [];
   G.queuePopup = (p) => { G.popupQueue.push(p); if (G.onPopup) G.onPopup(); };
 
+  // Oyuncu bu olayların aktörüyse olay tarihinde kendiliğinden çıkmaz: ilgili ulusal odakla gerçekleşir (HOI4).
+  // Böylece savaşlar oyuncunun odak ağacı hazır olmadan başlamaz; tarihte yalnızca hatırlatma düşülür.
+  const FOCUS_EV = { axis: 'ger_axis', anschluss: 'ger_anschluss', sudeten: 'ger_sudeten', czeend: 'ger_czech', mr: 'ger_mr', poland: 'ger_danzig', weser: 'ger_weser', gelb: 'ger_west', barbarossa: 'ger_barbarossa', china: 'jap_china', pearl: 'jap_pearl', albania: 'ita_albania', greece: 'ita_greece', itajoin: 'ita_egypt', winter: 'sov_winter', baltic: 'sov_baltic', bessarabia: 'sov_bessarabia', guarpol: 'eng_guarantee', usajoin: 'usa_join', hunjoin: 'hun_axis', romjoin: 'rom_axis', buljoin: 'bul_axis' };
+  G.FOCUS_EV = FOCUS_EV;
+  G.EV_OF_FOCUS = Object.fromEntries(Object.entries(FOCUS_EV).map(([e, f]) => [f, e]));
   G.checkEvents = () => {
     const st = G.st;
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
+      const lf = FOCUS_EV[e.id], pc = st.C[st.player];
+      if (lf && e.actor === st.player && pc && G.focusById(pc, lf)) {
+        st.evHint = st.evHint || {};
+        if (!st.evHint[e.id] && e.cond()) {
+          st.evHint[e.id] = 1;
+          const f = G.focusById(pc, lf);
+          G.log(`Tarihte bugün: ${e.title}. ${pc.focus.done[lf] ? '' : pc.focus.cur === lf ? `"${f.n}" odağın sürüyor.` : `Bunu "${f.n}" ulusal odağıyla başlatabilirsin.`}`, [st.player], 'info');
+        }
+        continue;
+      }
       if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
       st.ev[e.id] = 1;
       if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
@@ -6284,13 +6514,48 @@ window.IDEOLOGIES = {
     if (st.tsp) st.tsp = st.tsp.filter((x) => st.day < x.until);
     const drop = (t, sp) => { const c = st.C[t]; if (c && c.spirits.includes(sp)) { c.spirits = c.spirits.filter((x) => x !== sp); G.recomputeMods(c); return true; } return false; };
     const add = (t, sp) => { const c = st.C[t]; if (c && c.alive && !c.spirits.includes(sp)) { c.spirits.push(sp); G.recomputeMods(c); return true; } return false; };
-    if (st.day >= G.dayOf('1943-07-01') && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
+    // tarihli (until) ve savaşla (war) kalkan ruhlar; savaşta geçen gün sayacı
+    for (const c of Object.values(st.C)) {
+      if (!c.alive) continue;
+      if (c.enemies.length && c.warDays != null) c.warDays += 5;
+      for (const s of c.spirits.slice()) {
+        const S = g.SPIRITS[s];
+        if (!S || !((S.until && st.day >= G.dayOf(S.until)) || (S.war && c.enemies.length))) continue;
+        drop(c.tag, s);
+        if (c.tag === st.player) G.log(`Ulusal ruh sona erdi: ${S.n}.`, [c.tag], 'info');
+      }
+    }
+    // Müttefikler savaşarak öğrenir: Almanya yaklaşık dört yıl savaştıktan sonra (tarihte 1943 ortası)
+    if (st.day >= G.dayOf('1943-07-01') && (st.C.GER?.warDays ?? 9999) >= 1200 && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
     // Doğu Cephesi: Kızıl Ordu reformları ve Alman yıpranması (tarihî tarihlerde, savaş sürüyorsa)
     const wgs = st.wars[G.pairKey('GER', 'SOV')];
     if (wgs) {
-      if (st.day >= G.dayOf('1942-11-15') && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
-      if (st.day >= G.dayOf('1943-07-01') && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
+      // savaşın başlangıcına göre (tarihte 1942-11 ve 1943-07): oyuncu Barbarossa'yı geciktirirse kayar
+      if (st.day - wgs.since >= 510 && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
+      if (st.day - wgs.since >= 740 && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
       if (st.day - wgs.since > 540) add('GER', 'ost_crisis');
+      // Stavka yedek orduları (1941-42): topraklar işgal edildikçe hazır tüfek stokları ve yedeklerle
+      // yeni tümenler kurulur (toplam en çok 60 tümen, ayda 6-8). Tarihî modda düzelticidir: yalnızca
+      // Almanya Doğu'da tarihten ileri gittiğinde; serbest modda Sovyet toprak kaybına bağlı.
+      const sov = st.C.SOV;
+      const behind = st.opts.hist ? (G.histAhead('GER', 'SOV') ?? -1) > 0.03 : (sov?.surrender || 0) >= 0.12;
+      if (sov?.alive && st.day % 30 === 0 && behind && (sov.surrender || 0) >= 0.08 && (st.sovRes || 0) < 60) {
+        const n = (sov.surrender || 0) > 0.4 ? 8 : 6, mp = G.T('SOV', 'inf').mp;
+        const divs = st.units.filter((u) => u.t === 'SOV').length;
+        if (divs < 260 && (sov.mpAvail || 0) > mp * n * 1.5) {
+          const L = [];
+          for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === 'SOV' && pr.core === 'SOV' && !P[i].a.some((j) => G.atWar('SOV', st.prov[j].c))) L.push(i); }
+          L.sort((a, b) => P[b].vp - P[a].vp || a - b);
+          const k = Math.min(6, L.length);
+          for (let j = 0; j < (k ? n : 0); j++) { const u = G.makeUnit('SOV', 'inf', L[j % k], 0.75); u.xp = 0.05; st.units.push(u); }
+          if (k) {
+            G.rebuildUnitIndex();
+            if (!st.sovRes) G.log('Stavka yedek orduları kuruluyor: yeni tümenler cepheye sevk edilecek.', ['SOV'], 'major');
+            else if (st.player === 'SOV') G.log(`Stavka yedeği: ${n} yeni tümen.`, ['SOV'], 'info');
+            st.sovRes = (st.sovRes || 0) + n;
+          }
+        }
+      }
     }
     // İspanya İç Savaşı: aylık dış yardım
     if (st.day % 30 === 0 && G.atWar('SPN', 'SPR')) {
@@ -7211,6 +7476,12 @@ window.IDEOLOGIES = {
     body.innerHTML = out.html;
     sheet.hidden = false;
     sheet.classList.toggle('half', UI.panel === 'peace');
+    // odak ağacı HOI4'teki gibi tam ekran açılır (dikeyde ve yatayda)
+    sheet.classList.toggle('full', UI.panel === 'pol' && UI.sub === 'tree');
+    // dikey ekranda panel büyütülebilir (tasarımcılar ve uzun listeler için)
+    sheet.classList.toggle('tall', !!UI.tall && UI.panel !== 'peace');
+    $('sheet-tall').textContent = UI.tall ? '⤡' : '⤢';
+    $('sheet-tall').setAttribute('aria-label', UI.tall ? 'Paneli küçült' : 'Paneli büyüt');
     const ft = body.querySelector('.ftree');
     if (!reset) { body.scrollTop = scroll; if (ft && UI.ftScroll) { ft.scrollLeft = UI.ftScroll[0]; ft.scrollTop = UI.ftScroll[1]; } }
     else {
@@ -7252,7 +7523,7 @@ window.IDEOLOGIES = {
     html += sec('Parti desteği', ph);
     // ulusal ruhlar
     const sp = c.spirits.filter((s) => g.SPIRITS[s]);
-    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => `<div class="item spirit"><div class="grow"><div class="t">${g.SPIRITS[s].n}</div><div class="d">${g.SPIRITS[s].d}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>');
+    html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => spiritHtml(s, c)).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>', sp.length ? `${sp.length}` : '');
     // odak
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     let fh = cur ? `<div class="item active"><div class="grow"><div class="t">${esc(cur.n)}</div><div class="d">${esc(cur.d)}</div>${bar(c.focus.p / G.focusDays(cur))}<div class="d">${Math.ceil(G.focusDays(cur) - c.focus.p)} gün kaldı</div></div></div>` : `<div class="item"><div class="grow"><div class="t warn">Odak seçilmedi</div><div class="d">Odaklar 35 ya da 70 günde tamamlanır ve kalıcı etki verir.</div></div></div>`;
@@ -7344,7 +7615,12 @@ window.IDEOLOGIES = {
     if (sf) {
       const done = c.focus.done[sf.id], active = c.focus.cur === sf.id, avail = G.focusAvailable(c, sf);
       const why = done ? 'Tamamlandı.' : active ? `Sürüyor: ${Math.ceil(G.focusDays(sf) - c.focus.p)} gün kaldı.` : avail ? `${G.focusDays(sf)} gün sürer.` : G.focusExcluded(c, sf) ? 'Seçtiğin başka bir odak bunu dışlıyor.' : !G.focusPreOk(c, sf) ? 'Önce bağlı olduğu odakları tamamla: ' + sf.pre.flat().filter((p) => !c.focus.done[p]).map((p) => G.focusById(c, p)?.n || p).join(', ') + '.' : G.focusReq(c, sf).why + '.';
-      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div><div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
+      const addS = sf.fx.spirit && g.SPIRITS[sf.fx.spirit];
+      const rmS = c.spirits.filter((s) => g.SPIRITS[s] && (sf.fx.rmSpirit === s || (g.SPIRITS[s].rm || []).includes(sf.id))).map((s) => g.SPIRITS[s].n);
+      const hev = G.EV_OF_FOCUS && G.EV_OF_FOCUS[sf.id] && G.EVENTS.find((e) => e.id === G.EV_OF_FOCUS[sf.id]);
+      const histD = hev && !done ? `<div class="d muted">Tarihte: ${esc(hev.title)} · ${G.fmtDate(hev.day)}${G.st.ev[hev.id] ? ' (gerçekleşti)' : ''}</div>` : '';
+      const sfx = histD + (addS ? `<div class="d">Ulusal ruh ekler: <b>${esc(addS.n)}</b></div><div class="fxl">${fxChips(addS.fx)}</div>` : '') + (rmS.length && !done ? `<div class="d good">Kaldırır: ${rmS.map(esc).join(', ')}</div>` : '');
+      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d">${esc(sf.d)}</div>${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
@@ -7395,10 +7671,29 @@ window.IDEOLOGIES = {
     html += lh + '</div>';
     return { title: 'Araştırma', html };
   };
-  function fxText(fx) {
-    const N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama' };
-    return Object.entries(fx).filter(([k]) => N[k]).map(([k, v]) => `${N[k]} +%${Math.round(v * 100)}`).join(', ');
-  }
+  // Etki metni (HOI4 tarzı, işaretli). Yüzde olmayan anahtarlar mutlak değerdir; INV: artışı kötü olanlar.
+  const FX_N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama', stab: 'İstikrar', ws: 'Savaş desteği', ppM: 'Siyasi güç kazanımı', pp: 'Günlük siyasi güç', supply: 'İkmal', resist: 'İşgalde direniş', comply: 'İşgalde uyum', justify: 'Savaş gerekçesi hızı', xpGain: 'Tecrübe kazanımı', slots: 'Araştırma yuvası', steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
+  const FX_ABS = new Set(['pp', 'slots', 'steel', 'oil', 'al', 'rub', 'tun', 'chr']), FX_INV = new Set(['resist']);
+  const fxParts = (fx) => Object.entries(fx || {}).filter(([k, v]) => FX_N[k] && typeof v === 'number' && v).map(([k, v]) => {
+    const s = v > 0 ? '+' : '−', a = Math.abs(v);
+    return { t: `${FX_N[k]} ${FX_ABS.has(k) ? s + (Math.round(a * 100) / 100) : s + '%' + Math.round(a * 100)}`, good: (v > 0) !== FX_INV.has(k) };
+  });
+  function fxText(fx) { return fxParts(fx).map((x) => x.t).join(', '); }
+  const fxChips = (fx) => fxParts(fx).map((x) => `<span class="fxc ${x.good ? 'good' : 'bad'}">${x.t}</span>`).join('');
+  // ulusal ruh kartı: ad, tarihî açıklama, etkiler ve nasıl kalkacağı
+  const spiritHtml = (id, c) => {
+    const S = g.SPIRITS[id]; if (!S) return '';
+    const rm = [];
+    if (S.until) rm.push(`${G.fmtDate(G.dayOf(S.until))} tarihinde sona erer`);
+    if (S.war) rm.push('savaşa girince kalkar');
+    const fs = (S.rm || []).map((f) => c && G.focusById(c, f)).filter(Boolean);
+    if (fs.length) rm.push('kaldıran odak: ' + fs.map((f) => esc(f.n)).join(' / '));
+    const tm = c && (G.st.tsp || []).find((x) => x.t === c.tag && x.sp === id);
+    if (tm) rm.push(`${Math.max(0, tm.until - G.st.day)} gün sonra kalkar`);
+    const bad = fxParts(S.fx).filter((x) => !x.good).length, good = fxParts(S.fx).length - bad;
+    return `<div class="item spirit ${bad && !good ? 'neg' : good && !bad ? 'pos' : ''}"><div class="grow"><div class="t">${esc(S.n)}</div>${S.h ? `<div class="d">${esc(S.h)}</div>` : ''}<div class="fxl">${fxChips(S.fx)}</div>${rm.length ? `<div class="d muted">${rm.join(' · ')}</div>` : ''}</div></div>`;
+  };
+  UI.spiritHtml = spiritHtml;
 
   // Üretim
   // ---------- Tasarım bürosu (tank ve uçak tasarımcısı) ----------
@@ -7906,6 +8201,8 @@ window.IDEOLOGIES = {
     const ratio = G.armyPower(tag) / (G.armyPower(c.tag) + 1);
     html += kv([['Tümen', divs], ['Sivil fab.', x.sum.civ], ['Askerî fab.', x.sum.mil], ['Eyalet', x.sum.provs], ['Ordu gücü', ratio > 1.3 ? 'Bizden güçlü' : ratio < 0.7 ? 'Bizden zayıf' : 'Denk', ratio > 1.3 ? 'bad' : ratio < 0.7 ? 'good' : ''], ['Görüş', G.opinion(tag, c.tag) > 20 ? 'Dostane' : G.opinion(tag, c.tag) < -20 ? 'Düşmanca' : 'Nötr']]);
     if (x.enemies.length) html += `<p class="small" style="margin:0">Savaşta: ${x.enemies.map((t) => esc(G.cname(t))).join(', ')}</p>`;
+    const xsp = (x.spirits || []).filter((s) => g.SPIRITS[s]);
+    if (xsp.length) html += sec('Ulusal ruhlar', `<div class="list">${xsp.map((s) => spiritHtml(s, x)).join('')}</div>`, `${xsp.length}`);
     const acts = [];
     const atWar = G.atWar(c.tag, tag);
     if (!atWar) {
@@ -7954,7 +8251,7 @@ window.IDEOLOGIES = {
     }
     html += sec('Kayıt', sh + '</div>', 'Bu cihazda saklanır');
     const modes = UI.MODE_N;
-    html += sec('Harita modu', `<div class="seg">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
+    html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
     html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
@@ -7977,6 +8274,9 @@ window.IDEOLOGIES = {
   <section class="sec"><h3 class="sec-h">Ordular, cepheler ve savaş planları</h3><p class="small" style="margin:0">Oyun, tümenlerin bölgelere göre ordulara ayrılmış ve en iyi komutanların atanmış hâliyle başlar. Haritadaki ordu etiketine (komutan adı) dokunarak orduyu seç. <b>Cepheyi tut</b>: ordu düşman sınırında renkli bir cephe hattı kurar, tümenleri hatta dağıtır ve <b>planlama</b> çubuğu dolar. Ordu seçiliyken bir düşman eyaletine dokun: <b>taarruz oku</b> çizilir. <b>Uygula ▶</b>: taarruz başlar, plan bonusu saldırıya eklenir ve çarpıştıkça azalır. Sayaçlardaki NATO simgeleri tümen türünü (piyade ☒, zırhlı ⬭, motorize, süvari, dağ) gösterir; yeşil çizgi moral, sarı çizgi güçtür. Haritadaki çapraz kılıç simgesine dokununca muharebe ekranı açılır. Tümenler muharebede tecrübe kazanır (Acemi → Kıdemli). “Strat. konuşlan” dost topraklarda 4 kat hızlı taşır ama moral sıfırlanır.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen tasarımcısı</h3><p class="small" style="margin:0">Her şablon piyade, topçu, tank, motorize, dağ, süvari ve deniz piyadesi taburlarından ve destek bölüklerinden (mühendis, keşif, destek topçusu, tanksavar, uçaksavar, lojistik, sahra hastanesi) oluşur. Piyade savunma ve dayanıklılık, topçu yumuşak saldırı, tank atılım, sert saldırı ve zırh getirir. Genişlik, arazinin kaç tümeni aynı anda savaştırabileceğini belirler.</p></section>
   <section class="sec"><h3 class="sec-h">Siyaset</h3><p class="small" style="margin:0">İstikrar fabrika verimini ve siyasi gücü, savaş desteği ise hangi askerlik ve ekonomi yasalarını seçebileceğini belirler. Danışmanlar ve tasarım büroları siyasi güçle atanır. Ulusal ruhlar kalıcı etkilerdir; odaklarla kazanılır ya da kaldırılır. Bir partinin desteği %50'yi geçerse hükümet değişebilir.</p></section>
+  <section class="sec"><h3 class="sec-h">Ulusal ruhlar (buff ve debuff)</h3><p class="small" style="margin:0">HOI4'teki gibi her ülke kendine özgü ulusal ruhlarla başlar: Sovyetlerde Büyük Temizlik, ABD'de Büyük Buhran, Macaristan'da Trianon kısıtlamaları, İsviçre'de Ulusal Kale… Yeşil etkiler güçlendirir, kırmızılar zayıflatır. Her kartta ruhun nasıl kalkacağı yazar: bir <b>odakla</b> (odak ayrıntısında “Kaldırır” satırı), bir <b>tarihte</b> (ör. Bled Anlaşması) ya da <b>savaşa girince</b> (tarafsızlık ruhları). Savaş sırasında yeni ruhlar da gelir (Barbarossa Baskını, Stavka reformları, Çin Bataklığı). Başka ülkelerin ruhlarını Diplomasi panelinde ülkeye dokunarak görebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Odaklar ve tarihî olaylar</h3><p class="small" style="margin:0">Yönettiğin ülkenin tarihî hamleleri (Anschluss, Münih, Danzig, Barbarossa, Marco Polo Köprüsü, Pearl Harbor, Kış Savaşı…) sabit bir tarihte kendiliğinden olmaz; HOI4'teki gibi ilgili <b>ulusal odağı</b> tamamladığında gerçekleşir. Böylece savaş, odak ağacın ve ordun hazır olmadan başlamaz. Odak ayrıntısında olayın tarihteki günü yazar; o gün geldiğinde olay günlüğüne bir hatırlatma düşer. Odak tamamlanınca karar penceresi açılır: “Bekle” dersen savaş gerekçesini alır, zamanı sen seçersin. Diğer ülkelerin olayları tarihî takvimle sürer.</p></section>
+  <section class="sec"><h3 class="sec-h">Değişen tarih</h3><p class="small" style="margin:0">Tarihî gidişat modunda yapay zekâ cepheleri tarihe yakın ilerler. Bu denge savaşların gerçek başlangıcına göre kayar: Barbarossa'yı bir yıl geciktirirsen Doğu Cephesi takvimi de bir yıl kayar. Senin taraf olduğun cephelerde denge büyük ölçüde gevşer; sonuç senin hamlelerine bağlıdır. Kendi muharebelerine hiçbir zaman uygulanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
@@ -8172,6 +8472,7 @@ window.IDEOLOGIES = {
   ACT.panel = (d) => UI.open(d.p);
   ACT.alert = (d) => { if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
+  ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
   ACT.sub = (d) => { UI.sub = d.v; UI.render(true); };
   ACT.tab = (d) => { UI.tab[d.k] = d.v; UI.render(); };
@@ -8369,6 +8670,7 @@ window.IDEOLOGIES = {
   // ---------- Başlangıç ekranı ----------
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
+  try { UI.tall = localStorage.getItem('dc_tall') === '1'; } catch (e) {}
   UI.startOpts = { hist: 1, diff: 1 };
   UI.showStart = () => {
     $('start').hidden = false;
@@ -8393,6 +8695,8 @@ window.IDEOLOGIES = {
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
       <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
       <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
+    const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
+    if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
     html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
     $('start-body').innerHTML = html;
   };

@@ -16,9 +16,10 @@
     c.stabX = 0; c.wsX = 0;
     if (p.pop) c.pop = Object.assign({}, p.pop);
     else { c.pop = { dem: 0.1, fas: 0.1, com: 0.1, neu: 0.1 }; c.pop[c.ideo] = 0.7; }
-    c.spirits = (p.sp || []).slice();
+    c.spirits = (p.sp || []).concat((g.START_SPIRITS || {})[c.tag] || []);
     c.laws.trade = p.trade ?? 1;
     c.laws.occ = 1;
+    c.warDays = 0;
     c.adv = {};
     c.rb = [];
     c.stab = c.stab0; c.ws = c.ws0;
@@ -197,6 +198,13 @@
         case 'fn': try { G.FX[v[0]](c, ...v.slice(1)); } catch (e) { console.error('focus fx', id, e); } break;
       }
     }
+    // bu odağın kaldırdığı ulusal ruhlar
+    for (const s of c.spirits.slice()) {
+      const S = g.SPIRITS[s];
+      if (S && S.rm && S.rm.includes(id)) { c.spirits = c.spirits.filter((x) => x !== s); if (c.tag === st.player) G.log(`Ulusal ruh kalktı: ${S.n}.`, [c.tag], 'info'); }
+    }
+    // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
+    if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
     G.recomputeMods(c);
     G.needSummary = 1;
     if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
@@ -231,6 +239,17 @@
       if (ok && !st.C[target].fac) accept(); else refuse();
     },
     demandMany(c, list) { for (const t of list) G.FX.demand(c, t); },
+    // tarihî olayı odakla tetikle (HOI4: "Danzig ya da Savaş" → savaş). Olay koşulu tutmazsa yedek etki
+    // uygulanır; oyuncu ertelerse yalnızca savaş gerekçesi türündeki yedek kalır (saldırı zamanını o seçer).
+    event(c, id, fb) {
+      const st = G.st, e = (G.EVENTS || []).find((x) => x.id === id);
+      const fallback = () => { if (fb) G.FX[fb[0]](c, ...fb.slice(1)); };
+      if (!e || st.ev[id] || !e.cond()) return fallback();
+      st.ev[id] = 1;
+      const later = fb && fb[0] === 'goal' ? fallback : () => {};
+      if (c.tag === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) });
+      else e.opts[0].fx();
+    },
     goal(c, list) {
       const st = G.st;
       for (const t of list) if (alive(t) && !G.atWar(c.tag, t) && !G.sameFaction(c.tag, t)) st.goals[c.tag + '>' + t] = st.day;
@@ -240,6 +259,7 @@
       for (const t of list) {
         if (!alive(t) || t === G.st.player) continue;
         const ok = G.proposePact(c.tag, t);
+        if (ok && [c.tag, t].sort().join() === 'GER,SOV') G.st.ev.mrPact = 1; // gizli protokol (Doğu Polonya)
         if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} pakt önerisini reddetti.`, [c.tag], 'warn');
       }
     },

@@ -196,6 +196,39 @@
       text: 'Japonya ile dayanışma içinde ABD\'ye savaş ilan edilsin mi?',
       cond: () => alive('GER') && alive('USA') && !G.atWar('GER', 'USA') && G.atWar('JAP', 'USA') && G.sameFaction('GER', 'JAP'),
       opts: [{ n: 'Savaş ilan et', fx: () => war('GER', 'USA') }, { n: 'Bekle', fx: () => {} }] },
+    // Achse Harekâtı (Eylül 1943): İtalya teslim olunca Almanya, Müttefiklerin almadığı İtalyan topraklarını
+    // işgal eder ve cepheyi İtalya'da tutar (Gustav ve Gotik hatları). Tarihe değil İtalya'nın teslimine bağlıdır.
+    { id: 'achse', date: '1939-09-01', actor: 'GER', title: 'Achse Harekâtı',
+      text: 'İtalya Müttefiklerle ateşkes imzaladı. Alman birlikleri İtalyan ordusunu silahsızlandırıp yarımadayı savunmaya hazır.',
+      cond: () => G.st.opts.hist && alive('GER') && alive('ITA') && G.st.C.ITA.capd && !G.st.C.ITA.enemies.length && !G.st.conf && G.st.player !== 'ITA' && ['ENG', 'USA'].some((t) => G.atWar('GER', t)), retryUntil: '1946-12-31',
+      opts: [{ n: 'İtalya\'yı işgal et', fx: () => {
+        const st = G.st; let n = 0;
+        // iller asli İtalyan toprağı olarak kalır (direniş birikir); Almanya teslim olunca İtalya barışta yeniden kurulabilir
+        for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.o === 'ITA' && pr.c === 'ITA') { pr.o = pr.c = 'GER'; pr.cd = st.day; n++; } }
+        // İtalyan ordusu silahsızlandırılır
+        st.units = st.units.filter((u) => !(u.t === 'ITA' && u.loc < NP && st.prov[u.loc].c === 'GER')); G.rebuildUnitIndex();
+        G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1; G.cwDirty = 1;
+        G.log(`Achse Harekâtı: Almanya ${n} İtalyan ilini işgal etti; İtalya cephesi sürüyor.`, ['GER', 'ITA'], 'major');
+      } }, { n: 'İtalya\'yı kendi hâline bırak', fx: () => {} }] },
+    // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
+    // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
+    { id: 'volkssturm', date: '1939-09-01', actor: 'GER', title: 'Volkssturm',
+      text: 'Düşman ordular Reich\'ın sınırlarına dayandı. 16 ile 60 yaş arasındaki bütün erkekler halk milisine çağrılıyor.',
+      cond: () => alive('GER') && G.st.C.GER.enemies.length > 0 && (G.st.C.GER.surrender || 0) >= 0.12, retryUntil: '1949-12-31',
+      opts: [{ n: 'Volkssturm\'u kur', fx: () => {
+        const st = G.st, c = st.C.GER;
+        if (!c.spirits.includes('volkssturm')) { c.spirits.push('volkssturm'); G.recomputeMods(c); }
+        // milisler düşmanın yaklaştığı asli illere (iki adım içinde düşman kontrolü) yerleşir; yoksa büyük şehirlere
+        const own = (i) => st.prov[i].c === 'GER' && st.prov[i].core === 'GER';
+        const hot = (i) => P[i].a.some((j) => G.atWar('GER', st.prov[j].c) || P[j].a.some((k2) => G.atWar('GER', st.prov[k2].c)));
+        let L = []; for (let i = 0; i < NP; i++) if (own(i) && hot(i)) L.push(i);
+        if (L.length < 4) { L = []; for (let i = 0; i < NP; i++) if (own(i)) L.push(i); }
+        L.sort((a, b) => P[b].vp - P[a].vp || b - a);
+        const n = Math.min(30, L.length * 3);
+        for (let k = 0; k < n; k++) { const u = G.makeUnit('GER', 'inf', L[k % Math.min(15, L.length)], 0.8); u.xp = 0.05; st.units.push(u); }
+        if (n) G.rebuildUnitIndex();
+        G.log(`Almanya Volkssturm\'u kurdu: ${n} milis tümeni.`, ['GER'], 'major');
+      } }, { n: 'Reddet', fx: () => {} }] },
     { id: 'usajoin', date: '1942-03-01', actor: 'USA', title: 'Demokrasinin Cephaneliği',
       text: 'Avrupa\'daki savaş ABD\'yi de içine çekiyor. Müttefiklere katılalım mı?',
       cond: () => alive('USA') && !facOf('USA') && G.st.factions.allies && G.st.factions.allies.members.some((t) => G.st.C[t].enemies.length),
@@ -272,10 +305,25 @@
   G.popupQueue = [];
   G.queuePopup = (p) => { G.popupQueue.push(p); if (G.onPopup) G.onPopup(); };
 
+  // Oyuncu bu olayların aktörüyse olay tarihinde kendiliğinden çıkmaz: ilgili ulusal odakla gerçekleşir (HOI4).
+  // Böylece savaşlar oyuncunun odak ağacı hazır olmadan başlamaz; tarihte yalnızca hatırlatma düşülür.
+  const FOCUS_EV = { axis: 'ger_axis', anschluss: 'ger_anschluss', sudeten: 'ger_sudeten', czeend: 'ger_czech', mr: 'ger_mr', poland: 'ger_danzig', weser: 'ger_weser', gelb: 'ger_west', barbarossa: 'ger_barbarossa', china: 'jap_china', pearl: 'jap_pearl', albania: 'ita_albania', greece: 'ita_greece', itajoin: 'ita_egypt', winter: 'sov_winter', baltic: 'sov_baltic', bessarabia: 'sov_bessarabia', guarpol: 'eng_guarantee', usajoin: 'usa_join', hunjoin: 'hun_axis', romjoin: 'rom_axis', buljoin: 'bul_axis' };
+  G.FOCUS_EV = FOCUS_EV;
+  G.EV_OF_FOCUS = Object.fromEntries(Object.entries(FOCUS_EV).map(([e, f]) => [f, e]));
   G.checkEvents = () => {
     const st = G.st;
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
+      const lf = FOCUS_EV[e.id], pc = st.C[st.player];
+      if (lf && e.actor === st.player && pc && G.focusById(pc, lf)) {
+        st.evHint = st.evHint || {};
+        if (!st.evHint[e.id] && e.cond()) {
+          st.evHint[e.id] = 1;
+          const f = G.focusById(pc, lf);
+          G.log(`Tarihte bugün: ${e.title}. ${pc.focus.done[lf] ? '' : pc.focus.cur === lf ? `"${f.n}" odağın sürüyor.` : `Bunu "${f.n}" ulusal odağıyla başlatabilirsin.`}`, [st.player], 'info');
+        }
+        continue;
+      }
       if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
       st.ev[e.id] = 1;
       if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
@@ -332,13 +380,48 @@
     if (st.tsp) st.tsp = st.tsp.filter((x) => st.day < x.until);
     const drop = (t, sp) => { const c = st.C[t]; if (c && c.spirits.includes(sp)) { c.spirits = c.spirits.filter((x) => x !== sp); G.recomputeMods(c); return true; } return false; };
     const add = (t, sp) => { const c = st.C[t]; if (c && c.alive && !c.spirits.includes(sp)) { c.spirits.push(sp); G.recomputeMods(c); return true; } return false; };
-    if (st.day >= G.dayOf('1943-07-01') && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
+    // tarihli (until) ve savaşla (war) kalkan ruhlar; savaşta geçen gün sayacı
+    for (const c of Object.values(st.C)) {
+      if (!c.alive) continue;
+      if (c.enemies.length && c.warDays != null) c.warDays += 5;
+      for (const s of c.spirits.slice()) {
+        const S = g.SPIRITS[s];
+        if (!S || !((S.until && st.day >= G.dayOf(S.until)) || (S.war && c.enemies.length))) continue;
+        drop(c.tag, s);
+        if (c.tag === st.player) G.log(`Ulusal ruh sona erdi: ${S.n}.`, [c.tag], 'info');
+      }
+    }
+    // Müttefikler savaşarak öğrenir: Almanya yaklaşık dört yıl savaştıktan sonra (tarihte 1943 ortası)
+    if (st.day >= G.dayOf('1943-07-01') && (st.C.GER?.warDays ?? 9999) >= 1200 && drop('GER', 'wehrmacht')) G.log('Wehrmacht doktrini üstünlüğünü yitirdi: Müttefik ordular savaşmayı öğrendi.', ['GER'], 'major');
     // Doğu Cephesi: Kızıl Ordu reformları ve Alman yıpranması (tarihî tarihlerde, savaş sürüyorsa)
     const wgs = st.wars[G.pairKey('GER', 'SOV')];
     if (wgs) {
-      if (st.day >= G.dayOf('1942-11-15') && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
-      if (st.day >= G.dayOf('1943-07-01') && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
+      // savaşın başlangıcına göre (tarihte 1942-11 ve 1943-07): oyuncu Barbarossa'yı geciktirirse kayar
+      if (st.day - wgs.since >= 510 && add('SOV', 'stavka')) G.log('Kızıl Ordu: Stavka reformları tamamlandı, büyük karşı taarruzlar başlıyor.', ['SOV'], 'major');
+      if (st.day - wgs.since >= 740 && add('SOV', 'deep_ops')) G.log('Kızıl Ordu derin harekât doktrinini uyguluyor.', ['SOV'], 'info');
       if (st.day - wgs.since > 540) add('GER', 'ost_crisis');
+      // Stavka yedek orduları (1941-42): topraklar işgal edildikçe hazır tüfek stokları ve yedeklerle
+      // yeni tümenler kurulur (toplam en çok 60 tümen, ayda 6-8). Tarihî modda düzelticidir: yalnızca
+      // Almanya Doğu'da tarihten ileri gittiğinde; serbest modda Sovyet toprak kaybına bağlı.
+      const sov = st.C.SOV;
+      const behind = st.opts.hist ? (G.histAhead('GER', 'SOV') ?? -1) > 0.03 : (sov?.surrender || 0) >= 0.12;
+      if (sov?.alive && st.day % 30 === 0 && behind && (sov.surrender || 0) >= 0.08 && (st.sovRes || 0) < 60) {
+        const n = (sov.surrender || 0) > 0.4 ? 8 : 6, mp = G.T('SOV', 'inf').mp;
+        const divs = st.units.filter((u) => u.t === 'SOV').length;
+        if (divs < 260 && (sov.mpAvail || 0) > mp * n * 1.5) {
+          const L = [];
+          for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === 'SOV' && pr.core === 'SOV' && !P[i].a.some((j) => G.atWar('SOV', st.prov[j].c))) L.push(i); }
+          L.sort((a, b) => P[b].vp - P[a].vp || a - b);
+          const k = Math.min(6, L.length);
+          for (let j = 0; j < (k ? n : 0); j++) { const u = G.makeUnit('SOV', 'inf', L[j % k], 0.75); u.xp = 0.05; st.units.push(u); }
+          if (k) {
+            G.rebuildUnitIndex();
+            if (!st.sovRes) G.log('Stavka yedek orduları kuruluyor: yeni tümenler cepheye sevk edilecek.', ['SOV'], 'major');
+            else if (st.player === 'SOV') G.log(`Stavka yedeği: ${n} yeni tümen.`, ['SOV'], 'info');
+            st.sovRes = (st.sovRes || 0) + n;
+          }
+        }
+      }
     }
     // İspanya İç Savaşı: aylık dış yardım
     if (st.day % 30 === 0 && G.atWar('SPN', 'SPR')) {

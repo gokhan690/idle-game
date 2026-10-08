@@ -115,7 +115,9 @@
     const rearm = c.major && (c.ideo === 'fas' || c.ideo === 'com') && st.tension > 25 ? 1.35 : 1;
     // hedef tümen sayısı: sanayi + depodaki fazla teçhizat (savaşta stok varsa insan gücüyle milis kurulur)
     const spare = atWar ? Math.floor(Math.max(0, (c.stock.inf || 0) - 3000) / 2500) : 0;
-    const target = Math.min(c.major ? 260 : 90, Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm) + spare);
+    // tarihî mod: Batılı demokrasilerin kara ordusu tarihî büyüklükte kalır (ABD ~90, Britanya ~50 tümen; sanayi donanma ve hava gücüne gider)
+    const histCap = st.opts.hist ? ({ USA: 100, ENG: 75 })[c.tag] : null;
+    const target = Math.min(histCap || (c.major ? 260 : 90), Math.round((s.mil * 1.1 + s.civ * 0.2 + 4) * (atWar ? 1.3 : st.tension > 50 ? 1.1 : 0.9) * rearm) + spare);
     // eğitim kuyruğu: teçhizatı bekleyen tümenler insan gücünü kilitlemesin
     const waiting = c.train.filter((t) => t.d <= 0).length;
     if (units >= target || waiting >= 3 || c.train.length >= Math.max(2, Math.ceil(s.mil / (rearm > 1 ? 5 : 7)))) return;
