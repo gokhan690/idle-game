@@ -683,6 +683,7 @@
       st.civil = st.civil.filter((p) => p !== cw);
       for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
       G.refreshEnemies();
+      for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) st.prov[i].c = win; // kaybeden tarafın elindeki öbür taraf illeri de geçer
       G.annex(win, tag);
       for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag || pr.oc === win) { if (pr.o === win) pr.core = win; } }
       G.cwDirty = 1; st.C[win].startW = G.coreWeight(win, true);
