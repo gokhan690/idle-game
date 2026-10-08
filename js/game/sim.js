@@ -144,7 +144,7 @@
     c.mpAvail = mp.avail; c.mpMax = mp.max;
     for (let i = 0; i < c.train.length; i++) {
       const t = c.train[i];
-      if (t.d > 0) { t.d--; continue; }
+      if (t.d > 0) { t.d -= 1 + (m.train || 0); continue; }
       const def = G.T(c.tag, t.u);
       let ratio = 1;
       for (const [e, n] of Object.entries(def.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
@@ -754,6 +754,7 @@
     capitulations();
     G.checkEvents();
     if (st.day % 5 === 0) G.timedSpirits();
+    G.decTick();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
     if (st.day % 10 === 7) G.enclaves();

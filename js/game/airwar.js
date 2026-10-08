@@ -205,7 +205,7 @@
         for (const n of regions[r].nodes) { if (n >= NP) continue; const pr = st.prov[n]; if (!G.atWar(t, pr.c) || pr.civ + pr.mil + pr.dock + (pr.ab || 0) === 0) continue; hit.set(pr.o, (hit.get(pr.o) || 0) + pr.civ + pr.mil + pr.dock); }
         for (const [o, fac] of hit) {
           const oc = st.C[o]; if (!oc) continue;
-          oc.bombed = Math.min(0.3, (oc.bombed || 0) + 0.0006 * pow * Math.min(1, fac / 10) / Math.max(1, oc.sum.civ + oc.sum.mil) * 10);
+          oc.bombed = Math.min(0.3, (oc.bombed || 0) + 0.0006 * pow * Math.min(1, fac / 10) / Math.max(1, oc.sum.civ + oc.sum.mil) * 10 * (1 - Math.min(0.6, oc.mods.civdef || 0)));
           oc.wsX = (oc.wsX || 0) - 0.00004 * Math.min(1, pow / 300);
           // hava üssü bombardımanı
           if (G.rand() < 0.003 * Math.min(1, pow / 300)) { const ns = regions[r].nodes.filter((n) => n < NP && st.prov[n].o === o && st.prov[n].ab > 0); if (ns.length) { const pr = st.prov[ns[Math.floor(G.rand() * ns.length)]]; pr.ab--; G._abLoad = null; } }

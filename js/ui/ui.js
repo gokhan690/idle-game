@@ -12,16 +12,6 @@
 
   const UI = (G.UI = { panel: null, sub: null, tab: { res: 'ind', dip: 'near', train: 'inf' }, cardProv: -1, modalOpen: 0, settings: { autosave: 1 } });
 
-  const DECISIONS = [
-    { id: 'civ', n: 'Sanayi Teşviki', d: '+1 sivil fabrika', cost: 150, cd: 120, fx: (c) => G.addFactories(c.tag, 'civ', 1) },
-    { id: 'mil', n: 'Silah Sanayii Yatırımı', d: '+1 askerî fabrika', cost: 160, cd: 120, fx: (c) => G.addFactories(c.tag, 'mil', 1) },
-    { id: 'arms', n: 'Silah Alımı', d: '+2000 piyade teçhizatı, +80 topçu', cost: 100, cd: 60, fx: (c) => { c.stock.inf += 2000; c.stock.art += 80; } },
-    { id: 'planes', n: 'Uçak Satın Al', d: '+80 avcı uçağı', cost: 120, cd: 90, fx: (c) => { c.stock.fig += 80; } },
-    { id: 'mob', n: 'Seferberlik Çağrısı', d: '+60 bin insan gücü', cost: 100, cd: 180, fx: (c) => { c.dead -= 60; } },
-    { id: 'sci', n: 'Bilim İnsanı Transferi', d: 'Süren araştırmalara +25 gün ilerleme', cost: 150, cd: 180, fx: (c) => { for (const r of c.res) r.p += 25; } },
-    { id: 'fort', n: 'Sınır Tahkimatı', d: 'Düşman sınırındaki eyaletlere +1 tahkimat', cost: 120, cd: 180, fx: (c) => { const st = G.st; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === c.tag && P[i].a.some((j) => G.atWar(c.tag, st.prov[j].c))) pr.fort = Math.min(5, pr.fort + 1); } } },
-  ];
-
   // ---------- Bildirim ----------
   UI.toast = (msg, kind = 'info') => {
     const box = $('toasts');
@@ -140,6 +130,7 @@
   PANELS.pol = () => {
     const st = G.st, c = me(), d = G.def(c.tag);
     if (UI.sub === 'tree') return focusTree(c);
+    if (UI.sub === 'dec') return decView(c);
     if (UI.sub && UI.sub.startsWith('law:')) return lawPicker(c, UI.sub.slice(4));
     if (UI.sub && UI.sub.startsWith('adv:')) return advPicker(c, UI.sub.slice(4));
     const id = g.IDEOLOGIES[c.ideo];
@@ -178,19 +169,59 @@
       lh += `<button class="item" data-act="sub" data-v="law:${k}"><div class="grow"><div class="d">${L.n}</div><div class="t">${o.n}</div><div class="d">${o.d}</div></div><span class="muted">›</span></button>`;
     }
     html += sec('Yasalar', lh + '</div>');
-    // kararlar
-    c.dec = c.dec || {};
-    let dh = '<div class="list">';
-    for (const dc of DECISIONS) {
-      const ready = (c.dec[dc.id] || 0) <= st.day;
-      const can = ready && c.pp >= dc.cost;
-      dh += `<div class="item"><div class="grow"><div class="t">${dc.n}</div><div class="d">${dc.d}${ready ? '' : ` · ${c.dec[dc.id] - st.day} gün sonra`}</div></div><button class="btn sm ${can ? 'pri' : ''}" data-act="decide" data-v="${dc.id}" ${can ? '' : 'disabled'}>${dc.cost} SG</button></div>`;
-    }
-    html += sec('Kararlar', dh + '</div>');
+    // kararlar: ayrıntılar alt görünümde (UI.sub === 'dec')
+    const nAv = g.DECISIONS.filter((d) => G.decVisible(c, d) && G.decAvailable(c, d).ok).length;
+    let dh = '';
+    if ((c.dec || []).length) dh += `<div class="list">${c.dec.map((x) => decActiveCard(c, x)).join('')}</div>`;
+    dh += `<button class="btn pri" data-act="sub" data-v="dec">Kararları aç · ${nAv} alınabilir</button>`;
+    html += sec('Kararlar', dh, `${(c.dec || []).length} süren`);
     const t = (k, n, d2) => `<button class="toggle ${c.auto[k] ? 'on' : ''}" data-act="auto" data-v="${k}"><span><b>${n}</b><br><span class="muted small">${d2}</span></span><i></i></button>`;
     html += sec('Yardımcı bakanlar', `<div class="list">${t('focus', 'Odak bakanı', 'Sıradaki odağı otomatik seçer')}${t('res', 'Bilim bakanı', 'Boş araştırma yuvalarını doldurur')}${t('prod', 'Sanayi bakanı', 'Üretim hatlarını dengeler')}${t('con', 'Bayındırlık bakanı', 'İnşaat kuyruğunu doldurur')}</div>`);
     return { title: 'Siyaset', html };
   };
+
+  // ---------- Kararlar ----------
+  const decDur = (d) => (d.once ? 'Tek seferlik' : d.cd ? `Bekleme ${d.cd} gün` : '');
+  // kararın etkileri: süreli değiştirici, anlık etkiler, bitince gelen ulusal ruh
+  const decFx = (d) => {
+    let h = '';
+    const ch = fxChips(d.mod);
+    if (ch) h += `<div class="fxl">${d.days > 0 ? '<span class="dec-lbl">Süre boyunca</span>' : ''}${ch}</div>`;
+    for (const t of d.fxd || []) h += `<div class="d good">${esc(t)}</div>`;
+    const S = d.spAdd && g.SPIRITS[d.spAdd];
+    if (S) h += `<div class="d">Ulusal ruh${d.days > 0 ? ' (bitince)' : ''}: <b>${esc(S.n)}</b></div><div class="fxl">${fxChips(S.fx)}</div>`;
+    const R = d.spRm && g.SPIRITS[d.spRm];
+    if (R) h += `<div class="d good">Kaldırır: ${esc(R.n)}</div>`;
+    return h;
+  };
+  const decActiveCard = (c, x) => {
+    const d = g.DEC_BY_ID[x.id]; if (!d) return '';
+    const st = G.st, left = Math.max(0, Math.ceil(x.e - st.day));
+    return `<div class="item dec active"><div class="grow"><div class="dec-h"><div class="t">${esc(d.n)}${x.t ? ' · ' + esc(G.cname(x.t)) : ''}</div><span class="muted small">${left} gün kaldı</span></div>${bar((st.day - x.s) / Math.max(1, x.e - x.s))}${decFx(d)}</div></div>`;
+  };
+  const decCard = (c, d) => {
+    const r = G.decAvailable(c, d), tg = d.targets ? d.targets(c) : null;
+    let h = `<div class="item dec ${r.ok ? '' : 'off'}"><div class="grow"><div class="dec-h"><div class="t">${esc(d.n)}</div><span class="dec-cost ${c.pp >= d.cost ? '' : 'bad'}">${d.cost} SG</span></div><div class="d">${esc(d.d)}</div>${decFx(d)}`;
+    h += `<div class="d">${[d.days > 0 ? d.days + ' gün sürer' : 'Anında', decDur(d)].filter(Boolean).join(' · ')}</div>`;
+    if (!r.ok) h += `<div class="d warn">${esc(r.why)}</div>`;
+    if (tg) h += `<div class="dec-tg">${tg.map((t) => `<button class="btn sm" data-act="decide" data-v="${d.id}" data-t="${t}" ${G.decAvailable(c, d, t).ok ? '' : 'disabled'}>${G.flag(t, 18, 12)} ${esc(G.cname(t))}</button>`).join('')}</div>`;
+    else h += `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="decide" data-v="${d.id}" ${r.ok ? '' : 'disabled'}>Al · ${d.cost} SG</button>`;
+    return h + '</div></div>';
+  };
+  function decView(c) {
+    const vis = g.DECISIONS.filter((d) => G.decVisible(c, d));
+    let html = kv([['Siyasi güç', int(c.pp)], ['Günlük', '+' + r1(c.ppDay || 2)], ['Süren', (c.dec || []).length]]);
+    if ((c.dec || []).length) html += sec('Süren kararlar', `<div class="list">${c.dec.map((x) => decActiveCard(c, x)).join('')}</div>`);
+    for (const [cat, name] of Object.entries(g.DEC_CATS)) {
+      const L = vis.filter((d) => d.cat === cat && !G.decActive(c, d.id) && (c.decCd[d.id] || 0) < 1e8);
+      if (!L.length) continue;
+      const ok = L.map((d) => [d, G.decAvailable(c, d).ok ? 0 : 1]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+      html += sec(name, `<div class="list">${ok.map((d) => decCard(c, d)).join('')}</div>`, `${L.filter((d) => G.decAvailable(c, d).ok).length}/${L.length}`);
+    }
+    const once = vis.filter((d) => (c.decCd[d.id] || 0) >= 1e8);
+    if (once.length) html += sec('Uygulananlar', `<p class="muted small" style="margin:0">${once.map((d) => esc(d.n)).join(' · ')}</p>`);
+    return { title: 'Kararlar', html };
+  }
 
   function advPicker(c, role) {
     let html = `<p class="muted small" style="margin:0">${g.ADV_ROLE_N[role]}: yuva ${(c.adv[role] || []).length}/${g.ADV_SLOTS[role]}. Elinde ${int(c.pp)} siyasi güç var.</p><div class="list">`;
@@ -303,7 +334,7 @@
     return { title: 'Araştırma', html };
   };
   // Etki metni (HOI4 tarzı, işaretli). Yüzde olmayan anahtarlar mutlak değerdir; INV: artışı kötü olanlar.
-  const FX_N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama', stab: 'İstikrar', ws: 'Savaş desteği', ppM: 'Siyasi güç kazanımı', pp: 'Günlük siyasi güç', supply: 'İkmal', resist: 'İşgalde direniş', comply: 'İşgalde uyum', justify: 'Savaş gerekçesi hızı', xpGain: 'Tecrübe kazanımı', slots: 'Araştırma yuvası', steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
+  const FX_N = { factory: 'Fabrika verimi', construct: 'İnşaat hızı', research: 'Araştırma hızı', landAtk: 'Kara saldırısı', landDef: 'Kara savunması', armAtk: 'Zırhlı saldırısı', org: 'Moral', air: 'Hava gücü', navy: 'Deniz gücü', mp: 'İnsan gücü', speed: 'Hız', effCap: 'Verim tavanı', entrench: 'Tahkimat hızı', invasion: 'Çıkarma', brk: 'Atılım', plan: 'Planlama', stab: 'İstikrar', ws: 'Savaş desteği', ppM: 'Siyasi güç kazanımı', pp: 'Günlük siyasi güç', supply: 'İkmal', resist: 'İşgalde direniş', comply: 'İşgalde uyum', justify: 'Savaş gerekçesi hızı', xpGain: 'Tecrübe kazanımı', slots: 'Araştırma yuvası', train: 'Eğitim hızı', civdef: 'Bombardıman direnci', steel: 'Çelik', oil: 'Petrol', al: 'Alüminyum', rub: 'Kauçuk', tun: 'Tungsten', chr: 'Krom' };
   const FX_ABS = new Set(['pp', 'slots', 'steel', 'oil', 'al', 'rub', 'tun', 'chr']), FX_INV = new Set(['resist']);
   const fxParts = (fx) => Object.entries(fx || {}).filter(([k, v]) => FX_N[k] && typeof v === 'number' && v).map(([k, v]) => {
     const s = v > 0 ? '+' : '−', a = Math.abs(v);
@@ -642,7 +673,7 @@
       c.train.forEach((t, i) => {
         const u = G.T(c.tag, t.u);
         let ratio = 1; for (const [e, n] of Object.entries(u.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
-        qh += `<div class="item"><div class="grow"><div class="t">${esc(u.n)}</div><div class="d">${t.d > 0 ? t.d + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
+        qh += `<div class="item"><div class="grow"><div class="t">${esc(u.n)}</div><div class="d">${t.d > 0 ? Math.ceil(t.d) + ' gün kaldı' : ratio < 0.25 ? '<span class="warn">Teçhizat bekleniyor</span>' : 'Konuşlanıyor'}</div>${bar(1 - t.d / u.days)}</div><button class="btn sm" data-act="tdel" data-v="${i}" aria-label="İptal">✕</button></div>`;
       });
       html += sec('Eğitim kuyruğu', qh + '</div>');
     }
@@ -908,6 +939,7 @@
   <section class="sec"><h3 class="sec-h">Ulusal ruhlar (buff ve debuff)</h3><p class="small" style="margin:0">HOI4'teki gibi her ülke kendine özgü ulusal ruhlarla başlar: Sovyetlerde Büyük Temizlik, ABD'de Büyük Buhran, Macaristan'da Trianon kısıtlamaları, İsviçre'de Ulusal Kale… Yeşil etkiler güçlendirir, kırmızılar zayıflatır. Her kartta ruhun nasıl kalkacağı yazar: bir <b>odakla</b> (odak ayrıntısında “Kaldırır” satırı), bir <b>tarihte</b> (ör. Bled Anlaşması) ya da <b>savaşa girince</b> (tarafsızlık ruhları). Savaş sırasında yeni ruhlar da gelir (Barbarossa Baskını, Stavka reformları, Çin Bataklığı). Başka ülkelerin ruhlarını Diplomasi panelinde ülkeye dokunarak görebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Odaklar ve tarihî olaylar</h3><p class="small" style="margin:0">Yönettiğin ülkenin tarihî hamleleri (Anschluss, Münih, Danzig, Barbarossa, Marco Polo Köprüsü, Pearl Harbor, Kış Savaşı…) sabit bir tarihte kendiliğinden olmaz; HOI4'teki gibi ilgili <b>ulusal odağı</b> tamamladığında gerçekleşir. Böylece savaş, odak ağacın ve ordun hazır olmadan başlamaz. Odak ayrıntısında olayın tarihteki günü yazar; o gün geldiğinde olay günlüğüne bir hatırlatma düşer. Odak tamamlanınca karar penceresi açılır: “Bekle” dersen savaş gerekçesini alır, zamanı sen seçersin. Diğer ülkelerin olayları tarihî takvimle sürer.</p></section>
   <section class="sec"><h3 class="sec-h">Değişen tarih</h3><p class="small" style="margin:0">Tarihî gidişat modunda yapay zekâ cepheleri tarihe yakın ilerler. Bu denge savaşların gerçek başlangıcına göre kayar: Barbarossa'yı bir yıl geciktirirsen Doğu Cephesi takvimi de bir yıl kayar. Senin taraf olduğun cephelerde denge büyük ölçüde gevşer; sonuç senin hamlelerine bağlıdır. Kendi muharebelerine hiçbir zaman uygulanmaz.</p></section>
+  <section class="sec"><h3 class="sec-h">Kararlar</h3><p class="small" style="margin:0">Siyaset → Kararlar'da siyasi güç harcayarak hükümet kararları alırsın: propaganda, huzur kampanyası, savaş tahvilleri, sınır tahkimatı, ilişki geliştirme ve ülkene özel tarihî kararlar. Süreli kararlar süre boyunca bir değiştirici verir ya da bitince sonuçlanır; her kararın kendi bekleme süresi vardır. Danışman ve yasalar için de siyasi güç gerektiğini unutma.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
@@ -1120,7 +1152,7 @@
   ACT.hire = (d) => { const c = me(); const r = G.hireAdvisor(c, d.v); UI.toast(r.ok ? `${G.advName(c.tag, d.v)} göreve başladı.` : r.why, r.ok ? 'good' : 'warn'); if (r.ok) UI.sub = null; UI.render(true); UI.hud(); };
   ACT.fireadv = (d) => { G.fireAdvisor(me(), d.v); UI.render(); };
   ACT.law = (d) => { const c = me(); if (c.pp < g.LAW_COST || !G.lawAllowed(c, d.k, +d.v).ok) return; c.pp -= g.LAW_COST; c.laws[d.k] = +d.v; G.recomputeMods(c); UI.sub = null; UI.render(true); UI.toast('Yasa değişti: ' + g.LAWS[d.k].opts[+d.v].n, 'good'); };
-  ACT.decide = (d) => { const c = me(), dc = DECISIONS.find((x) => x.id === d.v); if (c.pp < dc.cost) return; c.pp -= dc.cost; c.dec = c.dec || {}; c.dec[dc.id] = G.st.day + dc.cd; dc.fx(c); G.needSummary = 1; G.updateSummaries(); UI.render(); UI.toast(dc.n + ' uygulandı.', 'good'); };
+  ACT.decide = (d) => { const c = me(), r = G.takeDecision(c, d.v, d.t || null); const D = g.DEC_BY_ID[d.v]; UI.toast(r.ok ? `${D.n} ${D.days > 0 ? 'başladı' : 'uygulandı'}.` : r.why, r.ok ? 'good' : 'warn'); G.updateSummaries(); UI.render(true); UI.hud(); };
   ACT.auto = (d) => { const c = me(); c.auto[d.v] = c.auto[d.v] ? 0 : 1; UI.render(); };
   ACT.research = (d) => { const c = me(); if (c.res.length >= c.mods.slots) { UI.toast('Boş araştırma yuvası yok. Önce birini iptal et.', 'warn'); return; } G.startResearch(c, d.v); UI.render(); };
   ACT.rescancel = (d) => { const c = me(); c.res = c.res.filter((r) => r.id !== d.v); UI.render(); };
