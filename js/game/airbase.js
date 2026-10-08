@@ -102,6 +102,6 @@
     if (!G.baseOk(c.tag, w.b) || w.r < 0) return 0;
     if (!G.inRange(c, w, w.r)) return 0;
     const cap = G.baseCap(w.b), load = G.baseLoad(w.b);
-    return load > cap ? Math.max(0.3, cap / load) : 1;
+    return (load > cap ? Math.max(0.3, cap / load) : 1) * G.fuelAirMul(c);
   };
 })(window);

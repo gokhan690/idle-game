@@ -55,6 +55,7 @@
       ['Tersane', s.dock, ''],
       ['Çelik', `${int(s.steel)}/${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'neg' : ''],
       ['Petrol', `${int(s.oil)}/${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'neg' : ''],
+      ['Yakıt', `${int(fuelOf(c).fuel)}/${int(fuelOf(c).cap)}`, G.fuelRatio(c) < 1 ? 'neg' : ''],
       ['Tümen', divs + (c.train.length ? `+${c.train.length}` : ''), ''],
     ];
     if (c.enemies.length) chips.push(['Savaş', c.enemies.length + ' düşman', 'neg']);
@@ -70,6 +71,7 @@
     if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
     const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
     if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`]);
+    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor']);
     const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
     if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
     if (c.enemies.length) {
@@ -421,10 +423,24 @@
   };
 
   // Ticaret
+  // Yakıt deposu: miktar, kapasite ve doluluk (depo ilk günde kurulmamışsa varsayılanla başlatılır)
+  const fuelOf = (c) => { if (c.fuel == null) G.fuelInit(c); const cap = c._fcap || G.fuelCap(c); return { fuel: c.fuel, cap, fr: c.fuel / cap }; };
+  const fuelSec = (c) => {
+    const f = fuelOf(c), inn = c.fuelIn || 0, out = c.fuelOut || 0, dem = c.fuelDem || 0, net = inn - out;
+    const lvl = f.fr < 0.2 ? 'r' : f.fr < 0.4 ? '' : 'g';
+    let h = `<div class="fuelbar">${bar(f.fr, lvl)}</div>`;
+    h += kv([['Yakıt deposu', `${int(f.fuel)} / ${int(f.cap)}`, f.fr < 0.2 ? 'bad' : ''], ['Günlük üretim', '+' + r1(inn), 'good'], ['Günlük tüketim', '-' + r1(out), out < dem - 0.5 ? 'bad' : ''], ['Net', (net >= 0 ? '+' : '') + r1(net), net < 0 ? 'bad' : 'good'], ['Rafineri', int(c._ref || 0)]]);
+    const r = G.fuelRatio(c);
+    h += r < 1
+      ? `<p class="warn small" style="margin:6px 0 0">Yakıt azalıyor: motorlu ve zırhlı tümenlerin hızı ve saldırısı −%${Math.round((1 - G.fuelMul({ t: c.tag, u: 'arm' })) * 100)}, uçak görev etkinliği −%${Math.round((1 - G.fuelAirMul(c)) * 100)}, deniz gücü −%${Math.round((1 - G.fuelNavyMul(c)) * 100)}. Petrol ithal et ya da Sentetik Rafineri kur.</p>`
+      : `<p class="muted small" style="margin:6px 0 0">Petrol her gün yakıta dönüşür (kullanılmayan petrolün %${Math.round(G.FUEL.rate * 100)}'i). Motorlu tümenler, uçaklar ve gemiler görevdeyken yakıt yakar; depo %20'nin altına inerse ceza başlar.</p>`;
+    return sec('Yakıt', h, 'günlük birim');
+  };
   PANELS.trade = () => {
     const st = G.st, c = me(), e = c.econ || {};
     if (UI.sub && UI.sub.startsWith('buy:')) return buyPicker(c, UI.sub.slice(4));
     let html = kv([['İthalat (fab.)', `${e.trade || 0}`], ['İhracat (fab.)', `+${e.expCiv || 0}`], ['Konvoy', `${int(c.ships.conv || 0)} / ${int(G.convoyNeed(c.tag))}`, (e.convRatio ?? 1) < 1 ? 'bad' : ''], ['Konvoy akını', c.raid ? '-' + pct(c.raid) : '—', c.raid ? 'bad' : ''], ['Ticaret yasası', g.LAWS.trade.opts[c.laws.trade].n]]);
+    html += fuelSec(c);
     html += `<button class="toggle ${c.auto.trade ? 'on' : ''}" data-act="auto" data-v="trade"><span><b>Ticaret bakanı</b><br><span class="muted small">Açıksa eksik kaynakları otomatik satın alır, fazlayı iptal eder.</span></span><i></i></button>`;
     let rh = '<div class="restable"><div class="rh"><span>Kaynak</span><span>Üretim</span><span>İthal</span><span>Satılan</span><span>İhtiyaç</span><span></span></div>';
     const sold = (G._sold && G._sold[c.tag]) || {};
@@ -560,7 +576,7 @@
     });
     if (!c.constr.length) qh += '<p class="muted small" style="margin:0">Kuyruk boş. Sivil fabrikalar boşta bekliyor.</p>';
     html += sec('İnşaat kuyruğu', qh + '</div>', `${c.constr.length} proje`);
-    html += sec('Yeni proje', `<div class="list">${Object.entries(g.BUILDINGS).map(([k, b]) => `<button class="item" data-act="sub" data-v="build:${k}"><div class="grow"><div class="t">${b.n}</div><div class="d">${int(b.cost)} inşaat puanı${k === 'fort' ? ' · eyalet savunması +%15/kademe' : k === 'dock' ? ' · yalnızca kıyı' : k === 'inf' ? ' · ikmal akışı ve hareket hızı artar' : k === 'ab' ? ' · seviye başına 100 uçak, en fazla 10' : ''}</div></div><span class="muted">›</span></button>`).join('')}</div>`);
+    html += sec('Yeni proje', `<div class="list">${Object.entries(g.BUILDINGS).map(([k, b]) => `<button class="item" data-act="sub" data-v="build:${k}"><div class="grow"><div class="t">${b.n}</div><div class="d">${int(b.cost)} inşaat puanı${k === 'fort' ? ' · eyalet savunması +%15/kademe' : k === 'dock' ? ' · yalnızca kıyı' : k === 'inf' ? ' · ikmal akışı ve hareket hızı artar' : k === 'ab' ? ' · seviye başına 100 uçak, en fazla 10' : k === 'ref' ? ' · seviye başına günlük +2,5 yakıt ve +30 depo, en fazla 5' : ''}</div></div><span class="muted">›</span></button>`).join('')}</div>`);
     return { title: 'İnşaat', html };
   };
   function buildPicker(c, type) {
@@ -571,7 +587,7 @@
       if (!G.LEVEL_B.has(type) && pr.o !== c.tag) continue;
       if (b.coastal && !P[i].c) continue;
       const queued = c.constr.filter((q) => q.p === i && (G.LEVEL_B.has(type) ? q.b === type : !G.LEVEL_B.has(q.b))).length;
-      const free = type === 'fort' ? 5 - pr.fort - queued : type === 'inf' ? 5 - (pr.inf || 1) - queued : type === 'ab' ? 10 - (pr.ab || 0) - queued : G.freeSlots(i) - queued;
+      const free = type === 'fort' ? 5 - pr.fort - queued : type === 'inf' ? 5 - (pr.inf || 1) - queued : type === 'ab' ? 10 - (pr.ab || 0) - queued : type === 'ref' ? g.BUILDINGS.ref.max - (pr.ref || 0) - queued : G.freeSlots(i) - queued;
       if (free <= 0) continue;
       const border = P[i].a.some((j) => st.prov[j].c !== c.tag);
       const front = type === 'ab' ? P[i].a.some((j) => P[j].a.some((k) => G.atWar(c.tag, st.prov[k].c))) : false;
@@ -579,10 +595,10 @@
       rows.push({ i, free, score, border });
     }
     rows.sort((a, b2) => b2.score - a.score);
-    let html = `<p class="muted small" style="margin:0">${b.n} için eyalet seç. ${type === 'fort' ? 'Sınır ve cephe eyaletleri üstte.' : type === 'inf' ? 'İkmali zayıf ve sınırdaki eyaletler üstte. Altyapı ikmal akışını ve hareket hızını artırır.' : type === 'ab' ? 'Cepheye yakın ve büyük üsler üstte. Her seviye 100 uçak (bir kanat) barındırır; kanatlar yalnızca üslerinden menzil içindeki bölgelerde görev yapar.' : 'En çok boş yuvası olan eyaletler üstte.'}</p><div class="list">`;
+    let html = `<p class="muted small" style="margin:0">${b.n} için eyalet seç. ${type === 'fort' ? 'Sınır ve cephe eyaletleri üstte.' : type === 'inf' ? 'İkmali zayıf ve sınırdaki eyaletler üstte. Altyapı ikmal akışını ve hareket hızını artırır.' : type === 'ab' ? 'Cepheye yakın ve büyük üsler üstte. Her seviye 100 uçak (bir kanat) barındırır; kanatlar yalnızca üslerinden menzil içindeki bölgelerde görev yapar.' : type === 'ref' ? 'Büyük şehirler üstte. Rafineri petrol gerektirmeden günlük yakıt üretir ve yakıt deposunu büyütür.' : 'En çok boş yuvası olan eyaletler üstte.'}</p><div class="list">`;
     for (const r of rows.slice(0, 40)) {
       const pr = st.prov[r.i];
-      html += `<button class="item" data-act="build" data-b="${type}" data-v="${r.i}"><div class="grow"><div class="t">${esc(G.pname(r.i))}</div><div class="d">${type === 'fort' ? `Tahkimat ${pr.fort}/5${r.border ? ' · sınır' : ''}` : type === 'inf' ? `Altyapı ${pr.inf || 1}/5${r.border ? ' · sınır' : ''}${G.supAvail[c.tag] ? ' · ikmal ' + r1(G.supAvail[c.tag][r.i]) : ''}` : type === 'ab' ? `Hava üssü ${pr.ab || 0}/10 · ${Math.round(G.baseLoad(r.i) / 100)}/${pr.ab || 0} kanat${P[r.i].a.some((j) => G.atWar(c.tag, st.prov[j].c)) ? ' · cephe' : ''}` : `Boş yuva ${r.free} · S${pr.civ} A${pr.mil} T${pr.dock}`}</div></div><span class="btn sm pri">Ekle</span></button>`;
+      html += `<button class="item" data-act="build" data-b="${type}" data-v="${r.i}"><div class="grow"><div class="t">${esc(G.pname(r.i))}</div><div class="d">${type === 'fort' ? `Tahkimat ${pr.fort}/5${r.border ? ' · sınır' : ''}` : type === 'inf' ? `Altyapı ${pr.inf || 1}/5${r.border ? ' · sınır' : ''}${G.supAvail[c.tag] ? ' · ikmal ' + r1(G.supAvail[c.tag][r.i]) : ''}` : type === 'ref' ? `Rafineri ${pr.ref || 0}/${b.max}` : type === 'ab' ? `Hava üssü ${pr.ab || 0}/10 · ${Math.round(G.baseLoad(r.i) / 100)}/${pr.ab || 0} kanat${P[r.i].a.some((j) => G.atWar(c.tag, st.prov[j].c)) ? ' · cephe' : ''}` : `Boş yuva ${r.free} · S${pr.civ} A${pr.mil} T${pr.dock}`}</div></div><span class="btn sm pri">Ekle</span></button>`;
     }
     if (!rows.length) html += '<p class="muted">Uygun eyalet yok.</p>';
     return { title: b.n, html: html + '</div>' };
@@ -908,6 +924,7 @@
   <section class="sec"><h3 class="sec-h">Ulusal ruhlar (buff ve debuff)</h3><p class="small" style="margin:0">HOI4'teki gibi her ülke kendine özgü ulusal ruhlarla başlar: Sovyetlerde Büyük Temizlik, ABD'de Büyük Buhran, Macaristan'da Trianon kısıtlamaları, İsviçre'de Ulusal Kale… Yeşil etkiler güçlendirir, kırmızılar zayıflatır. Her kartta ruhun nasıl kalkacağı yazar: bir <b>odakla</b> (odak ayrıntısında “Kaldırır” satırı), bir <b>tarihte</b> (ör. Bled Anlaşması) ya da <b>savaşa girince</b> (tarafsızlık ruhları). Savaş sırasında yeni ruhlar da gelir (Barbarossa Baskını, Stavka reformları, Çin Bataklığı). Başka ülkelerin ruhlarını Diplomasi panelinde ülkeye dokunarak görebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Odaklar ve tarihî olaylar</h3><p class="small" style="margin:0">Yönettiğin ülkenin tarihî hamleleri (Anschluss, Münih, Danzig, Barbarossa, Marco Polo Köprüsü, Pearl Harbor, Kış Savaşı…) sabit bir tarihte kendiliğinden olmaz; HOI4'teki gibi ilgili <b>ulusal odağı</b> tamamladığında gerçekleşir. Böylece savaş, odak ağacın ve ordun hazır olmadan başlamaz. Odak ayrıntısında olayın tarihteki günü yazar; o gün geldiğinde olay günlüğüne bir hatırlatma düşer. Odak tamamlanınca karar penceresi açılır: “Bekle” dersen savaş gerekçesini alır, zamanı sen seçersin. Diğer ülkelerin olayları tarihî takvimle sürer.</p></section>
   <section class="sec"><h3 class="sec-h">Değişen tarih</h3><p class="small" style="margin:0">Tarihî gidişat modunda yapay zekâ cepheleri tarihe yakın ilerler. Bu denge savaşların gerçek başlangıcına göre kayar: Barbarossa'yı bir yıl geciktirirsen Doğu Cephesi takvimi de bir yıl kayar. Senin taraf olduğun cephelerde denge büyük ölçüde gevşer; sonuç senin hamlelerine bağlıdır. Kendi muharebelerine hiçbir zaman uygulanmaz.</p></section>
+  <section class="sec"><h3 class="sec-h">Yakıt</h3><p class="small" style="margin:0">Petrol kaynaklarından (yerli üretim, ithalat ve odakların verdiği sentetik petrol) her gün <b>yakıt</b> üretilir ve sınırlı kapasiteli yakıt deposunda birikir. Motorize ve zırhlı tümenler hareket ederken ve savaşırken, uçak kanatları ile filolar görevdeyken yakıt yakar; barışta ve yerinde dururken çok az harcarlar. Depo kapasitenin %20'sinin altına inince motorlu tümenlerin hızı ve saldırısı en çok −%35, uçakların görev etkinliği −%40, gemilerin gücü −%30 düşer. Ticaret panelindeki Yakıt bölümünde depo, günlük üretim ve tüketim görünür; yakıt azalınca ekranın üstünde “Yakıt azalıyor” uyarısı çıkar. Petrol ithal ederek ya da İnşaat panelinden <b>Sentetik Rafineri</b> kurarak (seviye başına +2,5 yakıt/gün) açığı kapatabilirsin. Yapay zekâ da yakıt azalınca petrol satın alır ve rafineri kurar.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 

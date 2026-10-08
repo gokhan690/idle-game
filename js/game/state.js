@@ -218,13 +218,14 @@
       c.res = (c.res || []).filter((r) => g.TECH_BY_ID[r.id]);
     }
     for (const c of Object.values(st.C)) { G.recomputeMods(c); c.enemies = []; }
+    G.ensureRefineries(); // eski kayıtlar: rafineri seviyesi
     G.refreshEnemies();
     G.cwDirty = 1;
     G.rebuildUnitIndex();
     G.updateSummaries();
     G.ensureInfra(); G.updateWeather(true); G.supDirty = 1;
     for (const c of Object.values(st.C)) if (c.alive && !c.wings) G.initWings(c);
-    for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
+    for (const c of Object.values(st.C)) if (c.alive) { G.econCalc(c); G.fuelInit(c); } // eski kayıtlar: yakıt deposu varsayılanı
     return st;
   };
 })(window);

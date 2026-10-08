@@ -34,7 +34,7 @@
   // Satılabilir miktar: ticaret yasası sınırı ve ülkenin kendi ihtiyacı
   G.exportPool = (c, r) => {
     const prod = c.sum.res ? c.sum.res[r] : 0;
-    const own = c.econ && c.econ.need ? c.econ.need[r] : 0;
+    const own = (c.econ && c.econ.need ? c.econ.need[r] : 0) + (r === 'oil' ? G.fuelOilKeep(c) : 0); // yakıt için ayrılan petrol satılmaz
     return Math.max(0, Math.min(prod * (c.mods.expCap ?? 0.5), prod - own));
   };
   G.committed = () => {
@@ -122,7 +122,7 @@
     let spent = e.trade;
     const comm = G.committed();
     for (const r of RK) {
-      let def = e.need[r] - e.have[r];
+      let def = e.need[r] + (r === 'oil' ? G.fuelOilWant(c) : 0) - e.have[r]; // yakıt azsa petrol de ithal edilir
       if (def > 0.05) {
         const cands = Object.values(st.C).filter((x) => x.alive && G.canTradeWith(c.tag, x.tag)).map((x) => ({ t: x.tag, free: G.exportFree(x.tag, r, comm) })).filter((x) => x.free >= 1).sort((a, b) => b.free - a.free);
         for (const x of cands) {

@@ -400,3 +400,7 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
   .sheet.full .sheet-tall { display: none; }
   .sheet.tall:not(.full) { top: calc(var(--safe-t) + 6px); max-height: none; }
 }
+
+/* Yakıt deposu */
+.fuelbar { margin: 0 0 6px; }
+.fuelbar .bar { height: 10px; }
