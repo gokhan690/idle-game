@@ -35,6 +35,7 @@
     wsWar += (st.tension / 100) * (c.ideo === 'dem' ? 0.15 : 0.08);
     const lost = Math.max(0, Math.min(1, (c.surrender || 0)));
     stabWar -= lost * 0.25; wsWar -= lost * 0.1;
+    if (c.el && c.el.susp) stabWar -= 0.1; // askıya alınmış seçimler
     const cas = c.dead / Math.max(50, c.sum.pop * 20);
     wsWar -= Math.min(0.15, cas * 0.3);
     // yönetici ideoloji desteği istikrarı etkiler

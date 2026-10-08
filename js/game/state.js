@@ -224,6 +224,10 @@
     G.updateSummaries();
     G.ensureInfra(); G.updateWeather(true); G.supDirty = 1;
     for (const c of Object.values(st.C)) if (c.alive && !c.wings) G.initWings(c);
+    // gönüllüler ve seçimler (eski kayıtlar için varsayılanlar)
+    if (!st.vol) st.vol = {};
+    if (G.volFix) G.volFix();
+    for (const c of Object.values(st.C)) if (c.alive && c.ideo === 'dem' && !c.el && G.elecInit) G.elecInit(c);
     for (const c of Object.values(st.C)) if (c.alive) G.econCalc(c);
     return st;
   };

@@ -162,7 +162,7 @@
       for (const w of c.wings) {
         if (!G.baseOk(c.tag, w.b)) G.fixBase(c, w);
         // takviye: stoktan
-        if (w.n < w.max && (c.stock[w.e] || 0) >= 1) { const k = Math.min(w.max - w.n, c.stock[w.e], 4); w.q = G.blendVec(G.wingQ(c, w), G.stockVec(c, w.e), k / (w.n + k)); w.n += k; c.stock[w.e] -= k; }
+        if (w.n < w.max && !w.vol && (c.stock[w.e] || 0) >= 1) { const k = Math.min(w.max - w.n, c.stock[w.e], 4); w.q = G.blendVec(G.wingQ(c, w), G.stockVec(c, w.e), k / (w.n + k)); w.n += k; c.stock[w.e] -= k; }
         if (w.n < 1 || w.r < 0) continue;
         if (!c.enemies.length && w.mis !== 'sup') continue;
         const eff = G.wingEff(c, w); w._eff = eff;
