@@ -143,6 +143,7 @@
     ph += `<div class="legend">${IDS.map((k) => `<span><i style="background:${g.IDEOLOGIES[k].c}"></i>${g.PARTY_N[k]} <b>${pct(c.pop[k])}</b>${k === c.ideo ? ' ★' : ''}</span>`).join('')}</div>`;
     ph += `<p class="muted small" style="margin:0">Bir parti %50'yi geçerse hükümet değişikliği gündeme gelir. Yönetici partinin desteği %40'ın altına düşerse istikrar azalır.</p>`;
     html += sec('Parti desteği', ph);
+    html += electionSection(c);
     // ulusal ruhlar
     const sp = c.spirits.filter((s) => g.SPIRITS[s]);
     html += sec('Ulusal ruhlar', sp.length ? `<div class="list">${sp.map((s) => spiritHtml(s, c)).join('')}</div>` : '<p class="muted small" style="margin:0">Etkin ulusal ruh yok.</p>', sp.length ? `${sp.length}` : '');
@@ -504,7 +505,7 @@
   };
   // ---------- Hava kuvvetleri (HOI4 tarzı) ----------
   const WIC = { fig: '✈', cas: '⬇', bom: '✦' };
-  UI.wingName = (c, w) => { const k = c.wings.filter((x) => x.e === w.e).indexOf(w) + 1; return `${k}. ${G.WING_TYPES[w.e].n} Kanadı`; };
+  UI.wingName = (c, w) => { const k = c.wings.filter((x) => x.e === w.e).indexOf(w) + 1; return `${k}. ${G.WING_TYPES[w.e].n} Kanadı${w.vol ? ` · Gönüllü (${G.cname(w.vol)})` : ''}`; };
   PANELS.air = () => {
     const st = G.st, c = me();
     if (!c.wings) G.initWings(c);
@@ -708,7 +709,7 @@
     const sup = G.supplyMul(u);
     const state = u.sr ? 'Stratejik konuşlanma' : G.inBattle && G.inBattle.has(u) ? 'Muharebede' : u.ret ? 'Geri çekiliyor' : u.path.length ? `${G.pname(u.path[u.path.length - 1])} yönünde ilerliyor` : 'Mevzide';
     const xl = G.xpName(u.xp);
-    let html = `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b></div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
+    let html = `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b>${u.vol ? ` <span class="pill ally">Gönüllü (${esc(G.cname(u.vol))})</span>` : ''}</div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
     html += kv([['Güç', pct(u.str), u.str < 0.5 ? 'bad' : ''], ['Moral', `${Math.round(Math.max(0, u.org))}/${Math.round(s2.org)}`, u.org < s2.org * 0.3 ? 'bad' : ''], ['Tecrübe', xl], ['Yumuşak saldırı', r1(s2.sa)], ['Sert saldırı', r1(s2.ha)], ['Savunma', r1(s2.df)], ['Atılım', r1(s2.bt)], ['Sertlik', pct(s2.hd)], ['Zırh', Math.round(s2.arm)], ['Zırh delme', Math.round(s2.prc)], ['Genişlik', t.w], ['Hız', r1(s2.spd / 2.4) + ' km/s'], ['Siper', pct(u.ent || 0)], ['İkmal', pct(G.supplyRatio(u)), G.supplyRatio(u) < 0.8 ? 'bad' : ''], ['İkmal kullanımı', r1(G.supplyUse(u))]]);
     html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Tecrübe</span><div class="grow">${bar(u.xp ?? 0.25)}</div></div><div class="small muted" style="margin-top:-6px">${G.XP_LV.map(([, n]) => n === xl ? `<b style="color:var(--paper)">${n}</b>` : n).join(' › ')}</div>`;
     html += sec('Komuta', `<div class="small">${a ? `${esc(a.n)}${gen ? ' · ' + esc(gen.n) : ''}` : 'Ordusuz'}${u.auto ? ' · otomatik kurmay' : ''}</div><div class="small muted">Teçhizat modelleri: piyade ${g.MODEL_N?.inf?.[Math.floor(u.lv?.inf || 1)] || 'Sv ' + r1(u.lv?.inf || 1)}${t.eq.art ? ' · topçu ' + (g.MODEL_N?.art?.[Math.floor(u.lv?.art || 1)] || r1(u.lv?.art || 1)) : ''}${t.eq.tank ? ' · tank ' + (g.MODEL_N?.tank?.[Math.floor(u.lv?.tank || 1)] || r1(u.lv?.tank || 1)) : ''}</div>`);
@@ -722,7 +723,7 @@
     let html = `<div class="list">`;
     for (const u of us) {
       const s2 = G.unitStats(u);
-      html += `<button class="item" data-act="divinfo" data-v="${u.id}"><div class="grow"><div class="t">${esc(s2.t.n)} <span class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
+      html += `<button class="item" data-act="divinfo" data-v="${u.id}"><div class="grow"><div class="t">${esc(s2.t.n)} <span class="muted small">${u.vol ? 'Gönüllü (' + esc(G.cname(u.vol)) + ') · ' : ''}${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
     }
     return { title: `${a.n} · ${us.length} tümen`, html: html + '</div>' };
   }
@@ -859,6 +860,33 @@
     if (st.access[a + '>' + b]) out.push('<span class="pill pact">Geçiş</span>');
     return out.join(' ');
   }
+  // Seçimler (yalnızca demokrasiler): sonraki seçim tarihi, son sonuç, askıya alma
+  function electionSection(c) {
+    if (!G.hasElections(c)) return '';
+    const el = G.elecInit(c), P2 = g.PARTY_N;
+    const last = el.last ? `Son seçim: ${G.fmtDate(el.last.d)} · ${P2[el.last.top]} önde (iktidar partisi %${Math.round(el.last.p * 100)})` : 'Henüz seçim yapılmadı.';
+    let h = `<div class="item"><div class="grow"><div class="t">Sonraki seçim: ${el.susp ? 'askıda' : G.elecDate(c)}</div><div class="d">${last}</div></div></div>`;
+    if (el.susp) h += `<button class="item" data-act="elres"><div class="grow"><div class="t">Seçimleri yeniden başlat</div><div class="d">Seçimler askıdayken istikrar -%10. Savaş bitince seçimler kendiliğinden döner.</div></div><span class="muted">›</span></button>`;
+    else if (c.enemies.length) { const r = G.elecCanSuspend(c); h += `<button class="item" data-act="elsusp" ${r.ok ? '' : 'disabled'} style="${r.ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">Seçimleri askıya al · ${G.elecSuspendCost} SG</div><div class="d">Savaş sürerken seçimler durur; karşılığında istikrar -%10.${r.ok ? '' : ' ' + esc(r.why)}</div></div><span class="muted">›</span></button>`; }
+    return sec('Seçimler', `<div class="list">${h}</div><p class="muted small" style="margin:0">Seçimde demokratlar %50'yi geçerse iktidar sürer ve istikrar artar; geçemezse en çok oyu alan parti hükümeti kurar.</p>`);
+  }
+  // Gönüllü kuvvetler: savaştaki bir ülkeye tümen ve uçak gönder, geri çağır
+  function volunteerSection(c, tag, x) {
+    const sentD = G.volSent(c.tag, tag), sentA = Math.round(G.volAirSent(c.tag, tag));
+    const open = x.enemies.length > 0 && !G.atWar(c.tag, tag);
+    if (!open && !sentD && !sentA) return '';
+    const r = open ? G.volCheck(c.tag, tag) : { ok: false, why: '' };
+    let h = kv([['Tümen kotası', `${G.volSent(c.tag)}/${G.volCap(c.tag)}`], ['Hava kotası', `${Math.round(G.volAirSent(c.tag))}/${G.volAirCap(c.tag)}`]]);
+    if (sentD || sentA) h += `<p class="small good" style="margin:0">${esc(G.cname(tag))} cephesinde: ${sentD} tümen · ${sentA} uçak</p>`;
+    if (open && !r.ok) h += `<p class="small warn" style="margin:0">${esc(r.why)}</p>`;
+    if (open) {
+      const NM = { fig: 'avcı', cas: 'yakın destek', bom: 'bombardıman' };
+      h += `<div class="btns">${[1, 2, 4].map((n) => `<button class="btn sm ${r.ok && r.left >= n ? 'pri' : ''}" data-act="volsend" data-k="${tag}" data-v="${n}" ${r.ok && r.left >= n ? '' : 'disabled'}>${n} tümen</button>`).join('')}</div>`;
+      h += `<div class="btns">${g.PLANES.map((e) => [50, 100].filter((n) => e === 'fig' || n === 50).map((n) => { const ok = r.ok && r.airLeft >= n && G.planes(c, e) >= n; return `<button class="btn sm ${ok ? 'pri' : ''}" data-act="volair" data-k="${tag}" data-e="${e}" data-v="${n}" ${ok ? '' : 'disabled'}>${n} ${NM[e]}</button>`; }).join('')).join('')}</div>`;
+    }
+    if (sentD || sentA) h += `<button class="btn sm" data-act="volback" data-v="${tag}">Gönüllüleri geri çağır</button>`;
+    return sec('Gönüllü kuvvetler', `<p class="muted small" style="margin:0">Savaşa girmeden dost bir ülkeye tümen ve uçak gönder. Gönüllüler alıcının komutasında savaşır; insan gücü ve takviye sana yazılır, savaş bitince eve dönerler, deneyim sende kalır. En çok ordunun %10'u.</p>${h}`);
+  }
   function countryView(tag) {
     const st = G.st, c = me(), x = st.C[tag], d = G.def(tag);
     const divs = st.units.filter((u) => u.t === tag).length;
@@ -885,6 +913,7 @@
     for (const [k, n, ok, why] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ''}</div><span class="muted">›</span></button>`;
     ah += `<button class="item" data-act="showc" data-v="${tag}"><div class="grow"><div class="t">Haritada göster</div></div><span class="muted">›</span></button></div>`;
     html += sec('Eylemler', ah);
+    html += volunteerSection(c, tag, x);
     // ticaret ve yardım
     let th = '<div class="list">';
     const emb = st.embargo[c.tag + '>' + tag];
@@ -945,6 +974,8 @@
   <section class="sec"><h3 class="sec-h">Kararlar</h3><p class="small" style="margin:0">Siyaset → Kararlar'da siyasi güç harcayarak hükümet kararları alırsın: propaganda, huzur kampanyası, savaş tahvilleri, sınır tahkimatı, ilişki geliştirme ve ülkene özel tarihî kararlar. Süreli kararlar süre boyunca bir değiştirici verir ya da bitince sonuçlanır; her kararın kendi bekleme süresi vardır. Danışman ve yasalar için de siyasi güç gerektiğini unutma.</p></section>
   <section class="sec"><h3 class="sec-h">Nehirler</h3><p class="small" style="margin:0">Haritada mavi çizgilerle gösterilen nehirler, iki komşu il arasındaki geçişi zorlaştırır (HOI4'teki nehir geçişi). <b>Küçük nehir</b> saldırıyı %25, <b>büyük nehir</b> (Ren, Elbe, Oder, Vistül, Tuna, Dinyeper, Don, Volga, Nil, Dicle, Fırat, Yangtze, Sarı Irmak) %50 azaltır; nehri aşan tümenin yürüyüşü de %10 / %25 uzar. Ceza her tümenin geldiği kenara göre hesaplanır: nehir olmayan yönden gelen tümen ceza almaz, bu yüzden nehri geçmeden önce kanatlardan dolanmak ya da birden çok yönden saldırmak işe yarar. <b>İstihkâm</b> destek bölüğü olan tümenlerde ceza %40, <b>deniz piyadesi</b> tümenlerinde %50'ye kadar azalır; aynı hedefe birkaç gün saldırdıkça köprübaşı kurulur ve ceza en çok %40 daha düşer. Savunan taraf da küçük bir nehir bonusu alır. İl kartında komşu nehirler, muharebe panelinde ise “Nehir geçişi” etkeni görünür.</p></section>
   <section class="sec"><h3 class="sec-h">Demiryolları ve ikmal merkezleri</h3><p class="small" style="margin:0">Her eyaletin 0-5 arası bir <b>demiryolu</b> seviyesi vardır; ikmal, yüksek demiryolu seviyeli eyaletlerden geçerken çok daha az zayıflar ve cepheye daha uzağa ulaşır. Gelişmiş ülkelerin ana yurdunda demiryolu yoğundur; Sovyetler, Çin ve sömürgelerde zayıftır. <b>İkmal merkezi</b> başkent ve altyapılı büyük şehirlerde kendiliğinden vardır; İnşaat panelinden altyapısı 2 ve üstü, kıyıda ya da demiryolu bağlı herhangi bir kendi eyaletine yeni bir ikmal merkezi kurabilir, demiryolu seviyesini de kademe kademe artırabilirsin (sivil fabrikalarla). Cephenin gerisinde ikmali zayıf bölgelere merkez ve demiryolu kurmak ilerleyişi sürdürmenin yoludur. Bir eyalet ele geçirilirken demiryolu hasar görür, etkisi yaklaşık 120 günde onarılır; savunmacı geri çekilirken kalıcı hasar da bırakabilir. İşgal edilen yerlerdeki direniş sabotajı demiryolunu aksatır. “İkmal” harita modunda ince çizgiler demiryolu hatlarını (kalın = yüksek seviye), kutular ikmal merkezlerini gösterir. Yapay zekâ da savaşta ikmali zayıf cephelerin gerisine merkez ve demiryolu yapar.</p></section>
+  <section class="sec"><h3 class="sec-h">Gönüllüler</h3><p class="small" style="margin:0">Savaşa girmeden dost bir ülkenin savaşına yardım edebilirsin (İspanya İç Savaşı'nda Lejyon Kondor, Kış Savaşı'nda İsveç gönüllüleri, Çin'deki Sovyet pilotları). Diplomasi → ülke sayfasındaki <b>Gönüllü kuvvetler</b> bölümünden <b>tümen</b> ya da <b>uçak</b> gönder. Şartlar: alıcı savaşta olmalı ve ideolojik olarak seni kabul etmeli, dünya gerginliği en az %10 olmalı, alıcının düşmanıyla aynı ittifakta ya da savaşta olmamalısın, alıcıya kara ya da deniz yoluyla ulaşılabilmeli. Kota ordunun ve hava filosunun yaklaşık %10'udur. Gönüllü tümenler alıcının başkentine iner ve onun yapay zekâsı (alıcı sensen sen) tarafından yönetilir; haritada ve tümen ayrıntısında “Gönüllü (Almanya)” etiketi taşır. İnsan gücü ve takviye gönderenden düşer, muharebe deneyimi gönderenin kara tecrübesine eklenir. Alıcının savaşı bitince, alıcı teslim olunca ya da gönderen alıcının düşmanıyla savaşa girince hayatta kalanlar eve döner; istediğin an “Gönüllüleri geri çağır” da diyebilirsin. Yapay zekâ da tarihî olarak (Kondor Lejyonu, İtalyan CTV, Sovyet yardımı, İsveç gönüllüleri) ve serbest modda ideolojik dostlarına gönüllü gönderir.</p></section>
+  <section class="sec"><h3 class="sec-h">Seçimler</h3><p class="small" style="margin:0">Demokrasilerde düzenli seçim yapılır (ABD: Kasım 1936, 1940, 1944; İngiltere: Temmuz 1945; Fransa: Mayıs 1936; diğerleri dört yılda bir). Siyaset panelinde sonraki seçim tarihini görürsün. Sonuç parti desteğine ve istikrara bağlıdır: demokratlar %50'yi geçerse iktidar sürer ve istikrar artar; geçemezse en çok oyu alan parti hükümeti kurar (hükümet değişikliği). İstikrarsızlık oyları ılımlı partilerden uçlara kaydırır. Savaştaki bir demokraside seçimler <b>askıya alınabilir</b> (50 siyasi güç; istikrar -%10, savaş bitince seçimler döner). Yapay zekâ parlamenter demokrasileri büyük güçlerle savaşırken seçimi erteler; tarihî modda sonuç tarihte olduğu gibi kalır (Roosevelt yeniden seçilir, 1945'te İngiltere'de İşçi Partisi gelir).</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">İpucu</h3><p class="small" style="margin:0">Telefonda yüzlerce tümeni tek tek yönetmek zorunda değilsin: Ordu panelindeki “Otomatik kurmay” ya da seçim çubuğundaki “Oto” ile tümenleri yapay zekâ komutanına bırakabilirsin. Siyaset panelindeki bakanlar da ekonomiyi senin yerine yönetebilir.</p></section>`;
 
@@ -1314,6 +1345,11 @@
     G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud();
   };
   ACT.embargo = (d) => { const st = G.st, k = me().tag + '>' + d.v; if (st.embargo[k]) delete st.embargo[k]; else { st.embargo[k] = 1; st.deals = st.deals.filter((x) => !(x.e === me().tag && x.i === d.v)); } G.refreshTradeCache(); UI.render(); };
+  ACT.volsend = (d) => { const r = G.sendVolunteers(me().tag, d.k, +d.v); UI.toast(r.ok ? `${r.n} gönüllü tümen ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud(); };
+  ACT.volair = (d) => { const r = G.sendAirVolunteers(me().tag, d.k, d.e, +d.v); UI.toast(r.ok ? `${Math.round(r.n)} uçaklık hava gönüllüsü ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); R.dirty = 1; UI.render(); UI.hud(); };
+  ACT.volback = (d) => { const n = G.volReturn(me().tag, d.v, 'geri çağırdın'); UI.toast(n ? 'Gönüllüler eve dönüyor.' : 'Geri çağrılacak gönüllü yok.', n ? 'good' : 'warn'); G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud(); };
+  ACT.elsusp = () => { const r = G.elecSuspend(me()); UI.toast(r.ok ? 'Seçimler askıya alındı.' : r.why, r.ok ? 'warn' : 'bad'); UI.render(); UI.hud(); };
+  ACT.elres = () => { G.elecResume(me()); UI.toast('Seçimler yeniden başlıyor.', 'good'); UI.render(); UI.hud(); };
   ACT.lend = (d) => { const ok = G.lend(me().tag, d.k, d.e, +d.v); UI.toast(ok ? `${G.cname(d.k)} ülkesine gönderildi.` : 'Yeterli stok yok.', ok ? 'good' : 'warn'); UI.render(); };
   ACT.op = (d) => { const r = G.startOp(me().tag, d.k, d.v); UI.toast(r.ok ? `${G.OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
   ACT.release = (d) => { const ok = G.makePuppet(me().tag, d.v); UI.toast(ok ? `${G.cname(d.v)} kukla devlet olarak kuruldu.` : 'Kurulamadı.', ok ? 'good' : 'warn'); G.mapDirty = 1; UI.render(); };

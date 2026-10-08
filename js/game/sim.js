@@ -30,7 +30,7 @@
   G.manpower = (c, fresh) => {
     const max = c.sum.pop * 1000 * c.mods.mpRate * (1 + (c.mods.mp || 0));
     let used = c.dead;
-    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if (u.t === c.tag) v += G.T(u.t, u.u).mp * u.str; c._mpu = v; }
+    if (fresh || c._mpu == null) { let v = 0; for (const u of G.st.units) if ((u.vol || u.t) === c.tag) v += G.T(u.vol || u.t, u.u).mp * u.str; c._mpu = v; }
     used += c._mpu;
     for (const t of c.train) used += G.T(c.tag, t.u).mp;
     return { max, used, avail: Math.max(0, max - used) };
@@ -38,7 +38,7 @@
   function precomputeManpower() {
     const st = G.st;
     for (const c of Object.values(st.C)) c._mpu = 0;
-    for (const u of st.units) st.C[u.t]._mpu += G.T(u.t, u.u).mp * u.str;
+    for (const u of st.units) st.C[u.vol || u.t]._mpu += G.T(u.vol || u.t, u.u).mp * u.str;
   }
 
   // ---------- İkmal: logistics.js (ikmal merkezleri, altyapı, hava) ----------
@@ -310,7 +310,7 @@
   }
   // Takviye (HOI4: muharebede ve harekette de sürer; ikmal ve dost toprak gerekir)
   function reinforce(u, still) {
-    const st = G.st, c = st.C[u.t];
+    const st = G.st, c = st.C[u.vol || u.t]; // gönüllüler gönderenin stokundan ve insan gücünden takviye alır
     if (u.loc >= NP || u.str >= 1) return;
     const pr = st.prov[u.loc];
     if (!(pr.c === u.t || G.friendly(u.t, pr.c))) return;
@@ -499,7 +499,7 @@
       const h = hits(inc, dv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
-      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
+      u.str -= sl; st.C[u.vol || u.t].dead += sl * s.t.mp * casMul(s);
     }
     for (const u of A) {
       const s = u._s;
@@ -508,11 +508,13 @@
       const h = hits(inc, bv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcD / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
-      u.str -= sl; st.C[u.t].dead += sl * s.t.mp * casMul(s);
+      u.str -= sl; st.C[u.vol || u.t].dead += sl * s.t.mp * casMul(s);
     }
     // tümen tecrübesi (muharebede çarpışan tümenler)
     for (const u of A) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.004 * (st.C[u.t].mods.xpGain ? 1 + st.C[u.t].mods.xpGain : 1));
     for (const u of D) u.xp = Math.min(1, (u.xp ?? 0.25) + 0.003);
+    // gönüllüler: muharebe deneyimi gönderen ülkenin kara tecrübesine eklenir
+    for (const u of A.concat(D)) if (u.vol && st.C[u.vol]) st.C[u.vol].axp = Math.min(500, (st.C[u.vol].axp ?? 30) + 0.05);
     // komutan tecrübesi
     const gens = new Set();
     for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
@@ -670,6 +672,7 @@
 
   G.capitulate = (tag) => {
     const st = G.st, c = st.C[tag];
+    if (G.volReturnTo) G.volReturnTo(tag); // gönüllüler eve döner
     const enemies = c.enemies.filter((t) => st.C[t]?.alive);
     // iç savaş: kaybeden taraf tamamen ilhak edilir (HOI4)
     const cw = (st.civil || []).find((p) => p.includes(tag) && enemies.includes(p[0] === tag ? p[1] : p[0]));
@@ -719,6 +722,7 @@
   G.killCountry = (tag) => {
     const st = G.st, c = st.C[tag];
     if (!c.alive) return;
+    if (G.volReturnTo) G.volReturnTo(tag);
     c.alive = 0;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
     if (c.fac) G.leaveFaction(tag);
@@ -766,6 +770,8 @@
     if (st.day % 10 === 7) G.enclaves();
     if (st.day % 5 === 1) G.histCourse();
     G.opsTick();
+    if (G.volTick) G.volTick(); // gönüllü kuvvetler
+    if (G.elecTick) G.elecTick(); // seçimler
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
   };
 })(window);

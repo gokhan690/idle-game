@@ -691,6 +691,7 @@
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    const vu = gl.find((u) => u.vol); if (vu) { ctx.fillStyle = R.ccolor(vu.vol); ctx.fillRect(x, y + h - 5, 5, 5); ctx.strokeStyle = 'rgba(10,10,8,0.9)'; ctx.lineWidth = 1; ctx.strokeRect(x, y + h - 5, 5, 5); } // gönüllü: gönderenin renginde köşe işareti
     return { w, h };
   }
   function drawUnits(ctx, z) {
