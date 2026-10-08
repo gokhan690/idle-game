@@ -5,7 +5,7 @@
   const { P, NP, SEAS } = G;
 
   g.BUILDINGS.ab = { n: 'Hava Üssü', cost: 2000, s: 'Hava üssü', max: 10 };
-  G.LEVEL_B = new Set(['fort', 'inf', 'ab']); // fabrika yuvası kullanmayan, seviyeli yapılar
+  G.LEVEL_B = new Set(['fort', 'inf', 'ab', 'rail', 'hub']); // fabrika yuvası kullanmayan, seviyeli yapılar
   G.AB_CAP = 100; // seviye başına uçak
   G.RANGE_KM = 700; // menzil değeri 1 = 700 km
 

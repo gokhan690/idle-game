@@ -78,7 +78,31 @@
       if (R.mode === 'peace' && st.conf) { const sa = st.conf.sOf[bd.a], sb = st.conf.sOf[bd.b]; if (sa !== sb && (sa != null || sb != null)) addLine(regionBorder, bd.pts); }
     }
     buildLabels();
+    buildRails();
     R.mapDirty = 0;
+  }
+
+  // demiryolları (ikmal haritasında): seviye ≥ 2 komşu eyaletler arası çizgiler, seviyeye göre kalınlık
+  let railPaths = null;
+  function buildRails() {
+    railPaths = null;
+    const st = G.st, pl = st.player;
+    if (R.mode !== 'sup' || !pl || !G.railOf) return;
+    const ps = [null, null, new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    const ok = (i) => { const c = st.prov[i].c; return c === pl || (G.friendly(pl, c) && !G.atWar(pl, c)); };
+    const lv = new Int8Array(NP);
+    for (let i = 0; i < NP; i++) lv[i] = ok(i) ? Math.round(G.railOf(st.prov[i])) : 0;
+    const X = G.nodeX, Y = G.nodeY, HW2 = M.W / 2;
+    let n = 0;
+    for (let i = 0; i < NP; i++) {
+      if (lv[i] < 2) continue;
+      for (const j of P[i].a) {
+        if (j < i || lv[j] < 2 || Math.abs(X[i] - X[j]) > HW2) continue;
+        const k = Math.min(5, lv[i], lv[j]);
+        ps[k].moveTo(X[i], Y[i]); ps[k].lineTo(X[j], Y[j]); n++;
+      }
+    }
+    if (n) railPaths = ps;
   }
 
   function buildLabels() {
@@ -231,6 +255,15 @@
         const cf = st.conf, cs = G.UI && G.UI.cfSel, sel = cf && cs != null ? cf.states[cs] : null;
         if (sel) { ctx.fillStyle = 'rgba(255,240,190,0.28)'; for (const n of sel.p) ctx.fill(provPath[n], 'evenodd'); ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.6 / z; for (const n of sel.p) ctx.stroke(provPath[n]); }
       }
+      if (railPaths) {
+        ctx.lineCap = 'round';
+        for (let k = 2; k <= 5; k++) {
+          const w = (0.7 + 0.45 * (k - 2)) * Math.max(1, Math.min(1.8, z)) ;
+          ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.lineWidth = (w + 1.2) / z; ctx.stroke(railPaths[k]);
+          ctx.strokeStyle = k >= 4 ? '#f6efcf' : '#d9d1b0'; ctx.lineWidth = w / z; ctx.stroke(railPaths[k]);
+        }
+        ctx.lineCap = 'butt';
+      }
       if (R.mode !== 'peace') drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
@@ -346,9 +379,10 @@
     for (const [i, cap] of hubs) {
       const s = visible(G.nodeX[i], G.nodeY[i], 20); if (!s) continue;
       const big = i === st.C[st.player].cap;
+      const built = !big && st.prov[i].hub; // inşa edilmiş ikmal merkezi: turkuaz çerçeve
       const r = big ? 9 : 7;
       ctx.fillStyle = 'rgba(10,12,9,0.85)'; ctx.fillRect(s.x - r, s.y - r - 12, r * 2, r * 2);
-      ctx.strokeStyle = big ? '#f2d27a' : '#cfe3b0'; ctx.lineWidth = 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
+      ctx.strokeStyle = big ? '#f2d27a' : built ? '#6fd3c9' : '#cfe3b0'; ctx.lineWidth = built ? 2 : 1.5; ctx.strokeRect(s.x - r, s.y - r - 12, r * 2, r * 2);
       ctx.fillStyle = '#efe9d8'; ctx.fillText(String(Math.round(cap)), s.x, s.y - 12);
     }
   }

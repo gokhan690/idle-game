@@ -83,7 +83,7 @@
       q.prog += n * 5 * (1 + (m.construct || 0) + stabF);
       const b = g.BUILDINGS[q.b];
       if (q.prog >= b.cost) {
-        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else if (q.b === 'inf') { pr.inf = Math.min(5, (pr.inf || 1) + 1); G.supDirty = 1; } else pr[q.b]++;
+        if (q.b === 'fort') pr.fort = Math.min(5, pr.fort + 1); else if (q.b === 'inf') { pr.inf = Math.min(5, (pr.inf || 1) + 1); G.supDirty = 1; } else if (q.b === 'rail') { pr.rail = Math.min(5, (pr.rail || 0) + 1); G.supDirty = 1; } else if (q.b === 'hub') { pr.hub = 1; G.supDirty = 1; } else pr[q.b]++;
         c.constr.splice(i, 1); i--;
         if (c.tag === st.player) G.log(`${b.n} tamamlandı: ${G.pname(q.p)}`, [c.tag], 'good');
         G.needSummary = 1;
@@ -597,6 +597,8 @@
     if (pr.o !== tag && st.C[pr.o]?.alive && G.sameFaction(tag, pr.o) && !G.atWar(tag, pr.o)) nc = pr.o;
     else if (pr.core !== tag && st.C[pr.core]?.alive && G.sameFaction(tag, pr.core) && !G.atWar(tag, pr.core)) nc = pr.core;
     pr.c = nc; pr.cd = st.day;
+    // geri çekilen savunmacı demiryolunu tahrip eder: etkin seviye onarılana dek düşer, ara sıra kalıcı hasar da kalır
+    if (pr.rail > 0 && pr.o !== nc && (n + st.day) % 3 === 0) pr.rail--;
     G.mapDirty = 1; G.needSummary = 1;
     // Sovyet sanayisinin doğuya taşınması: düşen asli eyaletteki fabrikaların bir kısmı Urallara ve Sibirya'ya kaçırılır
     if (prev === 'SOV' && pr.core === 'SOV' && (pr.mil + pr.civ) > 0 && st.C.SOV?.alive && st.C.SOV.tag !== st.player) G.relocate('SOV', n, 0.6, 0.4);

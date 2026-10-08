@@ -38,6 +38,8 @@
       if (best < 0) break;
       c.constr.push({ b: type, p: best, prog: 0 });
     }
+    // savaşta ikmali kötü cephe bölgelerine ikmal merkezi ve demiryolu
+    if (atWar && G.aiSupplyBuild) G.aiSupplyBuild(c);
     // savaşta cephe gerisine hava üssü (kanatlar menzilde kalsın)
     if ((atWar || st.tension > 60) && c.wings && c.wings.length >= 3 && c.constr.length < 5 && !c.constr.some((q) => q.b === 'ab') && G.rand() < 0.2) {
       const near = new Uint8Array(NP);
