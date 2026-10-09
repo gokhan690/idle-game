@@ -590,6 +590,7 @@
       const where = SEA_N(f.loc);
       fh += `<div class="item army"><div class="grow"><div class="row"><div class="t grow">${esc(f.n)} <span class="muted small">${where}${f.path.length ? ' · yolda' : ''}</span></div><button class="btn sm" data-act="fleetsel" data-v="${f.id}">Seç</button></div>
         <div class="d">${g.SHIPS.filter((e2) => f.sh[e2] >= 0.5).map((e2) => `${Math.round(f.sh[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ') || 'gemi yok'} · güç ${int(p)}</div>
+        ${(f.sh.bb || 0) + (f.sh.cv || 0) >= 0.5 ? (() => { const sc = G.screenOf(c, f); return `<div class="d ${sc < 0.6 ? 'warn' : 'good'}">Perde %${Math.round(sc * 100)}${sc < 1 ? ' · büyük gemi başına 3 muhrip/kruvazör gerekir; perdesiz zırhlılar torpido ve uçaklara açık' : ''}</div>`; })() : ''}
         <div class="seg sm">${Object.entries(G.MISSIONS).map(([k, n]) => `<button class="${f.mis === k ? 'on' : ''}" data-act="fleetmis" data-k="${f.id}" data-v="${k}">${n}</button>`).join('')}</div>
         <div class="btns"><button class="btn sm" data-act="fleethome" data-v="${f.id}">Limana dön</button><button class="btn sm" data-act="fleetauto" data-v="${f.id}">${f.auto ? '✓ ' : ''}Yeni gemiler buraya</button>${c.fleets.length > 1 ? `<button class="btn sm danger" data-act="fleetmerge" data-v="${f.id}">Birleştir</button>` : ''}</div></div></div>`;
     }
@@ -598,6 +599,20 @@
     fh += `</div>${res.length ? `<div class="item"><div class="grow"><div class="t">Yedek gemiler</div><div class="d">${res.map((e2) => `${Math.floor(c.ships[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ')}</div></div><button class="btn sm pri" data-act="fleetnew">Yeni filo kur</button></div>` : ''}`;
     fh += '<p class="muted small" style="margin:0">Devriye: yakındaki zayıf düşman filolarına saldırır. Saldırı: daha uzağa ve cesurca saldırır. Konvoy akını: düşman ticaretini ve konvoylarını vurur. Refakat: kendi konvoylarını korur. Bir filoyu “Seç”ip haritada bir deniz bölgesine dokunarak elle taşıyabilirsin.</p>';
     html += sec('Filolar', fh);
+    // deniz muharebesi raporları (HOI4)
+    const reps = st.navRep || [];
+    if (reps.length) {
+      const L = (o) => g.SHIPS.filter((e2) => (o[e2] || 0) >= 0.5).map((e2) => `${Math.round(o[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(', ') || 'kayıp yok';
+      const N = (o) => g.SHIPS.filter((e2) => (o[e2] || 0) >= 0.5).map((e2) => `${Math.round(o[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(', ');
+      let rh = '<div class="list">';
+      for (const r of reps) {
+        const lm = g.SHIPS.reduce((a, e2) => a + (r.lMe[e2] || 0) * g.EQUIP[e2].str, 0), lo = g.SHIPS.reduce((a, e2) => a + (r.lOp[e2] || 0) * g.EQUIP[e2].str, 0);
+        const won = lo > lm * 1.2, lost = lm > lo * 1.2;
+        rh += `<div class="item nbrep"><div class="grow"><div class="t">${esc(SEA_N(r.zone))} <span class="pill ${won ? 'ally' : lost ? 'enemy' : ''}">${won ? 'Zafer' : lost ? 'Yenilgi' : 'Berabere'}</span></div><div class="d muted">${G.fmtDate(r.day)}${r.last > r.day ? ' – ' + G.fmtDate(r.last) : ''} · ${esc(G.cname(r.me))} – ${esc(G.cname(r.op))}</div>
+          <div class="nbcols"><div><b>Biz</b><span>${esc(N(r.nMe))}</span><span class="bad">Kayıp: ${esc(L(r.lMe))}</span><span class="muted">Perde %${Math.round((r.scMe ?? 1) * 100)}${r.airMe ? ' · uçak gemisi' : ''}</span></div><div><b>Düşman</b><span>${esc(N(r.nOp))}</span><span class="good">Kayıp: ${esc(L(r.lOp))}</span><span class="muted">Perde %${Math.round((r.scOp ?? 1) * 100)}${r.airOp ? ' · uçak gemisi' : ''}</span></div></div></div></div>`;
+      }
+      html += sec('Deniz muharebeleri', rh + '</div><p class="muted small" style="margin:0">Topçu ateşi, uçak gemisi saldırısı ve denizaltı torpidoları birlikte hesaplanır. Perdesi zayıf filonun zırhlı ve uçak gemileri ağır kayıp verir; muhripler denizaltıları avlar.</p>');
+    }
     return { title: 'Donanma', html };
   };
   // ---------- Hava kuvvetleri (HOI4 tarzı) ----------

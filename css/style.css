@@ -485,3 +485,7 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .ug { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 6px; padding: 4px 8px; border: 1px solid var(--brass); border-radius: 5px; background: rgba(214,170,76,0.08); min-width: 74px; }
 .ug b { font-size: 13px; } .ug span { font-size: 12px; color: var(--muted); text-align: right; }
 .ug .bar { grid-column: 1 / -1; }
+
+.nbcols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.nbcols > div { display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; padding: 4px 6px; border-radius: 4px; background: rgba(255,255,255,0.04); }
+.nbcols b { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
