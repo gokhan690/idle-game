@@ -428,14 +428,14 @@
     });
   };
   // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
-  // Tarihte düşmeyen kilit şehirler: Moskova ve Leningrad (kuşatma) 1943 ortasına dek inatla savunulur
+  // Tarihte düşmeyen kilit şehirler: Moskova ve Leningrad (kuşatma) 1944 ortasına dek inatla savunulur
   let KEYC = null;
   const keyCity = (x, y, n) => {
     const st = G.st;
     if (!KEYC) KEYC = new Set(['Moskova', 'Leningrad'].map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0));
-    if (n == null || !KEYC.has(n) || st.day > G.dayOf('1943-06-30')) return 1;
+    if (n == null || !KEYC.has(n) || st.day > G.dayOf('1944-06-30')) return 1;
     const ger = (t) => t === 'GER' || G.sameFaction(t, 'GER');
-    if (x === 'SOV' && ger(y)) return 1.6; if (ger(x) && y === 'SOV') return 0.7;
+    if (x === 'SOV' && ger(y)) return 1.9; if (ger(x) && y === 'SOV') return 0.6;
     return 1;
   };
   G.histMul = (x, y, n) => {
