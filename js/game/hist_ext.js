@@ -39,7 +39,7 @@
     if (nice >= 0 && alive('ITA') && axisSide('ITA')) st.prov[nice].c = 'ITA';
     // Vichy hükümeti: Pétain, tarafsız; küçük bir ateşkes ordusu
     const vichy = pidx('Vichy');
-    if (vichy >= 0) { c.cap = vichy; c.cap0 = vichy; }
+    if (vichy >= 0) c.cap = vichy; // asıl başkent (cap0) Paris kalır: Barbarossa gibi olaylar Paris'in düşüşüne bakar
     c.ideo = 'neu'; c.pop.neu = Math.max(c.pop.neu || 0, 0.5); if (G.normalizePop) G.normalizePop(c);
     c.leader = 'Philippe Pétain'; c.surrender = 0; c.train = [];
     let kept = 0;
