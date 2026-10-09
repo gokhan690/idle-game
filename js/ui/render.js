@@ -188,6 +188,47 @@
     return c;
   }
   const stripeCache = new Map();
+  // ---------- Arazi rölyefi (HOI4 siyasi haritasında renklerin altından görünen arazi) ----------
+  const TEX = {
+    mountain: { a: 0.42, f: 'rgba(0,0,0,0.13)', d: (x) => { x.strokeStyle = 'rgba(20,16,10,0.9)'; x.lineWidth = 1.3; x.beginPath(); x.moveTo(2, 12); x.lineTo(6, 5); x.lineTo(10, 12); x.moveTo(11, 7); x.lineTo(14, 2); x.lineTo(17, 7); x.stroke(); x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 0.9; x.beginPath(); x.moveTo(6, 5); x.lineTo(7.6, 8); x.moveTo(14, 2); x.lineTo(15.2, 4.4); x.stroke(); } },
+    hills: { a: 0.3, f: 'rgba(0,0,0,0.05)', d: (x) => { x.strokeStyle = 'rgba(30,24,14,0.85)'; x.lineWidth = 1.1; x.beginPath(); x.arc(6, 11, 4, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); x.beginPath(); x.arc(15, 4, 3.4, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); } },
+    forest: { a: 0.3, f: 'rgba(10,40,10,0.08)', d: (x) => { x.fillStyle = 'rgba(14,40,16,0.9)'; for (const [cx, cy] of [[4, 5], [13, 10], [7, 15]]) { x.beginPath(); x.moveTo(cx, cy - 3.2); x.lineTo(cx + 2.4, cy + 1.6); x.lineTo(cx - 2.4, cy + 1.6); x.closePath(); x.fill(); } } },
+    jungle: { a: 0.34, f: 'rgba(0,40,10,0.12)', d: (x) => { x.fillStyle = 'rgba(8,36,12,0.9)'; for (const [cx, cy] of [[3, 4], [11, 3], [7, 10], [15, 12], [3, 16]]) { x.beginPath(); x.arc(cx, cy, 1.9, 0, Math.PI * 2); x.fill(); } } },
+    marsh: { a: 0.32, f: 'rgba(20,60,70,0.08)', d: (x) => { x.strokeStyle = 'rgba(20,50,60,0.95)'; x.lineWidth = 1; x.beginPath(); for (const [cx, cy] of [[2, 5], [10, 11], [4, 16]]) { x.moveTo(cx, cy); x.lineTo(cx + 5, cy); } x.stroke(); } },
+    desert: { a: 0.28, f: 'rgba(255,230,160,0.07)', d: (x) => { x.fillStyle = 'rgba(90,70,30,0.8)'; for (const [cx, cy] of [[3, 3], [12, 6], [6, 12], [15, 15], [9, 17]]) x.fillRect(cx, cy, 1.1, 1.1); } },
+  };
+  let terrPaths = null; const texPat = new Map();
+  function terrainLayer(ctx, z) {
+    if (!terrPaths) {
+      terrPaths = new Map();
+      for (let i = 0; i < NP; i++) { const id = g.TERRAIN[P[i].te]?.id; if (!TEX[id]) continue; let pa = terrPaths.get(id); if (!pa) terrPaths.set(id, (pa = new Path2D())); pa.addPath(provPath[i]); }
+    }
+    const fade = Math.max(0, Math.min(1, (z - 0.45) / 0.5));
+    for (const [id, pa] of terrPaths) {
+      const T = TEX[id];
+      ctx.fillStyle = T.f; ctx.fill(pa, 'evenodd');
+      if (fade <= 0) continue;
+      let pat = texPat.get(id);
+      if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 19; T.d(cv.getContext('2d')); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
+      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)));
+      pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
+      ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; ctx.fill(pa, 'evenodd'); ctx.globalAlpha = 1;
+    }
+  }
+  // kâğıt dokusu ve kenar karartması (ekran uzayı)
+  let noisePat = null, vig = null, vigKey = '';
+  function atmosphere(ctx) {
+    if (!noisePat) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); const im = x.createImageData(128, 128);
+      let sd = 1234567; const rnd = () => ((sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+      for (let i = 0; i < im.data.length; i += 4) { const v = 110 + rnd() * 120; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+      x.putImageData(im, 0, 0); noisePat = ctx.createPattern(cv, 'repeat');
+    }
+    ctx.globalAlpha = 0.045; ctx.fillStyle = noisePat; ctx.fillRect(0, 0, R.w, R.h); ctx.globalAlpha = 1;
+    const key = R.w + 'x' + R.h;
+    if (vigKey !== key) { vigKey = key; vig = ctx.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)'); }
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, R.w, R.h);
+  }
   const AIRS_COLORS = ['#a8322a', '#c8682f', '#c9a640', '#7ea54c', '#3f8f4f'];
   const AIRN_COLORS = ['#4d5a6a', '#56634e', '#665a4c', '#4f5f63', '#5d5266', '#5a604a'];
   const SUP_COLORS = ['#a8322a', '#cc6a2c', '#d6a73a', '#a9b54a', '#6fa84d', '#3f8f4f'];
@@ -268,7 +309,8 @@
         if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
         ctx.globalAlpha = 1;
       }
-      // hafif rölyef: arazi gölgesi (siyasi modda dağ/tepe koyulaştır)
+      // arazi rölyefi: siyasi ve ittifak haritasında dağ, tepe, orman, çöl, bataklık dokusu
+      if ((R.mode === 'pol' || R.mode === 'fac') && R.relief !== false) terrainLayer(ctx, z);
       // eyalet sınırları
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
@@ -295,12 +337,24 @@
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
         ctx.fillStyle = 'rgba(242,210,122,0.14)'; ctx.fill(provPath[R.sel.prov], 'evenodd');
       }
+      // bölge seçimi vurgusu (strateji bölgesi kısa süre parlar)
+      if (R.regionFlash && G.AIR) {
+        const age = performance.now() - R.regionFlash.t;
+        if (age > 1600) R.regionFlash = null;
+        else {
+          const a = 1 - age / 1600, reg = G.AIR.regions[R.regionFlash.r];
+          ctx.fillStyle = `rgba(242,210,122,${0.22 * a})`; ctx.strokeStyle = `rgba(255,236,170,${0.9 * a})`; ctx.lineWidth = 2 / z;
+          for (const n of reg.nodes) if (n < NP) { ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
+          R.dirty = 1;
+        }
+      }
       // hedef önizleme
       if (R.hover >= 0 && R.hover < NP && R.sel.units.size) { ctx.strokeStyle = '#ffffff'; ctx.setLineDash([4 / z, 3 / z]); ctx.lineWidth = 1.6 / z; ctx.stroke(provPath[R.hover]); ctx.setLineDash([]); }
     }
 
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    atmosphere(ctx);
     drawLabels(ctx, z);
     if (R.mode === 'peace') drawConf(ctx);
     else {
@@ -313,7 +367,7 @@
     }
     drawAirRegions(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
-    R.dirty = 0;
+    R.dirty = R.regionFlash ? 1 : 0;
   };
 
   function visible(x, y, pad) { const s = R.toScreen(x, y); return s.x > -pad && s.y > -pad && s.x < R.w + pad && s.y < R.h + pad ? s : null; }
@@ -544,14 +598,18 @@
   function drawArmyTags(ctx, z) {
     const st = G.st, c = st.C[st.player]; if (!c) return;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    // uzak zoomda kısa etiket (ordu numarası); etiketler birbirinin üstüne binmez
+    const short = z < 0.95, placed = [];
     for (const a of playerArmies()) {
       const n = R.armyAnchor(a); if (n < 0) continue;
       const s = visible(G.nodeX[n], G.nodeY[n], 80); if (!s) continue;
       const gen = a.gen ? G.genById(c, a.gen) : null;
-      const label = `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
+      const label = short ? `${a.no || ''}. Ordu` : `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
       ctx.font = '700 10.5px "Barlow Semi Condensed", sans-serif';
-      const w = Math.max(60, ctx.measureText(label).width + 24), h = 21;
-      const x = s.x - w / 2, y = s.y - 40;
+      const w = Math.max(short ? 48 : 60, ctx.measureText(label).width + 24), h = 21;
+      const x = s.x - w / 2; let y = s.y - 40;
+      for (let t = 0; t < 4 && placed.some((r) => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y); t++) y -= h + 3;
+      placed.push({ x, y, w, h });
       const sel = R.sel.army === a.id;
       ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
       ctx.fillStyle = 'rgba(22,26,20,0.95)'; ctx.fillRect(x, y, w, h);
@@ -689,6 +747,7 @@
     ctx.strokeStyle = sel ? '#f2d27a' : fighting ? (Math.sin(R.t / 140) > 0 ? '#ff6a50' : '#8a2a1e') : opts.enemy ? '#d4553f' : 'rgba(10,10,8,0.9)';
     ctx.lineWidth = sel ? 2.6 : fighting ? 2 : 1.3;
     ctx.strokeRect(x, y, w, h);
+    if (opts.merged) { ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(x + 3, y - 3, w, h); ctx.strokeStyle = sel ? '#f2d27a' : 'rgba(244,239,224,0.35)'; ctx.strokeRect(x + 3.5, y - 3.5, w - 1, 2); }
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
@@ -701,30 +760,59 @@
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
     const showAll = z > 2.6;
+    // uzak zoom (HOI4 strateji görünümü): üst üste binen sayaçlar ülke ve ordu bazında tek sayaçta birleşir
+    const merge = z < 1.9;
     const pc = st.C[st.player];
     const armyCol = new Map(); for (const a of (pc && pc.armies) || []) armyCol.set(a.id, G.armyColor(a));
+    const items = [];
     for (const key in G.unitsAt) {
       const L = G.unitsAt[key]; if (!L || !L.length) continue;
       const n = +key;
       const s = visible(G.nodeX[n], G.nodeY[n], 40); if (!s) continue;
-      // ülkeye göre grupla
       const groups = new Map();
-      for (const u of L) { let gl = groups.get(u.t); if (!gl) groups.set(u.t, (gl = [])); gl.push(u); }
-      let k = 0;
-      const order = [...groups.keys()].sort((a, b) => (a === st.player ? -1 : b === st.player ? 1 : 0));
-      for (const tag of order) {
-        const gl = groups.get(tag);
+      for (const u of L) {
+        // birleşik görünümde oyuncunun tümenleri ordularına göre ayrılır
+        const gk = merge && u.t === st.player ? u.t + '|' + (u.army || 0) : u.t;
+        let gl = groups.get(gk); if (!gl) groups.set(gk, (gl = [])); gl.push(u);
+      }
+      for (const [gk, gl] of groups) {
+        const tag = gl[0].t;
         const mineOrAlly = tag === st.player || G.sameFaction(tag, st.player);
         const enemy = G.atWar(tag, st.player);
         if (!showAll && !mineOrAlly && !enemy) continue;
         if (z < 0.75 && !enemy && tag !== st.player) continue;
-        const x = s.x - 20 + k * 6, y = s.y - 11 + 10 + k * 23;
-        const sel = gl.some((u) => R.sel.units.has(u.id));
-        const ac = tag === st.player ? gl.find((u) => u.army && armyCol.has(u.army)) : null;
-        const { w, h } = drawCounter(ctx, x, y, gl, tag, { sel, enemy, armyCol: ac ? armyCol.get(ac.army) : null });
-        R.counters.push({ x, y, w, h, n, tag, units: gl });
-        k++;
+        items.push({ gk, tag, gl, n, x: s.x, y: s.y, enemy });
       }
+    }
+    let draw = items;
+    if (merge) {
+      // ızgara üzerinde açgözlü kümeleme: aynı anahtarlı ve yakın sayaçlar birleşir
+      const CW = 46, CH = 28, grid = new Map(), out = [];
+      items.sort((a, b) => b.gl.length - a.gl.length);
+      for (const it of items) {
+        const cx = Math.floor(it.x / CW), cy = Math.floor(it.y / CH);
+        let hit = null;
+        for (let dx = -1; dx <= 1 && !hit; dx++) for (let dy = -1; dy <= 1 && !hit; dy++) {
+          const L = grid.get((cx + dx) + ',' + (cy + dy)); if (!L) continue;
+          for (const c of L) if (c.gk === it.gk && Math.abs(c.x - it.x) < CW && Math.abs(c.y - it.y) < CH) { hit = c; break; }
+        }
+        if (hit) { hit.gl = hit.gl.concat(it.gl); hit.merged = true; continue; }
+        const c = { ...it, gl: it.gl.slice(), merged: false };
+        out.push(c); const k2 = cx + ',' + cy; (grid.get(k2) || grid.set(k2, []).get(k2)).push(c);
+      }
+      draw = out;
+    }
+    // aynı noktadaki farklı sayaçlar alt alta dizilir; oyuncunun sayaçları önde
+    draw.sort((a, b) => (a.tag === st.player ? 0 : 1) - (b.tag === st.player ? 0 : 1));
+    const stackAt = new Map();
+    for (const it of draw) {
+      const sk = Math.round(it.x / 8) + ',' + Math.round(it.y / 8);
+      const k = stackAt.get(sk) || 0; stackAt.set(sk, k + 1);
+      const x = it.x - 20 + k * 6, y = it.y - 1 + k * 23;
+      const sel = it.gl.some((u) => R.sel.units.has(u.id));
+      const ac = it.tag === st.player ? it.gl.find((u) => u.army && armyCol.has(u.army)) : null;
+      const { w, h } = drawCounter(ctx, x, y, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
+      R.counters.push({ x, y, w, h, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
     }
   }
   const lumCache = new Map();

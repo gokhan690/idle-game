@@ -36,3 +36,43 @@
     return { ok: true };
   };
 })(window);
+// Hatta yayılma (HOI4 cephe hattı): seçili tümenler, hedef noktaya en yakın sınır parçası boyunca eşit dağılır.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+  G.spreadLine = (us, n, tag) => {
+    const st = G.st;
+    if (!us.length || n < 0 || n >= NP) return { ok: false, why: 'Bir kara eyaletine dokun' };
+    const own = (i) => st.prov[i].c === tag || (G.friendly(tag, st.prov[i].c) && !G.atWar(tag, st.prov[i].c));
+    // hangi ülkeye karşı: dokunulan yer yabancıysa onun sahibi, değilse savaştaki düşmanlar ya da en yakın yabancı komşu
+    const vs = own(n) ? null : st.prov[n].c;
+    let F;
+    if (vs || G.st.C[tag].enemies.length) F = new Set(G.frontier(tag, vs));
+    else { F = new Set(); for (let i = 0; i < NP; i++) if (own(i) && P[i].a.some((j) => !own(j))) F.add(i); } // barışta: bütün yabancı sınırlar
+    if (!F.size) return { ok: false, why: 'Yakında sınır hattı yok' };
+    // dokunulan yere en yakın sınır eyaletinden başlayıp hat boyunca komşu sınır eyaletlerini topla
+    const want = Math.max(1, Math.min(F.size, Math.ceil(us.length / 2)));
+    const start = [...F].sort((a, b) => G.dist(a, n) - G.dist(b, n))[0];
+    const seg = [start], seen = new Set([start]);
+    for (let k = 0; k < seg.length && seg.length < want; k++) {
+      const nb = P[seg[k]].a.filter((j) => F.has(j) && !seen.has(j)).sort((a, b) => G.dist(a, n) - G.dist(b, n));
+      for (const j of nb) { if (seg.length >= want) break; seen.add(j); seg.push(j); }
+    }
+    // hat kopuksa en yakın diğer sınır eyaletleriyle tamamla
+    // hat kısa ya da kopuksa yalnızca yakındaki (~450 km) diğer sınır eyaletleriyle tamamla; yoksa eyalet başına daha çok tümen
+    if (seg.length < want) for (const j of [...F].sort((a, b) => G.dist(a, n) - G.dist(b, n))) { if (seg.length >= want || G.dist(j, start) > 45) break; if (!seen.has(j)) { seen.add(j); seg.push(j); } }
+    // yuvalar: her eyalete sırayla; tümenler en yakın boş yuvaya
+    const slots = []; for (let k = 0; k < us.length; k++) slots.push(seg[k % seg.length]);
+    const left = us.slice(); let ok = 0;
+    for (const sl of slots) {
+      let bi = -1, bd = Infinity;
+      for (let k = 0; k < left.length; k++) { const d = G.dist(left[k].loc, sl); if (d < bd) { bd = d; bi = k; } }
+      if (bi < 0) break;
+      const u = left.splice(bi, 1)[0];
+      if (u.loc === sl) { u.path = []; ok++; continue; }
+      const p = G.findPath(u.loc, sl, u.t, G.unitStats(u).spd, { naval: false });
+      if (p && p.length) { u.path = p; u.prog = 0; u.auto = 0; u.gar = 0; ok++; }
+    }
+    return { ok: ok > 0, n: ok, segs: seg.length, vs, why: ok ? '' : 'Tümenler hatta ulaşamıyor' };
+  };
+})(window);

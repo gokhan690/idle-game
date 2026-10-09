@@ -1092,6 +1092,7 @@
   <section class="sec"><h3 class="sec-h">Muharebe taktikleri</h3><p class="small" style="margin:0">HOI4'teki gibi her muharebede iki günde bir saldıran ve savunan birer <b>taktik</b> seçer: Taarruz, Şok Taarruzu, Topçu Barajı, Pusu, Kuşatma, Yarma; savunmada Elastik Savunma, Karşı Saldırı, Ters Darbe, Taktik Çekilme… Seçim tümenlerin bileşimine (zırh, topçu, piyade), doktrine, araziye ve kanatlara bağlıdır. Bazı taktikler rakibin taktiğini <b>sayaçlar</b> ve onu boşa çıkarır; komutanın planlama ile saldırı (ya da savunma) becerisi yüksekse rakibinin taktiğine göre doğru karşılığı seçme şansı artar. <b>Göğüs göğüse</b> evresinde zırh ve topçu zayıflar, <b>Atılım</b> evresinde zırhlılar öne çıkar. Muharebe panelinde iki tarafın taktiğini ve evreyi görürsün.</p></section>
   <section class="sec"><h3 class="sec-h">Dünya haberleri ve Türkiye</h3><p class="small" style="margin:0">Başka ülkelerin büyük tarihî hamleleri (Anschluss, Münih, Barbarossa, Pearl Harbor, D-Günü…) HOI4'teki gibi haber penceresi olarak gelir; Menü → Ayarlar'dan kapatabilirsin. Türkiye ile oynarken tarihî kararlar seni bekler: Hatay'ın katılması ("Hatay Meselesi" odağıyla), Üçlü İttifak Antlaşması, Türk-Alman Dostluk Antlaşması, Varlık Vergisi, Adana Görüşmesi, Kahire Konferansı ve 1945'te Mihvere savaş ilanı. Orta Doğu'da 1941'de Irak'taki Reşid Ali darbesi ve İngiliz-Sovyet İran harekâtı da tarihî akışta yer alır.</p></section>
   <section class="sec"><h3 class="sec-h">Kuklalar ve özerklik</h3><p class="small" style="margin:0">HOI4'teki gibi bazı devletler bir efendiye bağlıdır: 1936'da Mançukuo Japonya'ya, Britanya Hindistanı ve dominyonlar (Kanada, Avustralya, Yeni Zelanda, Güney Afrika) Britanya'ya. Barış konferansında kurduğun kuklalar da böyledir. Her bağlı devletin <b>özerklik</b> puanı vardır: Bütünleşik kukla, Kukla, Dominyon, Özerk. Seviye düştükçe efendi, bağlı devletin kaynaklarının ve askerî fabrikalarının daha büyük payını alır. Efendi savaşta çökmeye başlarsa ya da bağlı devlet güçlenirse özerklik artar; %100'de bağımsızlık ilan edilir. Diplomasi panelinde kontrolü siyasi güçle sıkılaştırabilir, özerklik tanıyabilir ya da bağımsızlık verebilirsin; bağlı devletsen daha fazla özerklik isteyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Tümen seçimi ve hatta yayma</h3><p class="small" style="margin:0">Haritanın sağındaki seçim düğmesi (kesik kare) bir menü açar: <b>Tüm tümenler</b>, <b>Ekrandakiler</b>, <b>Bölge seç</b> (bir eyalete dokun; o strateji bölgesindeki bütün tümenlerin seçilir ve bölge kısa süre parlar), <b>Alan seç</b> (parmağınla kutu çiz), <b>Emirsiz tümenler</b> ve <b>Cephedekiler</b>. Uzun basış seçime ekler. Uzaklaştırınca HOI4'teki gibi yakın sayaçlar ordu ve ülke bazında birleşir; birleşik sayaca dokununca içindeki bütün tümenler seçilir. Birden çok tümen seçiliyken <b>⟿ Hatta yay</b> ile sınırda bir noktaya dokun: tümenler o noktanın çevresindeki sınır hattına eşit dağılır (yabancı bir eyalete dokunursan o ülkenin sınırına).</p></section>
   <section class="sec"><h3 class="sec-h">Güç dengesi</h3><p class="small" style="margin:0">HOI4'teki gibi bazı ülkelerde iki iç güç arasında bir ibre vardır: ABD'de Yalnızcılık–Müdahalecilik, Almanya'da Nazi Partisi–Generaller, Sovyetlerde Paranoya–Ordunun yükselişi, Japonya'da Kara Ordusu–Donanma, Britanya'da Yatıştırma–Direniş, Türkiye'de Tarafsızlık–Müttefiklere yakınlık, İtalya'da Büyük Konsey–Duçe, Fransa'da Halk Cephesi–Sağ blok. İbrenin bulunduğu kademe (beş kademe) ülkeye değiştirici verir. İbre zamanla kayar, tarihî olaylar onu iter; Siyaset panelinden siyasi güçle bir tarafı destekleyebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Hava indirme</h3><p class="small" style="margin:0">"Hava İndirme" teknolojisi Paraşüt Tümeni şablonunu açar. Paraşüt tümenini hava üssü olan bir dost eyalete getir, seç ve "🪂 Hava indirme"ye bas; sonra en fazla 500 km uzaktaki bir eyalete dokun. Hedef bölgede en az %40 hava üstünlüğü gerekir ve düşman birliği bulunan eyalete atlanamaz. Tümen hedefi hemen ele geçirir ama morali çok düşük iner; düşman hattının gerisinde ikmalsiz kalabilir.</p></section>
   <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
@@ -1162,9 +1163,14 @@
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
       const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.', para: 'paraşüt' };
       html += `<div class="card-h"><div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
-      html += `<div class="units">${sel.slice(0, 40).map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
+      if (sel.length > 12) {
+        // çok tümen: tür başına özet (sayı, ortalama güç ve moral)
+        const by = new Map(); for (const u of sel) { const s2 = G.unitStats(u); const k = s2.t.s; const x = by.get(k) || { n: 0, str: 0, org: 0 }; x.n++; x.str += u.str; x.org += Math.max(0, u.org) / s2.org; by.set(k, x); }
+        html += `<div class="ugrp">${[...by].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => `<div class="ug"><b>${esc(k)}</b><span>×${x.n}</span>${bar(x.str / x.n, 'g')}${bar(x.org / x.n)}</div>`).join('')}</div>`;
+      } else html += `<div class="units">${sel.map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
       html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      if (sel.length >= 2) html += `<div class="tbar"><button class="btn sm ${UI.lineMode ? 'pri' : ''}" data-act="linemode">⟿ Hatta yay</button><span class="muted small">${UI.lineMode ? 'Sınırda bir noktaya dokun' : 'Tümenleri sınır boyunca eşit dağıt'}</span></div>`;
       const paras = sel.filter((u) => G.isPara && G.isPara(u));
       if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
       html += `<div class="hint small">${UI.paraMode ? `İndirme yapılacak eyalete dokun (hava üssünden en fazla ${G.PARA_KM} km).` : auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
@@ -1446,6 +1452,14 @@
   ACT.divonly = (d) => { R.sel.units = new Set([+d.v]); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divrm = (d) => { R.sel.units.delete(+d.v); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divarmy = (d) => { const c = me(); const u = G.st.units.find((x) => x.id === +d.v); if (!u) return; const L = c.armies || []; const k = L.findIndex((a) => a.id === u.army); const nx = L[k + 1]; u.army = nx ? nx.id : 0; u.auto = 0; u.path = []; UI.render(); R.dirty = 1; };
+  ACT.linemode = () => { UI.lineMode = !UI.lineMode; UI.paraMode = false; if (UI.lineMode) UI.toast('Tümenlerin yayılacağı sınır noktasına dokun.'); UI.renderSel(); };
+  UI.lineTo = (n) => {
+    UI.lineMode = false;
+    const sel = G.st.units.filter((u) => R.sel.units.has(u.id) && u.loc < NP);
+    const r = G.spreadLine(sel, n, G.st.player);
+    if (r.ok) UI.toast(`${r.n} tümen ${r.segs} eyaletlik hatta yayılıyor${r.vs ? ` (${G.cname(r.vs)} sınırı)` : ''}.`, 'good'); else UI.toast(r.why, 'warn');
+    R.dirty = 1; UI.renderSel();
+  };
   ACT.paramode = () => { UI.paraMode = !UI.paraMode; if (UI.paraMode) UI.toast(`Paraşütçülerin atlayacağı eyalete dokun (en fazla ${G.PARA_KM} km).`); UI.renderSel(); };
   // seçili paraşüt tümenlerini hedef eyalete indir
   UI.paraTo = (n) => {
@@ -1536,6 +1550,36 @@
     setTimeout(() => R.resize(), 300);
   };
   ACT.home = () => { const c = me(); if (c && c.cap >= 0) R.focusOn(c.cap, 2); };
+  // ---------- Tümen seçimi (HOI4): tümü, ekrandakiler, strateji bölgesi, alan, emirsizler, cephedekiler ----------
+  ACT.selmenu = () => {
+    const m = $('selmenu'); m.hidden = !m.hidden;
+    if (!m.hidden && (R.boxMode || R.regionMode)) { R.boxMode = R.regionMode = false; $('btn-box').classList.remove('on'); m.hidden = true; UI.toast('Seçim modu kapandı.'); }
+  };
+  UI.selectUnits = (us, msg) => {
+    R.sel.units = new Set(us.map((u) => u.id)); R.sel.army = null; R.sel.fleet = null; R.sel.prov = -1; UI.goalMode = null; UI.paraMode = false;
+    if (!us.length) { UI.toast('Seçilecek tümen yok.', 'warn'); UI.renderSel(); R.dirty = 1; return; }
+    UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
+    UI.toast(`${us.length} tümen seçildi${msg ? ': ' + msg : ''}.`);
+  };
+  ACT.selpick = (d) => {
+    const st = G.st, pl = st.player; $('selmenu').hidden = true;
+    const land = st.units.filter((u) => u.t === pl && u.loc < NP);
+    if (d.v === 'all') UI.selectUnits(land, 'bütün kara kuvvetleri');
+    else if (d.v === 'screen') UI.selectUnits(land.filter((u) => { const s2 = R.toScreen(G.nodeX[u.loc], G.nodeY[u.loc]); return s2.x >= 0 && s2.y >= 0 && s2.x <= R.w && s2.y <= R.h; }), 'ekrandakiler');
+    else if (d.v === 'idle') UI.selectUnits(land.filter((u) => !u.army && !u.auto && !u.path.length && !u.gar), 'emirsiz tümenler');
+    else if (d.v === 'front') UI.selectUnits(land.filter((u) => P[u.loc].a.some((j) => G.atWar(pl, st.prov[j].c) || G.hostileIn(j, pl))), 'cephedekiler');
+    else if (d.v === 'box') { R.boxMode = true; R.regionMode = false; $('btn-box').classList.add('on'); UI.toast('Alan seçimi: harita üzerinde parmağını sürükle.'); }
+    else if (d.v === 'region') { R.regionMode = true; R.boxMode = false; $('btn-box').classList.add('on'); UI.toast('Tümenlerini seçmek istediğin bölgeye dokun.'); }
+  };
+  // strateji bölgesindeki (hava bölgesi) tüm kara tümenlerini seç
+  UI.selectRegion = (n) => {
+    const st = G.st; R.regionMode = false; $('btn-box').classList.remove('on');
+    if (n < 0 || n >= NP || !G.regionOf) return;
+    const r = G.regionOf(n);
+    const us = st.units.filter((u) => u.t === st.player && u.loc < NP && G.regionOf(u.loc) === r);
+    R.regionFlash = { r, t: performance.now() };
+    UI.selectUnits(us, `${G.pname(n)} bölgesi`);
+  };
   ACT.boxsel = () => { R.boxMode = !R.boxMode; $('btn-box').classList.toggle('on', R.boxMode); UI.toast(R.boxMode ? 'Alan seçimi: harita üzerinde parmağını sürükle.' : 'Alan seçimi kapandı.'); };
 
   // ---------- Başlangıç ekranı ----------

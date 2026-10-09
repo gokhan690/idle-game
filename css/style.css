@@ -66,7 +66,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--brass-
 @keyframes tin { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ---------- Harita araçları ---------- */
-#map-tools { position: absolute; right: 10px; top: calc(var(--safe-t) + 84px); display: flex; flex-direction: column; gap: 6px; z-index: 15; }
+#map-tools { position: absolute; right: 10px; top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); display: flex; flex-direction: column; gap: 6px; z-index: 15; }
 #map-tools button { width: 40px; height: 40px; border-radius: 8px; background: rgba(20,24,19,0.9); border: 1px solid var(--rule); display: grid; place-items: center; }
 #map-tools button.on { border-color: var(--brass); background: rgba(214,170,76,0.25); }
 #map-tools button::before { content: ""; width: 22px; height: 22px; background: var(--paper); -webkit-mask: var(--m) center/contain no-repeat; mask: var(--m) center/contain no-repeat; }
@@ -469,3 +469,19 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .bop-bar i.on { opacity: 0; }
 .bop-m { position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(255,255,255,0.6); }
 .bop-cur b { font-size: 14.5px; }
+
+/* ---------- Seçim menüsü ---------- */
+.selmenu { position: absolute; right: 58px; top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); z-index: 26; display: flex; flex-direction: column; min-width: 220px; max-width: calc(100vw - 80px); background: rgba(18,22,17,0.97); border: 1px solid var(--brass); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.5); overflow: hidden; animation: tin 0.15s ease-out; }
+.selmenu button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 9px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.selmenu button:last-child { border-bottom: 0; }
+.selmenu button:active, .selmenu button:hover { background: rgba(214,170,76,0.14); }
+.selmenu b { font-size: 14px; }
+.selmenu span { font-size: 11.5px; color: var(--muted); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selmenu { top: auto; right: calc(10px + var(--safe-r)); bottom: calc(var(--safe-b) + 60px); max-height: calc(100vh - 80px); overflow-y: auto; }
+}
+
+.ugrp { display: flex; flex-wrap: wrap; gap: 6px; }
+.ug { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 6px; padding: 4px 8px; border: 1px solid var(--brass); border-radius: 5px; background: rgba(214,170,76,0.08); min-width: 74px; }
+.ug b { font-size: 13px; } .ug span { font-size: 12px; color: var(--muted); text-align: right; }
+.ug .bar { grid-column: 1 / -1; }
