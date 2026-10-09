@@ -222,6 +222,7 @@
     // muharebe simgesi
     if (!cnt && !R.sel.fleet && !R.sel.units.size) {
       const bm = (R.battleMarks || []).find((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
+      if (bm && bm.naval) { UI.panel = 'navy'; UI.sub = null; $('card').hidden = true; UI.render(true); const el = [...document.querySelectorAll('#sheet-body .sec-h')].find((h) => /Deniz muharebeleri/.test(h.textContent)); if (el) el.scrollIntoView(); return; }
       if (bm) { UI.panel = 'battle'; UI.sub = null; UI.battleN = bm.b.n; $('card').hidden = true; UI.render(true); return; }
     }
     // filo seçimi ve hareketi

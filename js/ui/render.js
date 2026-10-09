@@ -739,6 +739,7 @@
     for (const b of G.navalBattles || []) {
       const s = visible(G.nodeX[b.loc], G.nodeY[b.loc], 30); if (!s) continue;
       ctx.strokeStyle = '#7fb3e0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y + 8, 13 + 2 * Math.sin(R.t / 160), 0, Math.PI * 2); ctx.stroke();
+      (R.battleMarks || (R.battleMarks = [])).push({ x: s.x - 15, y: s.y - 7, w: 30, h: 30, b, naval: 1 });
     }
   }
   // NATO simgesi türü (şablondan)
