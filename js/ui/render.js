@@ -574,25 +574,58 @@
     const us = st.units.filter((u) => u.t === st.player && u.army === a.id && u.loc < NP);
     return us.length ? us[Math.floor(us.length / 2)].loc : -1;
   };
+  // tek ok: gölge, gövde ve uç (sonraki aşamalar kesik ve soluk)
+  function arrow(ctx, s0, s1, col, wdt, later) {
+    const span = M.W * R.cam.z; while (s1.x - s0.x > span / 2) s1.x -= span; while (s0.x - s1.x > span / 2) s1.x += span;
+    const dx = s1.x - s0.x, dy = s1.y - s0.y, len = Math.hypot(dx, dy); if (len < 6) return;
+    const nx = -dy / len, ny = dx / len, bend = Math.min(60, len * 0.18);
+    const cx = (s0.x + s1.x) / 2 + nx * bend, cy = (s0.y + s1.y) / 2 + ny * bend;
+    ctx.lineCap = 'round';
+    if (later) ctx.setLineDash([wdt * 1.6, wdt * 1.1]);
+    ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = wdt + 3; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke();
+    ctx.strokeStyle = col; ctx.globalAlpha = later ? 0.6 : 0.85; ctx.lineWidth = wdt; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    const ang = Math.atan2(s1.y - cy, s1.x - cx), hl = wdt * 2.6;
+    ctx.fillStyle = col; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1.5; ctx.globalAlpha = later ? 0.7 : 1;
+    ctx.beginPath(); ctx.moveTo(s1.x + Math.cos(ang) * hl * 0.5, s1.y + Math.sin(ang) * hl * 0.5); ctx.lineTo(s1.x - Math.cos(ang - 0.5) * hl, s1.y - Math.sin(ang - 0.5) * hl); ctx.lineTo(s1.x - Math.cos(ang + 0.5) * hl, s1.y - Math.sin(ang + 0.5) * hl); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+  }
   function drawArrows(ctx, z) {
     for (const a of playerArmies()) {
       if (a.goal == null) continue;
       const from = R.armyAnchor(a); if (from < 0) continue;
-      const s0 = R.toScreen(G.nodeX[from], G.nodeY[from]), s1 = R.toScreen(G.nodeX[a.goal], G.nodeY[a.goal]);
-      const span = M.W * R.cam.z; while (s1.x - s0.x > span / 2) s1.x -= span; while (s0.x - s1.x > span / 2) s1.x += span;
-      const dx = s1.x - s0.x, dy = s1.y - s0.y, len = Math.hypot(dx, dy); if (len < 6) continue;
-      const nx = -dy / len, ny = dx / len, bend = Math.min(60, len * 0.18);
-      const cx = (s0.x + s1.x) / 2 + nx * bend, cy = (s0.y + s1.y) / 2 + ny * bend;
       const col = a.ord === 'atk' ? '#d6483a' : G.armyColor(a);
       const wdt = Math.max(5, Math.min(12, 4 + z * 2));
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = wdt + 3; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke();
-      ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = wdt; ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.quadraticCurveTo(cx, cy, s1.x, s1.y); ctx.stroke(); ctx.globalAlpha = 1;
-      const ang = Math.atan2(s1.y - cy, s1.x - cx), hl = wdt * 2.6;
-      ctx.fillStyle = col; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(s1.x + Math.cos(ang) * hl * 0.5, s1.y + Math.sin(ang) * hl * 0.5); ctx.lineTo(s1.x - Math.cos(ang - 0.5) * hl, s1.y - Math.sin(ang - 0.5) * hl); ctx.lineTo(s1.x - Math.cos(ang + 0.5) * hl, s1.y - Math.sin(ang + 0.5) * hl); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.lineCap = 'butt';
+      const chain = [from, a.goal, ...(a.goals || [])];
+      for (let k = 0; k < chain.length - 1; k++) {
+        const s0 = R.toScreen(G.nodeX[chain[k]], G.nodeY[chain[k]]), s1 = R.toScreen(G.nodeX[chain[k + 1]], G.nodeY[chain[k + 1]]);
+        arrow(ctx, s0, s1, col, k ? wdt * 0.8 : wdt, k > 0);
+        if (k > 0 || chain.length > 2) { ctx.fillStyle = '#14160f'; ctx.font = '800 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.beginPath(); ctx.arc(s1.x, s1.y - 16, 8, 0, Math.PI * 2); ctx.fillStyle = '#f2d27a'; ctx.fill(); ctx.fillStyle = '#14160f'; ctx.fillText(String(k + 1), s1.x, s1.y - 15.5); }
+      }
     }
+    drawFallbacks(ctx, z);
+  }
+  // savunma hatları (HOI4 geri çekilme hattı): eyalet merkezlerinden geçen dişli çizgi
+  function fbLine(ctx, line, col, sel) {
+    if (!line || !line.length) return;
+    const pts = line.map((n) => R.toScreen(G.nodeX[n], G.nodeY[n]));
+    for (let k = 1; k < pts.length; k++) { const span = M.W * R.cam.z; while (pts[k].x - pts[k - 1].x > span / 2) pts[k].x -= span; while (pts[k - 1].x - pts[k].x > span / 2) pts[k].x += span; }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = sel ? 7 : 6; ctx.beginPath(); pts.forEach((p, k) => (k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = sel ? 3.5 : 2.6; ctx.beginPath(); pts.forEach((p, k) => (k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+    // dişler: hattın bir yanına kısa çizgiler
+    ctx.lineWidth = 2; ctx.strokeStyle = col;
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1], b = pts[k], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy); if (L < 4) continue;
+      const nx = -dy / L, ny = dx / L, step = 9;
+      for (let t = step / 2; t < L; t += step) { const x = a.x + dx * t / L, y = a.y + dy * t / L; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + nx * 5, y + ny * 5); ctx.stroke(); }
+    }
+    for (const p of [pts[0], pts[pts.length - 1]]) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(10,10,8,0.9)'; ctx.lineWidth = 1.2; ctx.stroke(); }
+    ctx.lineCap = 'butt';
+  }
+  function drawFallbacks(ctx) {
+    for (const a of playerArmies()) if (a.fb && a.fb.length) fbLine(ctx, a.fb, G.armyColor(a), R.sel.army === a.id || a.ord === 'fb');
+    if (R.fbPreview) fbLine(ctx, R.fbPreview, '#f2d27a', true);
   }
   // Ordu etiketi: komutan, emir ve planlama çubuğu (dokununca ordu seçilir)
   function drawArmyTags(ctx, z) {

@@ -191,7 +191,7 @@
     const setGoal = (a, node) => {
       const owner = st.prov[node].c;
       if (owner === st.player || G.sameFaction(owner, st.player)) return false;
-      a.goal = node; if (a.ord === 'hold') a.ord = 'def';
+      a.goal = node; a.goals = []; if (a.ord === 'hold' || a.ord === 'fb') a.ord = 'def';
       if (!G.atWar(st.player, owner)) a.vs = owner;
       pc._frontsDirty = 1; G.computeFronts(pc);
       UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
@@ -203,10 +203,18 @@
     if (R.regionMode) { UI.selectRegion(n); return; }
     // hava indirme modu
     if (UI.paraMode) { if (n >= 0 && n < NP) UI.paraTo(n); else { UI.paraMode = false; UI.renderSel(); } return; }
-    // taarruz oku modu
+    // savunma hattı çizimi
+    if (UI.fbMode) { UI.fbTap(n); return; }
+    // taarruz oku modu (+ Aşama: okun ucundan sonraki hedef)
     if (UI.goalMode) {
-      const a = G.armyById(pc, UI.goalMode); UI.goalMode = null;
-      if (a && n >= 0 && n < NP && !setGoal(a, n)) UI.toast('Ok, düşman ya da yabancı bir eyalete çizilmeli.', 'warn');
+      const a = G.armyById(pc, UI.goalMode), app = UI.goalAppend; UI.goalMode = null; UI.goalAppend = 0;
+      if (a && n >= 0 && n < NP) {
+        if (app && a.goal != null) {
+          const owner = st.prov[n].c;
+          if (owner === st.player || G.sameFaction(owner, st.player)) UI.toast('Aşama hedefi düşman ya da yabancı bir eyalet olmalı.', 'warn');
+          else { (a.goals || (a.goals = [])).push(n); UI.toast(`${a.n}: ${a.goals.length + 1}. aşama ${G.pname(n)}.`, 'good'); }
+        } else if (!setGoal(a, n)) UI.toast('Ok, düşman ya da yabancı bir eyalete çizilmeli.', 'warn');
+      }
       UI.renderSel(); R.dirty = 1; return;
     }
     // ordu etiketi
