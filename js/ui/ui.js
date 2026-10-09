@@ -30,50 +30,56 @@
     const st = G.st, c = me(); if (!c) return;
     const hc = $('hud-country');
     const key = c.tag + c.alive;
-    if (hc.dataset.k !== key) { hc.innerHTML = G.flag(c.tag, 30, 20) + `<b>${esc(G.cname(c.tag))}</b>`; hc.dataset.k = key; }
+    if (hc.dataset.k !== key) { hc.innerHTML = `<span class="hud-flag">${G.flag(c.tag, 54, 36)}</span><b>${esc(G.cname(c.tag))}</b>`; hc.dataset.k = key; }
     $('hud-date').textContent = G.fmtDate(st.day);
-    $('hud-tension').textContent = `Gerginlik %${Math.round(st.tension)}`;
     const s = c.sum, e = c.econ || {};
     const divs = st.units.reduce((n, u) => n + (u.t === c.tag), 0);
-    const chips = [
-      ['Siyasi güç', int(c.pp), ''],
-      ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : ''],
-      ['Savaş desteği', pct(c.ws ?? 0.2), ''],
-      ['İnsan gücü', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : ''],
-      ['Sivil', s.civ, ''],
-      ['Askerî', s.mil, ''],
-      ['Tersane', s.dock, ''],
-      ['Çelik', `${int(s.steel)}/${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'neg' : ''],
-      ['Petrol', `${int(s.oil)}/${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'neg' : ''],
-      ['Yakıt', `${int(fuelOf(c).fuel)}/${int(fuelOf(c).cap)}`, G.fuelRatio(c) < 1 ? 'neg' : ''],
-      ['Tümen', divs + (c.train.length ? `+${c.train.length}` : ''), ''],
+    const milA0 = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    const civUsed = Math.max(0, s.civ - (e.civFree || 0));
+    const fo = fuelOf(c);
+    // HOI4 üst çubuğu: simge + değer; dokununca açıklama
+    const res = [
+      ['pp', int(c.pp), '', 'Siyasi güç', `+${(c.ppDay || 2).toFixed(2)}/gün`],
+      ['stab', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : '', 'İstikrar', ''],
+      ['ws', pct(c.ws ?? 0.2), '', 'Savaş desteği', ''],
+      ['mp', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : '', 'Kullanılabilir insan gücü', ''],
+      ['civ', `${civUsed}/${s.civ}`, '', 'Sivil fabrikalar (kullanılan/toplam)', `${e.civFree || 0} inşaatta, kalanı tüketim malı ve ticarette`],
+      ['mil', `${milA0}/${s.mil}`, s.mil - milA0 > 0 ? 'warn' : '', 'Askerî fabrikalar (atanan/toplam)', ''],
+      ['dock', s.dock, '', 'Tersaneler', ''],
+      ['steel', `${int(s.steel)}/${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'neg' : '', 'Çelik (eldeki/gereken)', ''],
+      ['oil', `${int(s.oil)}/${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'neg' : '', 'Petrol (eldeki/gereken)', ''],
+      ['fuel', `${int(fo.fuel)}`, G.fuelRatio(c) < 1 ? 'neg' : '', 'Yakıt stoku', `kapasite ${int(fo.cap)}`],
+      ['conv', int(c.ships?.conv || 0), '', 'Konvoylar', ''],
+      ['div', divs + (c.train.length ? `+${c.train.length}` : ''), '', 'Tümenler (+eğitimde)', ''],
+      ['tension', '%' + Math.round(st.tension), st.tension > 50 ? 'neg' : '', 'Dünya gerginliği', ''],
     ];
-    if (c.enemies.length) chips.push(['Savaş', c.enemies.length + ' düşman', 'neg']);
-    const hr = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    if (c.enemies.length) res.push(['war', c.enemies.length, 'neg', 'Savaşta olunan ülkeler', c.enemies.map((t) => G.cname(t)).join(', ')]);
+    UI._resInfo = Object.fromEntries(res.map(([k, v, , n, d]) => [k, `${n}: ${v}${d ? ' · ' + d : ''}`]));
+    const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.ico(k)}<b>${v}</b></button>`).join('');
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
-    // HOI4 tarzı uyarılar
+    // HOI4 tarzı uyarılar: yuvarlak simgeler (dokununca ilgili panel + açıklama)
     const al = [];
-    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor']);
-    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi']);
-    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`]);
-    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
-    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`]);
-    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
+    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
+    const milA = milA0;
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
     const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
-    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`]);
-    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor']);
+    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
+    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
     const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
-    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
     if (c.enemies.length) {
       const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
-      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`]);
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
     }
-    const ah = al.map(([p, sub, n]) => `<button class="alert" data-act="alert" data-p="${p}" data-s="${sub}">${n}</button>`).join('');
+    const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');
     if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
     const pause = $('btn-pause');
     pause.classList.toggle('paused', !!st.paused);
-    document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
+    document.querySelectorAll('.speed [data-act=speed]').forEach((b) => { b.classList.toggle('on', +b.dataset.v <= st.speed); b.classList.toggle('cur', +b.dataset.v === st.speed); });
     $('btn-mapmode').title = UI.MODE_N[R.mode];
     UI.placeToasts();
   };
@@ -263,6 +269,7 @@
   }
 
   // odak türü (HOI4'teki simge renkleri): sanayi, kara, hava/deniz, siyaset, diplomasi
+  const FOCUS_ICO = { ind: 'civ', land: 'tank', sea: 'navy', pol: 'pp', dip: 'hand' };
   const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara kuvvetleri', '#c9614a'], sea: ['Hava ve deniz', '#5f9bd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
   const focusCat = (f) => {
     const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
@@ -313,7 +320,7 @@
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
       const cat = FOCUS_CAT[focusCat(f)][1];
       const days = active ? `${Math.ceil(G.focusDays(f) - c.focus.p)} gün kaldı` : done ? 'Tamamlandı' : `${G.focusDays(f)} gün`;
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
@@ -1210,7 +1217,15 @@
     UI.modalOpen = 1;
     G.st.paused = 1;
     const opts = p.opts || [{ n: 'Tamam', fx: () => {} }];
-    m.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><p class="eyebrow">${p.eyebrow || G.fmtDate(G.st.day)}</p><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p><div class="btns">${opts.map((o, i) => `<button class="btn ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div></div>`;
+    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div>`;
+    const art = G.eventArt ? G.eventArt(p) : '';
+    if (p.news) {
+      // HOI4 dünya haberi: gazete sayfası
+      m.innerHTML = `<div class="dialog news" role="dialog" aria-modal="true"><div class="np-mast"><span>Sayı ${1000 + G.st.day}</span><b>Dünya Postası</b><span>${G.fmtDate(G.st.day)}</span></div><h3>${esc(p.title)}</h3><div class="ev-pic">${art}</div><p class="np-text">${esc(p.text)}</p>${btns}</div>`;
+    } else {
+      // HOI4 olay penceresi: başlık şeridi, arşiv fotoğrafı, metin, seçenekler
+      m.innerHTML = `<div class="dialog ev" role="dialog" aria-modal="true"><div class="ev-head"><h3>${esc(p.title)}</h3></div><div class="ev-pic">${art}</div><p class="eyebrow">${p.eyebrow || G.fmtDate(G.st.day)}</p><p class="ev-text">${esc(p.text)}</p>${btns}</div>`;
+    }
     m.hidden = false;
     UI.modalOpts = opts;
   };
@@ -1329,7 +1344,8 @@
     R.mapDirty = 1; R.dirty = 1;
   };
   ACT.panel = (d) => UI.open(d.p);
-  ACT.alert = (d) => { if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
+  ACT.resinfo = (d) => { const t = UI._resInfo && UI._resInfo[d.k]; if (t) UI.toast(t, 'info'); };
+  ACT.alert = (d) => { if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
@@ -1664,7 +1680,7 @@
     G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
