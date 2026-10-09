@@ -77,7 +77,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--brass-
 @keyframes tin { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ---------- Harita araçları ---------- */
-#map-tools { position: absolute; right: 10px; top: calc(var(--safe-t) + 84px); display: flex; flex-direction: column; gap: 6px; z-index: 15; }
+#map-tools { position: absolute; right: 10px; top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); display: flex; flex-direction: column; gap: 6px; z-index: 15; }
 #map-tools button { width: 40px; height: 40px; border-radius: 8px; background: rgba(20,24,19,0.9); border: 1px solid var(--rule); display: grid; place-items: center; }
 #map-tools button.on { border-color: var(--brass); background: rgba(214,170,76,0.25); }
 #map-tools button::before { content: ""; width: 22px; height: 22px; background: var(--paper); -webkit-mask: var(--m) center/contain no-repeat; mask: var(--m) center/contain no-repeat; }
@@ -480,6 +480,22 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 .bop-bar i.on { opacity: 0; }
 .bop-m { position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(255,255,255,0.6); }
 .bop-cur b { font-size: 14.5px; }
+
+/* ---------- Seçim menüsü ---------- */
+.selmenu { position: absolute; right: 58px; top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); z-index: 26; display: flex; flex-direction: column; min-width: 220px; max-width: calc(100vw - 80px); background: rgba(18,22,17,0.97); border: 1px solid var(--brass); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.5); overflow: hidden; animation: tin 0.15s ease-out; }
+.selmenu button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 9px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.selmenu button:last-child { border-bottom: 0; }
+.selmenu button:active, .selmenu button:hover { background: rgba(214,170,76,0.14); }
+.selmenu b { font-size: 14px; }
+.selmenu span { font-size: 11.5px; color: var(--muted); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .selmenu { top: auto; right: calc(10px + var(--safe-r)); bottom: calc(var(--safe-b) + 60px); max-height: calc(100vh - 80px); overflow-y: auto; }
+}
+
+.ugrp { display: flex; flex-wrap: wrap; gap: 6px; }
+.ug { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 6px; padding: 4px 8px; border: 1px solid var(--brass); border-radius: 5px; background: rgba(214,170,76,0.08); min-width: 74px; }
+.ug b { font-size: 13px; } .ug span { font-size: 12px; color: var(--muted); text-align: right; }
+.ug .bar { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -511,11 +527,19 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 
   <div id="map-tools" hidden>
     <button data-act="mapmode" id="btn-mapmode" aria-label="Harita modu"></button>
-    <button data-act="boxsel" id="btn-box" aria-label="Alan seçimi"></button>
+    <button data-act="selmenu" id="btn-box" aria-label="Tümen seçimi"></button>
     <button data-act="home" aria-label="Başkente git"></button>
     <button data-act="panel" data-p="menu" id="btn-menu" aria-label="Menü"></button>
   </div>
 
+  <div id="selmenu" class="selmenu" hidden role="menu" aria-label="Tümen seçimi">
+    <button data-act="selpick" data-v="all" role="menuitem"><b>Tüm tümenler</b><span>Bütün kara tümenlerin</span></button>
+    <button data-act="selpick" data-v="screen" role="menuitem"><b>Ekrandakiler</b><span>Haritada görünen tümenlerin</span></button>
+    <button data-act="selpick" data-v="region" role="menuitem"><b>Bölge seç</b><span>Bir bölgeye dokun: oradaki tümenler</span></button>
+    <button data-act="selpick" data-v="box" role="menuitem"><b>Alan seç</b><span>Parmağını sürükleyerek kutu çiz</span></button>
+    <button data-act="selpick" data-v="idle" role="menuitem"><b>Emirsiz tümenler</b><span>Ordusuz, hareketsiz, elle yönetilen</span></button>
+    <button data-act="selpick" data-v="front" role="menuitem"><b>Cephedekiler</b><span>Düşmana komşu eyaletlerdeki tümenler</span></button>
+  </div>
   <section id="card" class="card" hidden></section>
   <section id="selbar" class="selbar" hidden></section>
 
@@ -7736,6 +7760,46 @@ window.RIVERS = [
     return { ok: true };
   };
 })(window);
+// Hatta yayılma (HOI4 cephe hattı): seçili tümenler, hedef noktaya en yakın sınır parçası boyunca eşit dağılır.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+  G.spreadLine = (us, n, tag) => {
+    const st = G.st;
+    if (!us.length || n < 0 || n >= NP) return { ok: false, why: 'Bir kara eyaletine dokun' };
+    const own = (i) => st.prov[i].c === tag || (G.friendly(tag, st.prov[i].c) && !G.atWar(tag, st.prov[i].c));
+    // hangi ülkeye karşı: dokunulan yer yabancıysa onun sahibi, değilse savaştaki düşmanlar ya da en yakın yabancı komşu
+    const vs = own(n) ? null : st.prov[n].c;
+    let F;
+    if (vs || G.st.C[tag].enemies.length) F = new Set(G.frontier(tag, vs));
+    else { F = new Set(); for (let i = 0; i < NP; i++) if (own(i) && P[i].a.some((j) => !own(j))) F.add(i); } // barışta: bütün yabancı sınırlar
+    if (!F.size) return { ok: false, why: 'Yakında sınır hattı yok' };
+    // dokunulan yere en yakın sınır eyaletinden başlayıp hat boyunca komşu sınır eyaletlerini topla
+    const want = Math.max(1, Math.min(F.size, Math.ceil(us.length / 2)));
+    const start = [...F].sort((a, b) => G.dist(a, n) - G.dist(b, n))[0];
+    const seg = [start], seen = new Set([start]);
+    for (let k = 0; k < seg.length && seg.length < want; k++) {
+      const nb = P[seg[k]].a.filter((j) => F.has(j) && !seen.has(j)).sort((a, b) => G.dist(a, n) - G.dist(b, n));
+      for (const j of nb) { if (seg.length >= want) break; seen.add(j); seg.push(j); }
+    }
+    // hat kopuksa en yakın diğer sınır eyaletleriyle tamamla
+    // hat kısa ya da kopuksa yalnızca yakındaki (~450 km) diğer sınır eyaletleriyle tamamla; yoksa eyalet başına daha çok tümen
+    if (seg.length < want) for (const j of [...F].sort((a, b) => G.dist(a, n) - G.dist(b, n))) { if (seg.length >= want || G.dist(j, start) > 45) break; if (!seen.has(j)) { seen.add(j); seg.push(j); } }
+    // yuvalar: her eyalete sırayla; tümenler en yakın boş yuvaya
+    const slots = []; for (let k = 0; k < us.length; k++) slots.push(seg[k % seg.length]);
+    const left = us.slice(); let ok = 0;
+    for (const sl of slots) {
+      let bi = -1, bd = Infinity;
+      for (let k = 0; k < left.length; k++) { const d = G.dist(left[k].loc, sl); if (d < bd) { bd = d; bi = k; } }
+      if (bi < 0) break;
+      const u = left.splice(bi, 1)[0];
+      if (u.loc === sl) { u.path = []; ok++; continue; }
+      const p = G.findPath(u.loc, sl, u.t, G.unitStats(u).spd, { naval: false });
+      if (p && p.length) { u.path = p; u.prog = 0; u.auto = 0; u.gar = 0; ok++; }
+    }
+    return { ok: ok > 0, n: ok, segs: seg.length, vs, why: ok ? '' : 'Tümenler hatta ulaşamıyor' };
+  };
+})(window);
 
 /* js/game/bop.js */
 // Güç dengesi (HOI4 "Balance of Power"): bazı ülkelerde iki iç güç arasındaki denge −1..+1 arasında bir ibre.
@@ -8635,6 +8699,47 @@ window.RIVERS = [
     return c;
   }
   const stripeCache = new Map();
+  // ---------- Arazi rölyefi (HOI4 siyasi haritasında renklerin altından görünen arazi) ----------
+  const TEX = {
+    mountain: { a: 0.42, f: 'rgba(0,0,0,0.13)', d: (x) => { x.strokeStyle = 'rgba(20,16,10,0.9)'; x.lineWidth = 1.3; x.beginPath(); x.moveTo(2, 12); x.lineTo(6, 5); x.lineTo(10, 12); x.moveTo(11, 7); x.lineTo(14, 2); x.lineTo(17, 7); x.stroke(); x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 0.9; x.beginPath(); x.moveTo(6, 5); x.lineTo(7.6, 8); x.moveTo(14, 2); x.lineTo(15.2, 4.4); x.stroke(); } },
+    hills: { a: 0.3, f: 'rgba(0,0,0,0.05)', d: (x) => { x.strokeStyle = 'rgba(30,24,14,0.85)'; x.lineWidth = 1.1; x.beginPath(); x.arc(6, 11, 4, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); x.beginPath(); x.arc(15, 4, 3.4, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); } },
+    forest: { a: 0.3, f: 'rgba(10,40,10,0.08)', d: (x) => { x.fillStyle = 'rgba(14,40,16,0.9)'; for (const [cx, cy] of [[4, 5], [13, 10], [7, 15]]) { x.beginPath(); x.moveTo(cx, cy - 3.2); x.lineTo(cx + 2.4, cy + 1.6); x.lineTo(cx - 2.4, cy + 1.6); x.closePath(); x.fill(); } } },
+    jungle: { a: 0.34, f: 'rgba(0,40,10,0.12)', d: (x) => { x.fillStyle = 'rgba(8,36,12,0.9)'; for (const [cx, cy] of [[3, 4], [11, 3], [7, 10], [15, 12], [3, 16]]) { x.beginPath(); x.arc(cx, cy, 1.9, 0, Math.PI * 2); x.fill(); } } },
+    marsh: { a: 0.32, f: 'rgba(20,60,70,0.08)', d: (x) => { x.strokeStyle = 'rgba(20,50,60,0.95)'; x.lineWidth = 1; x.beginPath(); for (const [cx, cy] of [[2, 5], [10, 11], [4, 16]]) { x.moveTo(cx, cy); x.lineTo(cx + 5, cy); } x.stroke(); } },
+    desert: { a: 0.28, f: 'rgba(255,230,160,0.07)', d: (x) => { x.fillStyle = 'rgba(90,70,30,0.8)'; for (const [cx, cy] of [[3, 3], [12, 6], [6, 12], [15, 15], [9, 17]]) x.fillRect(cx, cy, 1.1, 1.1); } },
+  };
+  let terrPaths = null; const texPat = new Map();
+  function terrainLayer(ctx, z) {
+    if (!terrPaths) {
+      terrPaths = new Map();
+      for (let i = 0; i < NP; i++) { const id = g.TERRAIN[P[i].te]?.id; if (!TEX[id]) continue; let pa = terrPaths.get(id); if (!pa) terrPaths.set(id, (pa = new Path2D())); pa.addPath(provPath[i]); }
+    }
+    const fade = Math.max(0, Math.min(1, (z - 0.45) / 0.5));
+    for (const [id, pa] of terrPaths) {
+      const T = TEX[id];
+      ctx.fillStyle = T.f; ctx.fill(pa, 'evenodd');
+      if (fade <= 0) continue;
+      let pat = texPat.get(id);
+      if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 19; T.d(cv.getContext('2d')); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
+      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)));
+      pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
+      ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; ctx.fill(pa, 'evenodd'); ctx.globalAlpha = 1;
+    }
+  }
+  // kâğıt dokusu ve kenar karartması (ekran uzayı)
+  let noisePat = null, vig = null, vigKey = '';
+  function atmosphere(ctx) {
+    if (!noisePat) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); const im = x.createImageData(128, 128);
+      let sd = 1234567; const rnd = () => ((sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+      for (let i = 0; i < im.data.length; i += 4) { const v = 110 + rnd() * 120; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+      x.putImageData(im, 0, 0); noisePat = ctx.createPattern(cv, 'repeat');
+    }
+    ctx.globalAlpha = 0.045; ctx.fillStyle = noisePat; ctx.fillRect(0, 0, R.w, R.h); ctx.globalAlpha = 1;
+    const key = R.w + 'x' + R.h;
+    if (vigKey !== key) { vigKey = key; vig = ctx.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)'); }
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, R.w, R.h);
+  }
   const AIRS_COLORS = ['#a8322a', '#c8682f', '#c9a640', '#7ea54c', '#3f8f4f'];
   const AIRN_COLORS = ['#4d5a6a', '#56634e', '#665a4c', '#4f5f63', '#5d5266', '#5a604a'];
   const SUP_COLORS = ['#a8322a', '#cc6a2c', '#d6a73a', '#a9b54a', '#6fa84d', '#3f8f4f'];
@@ -8715,7 +8820,8 @@ window.RIVERS = [
         if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
         ctx.globalAlpha = 1;
       }
-      // hafif rölyef: arazi gölgesi (siyasi modda dağ/tepe koyulaştır)
+      // arazi rölyefi: siyasi ve ittifak haritasında dağ, tepe, orman, çöl, bataklık dokusu
+      if ((R.mode === 'pol' || R.mode === 'fac') && R.relief !== false) terrainLayer(ctx, z);
       // eyalet sınırları
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
       ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
@@ -8742,12 +8848,24 @@ window.RIVERS = [
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
         ctx.fillStyle = 'rgba(242,210,122,0.14)'; ctx.fill(provPath[R.sel.prov], 'evenodd');
       }
+      // bölge seçimi vurgusu (strateji bölgesi kısa süre parlar)
+      if (R.regionFlash && G.AIR) {
+        const age = performance.now() - R.regionFlash.t;
+        if (age > 1600) R.regionFlash = null;
+        else {
+          const a = 1 - age / 1600, reg = G.AIR.regions[R.regionFlash.r];
+          ctx.fillStyle = `rgba(242,210,122,${0.22 * a})`; ctx.strokeStyle = `rgba(255,236,170,${0.9 * a})`; ctx.lineWidth = 2 / z;
+          for (const n of reg.nodes) if (n < NP) { ctx.fill(provPath[n], 'evenodd'); ctx.stroke(provPath[n]); }
+          R.dirty = 1;
+        }
+      }
       // hedef önizleme
       if (R.hover >= 0 && R.hover < NP && R.sel.units.size) { ctx.strokeStyle = '#ffffff'; ctx.setLineDash([4 / z, 3 / z]); ctx.lineWidth = 1.6 / z; ctx.stroke(provPath[R.hover]); ctx.setLineDash([]); }
     }
 
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    atmosphere(ctx);
     drawLabels(ctx, z);
     if (R.mode === 'peace') drawConf(ctx);
     else {
@@ -8760,7 +8878,7 @@ window.RIVERS = [
     }
     drawAirRegions(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
-    R.dirty = 0;
+    R.dirty = R.regionFlash ? 1 : 0;
   };
 
   function visible(x, y, pad) { const s = R.toScreen(x, y); return s.x > -pad && s.y > -pad && s.x < R.w + pad && s.y < R.h + pad ? s : null; }
@@ -8991,14 +9109,18 @@ window.RIVERS = [
   function drawArmyTags(ctx, z) {
     const st = G.st, c = st.C[st.player]; if (!c) return;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    // uzak zoomda kısa etiket (ordu numarası); etiketler birbirinin üstüne binmez
+    const short = z < 0.95, placed = [];
     for (const a of playerArmies()) {
       const n = R.armyAnchor(a); if (n < 0) continue;
       const s = visible(G.nodeX[n], G.nodeY[n], 80); if (!s) continue;
       const gen = a.gen ? G.genById(c, a.gen) : null;
-      const label = `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
+      const label = short ? `${a.no || ''}. Ordu` : `${a.no || ''}. ${gen ? gen.n.replace(/^(Gen\.|Mareşal|Mar\.)\s*/, '') : 'Komutansız'}`;
       ctx.font = '700 10.5px "Barlow Semi Condensed", sans-serif';
-      const w = Math.max(60, ctx.measureText(label).width + 24), h = 21;
-      const x = s.x - w / 2, y = s.y - 40;
+      const w = Math.max(short ? 48 : 60, ctx.measureText(label).width + 24), h = 21;
+      const x = s.x - w / 2; let y = s.y - 40;
+      for (let t = 0; t < 4 && placed.some((r) => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y); t++) y -= h + 3;
+      placed.push({ x, y, w, h });
       const sel = R.sel.army === a.id;
       ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
       ctx.fillStyle = 'rgba(22,26,20,0.95)'; ctx.fillRect(x, y, w, h);
@@ -9136,6 +9258,7 @@ window.RIVERS = [
     ctx.strokeStyle = sel ? '#f2d27a' : fighting ? (Math.sin(R.t / 140) > 0 ? '#ff6a50' : '#8a2a1e') : opts.enemy ? '#d4553f' : 'rgba(10,10,8,0.9)';
     ctx.lineWidth = sel ? 2.6 : fighting ? 2 : 1.3;
     ctx.strokeRect(x, y, w, h);
+    if (opts.merged) { ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(x + 3, y - 3, w, h); ctx.strokeStyle = sel ? '#f2d27a' : 'rgba(244,239,224,0.35)'; ctx.strokeRect(x + 3.5, y - 3.5, w - 1, 2); }
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
@@ -9148,30 +9271,59 @@ window.RIVERS = [
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
     const showAll = z > 2.6;
+    // uzak zoom (HOI4 strateji görünümü): üst üste binen sayaçlar ülke ve ordu bazında tek sayaçta birleşir
+    const merge = z < 1.9;
     const pc = st.C[st.player];
     const armyCol = new Map(); for (const a of (pc && pc.armies) || []) armyCol.set(a.id, G.armyColor(a));
+    const items = [];
     for (const key in G.unitsAt) {
       const L = G.unitsAt[key]; if (!L || !L.length) continue;
       const n = +key;
       const s = visible(G.nodeX[n], G.nodeY[n], 40); if (!s) continue;
-      // ülkeye göre grupla
       const groups = new Map();
-      for (const u of L) { let gl = groups.get(u.t); if (!gl) groups.set(u.t, (gl = [])); gl.push(u); }
-      let k = 0;
-      const order = [...groups.keys()].sort((a, b) => (a === st.player ? -1 : b === st.player ? 1 : 0));
-      for (const tag of order) {
-        const gl = groups.get(tag);
+      for (const u of L) {
+        // birleşik görünümde oyuncunun tümenleri ordularına göre ayrılır
+        const gk = merge && u.t === st.player ? u.t + '|' + (u.army || 0) : u.t;
+        let gl = groups.get(gk); if (!gl) groups.set(gk, (gl = [])); gl.push(u);
+      }
+      for (const [gk, gl] of groups) {
+        const tag = gl[0].t;
         const mineOrAlly = tag === st.player || G.sameFaction(tag, st.player);
         const enemy = G.atWar(tag, st.player);
         if (!showAll && !mineOrAlly && !enemy) continue;
         if (z < 0.75 && !enemy && tag !== st.player) continue;
-        const x = s.x - 20 + k * 6, y = s.y - 11 + 10 + k * 23;
-        const sel = gl.some((u) => R.sel.units.has(u.id));
-        const ac = tag === st.player ? gl.find((u) => u.army && armyCol.has(u.army)) : null;
-        const { w, h } = drawCounter(ctx, x, y, gl, tag, { sel, enemy, armyCol: ac ? armyCol.get(ac.army) : null });
-        R.counters.push({ x, y, w, h, n, tag, units: gl });
-        k++;
+        items.push({ gk, tag, gl, n, x: s.x, y: s.y, enemy });
       }
+    }
+    let draw = items;
+    if (merge) {
+      // ızgara üzerinde açgözlü kümeleme: aynı anahtarlı ve yakın sayaçlar birleşir
+      const CW = 46, CH = 28, grid = new Map(), out = [];
+      items.sort((a, b) => b.gl.length - a.gl.length);
+      for (const it of items) {
+        const cx = Math.floor(it.x / CW), cy = Math.floor(it.y / CH);
+        let hit = null;
+        for (let dx = -1; dx <= 1 && !hit; dx++) for (let dy = -1; dy <= 1 && !hit; dy++) {
+          const L = grid.get((cx + dx) + ',' + (cy + dy)); if (!L) continue;
+          for (const c of L) if (c.gk === it.gk && Math.abs(c.x - it.x) < CW && Math.abs(c.y - it.y) < CH) { hit = c; break; }
+        }
+        if (hit) { hit.gl = hit.gl.concat(it.gl); hit.merged = true; continue; }
+        const c = { ...it, gl: it.gl.slice(), merged: false };
+        out.push(c); const k2 = cx + ',' + cy; (grid.get(k2) || grid.set(k2, []).get(k2)).push(c);
+      }
+      draw = out;
+    }
+    // aynı noktadaki farklı sayaçlar alt alta dizilir; oyuncunun sayaçları önde
+    draw.sort((a, b) => (a.tag === st.player ? 0 : 1) - (b.tag === st.player ? 0 : 1));
+    const stackAt = new Map();
+    for (const it of draw) {
+      const sk = Math.round(it.x / 8) + ',' + Math.round(it.y / 8);
+      const k = stackAt.get(sk) || 0; stackAt.set(sk, k + 1);
+      const x = it.x - 20 + k * 6, y = it.y - 1 + k * 23;
+      const sel = it.gl.some((u) => R.sel.units.has(u.id));
+      const ac = it.tag === st.player ? it.gl.find((u) => u.army && armyCol.has(u.army)) : null;
+      const { w, h } = drawCounter(ctx, x, y, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
+      R.counters.push({ x, y, w, h, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
     }
   }
   const lumCache = new Map();
@@ -10281,6 +10433,7 @@ window.RIVERS = [
   <section class="sec"><h3 class="sec-h">Muharebe taktikleri</h3><p class="small" style="margin:0">HOI4'teki gibi her muharebede iki günde bir saldıran ve savunan birer <b>taktik</b> seçer: Taarruz, Şok Taarruzu, Topçu Barajı, Pusu, Kuşatma, Yarma; savunmada Elastik Savunma, Karşı Saldırı, Ters Darbe, Taktik Çekilme… Seçim tümenlerin bileşimine (zırh, topçu, piyade), doktrine, araziye ve kanatlara bağlıdır. Bazı taktikler rakibin taktiğini <b>sayaçlar</b> ve onu boşa çıkarır; komutanın planlama ile saldırı (ya da savunma) becerisi yüksekse rakibinin taktiğine göre doğru karşılığı seçme şansı artar. <b>Göğüs göğüse</b> evresinde zırh ve topçu zayıflar, <b>Atılım</b> evresinde zırhlılar öne çıkar. Muharebe panelinde iki tarafın taktiğini ve evreyi görürsün.</p></section>
   <section class="sec"><h3 class="sec-h">Dünya haberleri ve Türkiye</h3><p class="small" style="margin:0">Başka ülkelerin büyük tarihî hamleleri (Anschluss, Münih, Barbarossa, Pearl Harbor, D-Günü…) HOI4'teki gibi haber penceresi olarak gelir; Menü → Ayarlar'dan kapatabilirsin. Türkiye ile oynarken tarihî kararlar seni bekler: Hatay'ın katılması ("Hatay Meselesi" odağıyla), Üçlü İttifak Antlaşması, Türk-Alman Dostluk Antlaşması, Varlık Vergisi, Adana Görüşmesi, Kahire Konferansı ve 1945'te Mihvere savaş ilanı. Orta Doğu'da 1941'de Irak'taki Reşid Ali darbesi ve İngiliz-Sovyet İran harekâtı da tarihî akışta yer alır.</p></section>
   <section class="sec"><h3 class="sec-h">Kuklalar ve özerklik</h3><p class="small" style="margin:0">HOI4'teki gibi bazı devletler bir efendiye bağlıdır: 1936'da Mançukuo Japonya'ya, Britanya Hindistanı ve dominyonlar (Kanada, Avustralya, Yeni Zelanda, Güney Afrika) Britanya'ya. Barış konferansında kurduğun kuklalar da böyledir. Her bağlı devletin <b>özerklik</b> puanı vardır: Bütünleşik kukla, Kukla, Dominyon, Özerk. Seviye düştükçe efendi, bağlı devletin kaynaklarının ve askerî fabrikalarının daha büyük payını alır. Efendi savaşta çökmeye başlarsa ya da bağlı devlet güçlenirse özerklik artar; %100'de bağımsızlık ilan edilir. Diplomasi panelinde kontrolü siyasi güçle sıkılaştırabilir, özerklik tanıyabilir ya da bağımsızlık verebilirsin; bağlı devletsen daha fazla özerklik isteyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Tümen seçimi ve hatta yayma</h3><p class="small" style="margin:0">Haritanın sağındaki seçim düğmesi (kesik kare) bir menü açar: <b>Tüm tümenler</b>, <b>Ekrandakiler</b>, <b>Bölge seç</b> (bir eyalete dokun; o strateji bölgesindeki bütün tümenlerin seçilir ve bölge kısa süre parlar), <b>Alan seç</b> (parmağınla kutu çiz), <b>Emirsiz tümenler</b> ve <b>Cephedekiler</b>. Uzun basış seçime ekler. Uzaklaştırınca HOI4'teki gibi yakın sayaçlar ordu ve ülke bazında birleşir; birleşik sayaca dokununca içindeki bütün tümenler seçilir. Birden çok tümen seçiliyken <b>⟿ Hatta yay</b> ile sınırda bir noktaya dokun: tümenler o noktanın çevresindeki sınır hattına eşit dağılır (yabancı bir eyalete dokunursan o ülkenin sınırına).</p></section>
   <section class="sec"><h3 class="sec-h">Güç dengesi</h3><p class="small" style="margin:0">HOI4'teki gibi bazı ülkelerde iki iç güç arasında bir ibre vardır: ABD'de Yalnızcılık–Müdahalecilik, Almanya'da Nazi Partisi–Generaller, Sovyetlerde Paranoya–Ordunun yükselişi, Japonya'da Kara Ordusu–Donanma, Britanya'da Yatıştırma–Direniş, Türkiye'de Tarafsızlık–Müttefiklere yakınlık, İtalya'da Büyük Konsey–Duçe, Fransa'da Halk Cephesi–Sağ blok. İbrenin bulunduğu kademe (beş kademe) ülkeye değiştirici verir. İbre zamanla kayar, tarihî olaylar onu iter; Siyaset panelinden siyasi güçle bir tarafı destekleyebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Hava indirme</h3><p class="small" style="margin:0">"Hava İndirme" teknolojisi Paraşüt Tümeni şablonunu açar. Paraşüt tümenini hava üssü olan bir dost eyalete getir, seç ve "🪂 Hava indirme"ye bas; sonra en fazla 500 km uzaktaki bir eyalete dokun. Hedef bölgede en az %40 hava üstünlüğü gerekir ve düşman birliği bulunan eyalete atlanamaz. Tümen hedefi hemen ele geçirir ama morali çok düşük iner; düşman hattının gerisinde ikmalsiz kalabilir.</p></section>
   <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
@@ -10351,9 +10504,14 @@ window.RIVERS = [
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
       const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.', para: 'paraşüt' };
       html += `<div class="card-h"><div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
-      html += `<div class="units">${sel.slice(0, 40).map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
+      if (sel.length > 12) {
+        // çok tümen: tür başına özet (sayı, ortalama güç ve moral)
+        const by = new Map(); for (const u of sel) { const s2 = G.unitStats(u); const k = s2.t.s; const x = by.get(k) || { n: 0, str: 0, org: 0 }; x.n++; x.str += u.str; x.org += Math.max(0, u.org) / s2.org; by.set(k, x); }
+        html += `<div class="ugrp">${[...by].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => `<div class="ug"><b>${esc(k)}</b><span>×${x.n}</span>${bar(x.str / x.n, 'g')}${bar(x.org / x.n)}</div>`).join('')}</div>`;
+      } else html += `<div class="units">${sel.map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
       html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      if (sel.length >= 2) html += `<div class="tbar"><button class="btn sm ${UI.lineMode ? 'pri' : ''}" data-act="linemode">⟿ Hatta yay</button><span class="muted small">${UI.lineMode ? 'Sınırda bir noktaya dokun' : 'Tümenleri sınır boyunca eşit dağıt'}</span></div>`;
       const paras = sel.filter((u) => G.isPara && G.isPara(u));
       if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
       html += `<div class="hint small">${UI.paraMode ? `İndirme yapılacak eyalete dokun (hava üssünden en fazla ${G.PARA_KM} km).` : auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
@@ -10635,6 +10793,14 @@ window.RIVERS = [
   ACT.divonly = (d) => { R.sel.units = new Set([+d.v]); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divrm = (d) => { R.sel.units.delete(+d.v); R.sel.army = null; UI.close(); UI.renderSel(); R.dirty = 1; };
   ACT.divarmy = (d) => { const c = me(); const u = G.st.units.find((x) => x.id === +d.v); if (!u) return; const L = c.armies || []; const k = L.findIndex((a) => a.id === u.army); const nx = L[k + 1]; u.army = nx ? nx.id : 0; u.auto = 0; u.path = []; UI.render(); R.dirty = 1; };
+  ACT.linemode = () => { UI.lineMode = !UI.lineMode; UI.paraMode = false; if (UI.lineMode) UI.toast('Tümenlerin yayılacağı sınır noktasına dokun.'); UI.renderSel(); };
+  UI.lineTo = (n) => {
+    UI.lineMode = false;
+    const sel = G.st.units.filter((u) => R.sel.units.has(u.id) && u.loc < NP);
+    const r = G.spreadLine(sel, n, G.st.player);
+    if (r.ok) UI.toast(`${r.n} tümen ${r.segs} eyaletlik hatta yayılıyor${r.vs ? ` (${G.cname(r.vs)} sınırı)` : ''}.`, 'good'); else UI.toast(r.why, 'warn');
+    R.dirty = 1; UI.renderSel();
+  };
   ACT.paramode = () => { UI.paraMode = !UI.paraMode; if (UI.paraMode) UI.toast(`Paraşütçülerin atlayacağı eyalete dokun (en fazla ${G.PARA_KM} km).`); UI.renderSel(); };
   // seçili paraşüt tümenlerini hedef eyalete indir
   UI.paraTo = (n) => {
@@ -10725,6 +10891,36 @@ window.RIVERS = [
     setTimeout(() => R.resize(), 300);
   };
   ACT.home = () => { const c = me(); if (c && c.cap >= 0) R.focusOn(c.cap, 2); };
+  // ---------- Tümen seçimi (HOI4): tümü, ekrandakiler, strateji bölgesi, alan, emirsizler, cephedekiler ----------
+  ACT.selmenu = () => {
+    const m = $('selmenu'); m.hidden = !m.hidden;
+    if (!m.hidden && (R.boxMode || R.regionMode)) { R.boxMode = R.regionMode = false; $('btn-box').classList.remove('on'); m.hidden = true; UI.toast('Seçim modu kapandı.'); }
+  };
+  UI.selectUnits = (us, msg) => {
+    R.sel.units = new Set(us.map((u) => u.id)); R.sel.army = null; R.sel.fleet = null; R.sel.prov = -1; UI.goalMode = null; UI.paraMode = false;
+    if (!us.length) { UI.toast('Seçilecek tümen yok.', 'warn'); UI.renderSel(); R.dirty = 1; return; }
+    UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
+    UI.toast(`${us.length} tümen seçildi${msg ? ': ' + msg : ''}.`);
+  };
+  ACT.selpick = (d) => {
+    const st = G.st, pl = st.player; $('selmenu').hidden = true;
+    const land = st.units.filter((u) => u.t === pl && u.loc < NP);
+    if (d.v === 'all') UI.selectUnits(land, 'bütün kara kuvvetleri');
+    else if (d.v === 'screen') UI.selectUnits(land.filter((u) => { const s2 = R.toScreen(G.nodeX[u.loc], G.nodeY[u.loc]); return s2.x >= 0 && s2.y >= 0 && s2.x <= R.w && s2.y <= R.h; }), 'ekrandakiler');
+    else if (d.v === 'idle') UI.selectUnits(land.filter((u) => !u.army && !u.auto && !u.path.length && !u.gar), 'emirsiz tümenler');
+    else if (d.v === 'front') UI.selectUnits(land.filter((u) => P[u.loc].a.some((j) => G.atWar(pl, st.prov[j].c) || G.hostileIn(j, pl))), 'cephedekiler');
+    else if (d.v === 'box') { R.boxMode = true; R.regionMode = false; $('btn-box').classList.add('on'); UI.toast('Alan seçimi: harita üzerinde parmağını sürükle.'); }
+    else if (d.v === 'region') { R.regionMode = true; R.boxMode = false; $('btn-box').classList.add('on'); UI.toast('Tümenlerini seçmek istediğin bölgeye dokun.'); }
+  };
+  // strateji bölgesindeki (hava bölgesi) tüm kara tümenlerini seç
+  UI.selectRegion = (n) => {
+    const st = G.st; R.regionMode = false; $('btn-box').classList.remove('on');
+    if (n < 0 || n >= NP || !G.regionOf) return;
+    const r = G.regionOf(n);
+    const us = st.units.filter((u) => u.t === st.player && u.loc < NP && G.regionOf(u.loc) === r);
+    R.regionFlash = { r, t: performance.now() };
+    UI.selectUnits(us, `${G.pname(n)} bölgesi`);
+  };
   ACT.boxsel = () => { R.boxMode = !R.boxMode; $('btn-box').classList.toggle('on', R.boxMode); UI.toast(R.boxMode ? 'Alan seçimi: harita üzerinde parmağını sürükle.' : 'Alan seçimi kapandı.'); };
 
   // ---------- Başlangıç ekranı ----------
@@ -10963,6 +11159,7 @@ window.RIVERS = [
   }
 
   function onTap(x, y) {
+    const sm = document.getElementById('selmenu'); if (sm && !sm.hidden) { sm.hidden = true; return; }
     const st = G.st; if (!st || !$('start').hidden) return;
     // hava kanadı için bölge seçimi
     if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
@@ -10975,7 +11172,7 @@ window.RIVERS = [
       const mine = (G.unitsAt[node] || []).filter((u) => u.t === st.player);
       if (!mine.length) return false;
       R.sel.units = new Set(mine.map((u) => u.id));
-      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false;
+      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false; UI.lineMode = false;
       // dikey ekranda seçili yığın kartın altında kalmasın
       const sp = R.toScreen(G.nodeX[node], G.nodeY[node]);
       if (R.h > R.w && sp.y > R.h * 0.42) { R.cam.y += (sp.y - R.h * 0.3) / R.cam.z; R.clamp(); }
@@ -10983,6 +11180,12 @@ window.RIVERS = [
       return true;
     };
     const pc = st.C[st.player];
+    // birleşik sayaç (uzak zoom): içindeki bütün tümenleri seç
+    const pickCnt = (k) => {
+      if (!k.merged) { selectAt(k.n); return; }
+      R.sel.units = new Set(k.units.map((u) => u.id)); R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false;
+      UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
+    };
     const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
     const setGoal = (a, node) => {
       const owner = st.prov[node].c;
@@ -10993,6 +11196,10 @@ window.RIVERS = [
       UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
       return true;
     };
+    // hatta yayma modu
+    if (UI.lineMode) { if (n >= 0 && n < NP) UI.lineTo(n); else { UI.lineMode = false; UI.renderSel(); } return; }
+    // bölge seçimi modu
+    if (R.regionMode) { UI.selectRegion(n); return; }
     // hava indirme modu
     if (UI.paraMode) { if (n >= 0 && n < NP) UI.paraTo(n); else { UI.paraMode = false; UI.renderSel(); } return; }
     // taarruz oku modu
@@ -11023,11 +11230,11 @@ window.RIVERS = [
     }
     if (R.sel.units.size) {
       const sel = st.units.filter((u) => R.sel.units.has(u.id));
-      const allHere = sel.length > 0 && sel.every((u) => u.loc === n);
+      const allHere = sel.length > 0 && (cnt && cnt.merged ? sel.length === cnt.units.length && cnt.units.every((u) => R.sel.units.has(u.id)) : sel.every((u) => u.loc === n));
       if (cnt && cnt.tag === st.player && !cnt.fleet) {
         if (allHere && !R.sel.army) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
         const arm = armyOfCnt(cnt);
-        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else selectAt(cnt.n);
+        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else pickCnt(cnt);
         return;
       }
       if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
@@ -11036,7 +11243,7 @@ window.RIVERS = [
       if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
       order(sel, n); return;
     }
-    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else selectAt(cnt.n); return; }
+    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else pickCnt(cnt); return; }
     if (n < 0) { R.sel.prov = -1; $('card').hidden = true; R.dirty = 1; return; }
     if (n >= NP) { selectAt(n); return; }
     R.sel.prov = n;

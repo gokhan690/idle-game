@@ -46,11 +46,19 @@
 
   <div id="map-tools" hidden>
     <button data-act="mapmode" id="btn-mapmode" aria-label="Harita modu"></button>
-    <button data-act="boxsel" id="btn-box" aria-label="Alan seçimi"></button>
+    <button data-act="selmenu" id="btn-box" aria-label="Tümen seçimi"></button>
     <button data-act="home" aria-label="Başkente git"></button>
     <button data-act="panel" data-p="menu" id="btn-menu" aria-label="Menü"></button>
   </div>
 
+  <div id="selmenu" class="selmenu" hidden role="menu" aria-label="Tümen seçimi">
+    <button data-act="selpick" data-v="all" role="menuitem"><b>Tüm tümenler</b><span>Bütün kara tümenlerin</span></button>
+    <button data-act="selpick" data-v="screen" role="menuitem"><b>Ekrandakiler</b><span>Haritada görünen tümenlerin</span></button>
+    <button data-act="selpick" data-v="region" role="menuitem"><b>Bölge seç</b><span>Bir bölgeye dokun: oradaki tümenler</span></button>
+    <button data-act="selpick" data-v="box" role="menuitem"><b>Alan seç</b><span>Parmağını sürükleyerek kutu çiz</span></button>
+    <button data-act="selpick" data-v="idle" role="menuitem"><b>Emirsiz tümenler</b><span>Ordusuz, hareketsiz, elle yönetilen</span></button>
+    <button data-act="selpick" data-v="front" role="menuitem"><b>Cephedekiler</b><span>Düşmana komşu eyaletlerdeki tümenler</span></button>
+  </div>
   <section id="card" class="card" hidden></section>
   <section id="selbar" class="selbar" hidden></section>
 

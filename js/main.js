@@ -160,6 +160,7 @@
   }
 
   function onTap(x, y) {
+    const sm = document.getElementById('selmenu'); if (sm && !sm.hidden) { sm.hidden = true; return; }
     const st = G.st; if (!st || !$('start').hidden) return;
     // hava kanadı için bölge seçimi
     if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
@@ -172,7 +173,7 @@
       const mine = (G.unitsAt[node] || []).filter((u) => u.t === st.player);
       if (!mine.length) return false;
       R.sel.units = new Set(mine.map((u) => u.id));
-      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false;
+      R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false; UI.lineMode = false;
       // dikey ekranda seçili yığın kartın altında kalmasın
       const sp = R.toScreen(G.nodeX[node], G.nodeY[node]);
       if (R.h > R.w && sp.y > R.h * 0.42) { R.cam.y += (sp.y - R.h * 0.3) / R.cam.z; R.clamp(); }
@@ -180,6 +181,12 @@
       return true;
     };
     const pc = st.C[st.player];
+    // birleşik sayaç (uzak zoom): içindeki bütün tümenleri seç
+    const pickCnt = (k) => {
+      if (!k.merged) { selectAt(k.n); return; }
+      R.sel.units = new Set(k.units.map((u) => u.id)); R.sel.prov = -1; R.sel.army = null; UI.goalMode = null; UI.paraMode = false;
+      UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
+    };
     const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
     const setGoal = (a, node) => {
       const owner = st.prov[node].c;
@@ -190,6 +197,10 @@
       UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
       return true;
     };
+    // hatta yayma modu
+    if (UI.lineMode) { if (n >= 0 && n < NP) UI.lineTo(n); else { UI.lineMode = false; UI.renderSel(); } return; }
+    // bölge seçimi modu
+    if (R.regionMode) { UI.selectRegion(n); return; }
     // hava indirme modu
     if (UI.paraMode) { if (n >= 0 && n < NP) UI.paraTo(n); else { UI.paraMode = false; UI.renderSel(); } return; }
     // taarruz oku modu
@@ -220,11 +231,11 @@
     }
     if (R.sel.units.size) {
       const sel = st.units.filter((u) => R.sel.units.has(u.id));
-      const allHere = sel.length > 0 && sel.every((u) => u.loc === n);
+      const allHere = sel.length > 0 && (cnt && cnt.merged ? sel.length === cnt.units.length && cnt.units.every((u) => R.sel.units.has(u.id)) : sel.every((u) => u.loc === n));
       if (cnt && cnt.tag === st.player && !cnt.fleet) {
         if (allHere && !R.sel.army) { R.sel.units.clear(); UI.renderSel(); R.dirty = 1; return; }
         const arm = armyOfCnt(cnt);
-        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else selectAt(cnt.n);
+        if (arm && R.sel.army !== arm) UI.selectArmy(arm); else pickCnt(cnt);
         return;
       }
       if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
@@ -233,7 +244,7 @@
       if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
       order(sel, n); return;
     }
-    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else selectAt(cnt.n); return; }
+    if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else pickCnt(cnt); return; }
     if (n < 0) { R.sel.prov = -1; $('card').hidden = true; R.dirty = 1; return; }
     if (n >= NP) { selectAt(n); return; }
     R.sel.prov = n;
