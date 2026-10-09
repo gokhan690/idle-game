@@ -11,7 +11,7 @@ const css = readFileSync(join(ROOT, 'css/style.css'), 'utf8');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]);
 const js = scripts.map((s) => `/* ${s} */\n` + readFileSync(join(ROOT, s), 'utf8').replace(/<\/script/gi, '<\\/script')).join('\n');
 const app = html.slice(html.indexOf('<!--APP-->') + 10, html.indexOf('<!--/APP-->'));
-const fonts = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&display=swap">';
+const fonts = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap">';
 const icon = 'data:image/svg+xml,' + encodeURIComponent(readFileSync(join(ROOT, 'icons/icon.svg'), 'utf8'));
 
 mkdirSync(join(ROOT, 'dist'), { recursive: true });

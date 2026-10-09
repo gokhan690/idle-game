@@ -42,7 +42,7 @@
     if (!nw || !G.newsOn || !st.player || e.actor === st.player) return;
     if (st._newsDay === st.day) return; // aynı gün birden çok haber penceresi açma
     st._newsDay = st.day;
-    G.queuePopup({ eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: nw[0], text: nw[1], opts: [{ n: 'İlginç', fx: () => {} }] });
+    G.queuePopup({ news: 1, eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: nw[0], text: nw[1], opts: [{ n: 'İlginç', fx: () => {} }] });
   };
 
   // ---------- Türkiye ----------

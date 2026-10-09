@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -23,22 +23,21 @@
   <canvas id="map" aria-label="Dünya haritası"></canvas>
 
   <header id="hud" hidden>
-    <div class="hud-row">
-      <button id="hud-country" class="hud-country" data-act="panel" data-p="pol"></button>
-      <div class="hud-date">
+    <button id="hud-country" class="hud-country" data-act="panel" data-p="pol" aria-label="Siyaset"></button>
+    <div class="hud-res" id="hud-res"></div>
+    <div class="hud-clock">
+      <button id="btn-pause" class="sp-pause" data-act="pause" aria-label="Duraklat / devam"></button>
+      <div class="hud-datebox">
         <span id="hud-date"></span>
-        <span id="hud-tension" class="hud-tension" title="Dünya gerginliği"></span>
-      </div>
-      <div class="speed" role="group" aria-label="Oyun hızı">
-        <button id="btn-pause" class="sp-pause" data-act="pause" aria-label="Duraklat / devam"></button>
-        <button data-act="speed" data-v="1">1</button>
-        <button data-act="speed" data-v="2">2</button>
-        <button data-act="speed" data-v="3">3</button>
-        <button data-act="speed" data-v="4">4</button>
-        <button data-act="speed" data-v="5">5</button>
+        <div class="speed" role="group" aria-label="Oyun hızı">
+          <button data-act="speed" data-v="1" aria-label="Hız 1"></button>
+          <button data-act="speed" data-v="2" aria-label="Hız 2"></button>
+          <button data-act="speed" data-v="3" aria-label="Hız 3"></button>
+          <button data-act="speed" data-v="4" aria-label="Hız 4"></button>
+          <button data-act="speed" data-v="5" aria-label="Hız 5"></button>
+        </div>
       </div>
     </div>
-    <div class="hud-res" id="hud-res"></div>
     <div class="hud-alerts" id="hud-alerts" hidden></div>
   </header>
 
@@ -135,11 +134,15 @@
 <script src="js/game/fuel.js"></script>
 <script src="js/game/volunteers.js"></script>
 <script src="js/game/elections.js"></script>
+<script src="js/game/ledger.js"></script>
 <script src="js/ui/flags.js"></script>
+<script src="js/ui/icons.js"></script>
 <script src="js/ui/render.js"></script>
 <script src="js/ui/ui.js"></script>
 <script src="js/ui/audio.js"></script>
 <script src="js/ui/tutorial.js"></script>
+<script src="js/ui/eventart.js"></script>
+<script src="js/ui/ledger.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

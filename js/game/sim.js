@@ -804,6 +804,7 @@
     if (G.volTick) G.volTick(); // gönüllü kuvvetler
     if (G.elecTick) G.elecTick(); // seçimler
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
+    if (G.ledgerTick) G.ledgerTick(); // defter istatistikleri (aylık)
   }
   // yarım kalmış günü tamamla (kayıt, yükleme ve senkron çağrılardan önce)
   G.tickIt = null;

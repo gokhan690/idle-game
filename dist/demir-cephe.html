@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Demir Cephe</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%0A%20%20%3Crect%20width%3D%22512%22%20height%3D%22512%22%20rx%3D%2296%22%20fill%3D%22%23171c18%22%2F%3E%0A%20%20%3Cg%20fill%3D%22none%22%20stroke%3D%22%233b4537%22%20stroke-width%3D%226%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M64%20176h384M64%20256h384M64%20336h384M176%2064v384M256%2064v384M336%2064v384%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cpath%20d%3D%22M96%20360c60-20%2090-70%20150-80s110%2030%20170-10%22%20fill%3D%22none%22%20stroke%3D%22%23d65a43%22%20stroke-width%3D%2218%22%20stroke-linecap%3D%22round%22%20stroke-dasharray%3D%222%2034%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22256%22%20cy%3D%22232%22%20r%3D%22118%22%20fill%3D%22none%22%20stroke%3D%22%23d6aa4c%22%20stroke-width%3D%2222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M188%20286l68-118%2068%20118-68-34z%22%20fill%3D%22%23d6aa4c%22%2F%3E%0A%3C%2Fsvg%3E%0A">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Stencil+Display:wght@700;800&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap">
 <style>/* Demir Cephe — harekât masası teması.
    Düzen: tam ekran harita; üstte durum şeridi, altta komuta menüsü, aradan kayan paneller. */
 :root {
@@ -511,6 +511,233 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
 #tut p { margin: 0 0 10px; font-size: 14px; line-height: 1.4; color: #e6e0cc; }
 #tut .tut-btns { display: flex; gap: 6px; align-items: center; }
 #tut .tut-btns .grow { flex: 1; }
+
+/* =====================================================================
+   HOI4 teması: metalik çerçeveler, dokulu koyu zeytin paneller, eğimli düğmeler,
+   simgeli üst çubuk, yuvarlak uyarılar, resimli olay pencereleri ve gazete haberleri.
+   ===================================================================== */
+:root {
+  --field: #22261e; --field-2: #2b3027; --field-3: #394034; --rule: #4c5245;
+  --paper: #ebe5d0; --muted: #aba893; --brass: #c9a54e; --brass-2: #f1d47e;
+  --good: #79d151; --bad: #ff5f43; --warn: #f2c14a;
+  --f-serif: "Old Standard TT", Georgia, "Times New Roman", serif;
+  --tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.6 0 0 0 0 0.6 0 0 0 0 0.5 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --panel-bg: var(--tex), linear-gradient(180deg, #2b3026 0%, #20241c 100%);
+  --bevel: inset 0 1px 0 rgba(255,255,240,0.14), inset 0 -1px 0 rgba(0,0,0,0.45);
+  --frame: 0 0 0 1px #121410, inset 0 0 0 1px #6e7262, inset 0 0 0 2px #1a1c16;
+}
+.hi { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
+.hi svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- Üst çubuk ---------- */
+#hud {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "flag res clock" "flag alerts alerts";
+  align-items: center; gap: 4px 10px; padding: calc(var(--safe-t) + 5px) 10px 6px;
+  background: var(--tex), linear-gradient(180deg, #2a2d24 0%, #1a1d16 70%, #14160f 100%);
+  border-bottom: 0; box-shadow: 0 1px 0 #6c6a52, 0 2px 0 #0d0f0b, 0 6px 14px rgba(0,0,0,0.45);
+}
+.hud-country { grid-area: flag; padding: 0; gap: 8px; align-self: start; }
+.hud-flag { position: relative; display: block; padding: 3px; background: linear-gradient(145deg, #e3cd84, #8a7334 45%, #c9ae5e 60%, #5b4a1d); border: 1px solid #0f0e09; box-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+.hud-flag svg { display: block; width: 54px; height: 36px; border: 1px solid #0f0e09; }
+.hud-flag::after { content: ""; position: absolute; inset: 4px; background: linear-gradient(160deg, rgba(255,255,255,0.32), rgba(255,255,255,0) 45%, rgba(0,0,0,0.18)); pointer-events: none; }
+.hud-country b { display: none; }
+.hud-res { grid-area: res; margin: 0; padding: 0; gap: 0; align-items: center; }
+.res { flex: none; display: flex; align-items: center; gap: 4px; padding: 3px 8px 3px 6px; border-right: 1px solid rgba(255,255,230,0.08); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.res:last-child { border-right: 0; }
+.res b { font-weight: 700; font-size: 14px; color: #f1e7c6; text-shadow: 0 1px 0 #000; }
+.res.neg b { color: var(--bad); } .res.warn b { color: var(--warn); }
+.res:active { background: rgba(255,255,230,0.07); }
+.hud-clock { grid-area: clock; display: flex; align-items: center; gap: 5px; justify-self: end; }
+.sp-pause { width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(#55603f, #343c25); border: 1px solid #0d0f0a; box-shadow: var(--bevel); color: #eef3d8; display: grid; place-items: center; }
+.sp-pause.paused { background: linear-gradient(#b4432f, #6e2116); color: #fff; }
+.hud-datebox { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 3px 8px 4px; background: #11130e; border: 1px solid #55584a; box-shadow: inset 0 2px 5px rgba(0,0,0,0.8); border-radius: 2px; min-width: 150px; }
+#hud-date { font-weight: 700; font-size: 14px; color: #f1e7c6; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: 0.02em; }
+.hud-datebox .speed { display: flex; align-items: flex-end; justify-content: center; gap: 4px; border: 0; border-radius: 0; overflow: visible; height: 16px; }
+.hud-datebox .speed button { width: 14px; height: auto; padding: 0; border: 0; display: flex; align-items: flex-end; justify-content: center; }
+.hud-datebox .speed button::before { content: ""; display: block; width: 8px; background: #3b3f33; border: 1px solid #0b0c09; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+.hud-datebox .speed button:nth-child(1)::before { height: 6px; } .hud-datebox .speed button:nth-child(2)::before { height: 8px; } .hud-datebox .speed button:nth-child(3)::before { height: 10px; } .hud-datebox .speed button:nth-child(4)::before { height: 12px; } .hud-datebox .speed button:nth-child(5)::before { height: 14px; }
+.hud-datebox .speed button.on::before { background: linear-gradient(#d7f07a, #7aa52c); }
+.hud-datebox .speed button.on.cur::before { box-shadow: 0 0 6px rgba(200,240,110,0.7); }
+#hud:has(.sp-pause.paused) .speed button.on::before { background: linear-gradient(#a8a68a, #6b6a55); box-shadow: none; }
+.hud-alerts { grid-area: alerts; margin: 0; padding: 2px 0 0; gap: 7px; }
+.alert { flex: none; position: relative; width: 34px; height: 34px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #3d4433, #171a12 75%); border: 2px solid #d6a63c; box-shadow: 0 0 0 1px #0b0c08, 0 2px 5px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.15); color: inherit; }
+.alert::before { content: none; }
+.alert .hi { width: 20px; height: 20px; }
+.alert.a-hi { border-color: #e04a32; animation: alertGlow 1.6s ease-in-out infinite; }
+@keyframes alertGlow { 50% { box-shadow: 0 0 0 1px #0b0c08, 0 0 10px 2px rgba(224,74,50,0.6); } }
+.alert em { position: absolute; right: -4px; bottom: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: #b8392b; border: 1px solid #0b0c08; color: #fff; font: 700 10px/13px var(--f-ui); font-style: normal; text-align: center; }
+@media (orientation: portrait), (max-width: 600px) {
+  #hud { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "flag . clock" "res res res" "alerts alerts alerts"; }
+  .hud-res { margin: 0 -10px; padding: 0 6px; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  #hud { display: grid; padding: calc(var(--safe-t) + 4px) calc(8px + var(--safe-r)) 4px 8px; gap: 3px 8px; }
+  .hud-flag svg { width: 45px; height: 30px; }
+  .res { padding: 2px 6px 2px 4px; } .res b { font-size: 13px; }
+  .sp-pause { width: 32px; height: 32px; }
+  .alert { width: 30px; height: 30px; } .alert .hi { width: 17px; height: 17px; }
+}
+.sp-pause::before { width: 11px; height: 13px; }
+
+/* ---------- Komuta menüsü (HOI4 sol üst düğmeleri gibi kare kutular) ---------- */
+#nav { background: var(--tex), linear-gradient(180deg, #23271f, #15170f); border-top: 0; box-shadow: 0 -1px 0 #6c6a52, 0 -2px 0 #0d0f0b; padding: 3px 3px var(--safe-b); gap: 3px; }
+#nav button { height: calc(var(--nav-h) - 6px); margin: 3px 0; border-radius: 3px; background: linear-gradient(180deg, #3b4134, #23271e); border: 1px solid #0f110c; box-shadow: var(--bevel); color: #cfc9b2; }
+#nav button .ic { filter: drop-shadow(0 1px 0 #000); }
+#nav button.on { color: #ffe9a8; background: linear-gradient(180deg, #6a5e30, #3a3419); border-color: #c9a54e; box-shadow: var(--bevel), 0 0 8px rgba(201,165,78,0.45); }
+#nav button span { text-shadow: 0 1px 0 #000; }
+@media (orientation: landscape) and (max-height: 560px) {
+  #nav { box-shadow: 1px 0 0 #6c6a52, 2px 0 0 #0d0f0b; padding: calc(var(--safe-t) + 3px) 4px calc(var(--safe-b) + 3px) calc(var(--safe-l) + 4px); gap: 3px; }
+  #nav button { margin: 0; height: auto; }
+  #nav button.on { box-shadow: var(--bevel), 0 0 8px rgba(201,165,78,0.45); }
+}
+
+/* ---------- Paneller ---------- */
+.sheet { background: var(--panel-bg); border-top: 0; box-shadow: var(--frame), 0 -12px 30px rgba(0,0,0,0.55); }
+@media (min-width: 760px) { .sheet { border: 0; border-radius: 3px; } }
+@media (orientation: landscape) and (max-height: 560px) { .sheet { border-left: 0; } }
+.sheet-head { background: linear-gradient(180deg, #3a3f31, #23271d); border-bottom: 1px solid #0e100b; box-shadow: 0 1px 0 #6b6a50, inset 0 1px 0 rgba(255,255,230,0.1); }
+.sheet-head h2 { font: 700 19px/1.1 var(--f-ui); letter-spacing: 0.12em; color: #f0e3b6; text-shadow: 0 1px 0 #000, 0 0 10px rgba(240,210,120,0.15); }
+.sheet-close, .sheet-back, .sheet-tall { width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(#4a4f40, #2a2e23); border: 1px solid #0e100b; box-shadow: var(--bevel); color: #e6dfc6; font-size: 16px; }
+.sheet-close { background: linear-gradient(#8f3324, #561a10); color: #ffe2d8; }
+.sheet-back { font-size: 24px; margin-left: -4px; }
+.sec-h { border-bottom: 0; padding: 5px 9px; background: linear-gradient(90deg, rgba(201,165,78,0.22), rgba(201,165,78,0.04) 70%, transparent); border-left: 3px solid var(--brass); color: #f0dc9c; text-shadow: 0 1px 0 #000; letter-spacing: 0.14em; }
+.sec-h span { color: #c9c3a8; }
+.kv div { background: #161912; border: 1px solid #3a3f33; border-radius: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.7); }
+.kv small { color: #b8b39a; }
+.kv b { color: #f5e3a2; text-shadow: 0 1px 0 #000; }
+.kv b.good, .kv .good b { color: var(--good); } .kv b.bad, .kv .bad b { color: var(--bad); }
+.item { background: linear-gradient(180deg, #31372c, #262b22); border: 1px solid #454b3e; border-radius: 2px; box-shadow: var(--bevel); }
+button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
+.item.active { border-color: var(--brass); background: linear-gradient(180deg, #4b4426, #2e2a18); box-shadow: var(--bevel), 0 0 6px rgba(201,165,78,0.35); }
+.item .t { color: #f1ead2; }
+.bar { height: 7px; background: #0f110c; border: 1px solid #3a3f33; border-radius: 1px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
+.bar i { background: linear-gradient(180deg, #f2d47a, #a8822c); }
+.bar.g i { background: linear-gradient(180deg, #a9e872, #4f8d27); } .bar.r i { background: linear-gradient(180deg, #ff8a6c, #a4301c); }
+.btn { border-radius: 2px; background: linear-gradient(180deg, #535c47, #333a2b); border: 1px solid #10120d; box-shadow: var(--bevel); color: #f1ebd4; text-shadow: 0 1px 0 #000; }
+.btn:active { background: linear-gradient(180deg, #3a4131, #4a5340); }
+.btn.pri { background: linear-gradient(180deg, #7d8c3c, #4b571d); border-color: #12150a; color: #fbf7dc; box-shadow: var(--bevel), 0 0 0 1px rgba(190,210,110,0.35); }
+.btn.danger { background: linear-gradient(180deg, #8f3826, #551b11); border-color: #120806; color: #ffe1d6; }
+.stepper button { border-radius: 2px; background: linear-gradient(180deg, #535c47, #333a2b); border: 1px solid #10120d; box-shadow: var(--bevel); }
+.stepper b { color: #f5e3a2; }
+.tabs { gap: 2px; border-bottom: 1px solid #5d5c45; padding-bottom: 0; }
+.tabs button { border-radius: 3px 3px 0 0; border: 1px solid #10120d; border-bottom: 0; background: linear-gradient(180deg, #3a4034, #23271e); color: #c9c3a8; box-shadow: inset 0 1px 0 rgba(255,255,230,0.1); }
+.tabs button.on { background: linear-gradient(180deg, #74673a, #463e1f); color: #fff2c4; border-color: #c9a54e; }
+.toggle { background: linear-gradient(180deg, #31372c, #262b22); border: 1px solid #454b3e; border-radius: 2px; box-shadow: var(--bevel); }
+.pill { border-radius: 2px; }
+.flag { box-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+
+/* ---------- Eyalet kartı, seçim çubuğu, araçlar, bildirimler ---------- */
+.card, .selbar { background: var(--panel-bg); border: 0; border-radius: 3px; box-shadow: var(--frame), 0 10px 28px rgba(0,0,0,0.55); }
+.card-h h3 { color: #f0e3b6; letter-spacing: 0.02em; text-shadow: 0 1px 0 #000; }
+.ubox { border-radius: 2px; background: linear-gradient(180deg, #31372c, #262b22); border-color: #454b3e; box-shadow: var(--bevel); }
+#map-tools button { border-radius: 3px; background: linear-gradient(180deg, #3b4134, #1f231a); border: 1px solid #0f110c; box-shadow: var(--bevel), 0 2px 6px rgba(0,0,0,0.5); }
+#map-tools button.on { border-color: var(--brass); background: linear-gradient(180deg, #6a5e30, #3a3419); }
+.toast { border-radius: 2px; background: var(--panel-bg); border: 1px solid #0f110c; border-left: 4px solid var(--info); box-shadow: inset 0 0 0 1px #5d604f, 0 6px 18px rgba(0,0,0,0.5); color: #ece5cc; }
+.toast.t-good { border-left-color: var(--good); } .toast.t-bad { border-left-color: var(--bad); } .toast.t-warn, .toast.t-major { border-left-color: var(--brass); }
+
+/* ---------- Olay penceresi (HOI4) ---------- */
+.modal { background: radial-gradient(ellipse at center, rgba(6,8,6,0.45), rgba(6,8,6,0.78)); }
+.dialog.ev, .dialog.news { width: min(560px, 100%); padding: 0; gap: 0; border: 0; border-radius: 3px; background: var(--panel-bg); box-shadow: 0 0 0 1px #0d0e0a, inset 0 0 0 1px #8b8a6c, inset 0 0 0 3px #1a1c16, inset 0 0 0 4px #4d4f42, 0 24px 60px rgba(0,0,0,0.7); }
+.ev-head { padding: 10px 16px 9px; background: linear-gradient(180deg, #4a4630, #26261b); border-bottom: 1px solid #0d0e0a; box-shadow: 0 1px 0 #7d7552; text-align: center; }
+.dialog.ev h3 { font: 700 22px/1.15 var(--f-serif); letter-spacing: 0.02em; text-transform: none; color: #f6e7b8; text-shadow: 0 1px 0 #000, 0 0 12px rgba(240,210,120,0.2); }
+.ev-pic { margin: 12px 14px 0; border: 2px solid #0d0e0a; box-shadow: 0 0 0 1px #8b7a4a, 0 4px 12px rgba(0,0,0,0.5); line-height: 0; background: #2a2116; }
+.ev-art { display: block; width: 100%; height: auto; aspect-ratio: 320 / 140; }
+.dialog.ev .eyebrow { margin: 10px 16px 0; color: #d6b766; }
+.dialog.ev .ev-text { margin: 6px 16px 0; font-size: 15.5px; line-height: 1.5; color: #e4dcc3; }
+.dialog.ev .btns, .dialog.news .btns { padding: 12px 14px 14px; gap: 6px; }
+.btn.evopt { min-height: 42px; font-size: 15px; justify-content: flex-start; padding-left: 14px; }
+.btn.evopt.pri { background: linear-gradient(180deg, #535c47, #333a2b); box-shadow: var(--bevel), inset 3px 0 0 #c9a54e; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .dialog.ev { width: min(760px, 100%); display: grid; grid-template-columns: 44% 1fr; grid-template-areas: "head head" "pic eb" "pic text" "btns btns"; align-content: start; }
+  .ev-head { grid-area: head; padding: 6px 12px; } .dialog.ev h3 { font-size: 19px; }
+  .ev-pic { grid-area: pic; margin: 10px 0 0 12px; align-self: start; }
+  .dialog.ev .eyebrow { grid-area: eb; margin: 10px 14px 0; }
+  .dialog.ev .ev-text { grid-area: text; margin: 4px 14px 0; font-size: 14px; }
+  .dialog.ev .btns { grid-area: btns; padding: 10px 12px 12px; flex-direction: row; flex-wrap: wrap; }
+  .dialog.ev .btns .btn { flex: 1 1 200px; width: auto; }
+}
+/* gazete (dünya haberleri) */
+.dialog.news { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.25 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(180deg, #ece2c6, #d9cba6); color: #1e1a12; box-shadow: 0 0 0 1px #0d0e0a, 0 24px 60px rgba(0,0,0,0.7); padding: 12px 16px 0; transform: rotate(-0.6deg); }
+.np-mast { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-top: 3px double #1e1a12; border-bottom: 3px double #1e1a12; padding: 4px 0 2px; font: 400 11px/1 var(--f-serif); color: #3a3223; }
+.np-mast b { font: 700 italic 28px/1 var(--f-serif); color: #15120c; letter-spacing: 0.01em; white-space: nowrap; }
+.dialog.news h3 { margin: 10px 0 8px; font: 700 26px/1.08 var(--f-serif); text-transform: uppercase; text-align: center; color: #15120c; letter-spacing: 0.01em; text-wrap: balance; }
+.dialog.news .ev-pic { margin: 0; border: 1px solid #1e1a12; box-shadow: none; }
+.dialog.news .ev-art { filter: grayscale(1) contrast(1.15) brightness(1.05); }
+.dialog.news .np-text { margin: 8px 0 0; font: 400 15px/1.45 var(--f-serif); color: #241f16; text-align: justify; hyphens: auto; }
+.dialog.news .np-text::first-letter { float: left; font: 700 40px/0.85 var(--f-serif); padding: 4px 6px 0 0; }
+.dialog.news .btns { padding: 12px 0 14px; }
+.dialog.news .btn { background: #1e1a12; color: #efe6cb; border-color: #000; box-shadow: none; text-shadow: none; justify-content: center; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .dialog.news { width: min(720px, 100%); display: grid; grid-template-columns: 40% 1fr; grid-template-areas: "mast mast" "h h" "pic text" "btns btns"; column-gap: 14px; }
+  .np-mast { grid-area: mast; } .dialog.news h3 { grid-area: h; font-size: 22px; margin: 8px 0 6px; }
+  .dialog.news .ev-pic { grid-area: pic; align-self: start; } .dialog.news .np-text { grid-area: text; margin: 0; font-size: 14px; }
+  .dialog.news .btns { grid-area: btns; padding: 10px 0 12px; }
+}
+/* eski düz pencere (başlangıç, onaylar) de çerçeveli */
+.dialog { background: var(--panel-bg); border: 0; border-radius: 3px; box-shadow: 0 0 0 1px #0d0e0a, inset 0 0 0 1px #8b8a6c, inset 0 0 0 3px #1a1c16, 0 24px 60px rgba(0,0,0,0.7); }
+.dialog:not(.ev):not(.news) h3 { font-family: var(--f-serif); text-transform: none; color: #f6e7b8; font-size: 26px; }
+.hud-datebox .speed button, .hud-datebox .speed button.on, .hud-datebox .speed button:first-child { background: none; border: 0; width: 14px; color: inherit; }
+@media (orientation: portrait), (max-width: 600px) {
+  #hud { grid-template-areas: "flag alerts clock" "res res res"; }
+  .hud-alerts { align-self: center; padding: 0 2px; min-width: 0; }
+}
+/* odak düğümü: HOI4 gibi sağ üstte kategori madalyonu, isim plakası */
+.fn { background: linear-gradient(180deg, #2c3227, #20251c); border-color: #4a5043; border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255,255,230,0.08), 0 3px 8px rgba(0,0,0,0.45); }
+.fn .fic { position: absolute; right: 4px; top: 4px; width: calc(var(--fz, 12px) * 2); height: calc(var(--fz, 12px) * 2); padding: 3px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #3d4433, #12140e 75%); border: 1px solid var(--fc, #777); box-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.fn .t { padding-right: calc(var(--fz, 12px) * 2.1); color: #efe7cc; }
+.fn.avail { background: linear-gradient(180deg, #3b3a22, #25251a); }
+.fn.done { background: linear-gradient(180deg, #2c4226, #1e2e1a); }
+.fn.active { background: linear-gradient(180deg, #5a4d22, #352d14); }
+.ftree { background: var(--tex), radial-gradient(ellipse at 50% 0%, rgba(214,170,76,0.07), transparent 60%), #161a13; }
+.ftree .ln { stroke: #5a6150; stroke-width: 2.5; }
+/* başlangıç: metalik başlık */
+.start h1 { font-family: var(--f-serif); font-weight: 700; letter-spacing: 0.03em; background: linear-gradient(180deg, #fff6d8 0%, #d9c58d 38%, #8d7638 52%, #e6d29a 70%, #b49a55 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.6)); }
+.start { background: var(--tex), radial-gradient(ellipse at 70% 0%, rgba(214,170,76,0.12), transparent 55%), linear-gradient(180deg, rgba(12,16,13,0.82), rgba(12,16,13,0.97) 45%); }
+.mcard { background: linear-gradient(180deg, #2f3529, #22271e); border: 1px solid #4a5043; border-radius: 3px; box-shadow: var(--bevel); }
+.mcard.on { border-color: var(--brass); box-shadow: var(--bevel), 0 0 0 1px var(--brass), 0 0 12px rgba(201,165,78,0.35); }
+.seg { border-radius: 2px; border-color: #10120d; }
+.seg button { background: linear-gradient(180deg, #3a4034, #23271e); }
+.seg button.on { background: linear-gradient(180deg, #74673a, #463e1f); color: #fff2c4; }
+/* ---------- Defter ---------- */
+.ledt { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.ledt .lr { position: relative; display: grid; grid-template-columns: minmax(96px, 1.6fr) repeat(auto-fit, minmax(40px, 1fr)); grid-auto-flow: column; grid-auto-columns: minmax(40px, 1fr); gap: 4px; align-items: center; padding: 5px 8px 7px; width: 100%; text-align: right; font-size: 13px; background: linear-gradient(180deg, #2c3127, #22261d); border: 1px solid #3e4438; border-radius: 2px; }
+.ledt .lr.lh { background: none; border: 0; padding-bottom: 2px; color: #b8b39a; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.ledt .lr > span:first-child { text-align: left; }
+.ledt .ln { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ledt .ln b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #efe7cc; }
+.ledt .lr.me { border-color: var(--brass); background: linear-gradient(180deg, #403a20, #2a2615); }
+.ledt .lbar { position: absolute; left: 8px; bottom: 2px; height: 2px; max-width: calc(100% - 16px); background: #c9a54e; border-radius: 0 2px 2px 0; opacity: 0.85; }
+.ledchart { position: relative; background: #1c2019; border: 1px solid #3a3f33; box-shadow: inset 0 2px 4px rgba(0,0,0,0.6); border-radius: 2px; padding: 4px; touch-action: pan-y; }
+.ledchart svg { display: block; width: 100%; height: auto; }
+.ledchart .gl { stroke: #3a3f33; stroke-width: 1; }
+.ledchart .ax { fill: #a8a691; font: 11px var(--f-ui); }
+.ledchart .dl { fill: #ebe5d0; font: 600 11px var(--f-ui); }
+.ledchart .xh { stroke: #c3c2b7; stroke-width: 1; stroke-dasharray: 3 3; }
+.ledtip { position: absolute; top: 8px; min-width: 130px; padding: 6px 8px; background: rgba(20,22,17,0.96); border: 1px solid #5d604f; border-radius: 2px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; color: #ebe5d0; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+.ledtip span { display: flex; align-items: center; gap: 5px; } .ledtip i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.ledtip em { margin-left: auto; font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; padding-left: 8px; }
+.ledleg { margin-bottom: 4px; }
+/* eyalet bina yuvaları (HOI4) */
+.bslots { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.bslots .bs { width: 22px; height: 22px; display: grid; place-items: center; background: #12140f; border: 1px solid #4a5043; box-shadow: inset 0 1px 3px rgba(0,0,0,0.8); border-radius: 2px; }
+.bslots .bs svg { width: 16px; height: 16px; }
+.bslots .bs.civ { background: linear-gradient(180deg, #4b4a3a, #2c2b20); border-color: #8c8a6c; }
+.bslots .bs.mil { background: linear-gradient(180deg, #45502d, #2a3119); border-color: #7f8f52; }
+.bslots .bs.dock { background: linear-gradient(180deg, #2d4352, #1a2830); border-color: #5f87a3; }
+.bslots em { margin-left: 4px; font-style: normal; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.blvs { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.blv { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--muted); }
+.blv small { font-size: 11.5px; margin-right: 4px; }
+.blv i { width: 9px; height: 12px; background: #12140f; border: 1px solid #4a5043; transform: skewX(-12deg); }
+.blv i.on { background: linear-gradient(180deg, #f2d47a, #a8822c); border-color: #2a2412; }
+.blv.fort i.on { background: linear-gradient(180deg, #c9c3a8, #77735f); }
+.blv.air i.on { background: linear-gradient(180deg, #9fc6ea, #4a79a3); }
+@media (orientation: portrait), (max-width: 600px) {
+  .hud-datebox { min-width: 0; padding: 3px 6px 4px; }
+  #hud-date { font-size: 12.5px; letter-spacing: 0; }
+  .hud-flag svg { width: 48px; height: 32px; }
+  .alert { width: 32px; height: 32px; }
+}
 </style>
 </head>
 <body>
@@ -519,22 +746,21 @@ canvas.nato { width: 44px; height: 30px; border-radius: 3px; flex: none; }
   <canvas id="map" aria-label="Dünya haritası"></canvas>
 
   <header id="hud" hidden>
-    <div class="hud-row">
-      <button id="hud-country" class="hud-country" data-act="panel" data-p="pol"></button>
-      <div class="hud-date">
+    <button id="hud-country" class="hud-country" data-act="panel" data-p="pol" aria-label="Siyaset"></button>
+    <div class="hud-res" id="hud-res"></div>
+    <div class="hud-clock">
+      <button id="btn-pause" class="sp-pause" data-act="pause" aria-label="Duraklat / devam"></button>
+      <div class="hud-datebox">
         <span id="hud-date"></span>
-        <span id="hud-tension" class="hud-tension" title="Dünya gerginliği"></span>
-      </div>
-      <div class="speed" role="group" aria-label="Oyun hızı">
-        <button id="btn-pause" class="sp-pause" data-act="pause" aria-label="Duraklat / devam"></button>
-        <button data-act="speed" data-v="1">1</button>
-        <button data-act="speed" data-v="2">2</button>
-        <button data-act="speed" data-v="3">3</button>
-        <button data-act="speed" data-v="4">4</button>
-        <button data-act="speed" data-v="5">5</button>
+        <div class="speed" role="group" aria-label="Oyun hızı">
+          <button data-act="speed" data-v="1" aria-label="Hız 1"></button>
+          <button data-act="speed" data-v="2" aria-label="Hız 2"></button>
+          <button data-act="speed" data-v="3" aria-label="Hız 3"></button>
+          <button data-act="speed" data-v="4" aria-label="Hız 4"></button>
+          <button data-act="speed" data-v="5" aria-label="Hız 5"></button>
+        </div>
       </div>
     </div>
-    <div class="hud-res" id="hud-res"></div>
     <div class="hud-alerts" id="hud-alerts" hidden></div>
   </header>
 
@@ -3615,6 +3841,7 @@ window.RIVERS = [
     if (G.volTick) G.volTick(); // gönüllü kuvvetler
     if (G.elecTick) G.elecTick(); // seçimler
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
+    if (G.ledgerTick) G.ledgerTick(); // defter istatistikleri (aylık)
   }
   // yarım kalmış günü tamamla (kayıt, yükleme ve senkron çağrılardan önce)
   G.tickIt = null;
@@ -5149,7 +5376,7 @@ window.RIVERS = [
         case 'pop': if (v === 'auth') G.addPop(c, c.ideo === 'com' ? 'com' : 'fas', 0.1); else for (const [ik, x] of Object.entries(v)) G.addPop(c, ik, x); break;
         case 'rb': for (const r of v) c.rb.push(r); break;
         case 'tension': st.tension = Math.min(100, st.tension + v); break;
-        case 'ships': for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break;
+        case 'ships': if (G.homeZone && G.homeZone(c) < 0) break; for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break; // denize kıyısı olmayan ülke gemi almaz
         case 'stock': for (const [e, n] of Object.entries(v)) c.stock[e] = (c.stock[e] || 0) + n; break;
         case 'units': for (const [t, n] of Object.entries(v)) for (let i = 0; i < n; i++) { const u = G.makeUnit(c.tag, t, c.cap, 1); st.units.push(u); } G.rebuildUnitIndex(); break;
         case 'addInfra': G.FX.infra(c, v); break;
@@ -7822,7 +8049,7 @@ window.RIVERS = [
     if (!nw || !G.newsOn || !st.player || e.actor === st.player) return;
     if (st._newsDay === st.day) return; // aynı gün birden çok haber penceresi açma
     st._newsDay = st.day;
-    G.queuePopup({ eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: nw[0], text: nw[1], opts: [{ n: 'İlginç', fx: () => {} }] });
+    G.queuePopup({ news: 1, eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: nw[0], text: nw[1], opts: [{ n: 'İlginç', fx: () => {} }] });
   };
 
   // ---------- Türkiye ----------
@@ -8951,6 +9178,29 @@ window.RIVERS = [
   };
 })(window);
 
+/* js/game/ledger.js */
+// Defter (HOI4 "Ledger"): büyük güçlerin ve oyuncunun aylık istatistik kayıtları (grafikler için).
+(function (g) {
+  const G = g.G;
+  G.LEDGER_TAGS = ['GER', 'ITA', 'JAP', 'SOV', 'ENG', 'FRA', 'USA'];
+  G.LEDGER_KEYS = ['mil', 'civ', 'div', 'dead'];
+  G.ledgerTags = () => { const st = G.st, L = G.LEDGER_TAGS.filter((t) => st.C[t]); if (st.player && !L.includes(st.player) && st.C[st.player]) L.push(st.player); return L; };
+  G.ledgerSnap = () => {
+    const st = G.st, divs = {};
+    for (const u of st.units) divs[u.t] = (divs[u.t] || 0) + 1;
+    const led = st.led || (st.led = { d: [], s: {} });
+    led.d.push(st.day);
+    for (const t of G.ledgerTags()) {
+      const c = st.C[t], s = led.s[t] || (led.s[t] = { mil: [], civ: [], div: [], dead: [] });
+      // geç eklenen ülke: eksik geçmiş boşlukla doldurulur
+      while (s.mil.length < led.d.length - 1) for (const k of G.LEDGER_KEYS) s[k].push(null);
+      s.mil.push(c.alive ? c.sum.mil : 0); s.civ.push(c.alive ? c.sum.civ : 0); s.div.push(divs[t] || 0); s.dead.push(Math.round(c.dead || 0));
+    }
+    if (led.d.length > 160) { led.d.shift(); for (const s of Object.values(led.s)) for (const k of G.LEDGER_KEYS) s[k].shift(); }
+  };
+  G.ledgerTick = () => { const st = G.st; if (st.day % 30 === 0 || !st.led) G.ledgerSnap(); };
+})(window);
+
 /* js/ui/flags.js */
 // Basitleştirilmiş bayraklar (SVG). Bilinmeyen ülkeler için ülke renginden üretilir.
 (function (g) {
@@ -9039,6 +9289,59 @@ window.RIVERS = [
     }
     return `<svg class="${cls}" width="${w}" height="${hh}" viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true">${body}</svg>`;
   };
+})(window);
+
+/* js/ui/icons.js */
+// HOI4 tarzı renkli simgeler (üst çubuk kaynakları, uyarılar, panel başlıkları). Satır içi SVG.
+(function (g) {
+  const G = g.G;
+  const S = (body, vb = '0 0 24 24') => `<svg viewBox="${vb}" aria-hidden="true">${body}</svg>`;
+  const ICO = {
+    // siyasi güç: altın kartal rozeti
+    pp: S('<circle cx="12" cy="12" r="10" fill="#e8c35a" stroke="#6b5317" stroke-width="1.5"/><path d="M5.5 10.5c2 .2 3.6 1 4.6 2.4L12 9l1.9 3.9c1-1.4 2.6-2.2 4.6-2.4-1.1 2-2.6 3.3-4.6 3.8l.6 2.7h-5l.6-2.7c-2-.5-3.5-1.8-4.6-3.8z" fill="#5a4210"/>'),
+    // istikrar: mavi terazi
+    stab: S('<circle cx="12" cy="12" r="10" fill="#3d6fa8" stroke="#1d3655" stroke-width="1.5"/><path d="M12 6v11M8 17h8M6.5 8.5h11" stroke="#eaf2ff" stroke-width="1.6" fill="none"/><path d="M6.5 8.5l-2 4h4zM17.5 8.5l-2 4h4z" fill="#eaf2ff"/>'),
+    // savaş desteği: kırmızı yumruk/miğfer
+    ws: S('<circle cx="12" cy="12" r="10" fill="#b8392b" stroke="#5c1a12" stroke-width="1.5"/><path d="M6.5 14.5c0-4 2.4-7 5.5-7s5.5 3 5.5 7z" fill="#f3e2c8"/><path d="M5 15h14v1.6H5z" fill="#f3e2c8"/>'),
+    // insan gücü
+    mp: S('<circle cx="9" cy="8" r="3.2" fill="#d9c7a3"/><path d="M3.5 19c0-3.6 2.4-6 5.5-6s5.5 2.4 5.5 6z" fill="#d9c7a3"/><circle cx="16.5" cy="9" r="2.6" fill="#a99a7a"/><path d="M13 19.5c.3-3 2-5 4-5 2.3 0 3.6 2 3.6 5z" fill="#a99a7a"/>'),
+    // sivil fabrika: gri bina, sarı pencere
+    civ: S('<path d="M3 20V10l5 3v-3l5 3V6h3v-2h2v2h3v14z" fill="#a9b0a4" stroke="#3a3f37" stroke-width="1"/><path d="M5 15h2v2H5zM9 15h2v2H9zM14 10h2v2h-2zM14 14h2v2h-2zM18 10h1.5v2H18zM18 14h1.5v2H18z" fill="#f0c94a"/>'),
+    // askerî fabrika: zeytin bina, namlu
+    mil: S('<path d="M3 20V10l5 3v-3l5 3V6h8v14z" fill="#7d8a55" stroke="#2f361f" stroke-width="1"/><path d="M14 9h7v2h-7zM5 15h2v2H5zM9 15h2v2H9z" fill="#2f361f"/><circle cx="16" cy="15.5" r="2" fill="#d6c27a"/>'),
+    // tersane: çapa
+    dock: S('<circle cx="12" cy="5" r="2.2" fill="none" stroke="#8fb7d9" stroke-width="1.8"/><path d="M12 7v13M7 10h10M4.5 13.5c.5 4 3.5 6.5 7.5 6.5s7-2.5 7.5-6.5" fill="none" stroke="#8fb7d9" stroke-width="1.8" stroke-linecap="round"/>'),
+    // çelik külçe
+    steel: S('<path d="M3 16l4-6h13l-3 6z" fill="#8e979e" stroke="#3b4247" stroke-width="1"/><path d="M3 16h14v3H3z" fill="#626b72"/><path d="M17 16l3-6v3l-3 6z" fill="#4b5359"/>'),
+    // petrol damlası
+    oil: S('<path d="M12 3c3 4.5 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 3-6.5 6-11z" fill="#1e1e1e" stroke="#7a7a6e" stroke-width="1.2"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5" stroke="#9c9c90" stroke-width="1.4" fill="none"/>'),
+    // yakıt bidonu
+    fuel: S('<path d="M5 6h10l4 4v11H5z" fill="#4e6b3a" stroke="#1f2c16" stroke-width="1.2"/><path d="M7 3h5v3H7z" fill="#2c3b20"/><path d="M8 10l6 8M14 10l-6 8" stroke="#c7d6a5" stroke-width="1.5"/>'),
+    // tümen: NATO piyade simgesi
+    div: S('<rect x="3" y="6" width="18" height="12" fill="#c9cfa3" stroke="#2c2f22" stroke-width="1.4"/><path d="M3 6l18 12M21 6L3 18" stroke="#2c2f22" stroke-width="1.4"/>'),
+    // dünya gerginliği
+    tension: S('<circle cx="12" cy="12" r="9.5" fill="#6b2a22" stroke="#e05a42" stroke-width="1.5"/><path d="M2.5 12h19M12 2.5c3 3 3 16 0 19M12 2.5c-3 3-3 16 0 19" stroke="#f0b8a8" stroke-width="1.1" fill="none"/>'),
+    // savaş: çapraz kılıç
+    war: S('<path d="M4 4l11 11M20 4L9 15" stroke="#e7dcc0" stroke-width="2.2" stroke-linecap="round"/><path d="M13 17l4-4 2.5 2.5-4 4zM11 17l-4-4-2.5 2.5 4 4z" fill="#b8392b"/>'),
+    // konvoy
+    conv: S('<path d="M3 15h18l-2.5 4.5h-13z" fill="#8a7f68" stroke="#3a3426" stroke-width="1"/><path d="M7 15V10h4v5M12 15V8h5v7" fill="#b0a58b" stroke="#3a3426" stroke-width="1"/>'),
+    // tank
+    tank: S('<path d="M2 15h20l-2.5 4.5h-15z" fill="#6d7a4a" stroke="#22281a" stroke-width="1"/><path d="M5 11h12l2 4H3z" fill="#8a9860" stroke="#22281a" stroke-width="1"/><path d="M8 8h6v3H8zM14 9h8v1.5h-8z" fill="#6d7a4a" stroke="#22281a" stroke-width="0.8"/>'),
+    // el sıkışma (diplomasi)
+    hand: S('<path d="M2 11l4-3 4 1 2-1 3 1 5 3-2 4-2-.5-2 2.5-2-1-1.5 1.5L8 17l-3-1z" fill="#d9c7a3" stroke="#4a3f2a" stroke-width="1.1" stroke-linejoin="round"/><path d="M10 9l3 3M12 13l2 2M10 14l1.5 1.5" stroke="#4a3f2a" stroke-width="1"/>'),
+    // uyarılar
+    focus: S('<circle cx="12" cy="12" r="9" fill="none" stroke="#f0d27a" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="#f0d27a" stroke-width="2"/><circle cx="12" cy="12" r="1.8" fill="#f0d27a"/>'),
+    res: S('<path d="M9 3h6M10 3v6l-5.2 9.2A1.8 1.8 0 0 0 6.4 21h11.2a1.8 1.8 0 0 0 1.6-2.8L14 9V3" fill="none" stroke="#9fd0ff" stroke-width="1.8"/><path d="M7.4 15h9.2l2 3.4a1 1 0 0 1-.9 1.6H6.3a1 1 0 0 1-.9-1.6z" fill="#5aa0e0"/>'),
+    con: S('<path d="M4 21h16M7 21V9M7 4v5h12M7 4l12 5" fill="none" stroke="#f0c94a" stroke-width="1.8"/><path d="M14 9v4h-2.5v3H16.5v-3H14" fill="none" stroke="#f0c94a" stroke-width="1.5"/>'),
+    trade: S('<path d="M4 8h13l-3-3M20 16H7l3 3" fill="none" stroke="#e3d6a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
+    adv: S('<circle cx="12" cy="8" r="3.6" fill="#d9c7a3"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5z" fill="#4a5a7a"/><path d="M11 13.5h2l.6 3-1.6 2-1.6-2z" fill="#b8392b"/>'),
+    peace: S('<path d="M5 4h11l3 3v13H5z" fill="#e6dcc0" stroke="#5a4f37" stroke-width="1.2"/><path d="M8 9h8M8 12h8M8 15h5" stroke="#5a4f37" stroke-width="1.3"/>'),
+    dec: S('<path d="M4 5h16v14H4z" fill="#3d4a33" stroke="#c7b77a" stroke-width="1.4"/><path d="M7 9h10M7 12h10M7 15h6" stroke="#e8dcae" stroke-width="1.4"/>'),
+    air: S('<path d="M12 2.5l1.6 6.5 7.4 4v2l-7.4-2-.6 5 2.5 2v1.5L12 20.5 8.5 21.5V20l2.5-2-.6-5-7.4 2v-2l7.4-4z" fill="#cdd7e0"/>'),
+    navy: S('<path d="M2 15h20l-3 5H5z" fill="#7d8b97"/><path d="M6 15v-3h3v-2h4v2h5v3" fill="#a3b0bb"/><path d="M11 10V6M11 7h4" stroke="#a3b0bb" stroke-width="1.4"/>'),
+  };
+  G.ICO = ICO;
+  G.ico = (k, cls = '') => `<i class="hi ${cls}">${ICO[k] || ''}</i>`;
 })(window);
 
 /* js/ui/render.js */
@@ -10032,50 +10335,58 @@ window.RIVERS = [
     const st = G.st, c = me(); if (!c) return;
     const hc = $('hud-country');
     const key = c.tag + c.alive;
-    if (hc.dataset.k !== key) { hc.innerHTML = G.flag(c.tag, 30, 20) + `<b>${esc(G.cname(c.tag))}</b>`; hc.dataset.k = key; }
-    $('hud-date').textContent = G.fmtDate(st.day);
-    $('hud-tension').textContent = `Gerginlik %${Math.round(st.tension)}`;
+    if (hc.dataset.k !== key) { hc.innerHTML = `<span class="hud-flag">${G.flag(c.tag, 54, 36)}</span><b>${esc(G.cname(c.tag))}</b>`; hc.dataset.k = key; }
+    // HOI4 gibi saatli tarih (gün içi ilerleme)
+    const hh = Math.floor((G.dayFrac || 0) * 24);
+    $('hud-date').textContent = `${String(hh).padStart(2, '0')}:00, ${G.fmtDate(st.day)}`;
     const s = c.sum, e = c.econ || {};
     const divs = st.units.reduce((n, u) => n + (u.t === c.tag), 0);
-    const chips = [
-      ['Siyasi güç', int(c.pp), ''],
-      ['İstikrar', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : ''],
-      ['Savaş desteği', pct(c.ws ?? 0.2), ''],
-      ['İnsan gücü', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : ''],
-      ['Sivil', s.civ, ''],
-      ['Askerî', s.mil, ''],
-      ['Tersane', s.dock, ''],
-      ['Çelik', `${int(s.steel)}/${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'neg' : ''],
-      ['Petrol', `${int(s.oil)}/${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'neg' : ''],
-      ['Yakıt', `${int(fuelOf(c).fuel)}/${int(fuelOf(c).cap)}`, G.fuelRatio(c) < 1 ? 'neg' : ''],
-      ['Tümen', divs + (c.train.length ? `+${c.train.length}` : ''), ''],
+    const milA0 = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    const civUsed = Math.max(0, s.civ - (e.civFree || 0));
+    const fo = fuelOf(c);
+    // HOI4 üst çubuğu: simge + değer; dokununca açıklama
+    const res = [
+      ['pp', int(c.pp), '', 'Siyasi güç', `+${(c.ppDay || 2).toFixed(2)}/gün`],
+      ['stab', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : '', 'İstikrar', ''],
+      ['ws', pct(c.ws ?? 0.2), '', 'Savaş desteği', ''],
+      ['mp', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : '', 'Kullanılabilir insan gücü', ''],
+      ['civ', `${civUsed}/${s.civ}`, '', 'Sivil fabrikalar (kullanılan/toplam)', `${e.civFree || 0} inşaatta, kalanı tüketim malı ve ticarette`],
+      ['mil', `${milA0}/${s.mil}`, s.mil - milA0 > 0 ? 'warn' : '', 'Askerî fabrikalar (atanan/toplam)', ''],
+      ['dock', s.dock, '', 'Tersaneler', ''],
+      ['steel', `${int(s.steel)}/${int(e.needSteel || 0)}`, (e.rS ?? 1) < 1 ? 'neg' : '', 'Çelik (eldeki/gereken)', ''],
+      ['oil', `${int(s.oil)}/${int(e.needOil || 0)}`, (e.rO ?? 1) < 1 ? 'neg' : '', 'Petrol (eldeki/gereken)', ''],
+      ['fuel', `${int(fo.fuel)}`, G.fuelRatio(c) < 1 ? 'neg' : '', 'Yakıt stoku', `kapasite ${int(fo.cap)}`],
+      ['conv', int(c.ships?.conv || 0), '', 'Konvoylar', ''],
+      ['div', divs + (c.train.length ? `+${c.train.length}` : ''), '', 'Tümenler (+eğitimde)', ''],
+      ['tension', '%' + Math.round(st.tension), st.tension > 50 ? 'neg' : '', 'Dünya gerginliği', ''],
     ];
-    if (c.enemies.length) chips.push(['Savaş', c.enemies.length + ' düşman', 'neg']);
-    const hr = chips.map(([k, v, cl]) => `<div class="chip ${cl}"><small>${k}</small><b>${v}</b></div>`).join('');
+    if (c.enemies.length) res.push(['war', c.enemies.length, 'neg', 'Savaşta olunan ülkeler', c.enemies.map((t) => G.cname(t)).join(', ')]);
+    UI._resInfo = Object.fromEntries(res.map(([k, v, , n, d]) => [k, `${n}: ${v}${d ? ' · ' + d : ''}`]));
+    const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.ico(k)}<b>${v}</b></button>`).join('');
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
-    // HOI4 tarzı uyarılar
+    // HOI4 tarzı uyarılar: yuvarlak simgeler (dokununca ilgili panel + açıklama)
     const al = [];
-    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor']);
-    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi']);
-    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`]);
-    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
-    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`]);
-    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş']);
+    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
+    const milA = milA0;
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
     const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
-    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`]);
-    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor']);
+    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
+    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
     const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
-    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir']);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
     if (c.enemies.length) {
       const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
-      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`]);
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
     }
-    const ah = al.map(([p, sub, n]) => `<button class="alert" data-act="alert" data-p="${p}" data-s="${sub}">${n}</button>`).join('');
+    const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');
     if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
     const pause = $('btn-pause');
     pause.classList.toggle('paused', !!st.paused);
-    document.querySelectorAll('.speed [data-act=speed]').forEach((b) => b.classList.toggle('on', +b.dataset.v === st.speed));
+    document.querySelectorAll('.speed [data-act=speed]').forEach((b) => { b.classList.toggle('on', +b.dataset.v <= st.speed); b.classList.toggle('cur', +b.dataset.v === st.speed); });
     $('btn-mapmode').title = UI.MODE_N[R.mode];
     UI.placeToasts();
   };
@@ -10265,6 +10576,7 @@ window.RIVERS = [
   }
 
   // odak türü (HOI4'teki simge renkleri): sanayi, kara, hava/deniz, siyaset, diplomasi
+  const FOCUS_ICO = { ind: 'civ', land: 'tank', sea: 'navy', pol: 'pp', dip: 'hand' };
   const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara kuvvetleri', '#c9614a'], sea: ['Hava ve deniz', '#5f9bd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
   const focusCat = (f) => {
     const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
@@ -10315,7 +10627,7 @@ window.RIVERS = [
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
       const cat = FOCUS_CAT[focusCat(f)][1];
       const days = active ? `${Math.ceil(G.focusDays(f) - c.focus.p)} gün kaldı` : done ? 'Tamamlandı' : `${G.focusDays(f)} gün`;
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}"><span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
@@ -11078,11 +11390,13 @@ window.RIVERS = [
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
-    html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
+    html += sec('Oyun', `<div class="list"><button class="item" data-act="panel" data-p="ledger"><div class="grow"><div class="t">Defter</div><div class="d">Ülkelerin sanayi, ordu, hava, deniz ve kayıp karşılaştırması</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
   };
 
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
+  <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
+  <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita</h3><p class="small" style="margin:0">Tek parmakla kaydır, iki parmakla yakınlaştır. Bir eyalete dokununca bilgi kartı açılır. Sağdaki düğmeler harita modunu değiştirir, alan seçimini açar ve başkente döner.</p></section>
   <section class="sec"><h3 class="sec-h">Birlikler</h3><p class="small" style="margin:0">Kendi tümenlerinin bulunduğu eyalete (veya sayaca) dokun: tümenler seçilir. Sonra hedef eyalete dokun: en kısa yol bulunur. Deniz aşırı hedeflerde birlikler gemiyle taşınır; düşman kıyısına çıkarma için yeterli deniz gücü gerekir. Düşman birliği olan eyalete yürümek saldırı başlatır. Muharebe simgesindeki renk üstünlüğü gösterir.</p></section>
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">HOI4 muharebe modeli: her tümen her gün düşmana <b>yumuşak saldırı</b> (piyadeye karşı) ve <b>sert saldırı</b> (zırhlılara karşı) karışımıyla vurur; karışımı düşmanın <b>sertliği</b> (zırhlı araç oranı) belirler. Gelen vuruşları savunan <b>savunma</b>, saldıran <b>atılım</b> değeriyle karşılar: karşılanan vuruşların yalnızca %10'u, fazlası ise %40 oranında moral (sarı çizgi) ve güç (yeşil çizgi) kaybettirir. <b>Zırh</b> düşmanın <b>zırh delmesinden</b> yüksekse alınan hasar yarıya kadar iner; bu yüzden tanklara karşı tanksavar desteği ya da kendi tankların gerekir. Birden çok yönden saldırmak cephe genişliğini her yön için %50 artırır. Dağ, orman, bataklık, nehir ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur.</p></section>
@@ -11135,6 +11449,13 @@ window.RIVERS = [
     let html = `<div class="card-h">${G.flag(pr.c, 36, 24)}<div class="grow"><h3>${esc(G.pname(i))}</h3><div class="muted small">${esc(G.cname(pr.c))}${occ ? ` · işgal altında (sahibi ${esc(G.cname(pr.o))})` : ''}</div></div><button class="x" data-act="closecard" aria-label="Kapat">✕</button></div>`;
     html += `<div class="facts"><span>Arazi <b>${te.n}</b></span><span>Zafer puanı <b>${p.vp}</b></span><span>Fabrika <b>S${pr.civ} A${pr.mil} T${pr.dock}</b></span><span>Tahkimat <b>${pr.fort}/5</b></span><span>Altyapı <b>${pr.inf || 1}/5</b></span><span>Demiryolu <b${G.railOf(pr) < (pr.rail || 0) - 0.05 ? ' class="bad"' : ''}>${pr.rail || 0}/5${G.railOf(pr) < (pr.rail || 0) - 0.05 ? ' (hasarlı)' : ''}</b></span>${G.isHub(i) ? '<span><b class="good">İkmal merkezi</b></span>' : ''}<span>Hava üssü <b>${pr.ab || 0}/10</b></span><span>Hava <b>${G.weatherName(i)}</b></span>${pr.rs != null ? `<span>Direniş <b class="${pr.rs > 0.4 ? 'bad' : ''}">${pct(pr.rs)}</b></span><span>Uyum <b>${pct(pr.cp)}</b></span>${pr.sab >= st.day ? '<span><b class="bad">Sabotaj</b></span>' : ''}` : ''}${G.supAvail[G.st.player] && (pr.c === G.st.player || G.friendly(G.st.player, pr.c)) ? `<span>İkmal <b class="${G.supAvail[G.st.player][i] < 1.5 ? 'bad' : ''}">${r1(G.supAvail[G.st.player][i])}</b></span>` : ''}<span>Nüfus <b>${r1(pr.pop)} M</b></span>${p.st ? `<span>Çelik <b>${p.st}</b></span>` : ''}${p.oil ? `<span>Petrol <b>${p.oil}</b></span>` : ''}${p.c ? '<span><b>Kıyı</b></span>' : ''}</div>`;
     const rvs = [...new Map(G.riversOf(i).map((r) => [r.n, r])).values()]; // komşu nehir kenarları (HOI4: nehir geçişi)
+    // HOI4 eyalet ekranı: paylaşılan bina yuvaları ve seviyeli binalar
+    {
+      const used = pr.civ + pr.mil + pr.dock, slots = Math.max(G.slotsOf(i), used), cells = [];
+      for (let k = 0; k < slots; k++) cells.push(k < pr.civ ? 'civ' : k < pr.civ + pr.mil ? 'mil' : k < pr.civ + pr.mil + pr.dock ? 'dock' : '');
+      const lvl = (n, v, mx, cls = '') => `<span class="blv ${cls}"><small>${n}</small>${Array.from({ length: mx }, (_, k) => `<i class="${k < v ? 'on' : ''}"></i>`).join('')}</span>`;
+      html += `<div class="bslots" aria-label="Bina yuvaları ${used}/${slots}">${cells.map((t) => `<i class="bs ${t}">${t ? G.ICO[t] || '' : ''}</i>`).join('')}<em>${used}/${slots} yuva</em></div><div class="blvs">${lvl('Altyapı', pr.inf || 1, 5)}${lvl('Demiryolu', Math.round(G.railOf(pr)), 5)}${lvl('Tahkimat', pr.fort, 5, 'fort')}${lvl('Hava üssü', Math.ceil((pr.ab || 0) / 2), 5, 'air')}</div>`;
+    }
     if (rvs.length) html += `<div class="facts"><span>Nehir <b>${rvs.map((r) => `${esc(r.n)} (${r.big ? 'büyük' : 'küçük'})`).join(', ')}</b></span></div>`;
     if (units.length) html += `<div class="facts">${Object.entries(byTag).map(([t, n]) => `<span>${G.flag(t, 18, 12)} <b>${n}</b> tümen</span>`).join('')}</div>`;
     if (battle) html += `<div class="row" style="gap:8px;align-items:center"><div class="small grow"><span class="pill war">Muharebe</span> ${esc(G.cname(battle.att))} saldırıyor · üstünlük ${pct(battle.adv)}</div><button class="btn sm" data-act="battle" data-v="${battle.n}">Ayrıntı</button></div>`;
@@ -11212,7 +11533,15 @@ window.RIVERS = [
     UI.modalOpen = 1;
     G.st.paused = 1;
     const opts = p.opts || [{ n: 'Tamam', fx: () => {} }];
-    m.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><p class="eyebrow">${p.eyebrow || G.fmtDate(G.st.day)}</p><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p><div class="btns">${opts.map((o, i) => `<button class="btn ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div></div>`;
+    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div>`;
+    const art = G.eventArt ? G.eventArt(p) : '';
+    if (p.news) {
+      // HOI4 dünya haberi: gazete sayfası
+      m.innerHTML = `<div class="dialog news" role="dialog" aria-modal="true"><div class="np-mast"><span>Sayı ${1000 + G.st.day}</span><b>Dünya Postası</b><span>${G.fmtDate(G.st.day)}</span></div><h3>${esc(p.title)}</h3><div class="ev-pic">${art}</div><p class="np-text">${esc(p.text)}</p>${btns}</div>`;
+    } else {
+      // HOI4 olay penceresi: başlık şeridi, arşiv fotoğrafı, metin, seçenekler
+      m.innerHTML = `<div class="dialog ev" role="dialog" aria-modal="true"><div class="ev-head"><h3>${esc(p.title)}</h3></div><div class="ev-pic">${art}</div><p class="eyebrow">${p.eyebrow || G.fmtDate(G.st.day)}</p><p class="ev-text">${esc(p.text)}</p>${btns}</div>`;
+    }
     m.hidden = false;
     UI.modalOpts = opts;
   };
@@ -11226,6 +11555,7 @@ window.RIVERS = [
 
   // ---------- Eylemler ----------
   const ACT = {};
+  UI.PANELS = PANELS; UI.ACT = ACT; UI.h = { esc, sec, kv };
   UI.act = (a, ds, el) => { const fn = ACT[a]; if (fn) { fn(ds, el); } };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
@@ -11331,7 +11661,8 @@ window.RIVERS = [
     R.mapDirty = 1; R.dirty = 1;
   };
   ACT.panel = (d) => UI.open(d.p);
-  ACT.alert = (d) => { if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
+  ACT.resinfo = (d) => { const t = UI._resInfo && UI._resInfo[d.k]; if (t) UI.toast(t, 'info'); };
+  ACT.alert = (d) => { if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
@@ -11666,7 +11997,7 @@ window.RIVERS = [
     G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
@@ -11826,7 +12157,7 @@ window.RIVERS = [
   const G = g.G, UI = G.UI;
   const STEPS = [
     { t: null, h: 'Demir Cephe\'ye hoş geldin', d: 'Bu kısa rehber oyunun temellerini gösterir. İstediğin an "Geç" ile kapatabilirsin; Menü\'den yeniden açabilirsin.' },
-    { t: '#btn-pause', h: 'Zaman', d: '▶ ile zamanı başlat ya da duraklat; 1–5 hızı seçer. Oyun duraklatılmışken de bütün emirleri verebilirsin.' },
+    { t: '#btn-pause', h: 'Zaman', d: '▶ ile zamanı başlat ya da duraklat; tarihin altındaki beş çubuk oyun hızıdır. Üst çubuktaki simgelere dokununca açıklamaları çıkar. Oyun duraklatılmışken de bütün emirleri verebilirsin.' },
     { t: '#hud-alerts', h: 'Uyarılar', d: 'Boşta kalan işleri gösterir: odak seçilmedi, boş araştırma yuvası, inşaat kuyruğu boş, emirsiz tümenler. Dokununca ilgili panel açılır.' },
     { t: '#nav [data-p=pol]', h: 'Siyaset ve odak ağacı', d: 'Ulusal odak ağacından ülkenin yolunu seç. Odaklar fabrika, teknoloji, ittifak ve savaş gerekçesi verir. Yasalar, danışmanlar ve güç dengesi de burada.' },
     { t: '#nav [data-p=res]', h: 'Bilim', d: 'Araştırma yuvalarını hep dolu tut. Boş yuvaya dokununca seçilebilir teknolojiler yanar; Projeler sekmesinde özel projeler var.' },
@@ -11876,6 +12207,173 @@ window.RIVERS = [
     show();
   };
   UI.maybeTutorial = () => { let seen = false; try { seen = localStorage.getItem('dc_tut') === '1'; } catch (e) { /* */ } if (!seen) setTimeout(UI.startTutorial, 250); };
+})(window);
+
+/* js/ui/eventart.js */
+// HOI4 olay penceresi resimleri: olayın konusuna göre sepya tonlu, gren dokulu "arşiv fotoğrafı" sahneleri (satır içi SVG).
+(function (g) {
+  const G = g.G;
+  let uid = 0;
+  const KINDS = [
+    ['surrender', /teslim|mütareke|ateşkes|barış|kurtar|zafer|çöküş|capitul/],
+    ['navy', /deniz|filo|donanma|liman|pearl|çıkarma|konvoy|gemi|denizaltı|amiral|boğaz|midway|d-günü|overlord|harbor/],
+    ['air', /hava |hava$|bombard|luftwaffe|uçak|blitz|paraşüt|hava kuvvet/],
+    ['science', /(^|[\s'])atom|nükleer|proje|araştırma|bilim|radar|şifre|enigma|roket|füze|manhattan/],
+    ['war', /savaş|saldır|harekât|istila|cephe|taarruz|ordu|işgal|kuşat|tank|barbarossa|sefer|muharebe|direniş|ilhak|seferberlik|asker/],
+    ['diplomacy', /pakt|antlaşma|ittifak|anlaşma|görüşme|konferans|nota|ültimatom|garanti|katıl|elçi|dostluk|ticaret|talep/],
+    ['politics', /seçim|parti|hükümet|darbe|lider|devrim|meclis|kongre|cumhur|kral|reform|yasa|anayasa|tasfiye|halk|miting|başbakan/],
+    ['industry', /fabrika|sanayi|üretim|plan|ekonomi|kredi|silah|maden|petrol|demiryolu|yıllık|beş yıl/],
+  ];
+  G.eventKind = (p) => {
+    if (p.art) return p.art;
+    const t = ((p.title || '') + ' ' + (p.text || '')).toLocaleLowerCase('tr');
+    for (const [k, re] of KINDS) if (re.test(t)) return k;
+    return 'city';
+  };
+  const hills = (y, c) => `<path d="M0 ${y} C40 ${y - 14} 80 ${y - 6} 120 ${y - 12} S200 ${y - 4} 240 ${y - 14} S300 ${y - 8} 320 ${y - 10} V140 H0z" fill="${c}"/>`;
+  const smoke = (x, y, s) => `<g fill="#cdbb98" opacity="0.55"><circle cx="${x}" cy="${y}" r="${7 * s}"/><circle cx="${x + 8 * s}" cy="${y - 10 * s}" r="${9 * s}"/><circle cx="${x + 2 * s}" cy="${y - 22 * s}" r="${11 * s}"/><circle cx="${x + 14 * s}" cy="${y - 32 * s}" r="${13 * s}"/></g>`;
+  const tank = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 14h46l-4 8H4z"/><path d="M6 6h30l4 8H2z"/><path d="M14 0h14v6H14z"/><path d="M28 2h22v3H28z"/><g fill="#2a2117">${[6, 14, 22, 30, 38].map((cx) => `<circle cx="${cx}" cy="18" r="3"/>`).join('')}</g></g>`;
+  const soldier = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><circle cx="5" cy="3" r="3"/><path d="M1 2h8l-1 -2H2z"/><path d="M2 6h6l1 10H1z"/><path d="M2 16h2l-1 9H1zM6 16h2l1 9H7z"/><path d="M8 7l9-7 1 1-9 8z"/></g>`;
+  const plane = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 6l30-2 4 2-4 2-30-2z"/><path d="M12 5l6-9h3l-3 10zM12 7l6 9h3l-3-10z"/><path d="M0 6l-3-4h2l4 4z"/></g>`;
+  const ship = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 20h120l-10 10H8z"/><path d="M20 12h70v8H20z"/><path d="M40 4h26v8H40z"/><path d="M50 -6h6v10h-6zM60 -2h5v6h-5z"/><path d="M70 14h26v2H70zM8 15h20v2H8z"/></g>`;
+  const crowd = (y, n, c) => { let o = ''; for (let i = 0; i < n; i++) { const x = (i * 337) % 330 - 5, yy = y + ((i * 53) % 18); o += `<circle cx="${x}" cy="${yy}" r="5"/><path d="M${x - 6} ${yy + 4}h12v20h-12z"/>`; } return `<g fill="${c}">${o}</g>`; };
+  const SCENES = {
+    war: () => `${hills(96, '#8a7556')}${smoke(70, 80, 1.2)}${smoke(250, 70, 0.9)}${hills(116, '#5e4d36')}${tank(150, 92, 1.4, '#2f2519')}${tank(40, 104, 1, '#3a2e1f')}${soldier(230, 98, 1.2, '#2f2519')}${soldier(256, 101, 1.15, '#2f2519')}${soldier(280, 99, 1.2, '#2f2519')}`,
+    navy: () => `<rect y="88" width="320" height="52" fill="#6f6048"/><path d="M0 92h320M0 104h320M0 120h320" stroke="#8c7a5c" stroke-width="1.5" opacity="0.6"/>${smoke(150, 60, 1)}${ship(90, 66, 1.4, '#2c2318')}${ship(16, 80, 0.55, '#4a3c29')}${ship(250, 78, 0.5, '#4a3c29')}`,
+    air: () => `<g fill="#e3d4b3" opacity="0.6"><ellipse cx="60" cy="40" rx="50" ry="12"/><ellipse cx="250" cy="70" rx="70" ry="14"/></g>${plane(70, 50, 2.4, '#2c2318')}${plane(150, 30, 1.7, '#3a2e1f')}${plane(220, 58, 1.9, '#3a2e1f')}${plane(30, 90, 1.2, '#4a3c29')}${hills(128, '#5e4d36')}`,
+    politics: () => `<rect x="0" y="0" width="320" height="140" fill="#a99372"/><g fill="#5a4630"><rect x="40" y="10" width="26" height="70"/><rect x="254" y="10" width="26" height="70"/></g><path d="M40 10h26v70l-13-8-13 8z" fill="#7a2c20"/><path d="M254 10h26v70l-13-8-13 8z" fill="#7a2c20"/><rect x="130" y="56" width="60" height="40" fill="#3e3122"/><circle cx="160" cy="40" r="9" fill="#2c2318"/><path d="M148 50h24l4 12h-32z" fill="#2c2318"/>${crowd(100, 34, '#2c2318')}`,
+    diplomacy: () => `<rect width="320" height="140" fill="#b09a78"/><rect x="40" y="18" width="240" height="56" fill="#8e7a5a"/><path d="M60 18v56M100 18v56M220 18v56M260 18v56" stroke="#76644a" stroke-width="4"/><path d="M20 92h280l-10 14H30z" fill="#4a3a28"/><path d="M110 88l40-6 4 6zM170 84l36 4-4 4z" fill="#efe3c6"/><g fill="#2c2318"><circle cx="70" cy="60" r="10"/><path d="M56 70h28l6 22H50z"/><circle cx="250" cy="60" r="10"/><path d="M236 70h28l6 22h-40z"/></g><path d="M160 30v40" stroke="#3e3122" stroke-width="2"/><path d="M160 30h18v10h-18z" fill="#7a2c20"/>`,
+    industry: () => `<rect width="320" height="140" fill="#a39073"/>${smoke(70, 30, 1.1)}${smoke(130, 20, 1.3)}${smoke(210, 34, 1)}<g fill="#3a2e1f"><rect x="62" y="30" width="12" height="70"/><rect x="122" y="20" width="14" height="80"/><rect x="202" y="34" width="12" height="66"/><path d="M20 140V92l40-20v20l40-20v20l40-20v20l40-20v20l40-20v20l40-20v20l40-20v68z"/></g><g fill="#d9b25c" opacity="0.8">${[40, 80, 120, 160, 200, 240, 280].map((x) => `<rect x="${x}" y="112" width="8" height="8"/>`).join('')}</g>`,
+    science: () => `<rect width="320" height="140" fill="#9c8a6c"/><circle cx="160" cy="62" r="40" fill="none" stroke="#3a2e1f" stroke-width="3"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5" transform="rotate(60 160 62)"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5" transform="rotate(-60 160 62)"/><circle cx="160" cy="62" r="7" fill="#7a2c20"/><path d="M0 116h320v24H0z" fill="#4a3c29"/><g fill="#2c2318"><rect x="30" y="86" width="40" height="30"/><rect x="250" y="80" width="44" height="36"/></g>`,
+    surrender: () => `<rect width="320" height="140" fill="#b3a07e"/>${hills(110, '#6d5a40')}<path d="M150 20v100" stroke="#2c2318" stroke-width="3"/><path d="M152 22c20 6 34-4 54 4v34c-20-8-34 2-54-4z" fill="#efe6cf"/>${crowd(112, 22, '#2c2318')}`,
+    city: () => `<rect width="320" height="140" fill="#ae9a78"/><g fill="#4a3c29"><rect x="10" y="60" width="40" height="80"/><rect x="56" y="40" width="30" height="100"/><rect x="92" y="70" width="44" height="70"/><path d="M150 140V64a20 20 0 0 1 40 0v76z"/><rect x="167" y="30" width="6" height="16"/><rect x="200" y="50" width="34" height="90"/><rect x="240" y="76" width="30" height="64"/><rect x="276" y="56" width="40" height="84"/></g><g fill="#d9c08a" opacity="0.6">${[20, 64, 104, 210, 286].map((x) => `<rect x="${x}" y="84" width="6" height="8"/><rect x="${x + 12}" y="100" width="6" height="8"/>`).join('')}</g>`,
+  };
+  G.eventArt = (p) => {
+    const k = G.eventKind(p), id = 'ea' + uid++;
+    return `<svg class="ev-art" viewBox="0 0 320 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8c7a2"/><stop offset="1" stop-color="#a48f6a"/></linearGradient>
+<radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.75"/></radialGradient>
+<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${uid % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.35 0"/></filter></defs>
+<rect width="320" height="140" fill="url(#${id}s)"/>${(SCENES[k] || SCENES.city)()}
+<rect width="320" height="140" filter="url(#${id}n)"/><rect width="320" height="140" fill="url(#${id}v)"/></svg>`;
+  };
+})(window);
+
+/* js/ui/ledger.js */
+// Defter paneli (HOI4 "Ledger"): ülke karşılaştırma tabloları ve aylık gidişat grafiği.
+(function (g) {
+  const G = g.G, UI = G.UI, { esc, sec } = UI.h, PANELS = UI.PANELS, ACT = UI.ACT;
+  // grafik dizileri için sabit sıralı kategorik palet (doğrulanmış, koyu yüzey); renk ülkeyi izler, sırayı değil
+  const PAL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+  const TABS = [['gen', 'Genel'], ['land', 'Kara'], ['air', 'Hava'], ['sea', 'Deniz'], ['cas', 'Kayıplar'], ['graph', 'Gidişat']];
+  const METRICS = { mil: 'Askerî fabrika', civ: 'Sivil fabrika', div: 'Tümen', dead: 'Kayıp (bin)' };
+  UI.ledTab = 'gen'; UI.ledMetric = 'mil';
+  const fmt = (v) => (v >= 10000 ? G.fmtK(v) : Math.round(v).toLocaleString('tr-TR'));
+
+  function countries() {
+    const st = G.st, divs = {};
+    for (const u of st.units) divs[u.t] = (divs[u.t] || 0) + 1;
+    return Object.values(st.C).filter((c) => c.alive && c.sum).map((c) => ({ c, t: c.tag, div: divs[c.tag] || 0 }));
+  }
+  // satır tablosu: ilk sütun ülke, sonra sayılar; ana ölçü için çubuk
+  function table(rows, cols, main) {
+    const me = G.st.player, mx = Math.max(1, ...rows.map((r) => r[main]));
+    let h = `<div class="ledt"><div class="lr lh"><span>Ülke</span>${cols.map(([, n]) => `<span>${n}</span>`).join('')}</div>`;
+    for (const r of rows) {
+      h += `<button class="lr ${r.t === me ? 'me' : ''}" data-act="dipc" data-v="${r.t}"><span class="ln">${G.flag(r.t, 20, 14)}<b>${esc(G.cname(r.t))}</b></span>${cols.map(([k]) => `<span class="num">${fmt(r[k])}</span>`).join('')}<i class="lbar" style="width:${(r[main] / mx * 100).toFixed(1)}%"></i></button>`;
+    }
+    return h + '</div>';
+  }
+  function topBy(list, key, n = 12) {
+    const me = G.st.player;
+    const s = list.slice().sort((a, b) => b[key] - a[key]);
+    const out = s.slice(0, n);
+    if (!out.some((r) => r.t === me)) { const m = s.find((r) => r.t === me); if (m) out.push(m); }
+    return out;
+  }
+
+  function chart(metric) {
+    const st = G.st, led = st.led;
+    if (!led || led.d.length < 2) return '<p class="muted small">Grafik için en az iki aylık kayıt gerekiyor. Oyun ilerledikçe dolar.</p>';
+    const tags = Object.keys(led.s).filter((t) => st.C[t]);
+    const W = 600, H = 250, L = 40, R = 64, T = 12, B = 26;
+    const d0 = led.d[0], d1 = led.d[led.d.length - 1];
+    let mx = 1; for (const t of tags) for (const v of led.s[t][metric]) if (v != null && v > mx) mx = v;
+    // okunur üst sınır
+    const step = Math.pow(10, Math.floor(Math.log10(mx))), top = Math.ceil(mx / step) * step;
+    const X = (d) => L + (d - d0) / Math.max(1, d1 - d0) * (W - L - R), Y = (v) => T + (1 - v / top) * (H - T - B);
+    let svg = '';
+    for (let k = 0; k <= 4; k++) { const v = top * k / 4, y = Y(v); svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" class="gl"/><text x="${L - 6}" y="${y + 4}" class="ax" text-anchor="end">${fmt(v)}</text>`; }
+    const y0 = G.dateOf(d0).getUTCFullYear(), y1 = G.dateOf(d1).getUTCFullYear();
+    for (let y = y0 + 1; y <= y1; y++) { const d = G.dayOf(y + '-01-01'); if (d < d0 || d > d1) continue; svg += `<text x="${X(d)}" y="${H - 8}" class="ax" text-anchor="middle">${y}</text>`; }
+    const ends = [];
+    tags.forEach((t) => {
+      const col = PAL[G.LEDGER_TAGS.includes(t) ? G.LEDGER_TAGS.indexOf(t) : 7];
+      const vals = led.s[t][metric];
+      let p = '', on = false;
+      vals.forEach((v, i) => { if (v == null) { on = false; return; } p += `${on ? 'L' : 'M'}${X(led.d[i]).toFixed(1)} ${Y(v).toFixed(1)}`; on = true; });
+      svg += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      const lv = vals[vals.length - 1];
+      if (lv != null) ends.push({ t, y: Y(lv), col });
+    });
+    // doğrudan etiketler: çakışmayı önlemek için dikey itme
+    ends.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+    for (const e of ends) svg += `<circle cx="${W - R}" cy="${e.y}" r="3" fill="${e.col}" stroke="#1c2019" stroke-width="2"/><text x="${W - R + 7}" y="${e.y + 4}" class="dl">${esc(G.cname(e.t).slice(0, 9))}</text>`;
+    const legend = `<div class="legend ledleg">${tags.map((t) => `<span><i style="background:${PAL[G.LEDGER_TAGS.includes(t) ? G.LEDGER_TAGS.indexOf(t) : 7]}"></i>${esc(G.cname(t))}</span>`).join('')}</div>`;
+    return `${legend}<div class="ledchart" data-m="${metric}" data-l="${L}" data-r="${R}" data-w="${W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${METRICS[metric]} gidişatı">${svg}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" style="display:none"/></svg><div class="ledtip" hidden></div></div>`;
+  }
+
+  PANELS.ledger = () => {
+    const tab = UI.ledTab, list = countries();
+    let html = `<div class="tabs">${TABS.map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" data-act="ledtab" data-v="${k}">${n}</button>`).join('')}</div>`;
+    if (tab === 'gen') {
+      const rows = list.map((r) => ({ t: r.t, fab: r.c.sum.civ + r.c.sum.mil + r.c.sum.dock, civ: r.c.sum.civ, mil: r.c.sum.mil, dock: r.c.sum.dock, mp: Math.round(r.c.mpAvail || 0) }));
+      html += sec('Sanayi gücü', table(topBy(rows, 'fab'), [['civ', 'Sivil'], ['mil', 'Askerî'], ['dock', 'Tersane'], ['mp', 'İnsan g. (bin)']], 'fab'), 'toplam fabrikaya göre');
+    } else if (tab === 'land') {
+      const rows = list.map((r) => ({ t: r.t, div: r.div, inf: r.c.stock.inf || 0, art: r.c.stock.art || 0, tank: r.c.stock.tank || 0 }));
+      html += sec('Kara kuvvetleri', table(topBy(rows, 'div'), [['div', 'Tümen'], ['inf', 'Piyade t.'], ['art', 'Topçu'], ['tank', 'Tank']], 'div'), 'tümen sayısına göre');
+    } else if (tab === 'air') {
+      const rows = list.map((r) => { const p = (e) => (G.planes ? G.planes(r.c, e) : r.c.stock[e] || 0); const fig = p('fig'), cas = p('cas'), bom = p('bom'); return { t: r.t, tot: fig + cas + bom, fig, cas, bom }; });
+      html += sec('Hava kuvvetleri', table(topBy(rows, 'tot'), [['fig', 'Avcı'], ['cas', 'Taarruz'], ['bom', 'Bombardıman'], ['tot', 'Toplam']], 'tot'), 'uçak sayısına göre');
+    } else if (tab === 'sea') {
+      const rows = list.map((r) => { const s = Object.assign({}, r.c.ships); for (const f of r.c.fleets || []) for (const [e, n] of Object.entries(f.sh)) s[e] = (s[e] || 0) + n; return { t: r.t, cap: (s.bb || 0) + (s.cv || 0), cr: s.cr || 0, dd: s.dd || 0, ss: s.ss || 0, tot: (s.bb || 0) * 6 + (s.cv || 0) * 6 + (s.cr || 0) * 2 + (s.dd || 0) + (s.ss || 0), conv: s.conv || 0 }; });
+      html += sec('Donanmalar', table(topBy(rows, 'tot'), [['cap', 'Ağır gemi'], ['cr', 'Kruvazör'], ['dd', 'Muhrip'], ['ss', 'Denizaltı'], ['conv', 'Konvoy']], 'tot'), 'ağırlıklı güce göre');
+    } else if (tab === 'cas') {
+      const rows = list.map((r) => ({ t: r.t, dead: Math.round(r.c.dead || 0), war: r.c.enemies.length, div: r.div })).filter((r) => r.dead > 0 || r.t === G.st.player);
+      html += rows.length ? sec('Kara kayıpları', table(topBy(rows, 'dead'), [['dead', 'Kayıp (bin)'], ['war', 'Düşman'], ['div', 'Tümen']], 'dead'), 'savaş başından beri') : '<p class="muted">Henüz kayıp yok.</p>';
+    } else {
+      const m = UI.ledMetric;
+      html += `<div class="tabs">${Object.entries(METRICS).map(([k, n]) => `<button class="${m === k ? 'on' : ''}" data-act="ledmetric" data-v="${k}">${n}</button>`).join('')}</div>`;
+      html += sec(METRICS[m], chart(m), 'aylık');
+    }
+    return { title: 'Defter', html };
+  };
+  ACT.ledtab = (d) => { UI.ledTab = d.v; UI.render(true); };
+  ACT.ledmetric = (d) => { UI.ledMetric = d.v; UI.render(true); };
+  ACT.dipc = (d) => { UI.panel = 'dip'; UI.sub = 'c:' + d.v; UI.render(true); };
+
+  // grafik üzerinde dokunma/gezinme: dikey çizgi + o aydaki değerler
+  const onMove = (e) => {
+    const box = e.target.closest && e.target.closest('.ledchart'); if (!box) return;
+    const led = G.st && G.st.led; if (!led || led.d.length < 2) return;
+    const svg = box.querySelector('svg'), r = svg.getBoundingClientRect(), W = +box.dataset.w, L = +box.dataset.l, R = +box.dataset.r;
+    const x = (e.clientX - r.left) / r.width * W;
+    const f = Math.max(0, Math.min(1, (x - L) / (W - L - R)));
+    const d = led.d[0] + f * (led.d[led.d.length - 1] - led.d[0]);
+    let i = 0; for (let k = 1; k < led.d.length; k++) if (Math.abs(led.d[k] - d) < Math.abs(led.d[i] - d)) i = k;
+    const xx = L + (led.d[i] - led.d[0]) / (led.d[led.d.length - 1] - led.d[0]) * (W - L - R);
+    const xh = svg.querySelector('.xh'); xh.setAttribute('x1', xx); xh.setAttribute('x2', xx); xh.style.display = '';
+    const m = box.dataset.m, rows = Object.keys(led.s).filter((t) => G.st.C[t]).map((t) => [t, led.s[t][m][i]]).filter(([, v]) => v != null).sort((a, b) => b[1] - a[1]);
+    const tip = box.querySelector('.ledtip');
+    tip.innerHTML = `<b>${G.fmtDate(led.d[i])}</b>${rows.map(([t, v]) => `<span><i style="background:${PAL[G.LEDGER_TAGS.includes(t) ? G.LEDGER_TAGS.indexOf(t) : 7]}"></i>${esc(G.cname(t))}<em>${fmt(v)}</em></span>`).join('')}`;
+    tip.hidden = false;
+    const px = xx / W * r.width;
+    tip.style.left = (px > r.width / 2 ? px - tip.offsetWidth - 10 : px + 10) + 'px';
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerdown', onMove);
+  document.addEventListener('pointerleave', (e) => { const b = e.target.closest && e.target.closest('.ledchart'); if (b) { b.querySelector('.ledtip').hidden = true; b.querySelector('.xh').style.display = 'none'; } }, true);
 })(window);
 
 /* js/main.js */
@@ -11932,6 +12430,7 @@ window.RIVERS = [
         if (performance.now() >= end) break;
       }
       if (acc > 2) acc = 2; // yetişemeyen cihazda borç birikmesin
+      G.dayFrac = Math.min(0.999, acc);
       if (ticks) R.dirty = 1;
     }
     if (inGame) {
