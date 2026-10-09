@@ -28,6 +28,7 @@
     // Mihver ile savaşlar biter (Fransa ile savaşan öteki ülkelerle de)
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === 'FRA' || b === 'FRA') delete st.wars[k]; }
     if (c.fac) G.leaveFaction('FRA');
+    delete st.guar.FRA; c.capd = st.day; // verdiği garantiler düşer; garanti yoluyla savaşa çekilmez
     const paris = pidx('Paris'), nice = pidx('Nice');
     for (let i = 0; i < NP; i++) {
       const pr = st.prov[i];
@@ -86,7 +87,8 @@
     for (const t of ['GER', 'ITA']) if (alive(t) && axisSide(t)) G.setWar('FRA', t);
     // kurtarılan ülke ordusunu yeniden kurar
     if (paris >= 0) { for (let k = 0; k < 6; k++) { const u = G.makeUnit('FRA', 'inf', paris, 0.8); u.xp = 0.3; st.units.push(u); } }
-    G.cwDirty = 1; c.startW = G.coreWeight('FRA', true); c.surrender = 0;
+    // teslim ölçüsü kurtuluş anındaki duruma göre: hâlâ işgaldeki iller hemen teslime yol açmaz
+    G.cwDirty = 1; c.startW = Math.max(G.coreWeight('FRA', false), 0.3 * G.coreWeight('FRA', true)); c.surrender = 0;
     G.rebuildUnitIndex(); G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1;
     G.log('Paris kurtarıldı! General de Gaulle Hür Fransa hükümetini kurdu; Fransa yeniden Müttefiklerin yanında.', ['FRA'], 'major');
     if (st.player !== 'FRA') news('Paris\'in Kurtuluşu', 'Müttefik ordular Paris\'e girdi. General de Gaulle Champs-Élysées\'de yürüdü; Hür Fransa yeniden savaşta.');
@@ -149,7 +151,8 @@
     if ((st.gerRes || 0) >= 70 || st.day >= G.dayOf('1945-04-01')) return;
     const ahead = G.histAhead ? G.histAhead('*', 'GER') : null;
     const divs = st.units.filter((u) => u.t === 'GER').length;
-    if (!((ahead != null && ahead > 0.04) || (st.day >= G.dayOf('1943-06-01') && divs < 150))) return;
+    // yalnızca asli topraklar tarihten hızlı düşüyorsa ya da ordu 1944'ten önce erimişse
+    if (!((ahead != null && ahead > 0.04) || (st.day >= G.dayOf('1943-06-01') && st.day < G.dayOf('1944-09-01') && divs < 130))) return;
     const L = []; for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.c === 'GER' && pr.core === 'GER' && !P[i].a.some((j) => G.atWar('GER', st.prov[j].c))) L.push(i); }
     if (!L.length) return;
     L.sort((a, b) => P[b].vp - P[a].vp || a - b);

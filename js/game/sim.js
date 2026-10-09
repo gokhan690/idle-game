@@ -361,7 +361,7 @@
   const HIST_COURSE = [
     { a: 'GER', d: 'SOV', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1941-06-22', 0], ['1941-09-01', 0.24], ['1941-12-01', 0.36], ['1942-05-01', 0.34], ['1942-11-15', 0.44], ['1943-03-15', 0.36], ['1943-09-01', 0.28], ['1943-12-31', 0.2], ['1944-06-15', 0.12], ['1944-09-01', 0.03], ['1945-01-01', 0]], aMax: 0.3, dMax: 0.5 },
     { a: 'JAP', d: 'CHI', anc: ['JAP', 'CHI', '1937-07-07'], pts: [['1937-07-07', 0], ['1938-01-01', 0.25], ['1938-11-01', 0.42], ['1944-12-31', 0.48], ['1945-08-15', 0.42]], aMax: 0.35, dMax: 0.5, aFrom: '1939-06-01' },
-    { a: '*', d: 'GER', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.3, dMax: 0.6 },
+    { a: '*', d: 'GER', anc: ['GER', 'SOV', '1941-06-22'], pts: [['1939-09-01', 0], ['1944-06-06', 0], ['1944-12-31', 0.04], ['1945-02-15', 0.2], ['1945-04-15', 0.6], ['1945-05-08', 0.9]], aMax: 0.42, dMax: 0.6 },
     // İspanya İç Savaşı: Milliyetçilerin İspanya topraklarını ele geçirme oranı (başta ~%35'i ellerinde; Madrid Mart 1939'da düşer)
     { a: 'SPN', d: 'SPR', anc: ['SPN', 'SPR', '1936-07-17'], pts: [['1936-07-17', 0.35], ['1937-06-01', 0.48], ['1938-06-01', 0.62], ['1939-01-15', 0.78], ['1939-03-28', 0.95]], aMax: 0.4, dMax: 0.4 },
     // Güneydoğu Asya ve Pasifik: Japonya'nın kontrol oranı (1942 baharı genişleme, 1944-45 geri çekilme)
@@ -428,8 +428,20 @@
     });
   };
   // taraf çarpanı: x tarafı y'ye karşı (n: muharebe eyaleti, bölgesel eğriler için)
+  // Tarihte düşmeyen kilit şehirler: Moskova ve Leningrad (kuşatma) 1943 ortasına dek inatla savunulur
+  let KEYC = null;
+  const keyCity = (x, y, n) => {
+    const st = G.st;
+    if (!KEYC) KEYC = new Set(['Moskova', 'Leningrad'].map((nm) => P.findIndex((p) => p.n === nm)).filter((i) => i >= 0));
+    if (n == null || !KEYC.has(n) || st.day > G.dayOf('1943-06-30')) return 1;
+    const ger = (t) => t === 'GER' || G.sameFaction(t, 'GER');
+    if (x === 'SOV' && ger(y)) return 1.6; if (ger(x) && y === 'SOV') return 0.7;
+    return 1;
+  };
   G.histMul = (x, y, n) => {
-    const st = G.st; if (!G._hc || !G._hc.length || x === st.player || y === st.player) return 1;
+    const st = G.st; if (x === st.player || y === st.player) return 1;
+    const kc = st.opts.hist ? keyCity(x, y, n) : 1;
+    if (!G._hc || !G._hc.length) return kc;
     // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
     let m = 1;
     for (const { h, fav, k } of G._hc) {
@@ -441,7 +453,7 @@
       if (!side) continue;
       m *= side === fav ? 1 + k : 1 - k / 2;
     }
-    return Math.max(0.55, Math.min(1.6, m));
+    return Math.max(0.55, Math.min(1.6, m)) * kc;
   };
   G.homeDef = (tag, n) => { const pr = G.st.prov[n]; if (pr.core !== tag) return 1; const c = G.st.C[tag]; return 1 + 0.35 * Math.min(1, c.surrender || 0); };
   function fight(b) {
