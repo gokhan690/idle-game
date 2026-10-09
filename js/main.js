@@ -51,6 +51,7 @@
         if (performance.now() >= end) break;
       }
       if (acc > 2) acc = 2; // yetişemeyen cihazda borç birikmesin
+      G.dayFrac = Math.min(0.999, acc);
       if (ticks) R.dirty = 1;
     }
     if (inGame) {

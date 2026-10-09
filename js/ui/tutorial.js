@@ -4,7 +4,7 @@
   const G = g.G, UI = G.UI;
   const STEPS = [
     { t: null, h: 'Demir Cephe\'ye hoş geldin', d: 'Bu kısa rehber oyunun temellerini gösterir. İstediğin an "Geç" ile kapatabilirsin; Menü\'den yeniden açabilirsin.' },
-    { t: '#btn-pause', h: 'Zaman', d: '▶ ile zamanı başlat ya da duraklat; 1–5 hızı seçer. Oyun duraklatılmışken de bütün emirleri verebilirsin.' },
+    { t: '#btn-pause', h: 'Zaman', d: '▶ ile zamanı başlat ya da duraklat; tarihin altındaki beş çubuk oyun hızıdır. Üst çubuktaki simgelere dokununca açıklamaları çıkar. Oyun duraklatılmışken de bütün emirleri verebilirsin.' },
     { t: '#hud-alerts', h: 'Uyarılar', d: 'Boşta kalan işleri gösterir: odak seçilmedi, boş araştırma yuvası, inşaat kuyruğu boş, emirsiz tümenler. Dokununca ilgili panel açılır.' },
     { t: '#nav [data-p=pol]', h: 'Siyaset ve odak ağacı', d: 'Ulusal odak ağacından ülkenin yolunu seç. Odaklar fabrika, teknoloji, ittifak ve savaş gerekçesi verir. Yasalar, danışmanlar ve güç dengesi de burada.' },
     { t: '#nav [data-p=res]', h: 'Bilim', d: 'Araştırma yuvalarını hep dolu tut. Boş yuvaya dokununca seçilebilir teknolojiler yanar; Projeler sekmesinde özel projeler var.' },

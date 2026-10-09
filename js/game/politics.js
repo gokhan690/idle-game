@@ -191,7 +191,7 @@
         case 'pop': if (v === 'auth') G.addPop(c, c.ideo === 'com' ? 'com' : 'fas', 0.1); else for (const [ik, x] of Object.entries(v)) G.addPop(c, ik, x); break;
         case 'rb': for (const r of v) c.rb.push(r); break;
         case 'tension': st.tension = Math.min(100, st.tension + v); break;
-        case 'ships': for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break;
+        case 'ships': if (G.homeZone && G.homeZone(c) < 0) break; for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break; // denize kıyısı olmayan ülke gemi almaz
         case 'stock': for (const [e, n] of Object.entries(v)) c.stock[e] = (c.stock[e] || 0) + n; break;
         case 'units': for (const [t, n] of Object.entries(v)) for (let i = 0; i < n; i++) { const u = G.makeUnit(c.tag, t, c.cap, 1); st.units.push(u); } G.rebuildUnitIndex(); break;
         case 'addInfra': G.FX.infra(c, v); break;
