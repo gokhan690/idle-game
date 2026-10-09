@@ -12,6 +12,7 @@
   };
   G.saveGame = (slot) => {
     const st = G.st; if (!st) return false;
+    G.finishTick(); // yarım günü kaydetme
     const ok = store.set(KEY(slot), G.serialize());
     if (ok) store.set(KEY(slot) + '_meta', JSON.stringify({ player: st.player, day: st.day }));
     return ok;
@@ -25,37 +26,50 @@
   // ---------- Oyun döngüsü ----------
   const SPEEDS = [0, 0.6, 1.25, 2.5, 5, 12]; // gün/saniye (HOI4 temposu)
   let last = performance.now(), acc = 0, hudT = 0, panelT = 0, lastMonth = -1;
+  // Benzetim kare başına bütçeyle parça parça ilerler (G.tickSlice): uzun bir gün ekranı dondurmaz,
+  // cihaz yetişemezse oyun hızı kendiliğinden düşer ama harita akıcı kalır.
+  let lastDraw = 0, mapTouch = 0;
   function frame(now) {
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
     R.t = now;
     const st = G.st;
-    if (st && !st.paused && !UI.modalOpen && st.over !== 1 && $('start').hidden) {
-      acc += dt * SPEEDS[st.speed || 1];
+    const inGame = st && $('start').hidden;
+    const running = inGame && !st.paused && !UI.modalOpen && st.over !== 1;
+    if (running) acc += dt * SPEEDS[st.speed || 1];
+    if (inGame && (G.tickIt || (running && acc >= 1))) {
       const t0 = performance.now();
+      // dokunma/kaydırma sürerken benzetime daha az pay ver
+      const end = t0 + (t0 - Math.max(mapTouch, UI.lastTouch || 0) < 400 ? 5 : 11);
       let ticks = 0;
-      while (acc >= 1) {
-        G.tick(); acc -= 1; ticks++;
-        if (performance.now() - t0 > 22) { acc = Math.min(acc, 1); break; }
-        if (UI.modalOpen) break;
-      }
-      if (ticks) {
-        R.dirty = 1;
+      for (;;) {
+        if (!G.tickIt) { if (!running || acc < 1 || UI.modalOpen || st.over === 1) break; acc -= 1; }
+        if (!G.tickSlice(end)) break;
+        ticks++;
         const m = G.dateOf(st.day).getUTCMonth();
         if (m !== lastMonth) { if (lastMonth >= 0 && UI.settings.autosave) G.saveGame('auto'); lastMonth = m; }
         if (st.day === G.dayOf('1948-01-01')) endOfWar();
+        if (performance.now() >= end) break;
       }
+      if (acc > 2) acc = 2; // yetişemeyen cihazda borç birikmesin
+      if (ticks) R.dirty = 1;
     }
-    if (st && $('start').hidden) {
+    if (inGame) {
       hudT += dt; panelT += dt;
       if (hudT > 0.25) { UI.hud(); hudT = 0; }
-      if (panelT > 0.6 && performance.now() - UI.lastTouch > 1500) {
+      // hızlı oyunda açık paneli daha seyrek yenile
+      if (panelT > (st.speed >= 4 && !st.paused ? 1.2 : 0.6) && performance.now() - UI.lastTouch > 1500) {
         panelT = 0;
         if (UI.panel && !UI.sub?.startsWith('build:') && !UI.sub?.startsWith('tpl:')) UI.render(false, true);
         if (!$('selbar').hidden) UI.renderSel();
         if (!$('card').hidden && UI.cardProv >= 0) UI.showCard(UI.cardProv);
       }
     }
-    if (R.dirty || (G.battles && G.battles.length) || R.mapDirty || G.mapDirty) R.draw();
+    // kaydırma/yakınlaştırma sürerken arazi dokusu atlanır; bitince tam kalite yeniden çizilir
+    const lowQ = now - mapTouch < 180 ? 1 : 0;
+    if (lowQ !== R.lowQ) { R.lowQ = lowQ; R.dirty = 1; }
+    // yalnızca muharebe canlandırması için çiziliyorsa ~25 kare/sn yeter
+    const need = R.dirty || R.mapDirty || G.mapDirty;
+    if (need || (G.battles && G.battles.length && now - lastDraw > 40)) { R.draw(); lastDraw = now; }
     requestAnimationFrame(frame);
   }
 
@@ -89,6 +103,7 @@
     }
   });
   cv.addEventListener('pointermove', (e) => {
+    if (pointers.size) mapTouch = performance.now();
     const p = pos(e);
     if (!pointers.has(e.pointerId)) {
       if (e.pointerType === 'mouse' && R.sel.units.size) { const h = R.provAt(p.x, p.y); if (h !== R.hover) { R.hover = h; R.dirty = 1; } }
@@ -131,7 +146,7 @@
   };
   cv.addEventListener('pointerup', end);
   cv.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); gesture = null; R.box = null; clearTimeout(longTimer); });
-  cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = pos(e); R.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); mapTouch = performance.now(); const p = pos(e); R.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   cv.addEventListener('dblclick', (e) => { const p = pos(e); R.zoomAt(p.x, p.y, 1.8); });
 
   function boxSelect(b) {

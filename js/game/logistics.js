@@ -109,9 +109,23 @@
   };
   // Heap tabanlı çok kaynaklı Dijkstra: anahtar = maliyet - ln(kapasite)/ln(1/ZAYIF)
   const DECAY = 0.86, LND = Math.log(1 / DECAY);
-  const key = new Float64Array(NP);
-  function heapPush(h, k, n) { h.push([k, n]); let i = h.length - 1; while (i > 0) { const j = (i - 1) >> 1; if (h[j][0] <= h[i][0]) break; [h[i], h[j]] = [h[j], h[i]]; i = j; } }
-  function heapPop(h) { const top = h[0]; const last = h.pop(); if (h.length) { h[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < h.length && h[l][0] < h[m][0]) m = l; if (r < h.length && h[r][0] < h[m][0]) m = r; if (m === i) break; [h[i], h[m]] = [h[m], h[i]]; i = m; } } return top; }
+  const key = new Float64Array(NP), CTRL = new Uint8Array(NP);
+  const SH = new G.Heap();
+  // eyalet adım maliyeti ülkeden bağımsızdır: ikmal turunun başında bir kez hesaplanır
+  const STEP = new Float64Array(NP), STEPI = new Uint8Array(NP), STEPS = new Uint8Array(NP);
+  let stepOk = false;
+  function prepStep() {
+    const st = G.st;
+    for (let j = 0; j < NP; j++) {
+      const pr = st.prov[j];
+      // HOI4: ikmal mesafeyle zayıflar; demiryolu olmayan (altyapısı düşük) geniş eyaletlerde (Afrika çölleri) çok daha hızlı
+      const inf = pr.inf || 2;
+      // demiryolu: kademe başına adım maliyeti ~%6,5 azalır (0 → ×1,07; 1 → ×1; 5 → ×0,74)
+      STEP[j] = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * inf) * (1.065 - 0.065 * G.railOf(pr)) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]);
+      STEPI[j] = inf <= 1 ? 1 : 0;
+      STEPS[j] = pr.sab >= st.day ? 1 : 0;
+    }
+  }
 
   // komşu eyaletler arası fazla mesafe (Avrupa'da ~0, Afrika'da ~2): 125 km üstü
   let EK = null;
@@ -122,7 +136,15 @@
   G.supAvail = {}; G.supRatio = {}; G.hubs = {}; G.connCap = {};
   G.computeSupplyFor = (c) => {
     const st = G.st, tag = c.tag;
-    const ctrl = (i) => { const pc = st.prov[i].c; return pc === tag || (G.friendly(tag, pc) && !G.atWar(tag, pc)); };
+    // eyalet sahibine göre bir kez hesaplanır (Dijkstra içinde tekrar tekrar çağrılır)
+    const okBy = Object.create(null);
+    const cm = CTRL;
+    for (let i = 0; i < NP; i++) {
+      const pc = st.prov[i].c; let v = okBy[pc];
+      if (v === undefined) v = okBy[pc] = pc === tag || (G.friendly(tag, pc) && !G.atWar(tag, pc)) ? 1 : 0;
+      cm[i] = v;
+    }
+    const ctrl = (i) => cm[i] === 1;
     // başkente kara bağlantısı
     const conn = new Uint8Array(NP);
     if (c.cap >= 0 && st.prov[c.cap].c === tag) {
@@ -167,23 +189,22 @@
     }
     G.hubs[tag] = hubs;
     // akış
-    const h = [];
+    if (!stepOk) prepStep();
+    const h = SH; h.clear();
     for (let i = 0; i < NP; i++) key[i] = Infinity;
-    for (const [i, cap] of hubs) { const k = -Math.log(cap) / LND; if (k < key[i]) { key[i] = k; heapPush(h, k, i); } }
-    while (h.length) {
-      const [k, n] = heapPop(h);
+    for (const [i, cap] of hubs) { const k = -Math.log(cap) / LND; if (k < key[i]) { key[i] = k; h.push(i, k); } }
+    while (h.size) {
+      const n = h.pop(), k = h.pk;
       if (k > key[n]) continue;
-      const ek = edgeKm(n);
-      for (let a = 0; a < P[n].a.length; a++) {
-        const j = P[n].a[a];
-        if (!ctrl(j)) continue;
-        const pr = st.prov[j];
-        // HOI4: ikmal mesafeyle zayıflar; demiryolu olmayan (altyapısı düşük) geniş eyaletlerde (Afrika çölleri) çok daha hızlı
-        const inf = pr.inf || 2;
-        // demiryolu: kademe başına adım maliyeti ~%6,5 azalır (0 → ×1,07; 1 → ×1; 5 → ×0,74)
-        const step = g.TERRAIN[P[j].te].move * (1.45 - 0.13 * inf) * (1.065 - 0.065 * G.railOf(pr)) * (1 + 0.6 * G.wx.snow[j] + 0.6 * G.wx.mud[j]) * (inf <= 1 ? 1 + ek[a] : 1) * (pr.sab >= st.day ? 1.6 : 1);
+      const ek = edgeKm(n), A = P[n].a;
+      for (let a = 0; a < A.length; a++) {
+        const j = A[a];
+        if (cm[j] !== 1) continue;
+        let step = STEP[j];
+        if (STEPI[j]) step *= 1 + ek[a];
+        if (STEPS[j]) step *= 1.6;
         const nk = k + step;
-        if (nk < key[j]) { key[j] = nk; heapPush(h, nk, j); }
+        if (nk < key[j]) { key[j] = nk; h.push(j, nk); }
       }
     }
     const avail = G.supAvail[tag] || (G.supAvail[tag] = new Float32Array(NP));
@@ -199,16 +220,22 @@
     const ratio = G.supRatio[tag] || (G.supRatio[tag] = new Float32Array(NP));
     for (let i = 0; i < NP; i++) ratio[i] = dem[i] > 0 ? Math.min(1, avail[i] / dem[i]) : 1;
   };
-  G.computeSupplyAll = () => {
+  // parçalı çalıştırma için üreteç: her ülkeden sonra durabilir (ana döngü kare bütçesi)
+  G.supplySteps = function* () {
     const st = G.st;
     G.ensureInfra();
-    for (const c of Object.values(st.C)) {
-      if (!c.alive) { delete G.supRatio[c.tag]; continue; }
-      if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; continue; }
-      G.computeSupplyFor(c);
-    }
+    prepStep(); stepOk = true;
+    try {
+      for (const c of Object.values(st.C)) {
+        if (!c.alive) { delete G.supRatio[c.tag]; continue; }
+        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; continue; }
+        G.computeSupplyFor(c);
+        yield;
+      }
+    } finally { stepOk = false; }
     G.supTick = (G.supTick || 0) + 1;
   };
+  G.computeSupplyAll = () => { for (const _ of G.supplySteps()); };
   G.supplyRatio = (u) => { if (u.loc >= NP) return 1; const r = G.supRatio[u.t]; return r ? r[u.loc] : 1; };
   // Muharebe ve toparlanma çarpanı
   G.supplyMul = (u) => {

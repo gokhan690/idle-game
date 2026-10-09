@@ -754,31 +754,38 @@
 
   G._moveAndFight = moveAndFight;
   // ---------- Ana gün döngüsü ----------
-  G.tick = () => {
+  // Bir günlük benzetim; ana döngü kareler arasında bölebilsin diye üreteç (yield noktaları durum tutarlıdır)
+  function* tickSteps() {
     const st = G.st;
     if (st.over === 1) return;
     if (st.conf) return; // barış konferansı sürüyor
     st.day++;
+    G.relClear();
     if (G.updateWeather()) G.supDirty = 1;
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     G.precomputeTrade();
     airNaval();
     G.navalTick();
     if (st.day % 7 === 3) G.tradeTick();
+    yield;
     precomputeManpower();
-    if (st.day % 5 === 0 || G.supDirty) { computeSupply(); G.supDirty = 0; }
+    if (st.day % 5 === 0 || G.supDirty) { yield* G.supplySteps(); G.supDirty = 0; }
     for (const c of Object.values(st.C)) if (c.alive) { G.polTick(c); economy(c); G.xpTick(c); }
+    yield;
     // yapay zekâ
     const tags = Object.keys(st.C);
     for (let i = 0; i < tags.length; i++) {
       const c = st.C[tags[i]]; if (!c.alive) continue;
-      if (tags[i] === st.player) { G.playerAuto(c, i); continue; }
-      if ((st.day + i) % 2 === 0) G.aiMilitary(c);
-      if ((st.day + i) % 7 === 0) G.aiEconomy(c);
-      if ((st.day + i) % 10 === 0) G.aiAir(c);
-      if ((st.day + i) % 15 === 0) G.aiDiplomacy(c);
+      if (tags[i] === st.player) { G.playerAuto(c, i); yield; continue; }
+      let did = 0;
+      if ((st.day + i) % 2 === 0) { G.aiMilitary(c); did = 1; }
+      if ((st.day + i) % 7 === 0) { G.aiEconomy(c); did = 1; }
+      if ((st.day + i) % 10 === 0) { G.aiAir(c); did = 1; }
+      if ((st.day + i) % 15 === 0) { G.aiDiplomacy(c); did = 1; }
+      if (did) yield;
     }
     moveAndFight();
+    yield;
     G.fuelTick();
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
@@ -797,5 +804,21 @@
     if (G.volTick) G.volTick(); // gönüllü kuvvetler
     if (G.elecTick) G.elecTick(); // seçimler
     if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
+  }
+  // yarım kalmış günü tamamla (kayıt, yükleme ve senkron çağrılardan önce)
+  G.tickIt = null;
+  let inStep = 0;
+  G.finishTick = () => { const it = G.tickIt; if (!it || inStep) return false; G.tickIt = null; while (!it.next().done); return true; };
+  G.tick = () => { G.finishTick(); const it = tickSteps(); while (!it.next().done); };
+  // bütçeli adım: günün bir parçasını çalıştırır; gün bittiyse true döner
+  G.tickSlice = (deadline) => {
+    const it = G.tickIt || (G.tickIt = tickSteps());
+    for (;;) {
+      inStep = 1; let r;
+      try { r = it.next(); } finally { inStep = 0; }
+      if (r.done) { if (G.tickIt === it) G.tickIt = null; return true; }
+      if (G.tickIt !== it) return false; // dışarıdan tamamlandı/iptal edildi
+      if (performance.now() >= deadline) return false;
+    }
   };
 })(window);
