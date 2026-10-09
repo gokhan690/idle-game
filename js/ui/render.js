@@ -21,12 +21,44 @@
   const pairKey = (a, b) => (a < b ? a * 8192 + b : b * 8192 + a);
   const pairMap = new Map();
   for (const bd of borders) if (bd.b >= 0) { const k = pairKey(bd.a, bd.b); let L = pairMap.get(k); if (!L) pairMap.set(k, (L = [])); L.push(bd.pts); }
-  const coastPath = new Path2D();
-  for (const bd of borders) if (bd.b < 0) addLine(coastPath, bd.pts);
-  const seaPath = new Path2D();
-  for (const s of M.seaLines) addLine(seaPath, decode(s));
   function addLine(path, pts) { path.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]); }
   R.provPath = provPath;
+
+  // ---------- Karolar: dünya TX×TY parçaya bölünür, yalnızca ekrandaki karoların yolları çizilir ----------
+  // Her öğe sınır kutusunun merkezine göre bir karoya düşer; karo kutusu öğelerinin birleşimine genişler.
+  const TX = 10, TY = 5, NT = TX * TY;
+  const tBox = new Float64Array(NT * 4);
+  for (let t = 0; t < NT; t++) { tBox[4 * t] = Infinity; tBox[4 * t + 1] = Infinity; tBox[4 * t + 2] = -Infinity; tBox[4 * t + 3] = -Infinity; }
+  const ptsTile = (arrs) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const a of arrs) for (let i = 0; i < a.length; i += 2) { const x = a[i], y = a[i + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x0 === Infinity) return 0;
+    const cx = Math.max(0, Math.min(TX - 1, Math.floor(((x0 + x1) / 2 / M.W) * TX))), cy = Math.max(0, Math.min(TY - 1, Math.floor(((y0 + y1) / 2 / M.H) * TY)));
+    const t = cx + TX * cy, b = 4 * t;
+    if (x0 < tBox[b]) tBox[b] = x0; if (y0 < tBox[b + 1]) tBox[b + 1] = y0; if (x1 > tBox[b + 2]) tBox[b + 2] = x1; if (y1 > tBox[b + 3]) tBox[b + 3] = y1;
+    return t;
+  };
+  const provT = provRings.map((rings) => ptsTile(rings));
+  for (const bd of borders) bd.t = ptsTile([bd.pts]);
+  const tPaths = () => new Array(NT).fill(null);
+  const tLine = (tp, t, pts) => { addLine(tp[t] || (tp[t] = new Path2D()), pts); };
+  const HAS_ADD = typeof Path2D.prototype.addPath === 'function';
+  // eyalet ekle: addPath yoksa eyalet listesi tutulur
+  const tProv = (tp, i) => { const t = provT[i]; if (HAS_ADD) (tp[t] || (tp[t] = new Path2D())).addPath(provPath[i]); else (tp[t] || (tp[t] = [])).push(i); };
+  let VIS = [];
+  const tFill = (ctx, tp, rule) => { for (const t of VIS) { const p = tp[t]; if (!p) continue; if (Array.isArray(p)) { for (const i of p) ctx.fill(provPath[i], rule); } else ctx.fill(p, rule); } };
+  const tStroke = (ctx, tp) => { for (const t of VIS) { const p = tp[t]; if (p) ctx.stroke(p); } };
+  // kamera kopyası k için görünen karolar
+  function setVis(k, pad) {
+    const cam = R.cam, z = cam.z, hw = R.w / 2 / z + pad, hh = R.h / 2 / z + pad;
+    const x0 = cam.x - k * M.W - hw, x1 = cam.x - k * M.W + hw, y0 = cam.y - hh, y1 = cam.y + hh;
+    VIS = [];
+    for (let t = 0; t < NT; t++) { const b = 4 * t; if (tBox[b] <= x1 && tBox[b + 2] >= x0 && tBox[b + 1] <= y1 && tBox[b + 3] >= y0) VIS.push(t); }
+  }
+  const coastPath = tPaths();
+  for (const bd of borders) if (bd.b < 0) tLine(coastPath, bd.t, bd.pts);
+  const seaPath = tPaths();
+  for (const sl of M.seaLines) { const d = decode(sl); tLine(seaPath, ptsTile([d]), d); }
 
   // ---------- Renk yardımcıları ----------
   const hexRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -35,7 +67,7 @@
   R.mix = mix;
 
   // ---------- Grup yolları (sahiplik değişince yeniden) ----------
-  let fillGroups = new Map(), occGroups = new Map(), countryBorder = new Path2D(), provBorder = new Path2D(), regionBorder = new Path2D(), labels = [];
+  let fillGroups = new Map(), occGroups = new Map(), countryBorder = null, provBorder = null, regionBorder = null, labels = [];
   function rebuild() {
     const st = G.st;
     fillGroups = new Map(); occGroups = new Map();
@@ -60,22 +92,20 @@
       }
       return pr.c;
     };
-    const hasAdd = typeof Path2D.prototype.addPath === 'function';
+    const grp = (m, k) => { let pa = m.get(k); if (!pa) m.set(k, (pa = tPaths())); return pa; };
     for (let i = 0; i < NP; i++) {
-      const k = keyOf(i);
-      let pa = fillGroups.get(k); if (!pa) fillGroups.set(k, (pa = hasAdd ? new Path2D() : []));
-      if (hasAdd) pa.addPath(provPath[i]); else pa.push(i);
+      tProv(grp(fillGroups, keyOf(i)), i);
       const pr = st.prov[i];
-      if (R.mode === 'peace' && st.conf && st.conf.sOf[i] != null && !st.conf.own[i] && st.conf.ctrl[i] !== st.conf.L) { const ct = st.conf.ctrl[i]; let o = occGroups.get(ct); if (!o) occGroups.set(ct, (o = hasAdd ? new Path2D() : [])); if (hasAdd) o.addPath(provPath[i]); else o.push(i); }
-      if (R.mode === 'pol' && pr.o !== pr.c) { let o = occGroups.get(pr.o); if (!o) occGroups.set(pr.o, (o = hasAdd ? new Path2D() : [])); if (hasAdd) o.addPath(provPath[i]); else o.push(i); }
+      if (R.mode === 'peace' && st.conf && st.conf.sOf[i] != null && !st.conf.own[i] && st.conf.ctrl[i] !== st.conf.L) tProv(grp(occGroups, st.conf.ctrl[i]), i);
+      if (R.mode === 'pol' && pr.o !== pr.c) tProv(grp(occGroups, pr.o), i);
     }
-    countryBorder = new Path2D(); provBorder = new Path2D(); regionBorder = new Path2D();
+    countryBorder = tPaths(); provBorder = tPaths(); regionBorder = tPaths();
     for (const bd of borders) {
       if (bd.b < 0) continue;
       const ca = st.prov[bd.a].c, cb = st.prov[bd.b].c;
-      addLine(ca !== cb ? countryBorder : provBorder, bd.pts);
-      if (R.mode === 'air' && G.regionOf(bd.a) !== G.regionOf(bd.b)) addLine(regionBorder, bd.pts);
-      if (R.mode === 'peace' && st.conf) { const sa = st.conf.sOf[bd.a], sb = st.conf.sOf[bd.b]; if (sa !== sb && (sa != null || sb != null)) addLine(regionBorder, bd.pts); }
+      tLine(ca !== cb ? countryBorder : provBorder, bd.t, bd.pts);
+      if (R.mode === 'air' && G.regionOf(bd.a) !== G.regionOf(bd.b)) tLine(regionBorder, bd.t, bd.pts);
+      if (R.mode === 'peace' && st.conf) { const sa = st.conf.sOf[bd.a], sb = st.conf.sOf[bd.b]; if (sa !== sb && (sa != null || sb != null)) tLine(regionBorder, bd.t, bd.pts); }
     }
     buildLabels();
     buildRails();
@@ -201,33 +231,44 @@
   function terrainLayer(ctx, z) {
     if (!terrPaths) {
       terrPaths = new Map();
-      for (let i = 0; i < NP; i++) { const id = g.TERRAIN[P[i].te]?.id; if (!TEX[id]) continue; let pa = terrPaths.get(id); if (!pa) terrPaths.set(id, (pa = new Path2D())); pa.addPath(provPath[i]); }
+      for (let i = 0; i < NP; i++) { const id = g.TERRAIN[P[i].te]?.id; if (!TEX[id]) continue; let pa = terrPaths.get(id); if (!pa) terrPaths.set(id, (pa = tPaths())); tProv(pa, i); }
     }
     const fade = Math.max(0, Math.min(1, (z - 0.45) / 0.5));
     for (const [id, pa] of terrPaths) {
       const T = TEX[id];
-      ctx.fillStyle = T.f; ctx.fill(pa, 'evenodd');
+      ctx.fillStyle = T.f; tFill(ctx, pa, 'evenodd');
       if (fade <= 0) continue;
       let pat = texPat.get(id);
       if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 19; T.d(cv.getContext('2d')); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
       const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)));
       pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
-      ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; ctx.fill(pa, 'evenodd'); ctx.globalAlpha = 1;
+      ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; tFill(ctx, pa, 'evenodd'); ctx.globalAlpha = 1;
     }
   }
   // kâğıt dokusu ve kenar karartması (ekran uzayı)
   let noisePat = null, vig = null, vigKey = '';
+  // gürültü ve kenar karartması tek bir ekran boyu tuvalde önceden birleştirilir (her karede tek kopya)
+  let atmCv = null;
   function atmosphere(ctx) {
-    if (!noisePat) {
-      const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); const im = x.createImageData(128, 128);
-      let sd = 1234567; const rnd = () => ((sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-      for (let i = 0; i < im.data.length; i += 4) { const v = 110 + rnd() * 120; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
-      x.putImageData(im, 0, 0); noisePat = ctx.createPattern(cv, 'repeat');
+    const key = R.w + 'x' + R.h + 'x' + R.dpr;
+    if (vigKey !== key) {
+      vigKey = key;
+      if (!noisePat) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); const im = x.createImageData(128, 128);
+        let sd = 1234567; const rnd = () => ((sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+        for (let i = 0; i < im.data.length; i += 4) { const v = 110 + rnd() * 120; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+        x.putImageData(im, 0, 0); noisePat = cv;
+      }
+      atmCv = atmCv || document.createElement('canvas');
+      atmCv.width = Math.round(R.w * R.dpr); atmCv.height = Math.round(R.h * R.dpr);
+      const x = atmCv.getContext('2d');
+      x.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
+      x.globalAlpha = 0.045; x.fillStyle = x.createPattern(noisePat, 'repeat'); x.fillRect(0, 0, R.w, R.h); x.globalAlpha = 1;
+      vig = x.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)');
+      x.fillStyle = vig; x.fillRect(0, 0, R.w, R.h);
     }
-    ctx.globalAlpha = 0.045; ctx.fillStyle = noisePat; ctx.fillRect(0, 0, R.w, R.h); ctx.globalAlpha = 1;
-    const key = R.w + 'x' + R.h;
-    if (vigKey !== key) { vigKey = key; vig = ctx.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)'); }
-    ctx.fillStyle = vig; ctx.fillRect(0, 0, R.w, R.h);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(atmCv, 0, 0);
+    ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
   }
   const AIRS_COLORS = ['#a8322a', '#c8682f', '#c9a640', '#7ea54c', '#3f8f4f'];
   const AIRN_COLORS = ['#4d5a6a', '#56634e', '#665a4c', '#4f5f63', '#5d5266', '#5a604a'];
@@ -237,10 +278,11 @@
   // ---------- Nehirler (önceden izdüşümlenmiş Path2D; büyük ve küçük ayrı) ----------
   let riverP = null;
   function buildRivers() {
-    riverP = { big: new Path2D(), small: new Path2D() };
+    riverP = { big: tPaths(), small: tPaths() };
     for (const r of G.riverPaths()) {
-      const pa = r.big ? riverP.big : riverP.small, q = r.pts, n = q.length / 2;
+      const q = r.pts, n = q.length / 2;
       if (n < 2) continue;
+      const tp = r.big ? riverP.big : riverP.small, t = ptsTile([q]), pa = tp[t] || (tp[t] = new Path2D());
       pa.moveTo(q[0], q[1]);
       // orta noktalardan geçen ikinci derece eğrilerle yumuşat
       for (let i = 1; i < n - 1; i++) {
@@ -254,31 +296,39 @@
     if (!riverP) buildRivers();
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     // küçük nehirler yakınlaşınca görünür; büyükler her zaman
-    if (z > 0.7) { ctx.strokeStyle = `rgba(104,170,226,${Math.min(0.9, 0.35 + (z - 0.7) * 0.6)})`; ctx.lineWidth = Math.min(1.7, 0.8 + z * 0.4) / z; ctx.stroke(riverP.small); }
-    ctx.strokeStyle = 'rgba(86,160,226,0.92)'; ctx.lineWidth = Math.min(3.6, 1.3 + z * 1.3) / z; ctx.stroke(riverP.big);
+    if (z > 0.7) { ctx.strokeStyle = `rgba(104,170,226,${Math.min(0.9, 0.35 + (z - 0.7) * 0.6)})`; ctx.lineWidth = Math.min(1.7, 0.8 + z * 0.4) / z; tStroke(ctx, riverP.small); }
+    ctx.strokeStyle = 'rgba(86,160,226,0.92)'; ctx.lineWidth = Math.min(3.6, 1.3 + z * 1.3) / z; tStroke(ctx, riverP.big);
   }
 
   // ---------- Çizim ----------
-  R.draw = () => {
-    const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
-    if (!st) return;
-    if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
-    if (R.mode === 'occ' && R.occDay !== (st.day / 10 | 0)) { R.occDay = st.day / 10 | 0; R.mapDirty = 1; }
-    if (R.mode === 'air' && R.airDay !== (st.day / 5 | 0)) { R.airDay = st.day / 5 | 0; R.mapDirty = 1; }
-    if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 180)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); }
-    if (G.wxDirty) { buildWeather(); G.wxDirty = 0; }
+  // Harita üç önbellek katmanından oluşur: A (okyanus, deniz çizgileri, kıyı ışıması) ve C (arazi dokusu, kıyı, nehirler,
+  // atmosfer) yalnızca kamera/kip değişince; B (ülke dolguları, hava, işgal, sınırlar) ayrıca sahiplik değişince çizilir.
+  function eachCopy(ctx, fn) {
+    const cam = R.cam, z = cam.z, dpr = R.dpr, hw = R.w / 2 / z;
+    for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
+      ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
+      setVis(k, 8 / z);
+      if (VIS.length) fn(z);
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function drawLayerA(ctx) {
+    ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
     // okyanus
     const grd = ctx.createLinearGradient(0, 0, 0, R.h);
     grd.addColorStop(0, '#16283a'); grd.addColorStop(1, '#10202f');
     ctx.fillStyle = grd; ctx.fillRect(0, 0, R.w, R.h);
-    const hw = R.w / 2 / z;
-    for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
-      ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
+    eachCopy(ctx, (z) => {
       // deniz bölgeleri
-      ctx.strokeStyle = 'rgba(160,190,215,0.10)'; ctx.lineWidth = 1 / z; ctx.stroke(seaPath);
+      ctx.strokeStyle = 'rgba(160,190,215,0.10)'; ctx.lineWidth = 1 / z; tStroke(ctx, seaPath);
       // kıyı ışıması
-      ctx.strokeStyle = 'rgba(120,170,200,0.18)'; ctx.lineWidth = 7 / z; ctx.lineJoin = 'round'; ctx.stroke(coastPath);
+      ctx.strokeStyle = 'rgba(120,170,200,0.18)'; ctx.lineWidth = 7 / z; ctx.lineJoin = 'round'; tStroke(ctx, coastPath);
+    });
+  }
+  function drawLayerB(ctx) {
+    const st = G.st;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    eachCopy(ctx, (z) => {
       // kara dolgusu
       for (const [k, pa] of fillGroups) {
         let col;
@@ -292,13 +342,13 @@
         else col = R.ccolor(k);
         if (R.mode === 'pol' && st.C[k] && !st.C[k].alive) col = mix(col, '#555', 0.6);
         ctx.fillStyle = col;
-        if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+        tFill(ctx, pa, 'evenodd');
       }
       // hava: kar ve çamur katmanı
       if (R.showWeather && R.mode !== 'ind') {
-        if (wxPaths.snow1) { ctx.fillStyle = 'rgba(235,242,250,0.3)'; ctx.fill(wxPaths.snow1, 'evenodd'); }
-        if (wxPaths.snow2) { ctx.fillStyle = 'rgba(244,248,253,0.52)'; ctx.fill(wxPaths.snow2, 'evenodd'); }
-        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; ctx.fill(wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
+        if (wxPaths.snow1) { ctx.fillStyle = 'rgba(235,242,250,0.3)'; tFill(ctx, wxPaths.snow1, 'evenodd'); }
+        if (wxPaths.snow2) { ctx.fillStyle = 'rgba(244,248,253,0.52)'; tFill(ctx, wxPaths.snow2, 'evenodd'); }
+        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; tFill(ctx, wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
       }
       // işgal çizgileri
       if (R.mode === 'pol' || R.mode === 'peace') for (const [owner, pa] of occGroups) {
@@ -306,19 +356,15 @@
         if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
         pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
         ctx.globalAlpha = 0.55; ctx.fillStyle = pat;
-        if (Array.isArray(pa)) for (const i of pa) ctx.fill(provPath[i], 'evenodd'); else ctx.fill(pa, 'evenodd');
+        tFill(ctx, pa, 'evenodd');
         ctx.globalAlpha = 1;
       }
-      // arazi rölyefi: siyasi ve ittifak haritasında dağ, tepe, orman, çöl, bataklık dokusu
-      if ((R.mode === 'pol' || R.mode === 'fac') && R.relief !== false) terrainLayer(ctx, z);
       // eyalet sınırları
-      if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; ctx.stroke(provBorder); }
-      ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; ctx.stroke(countryBorder);
-      ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; ctx.stroke(coastPath);
-      if (R.mode !== 'peace' && R.mode !== 'ind') drawRivers(ctx, z);
-      if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); ctx.stroke(regionBorder); ctx.setLineDash([]); }
+      if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; tStroke(ctx, provBorder); }
+      ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; tStroke(ctx, countryBorder);
+      if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); tStroke(ctx, regionBorder); ctx.setLineDash([]); }
       if (R.mode === 'peace') {
-        ctx.strokeStyle = 'rgba(20,18,12,0.95)'; ctx.lineWidth = 2.2 / z; ctx.stroke(regionBorder);
+        ctx.strokeStyle = 'rgba(20,18,12,0.95)'; ctx.lineWidth = 2.2 / z; tStroke(ctx, regionBorder);
         const cf = st.conf, cs = G.UI && G.UI.cfSel, sel = cf && cs != null ? cf.states[cs] : null;
         if (sel) { ctx.fillStyle = 'rgba(255,240,190,0.28)'; for (const n of sel.p) ctx.fill(provPath[n], 'evenodd'); ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.6 / z; for (const n of sel.p) ctx.stroke(provPath[n]); }
       }
@@ -331,6 +377,56 @@
         }
         ctx.lineCap = 'butt';
       }
+    });
+  }
+  function drawLayerC(ctx) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    eachCopy(ctx, (z) => {
+      // arazi rölyefi: siyasi ve ittifak haritasında dağ, tepe, orman, çöl, bataklık dokusu
+      if ((R.mode === 'pol' || R.mode === 'fac') && R.relief !== false && !R.lowQ) terrainLayer(ctx, z);
+      ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; tStroke(ctx, coastPath);
+      if (R.mode !== 'peace' && R.mode !== 'ind') drawRivers(ctx, z);
+    });
+    atmosphere(ctx);
+  }
+  // Sabit harita katmanı ayrı bir tuvalde önbelleklenir; kamera, kip ya da harita değişmedikçe her kare yalnızca kopyalanır
+  // (telefonda asıl kasma tam ekran dolgu/doku boyamasıydı).
+  let baseCv = null, baseCtx = null, baseKey = '', mapVer = 0;
+  const LAY = [{}, {}, {}, {}];
+  R.bumpMap = () => { mapVer++; };
+  R.draw = () => {
+    const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
+    if (!st) return;
+    if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
+    if (R.mode === 'occ' && R.occDay !== (st.day / 10 | 0)) { R.occDay = st.day / 10 | 0; R.mapDirty = 1; }
+    if (R.mode === 'air' && R.airDay !== (st.day / 5 | 0)) { R.airDay = st.day / 5 | 0; R.mapDirty = 1; }
+    if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 350)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); mapVer++; }
+    if (G.wxDirty) { buildWeather(); G.wxDirty = 0; mapVer++; }
+    const W = R.cv.width, H = R.cv.height;
+    if (!baseCv || baseCv.width !== W || baseCv.height !== H) {
+      for (const L of LAY) { L.cv = L.cv || document.createElement('canvas'); L.cv.width = W; L.cv.height = H; L.ctx = L.cv.getContext('2d'); L.key = ''; }
+      baseCv = LAY[3].cv; baseCtx = LAY[3].ctx; baseKey = '';
+    }
+    const camKey = cam.x + '|' + cam.y + '|' + z + '|' + W + '|' + H + '|' + R.mode;
+    const kA = camKey, kC = camKey + '|' + R.relief + '|' + (R.lowQ ? 1 : 0);
+    const kB = camKey + '|' + R.showWeather + '|' + mapVer + '|' + (R.mode === 'peace' ? (G.UI && G.UI.cfSel) : '');
+    let ch = 0;
+    if (LAY[0].key !== kA) { drawLayerA(LAY[0].ctx); LAY[0].key = kA; ch = 1; }
+    if (LAY[1].key !== kB) { drawLayerB(LAY[1].ctx); LAY[1].key = kB; ch = 1; }
+    if (LAY[2].key !== kC) { drawLayerC(LAY[2].ctx); LAY[2].key = kC; ch = 1; }
+    if (ch || !baseKey) {
+      // birleşik katman: A + B + C + etiketler
+      baseCtx.setTransform(1, 0, 0, 1, 0, 0); baseCtx.globalAlpha = 1;
+      for (let i = 0; i < 3; i++) baseCtx.drawImage(LAY[i].cv, 0, 0);
+      baseCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawLabels(baseCtx, z);
+      baseKey = 'ok';
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+    ctx.drawImage(baseCv, 0, 0);
+    const hw = R.w / 2 / z;
+    for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
+      ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
       if (R.mode !== 'peace') drawFronts(ctx, z);
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
@@ -354,8 +450,6 @@
 
     // ---------- ekran uzayı katmanları ----------
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    atmosphere(ctx);
-    drawLabels(ctx, z);
     if (R.mode === 'peace') drawConf(ctx);
     else {
       drawHubs(ctx);
@@ -441,12 +535,12 @@
   let wxPaths = {}, mudPat = null;
   R.showWeather = true;
   function buildWeather() {
-    const s1 = new Path2D(), s2 = new Path2D(), md = new Path2D(); let n1 = 0, n2 = 0, nm = 0;
-    if (typeof Path2D.prototype.addPath !== 'function') { wxPaths = {}; return; }
+    const s1 = tPaths(), s2 = tPaths(), md = tPaths(); let n1 = 0, n2 = 0, nm = 0;
+    if (!HAS_ADD) { wxPaths = {}; return; }
     for (let i = 0; i < NP; i++) {
       const sn = G.wx.snow[i], m = G.wx.mud[i];
-      if (sn > 0.55) { s2.addPath(provPath[i]); n2++; } else if (sn > 0.15) { s1.addPath(provPath[i]); n1++; }
-      if (m > 0.3) { md.addPath(provPath[i]); nm++; }
+      if (sn > 0.55) { tProv(s2, i); n2++; } else if (sn > 0.15) { tProv(s1, i); n1++; }
+      if (m > 0.3) { tProv(md, i); nm++; }
     }
     wxPaths = { snow1: n1 ? s1 : null, snow2: n2 ? s2 : null, mud: nm ? md : null };
   }

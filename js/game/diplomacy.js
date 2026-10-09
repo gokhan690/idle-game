@@ -11,7 +11,7 @@
       if (st.C[a]?.alive && st.C[b]?.alive) { st.C[a].enemies.push(b); st.C[b].enemies.push(a); } else delete st.wars[k];
     }
     for (const c of Object.values(st.C)) { c.eset = new Set(c.enemies); if (!c.enemies.length) c.defensive = 0; }
-    G._cob.clear();
+    G.relClear();
   };
 
   G.setWar = (a, b) => {
@@ -127,7 +127,7 @@
     // Katılım mevcut savaşları otomatik birleştirmez; ittifak yalnızca gelecekteki savunma
     // ve geçiş hakları için bağlayıcıdır.
     f.members.push(tag); c.fac = fid;
-    G._cob.clear();
+    G.relClear();
     G.log(`${G.cname(tag)}, ${f.n} ittifakına katıldı.`, [tag, f.leader], 'major');
     st.tension = Math.min(100, st.tension + 2);
     G.mapDirty = 1;
@@ -136,7 +136,7 @@
     const st = G.st, c = st.C[tag];
     const f = st.factions[c.fac]; if (!f) { c.fac = null; return; }
     f.members = f.members.filter((t) => t !== tag);
-    c.fac = null;
+    c.fac = null; G.relClear();
     if (f.leader === tag) {
       const next = f.members.find((t) => st.C[t].alive);
       if (next) f.leader = next; else { for (const t of f.members) st.C[t].fac = null; delete st.factions[Object.keys(st.factions).find((k) => st.factions[k] === f)]; }
@@ -148,7 +148,7 @@
     const id = 'f' + tag;
     if (st.C[tag].fac) G.leaveFaction(tag);
     st.factions[id] = { n: name, c: g.COUNTRY_DEFS[tag].c, leader: tag, members: [tag] };
-    st.C[tag].fac = id;
+    st.C[tag].fac = id; G.relClear();
     G.log(`${G.cname(tag)} yeni bir ittifak kurdu: ${name}`, [tag], 'major');
     return id;
   };
@@ -211,7 +211,7 @@
     const st = G.st;
     if (G.atWar(from, to)) return false;
     const ok = to === st.player ? false : G.opinion(to, from) > 20 && !st.C[to].enemies.length || G.coBelligerent(from, to);
-    if (ok) st.access[from + '>' + to] = 1;
+    if (ok) { st.access[from + '>' + to] = 1; G.relClear(); }
     return ok;
   };
   G.proposePact = (a, b) => {

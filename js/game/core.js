@@ -70,11 +70,23 @@
     if (v === undefined) { v = ca.enemies.some((e) => cb.eset.has(e)) && !ca.eset.has(b); G._cob.set(k, v); }
     return v;
   };
-  G.friendly = (a, b) => a === b || G.sameFaction(a, b) || G.coBelligerent(a, b) || !!G.st.access[a + '>' + b];
+  // dost ilişkisi önbelleği: her gün başında ve savaş/ittifak/geçiş değişince temizlenir
+  let FR = Object.create(null), FRst = null;
+  G.relClear = () => { G._cob.clear(); FR = Object.create(null); FRst = G.st; };
+  // bit 1: dost, bit 2: savaşta
+  const rel = (a, b) => {
+    if (FRst !== G.st) G.relClear();
+    const m = FR[a] || (FR[a] = Object.create(null));
+    let v = m[b];
+    if (v === undefined) v = m[b] = (G.sameFaction(a, b) || G.coBelligerent(a, b) || !!G.st.access[a + '>' + b] ? 1 : 0) | (G.atWar(a, b) ? 2 : 0);
+    return v;
+  };
+  G.rel = rel;
+  G.friendly = (a, b) => a === b || (rel(a, b) & 1) === 1;
   G.canEnter = (tag, n) => {
     if (n >= NP) return true;
     const c = G.st.prov[n].c;
-    return c === tag || G.atWar(tag, c) || G.friendly(tag, c);
+    return c === tag || rel(tag, c) !== 0;
   };
   G.hostileIn = (n, tag) => { const L = G.unitsAt[n]; if (!L) return false; for (const u of L) if (G.atWar(u.t, tag)) return true; return false; };
 
@@ -82,12 +94,31 @@
   G.unitPower = (u) => { const s = G.unitStats(u); return (0.12 * (s.sa + s.ha) + 0.06 * s.df + 0.05 * s.bt) * u.str * (0.35 + 0.65 * Math.min(1, u.org / s.org)); };
 
   // ---------- Yol bulma (A*) ----------
+  // Tip dizili ikili yığın (eski dizi tabanlı yığınla aynı sıralama; bellek ayırmadan)
   class Heap {
-    constructor() { this.a = []; }
-    push(n, p) { const a = this.a; a.push([p, n]); let i = a.length - 1; while (i > 0) { const j = (i - 1) >> 1; if (a[j][0] <= a[i][0]) break; [a[i], a[j]] = [a[j], a[i]]; i = j; } }
-    pop() { const a = this.a; const top = a[0]; const last = a.pop(); if (a.length) { a[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[i], a[m]] = [a[m], a[i]]; i = m; } } return top; }
-    get size() { return this.a.length; }
+    constructor() { this.k = new Float64Array(1024); this.v = new Int32Array(1024); this.size = 0; }
+    clear() { this.size = 0; }
+    push(n, p) {
+      if (this.size === this.k.length) { const k = new Float64Array(this.size * 2), v = new Int32Array(this.size * 2); k.set(this.k); v.set(this.v); this.k = k; this.v = v; }
+      const K = this.k, V = this.v; let i = this.size++;
+      K[i] = p; V[i] = n;
+      while (i > 0) { const j = (i - 1) >> 1; if (K[j] <= K[i]) break; const tk = K[i]; K[i] = K[j]; K[j] = tk; const tv = V[i]; V[i] = V[j]; V[j] = tv; i = j; }
+    }
+    // en küçüğü çıkarır: anahtarı this.pk'ye yazar, düğümü döndürür
+    pop() {
+      const K = this.k, V = this.v;
+      const tk = K[0], tv = V[0];
+      const last = --this.size;
+      if (last > 0) {
+        K[0] = K[last]; V[0] = V[last];
+        let i = 0;
+        for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < last && K[l] < K[m]) m = l; if (r < last && K[r] < K[m]) m = r; if (m === i) break; const xk = K[i]; K[i] = K[m]; K[m] = xk; const xv = V[i]; V[i] = V[m]; V[m] = xv; i = m; }
+      }
+      this.pk = tk;
+      return tv;
+    }
   }
+  G.Heap = Heap;
   const SEA_SPEED = 40;
   G.SEA_SPEED = SEA_SPEED;
   // Kenar maliyeti (gün)
@@ -98,32 +129,54 @@
     if (a >= NP && b < NP) return (d + 20) / SEA_SPEED;
     return d / SEA_SPEED;
   };
+  // kenar maliyetleri önceden: edgeDays(a, b, spd) = L / spd + C (L kara-kara payı, C deniz sabiti)
+  let EO = null, EI = null;
+  const edgeTabs = () => {
+    EO = []; EI = [];
+    for (let x = 0; x < NN; x++) {
+      const L = adj[x], o = new Float64Array(L.length * 2), i = new Float64Array(L.length * 2);
+      for (let k = 0; k < L.length; k++) {
+        const y = L[k][0];
+        if (x < NP && y < NP) { o[2 * k] = G.dist(x, y) * g.TERRAIN[P[y].te].move * G.RIVER_MOVE[G.riverEdge(x, y)]; i[2 * k] = G.dist(y, x) * g.TERRAIN[P[x].te].move * G.RIVER_MOVE[G.riverEdge(y, x)]; }
+        else { o[2 * k + 1] = G.edgeDays(x, y, 1); i[2 * k + 1] = G.edgeDays(y, x, 1); }
+      }
+      EO.push(o); EI.push(i);
+    }
+  };
   const gScore = new Float64Array(NN), came = new Int32Array(NN), stamp = new Int32Array(NN);
   let curStamp = 0;
+  const pH = new Heap(), fH = new Heap();
   // opts: {naval: bool, maxDays}
   G.findPath = (from, to, tag, spd, opts = {}) => {
     if (from === to) return [];
     if (to < NP && !G.canEnter(tag, to)) return null;
     curStamp++;
-    const h = new Heap();
-    const tx = nodeX[to], ty = nodeY[to];
-    const heur = (n) => G.dist(n, to) / Math.max(spd * 1.0, SEA_SPEED);
+    if (!EO) edgeTabs();
+    const h = pH; h.clear();
+    const prov = G.st.prov, naval = !!opts.naval, avoid = !!opts.avoidHostile, maxD = opts.maxDays;
+    const hs = Math.max(spd * 1.0, SEA_SPEED);
+    const heur = (n) => G.dist(n, to) / hs;
     stamp[from] = curStamp; gScore[from] = 0; came[from] = -1;
     h.push(from, heur(from));
     let iter = 0;
     while (h.size) {
-      const [, n] = h.pop();
+      const n = h.pop();
       if (n === to) break;
       if (++iter > 6000) return null;
-      const gn = gScore[n];
-      for (const [b] of adj[n]) {
-        if (b >= NP && !opts.naval) continue;
-        if (b >= NP && n >= NP && G.straitBlocked(tag, n, b)) continue;
-        if (b < NP && b !== to && !G.canEnter(tag, b)) continue;
-        if (b < NP && b !== to && opts.avoidHostile && G.hostileIn(b, tag)) continue;
+      const gn = gScore[n], A = adj[n], E = EO[n];
+      for (let k = 0; k < A.length; k++) {
+        const b = A[k][0];
+        if (b >= NP) {
+          if (!naval) continue;
+          if (n >= NP && G.straitBlocked(tag, n, b)) continue;
+        } else if (b !== to) {
+          const pc = prov[b].c;
+          if (pc !== tag && rel(tag, pc) === 0) continue;
+          if (avoid && G.hostileIn(b, tag)) continue;
+        }
         // denizden geçiş: kara düğümlerinden denize sadece kıyıdan
-        const cost = gn + G.edgeDays(n, b, spd);
-        if (opts.maxDays && cost > opts.maxDays) continue;
+        const cost = gn + (E[2 * k] / spd + E[2 * k + 1]);
+        if (maxD && cost > maxD) continue;
         if (stamp[b] !== curStamp || cost < gScore[b]) {
           stamp[b] = curStamp; gScore[b] = cost; came[b] = n;
           h.push(b, cost + heur(b));
@@ -141,17 +194,24 @@
   const fDist = new Float64Array(NN), fNext = new Int32Array(NN), fSrc = new Int32Array(NN);
   G.flowField = (tag, sources, opts = {}) => {
     fDist.fill(Infinity); fNext.fill(-1); fSrc.fill(-1);
-    const h = new Heap();
+    if (!EO) edgeTabs();
+    const h = fH; h.clear();
     for (const s of sources) { if (s.c < fDist[s.i]) { fDist[s.i] = s.c; fSrc[s.i] = s.i; h.push(s.i, s.c); } }
-    const spd = opts.spd || 9.6;
+    const spd = opts.spd || 9.6, naval = !!opts.naval, prov = G.st.prov;
     while (h.size) {
-      const [d, m] = h.pop();
+      const m = h.pop(), d = h.pk;
       if (d > fDist[m]) continue;
-      for (const [n] of adj[m]) {
-        if (n >= NP && !opts.naval) continue;
-        if (n >= NP && m >= NP && G.straitBlocked(tag, n, m)) continue;
-        if (n < NP && (!G.canEnter(tag, n) || G.atWar(tag, G.st.prov[n].c))) continue;
-        const c = d + G.edgeDays(n, m, spd);
+      const A = adj[m], E = EI[m];
+      for (let k = 0; k < A.length; k++) {
+        const n = A[k][0];
+        if (n >= NP) {
+          if (!naval) continue;
+          if (m >= NP && G.straitBlocked(tag, n, m)) continue;
+        } else {
+          const pc = prov[n].c;
+          if (pc !== tag && rel(tag, pc) !== 1) continue; // yalnızca kendi ve savaşta olmayan dost topraklar
+        }
+        const c = d + (E[2 * k] / spd + E[2 * k + 1]);
         if (c < fDist[n]) { fDist[n] = c; fNext[n] = m; fSrc[n] = fSrc[m]; h.push(n, c); }
       }
     }
