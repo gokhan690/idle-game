@@ -292,7 +292,7 @@
     for (const a of c.armies || []) {
       a.front = [];
       const vs = a.vs && st.C[a.vs]?.alive ? a.vs : null;
-      if (a.ord === 'hold' || (!vs && !c.enemies.length)) continue;
+      if (a.ord === 'hold' || a.ord === 'fb' || (!vs && !c.enemies.length)) continue;
       const F = new Set(G.frontier(tag, vs));
       if (!F.size) continue;
       const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP);
@@ -327,6 +327,41 @@
       }
     }
   };
+  // Savunma hattı (HOI4 geri çekilme hattı): iki eyalet arasında dost topraktan geçen en kısa hat
+  G.linePath = (tag, a, b) => {
+    const st = G.st, own = (i) => st.prov[i].c === tag || (G.friendly(tag, st.prov[i].c) && !G.atWar(tag, st.prov[i].c));
+    if (a < 0 || b < 0 || a >= NP || b >= NP || !own(a) || !own(b)) return null;
+    const prev = new Map([[a, -1]]), q = [a];
+    for (let k = 0; k < q.length && k < 6000; k++) {
+      const n = q[k]; if (n === b) break;
+      for (const j of P[n].a.slice().sort((x, y) => G.dist(x, b) - G.dist(y, b))) if (!prev.has(j) && own(j)) { prev.set(j, n); q.push(j); }
+    }
+    if (!prev.has(b)) return null;
+    const out = []; for (let x = b; x >= 0; x = prev.get(x)) out.unshift(x);
+    return out.length > 40 ? null : out;
+  };
+  // ordu savunma hattına yerleşir: eyalet başına eşit kota, en yakın tümen en yakın boşluğa
+  G.holdLine = (c, a) => {
+    const st = G.st;
+    const line = (a.fb || []).filter((i) => st.prov[i].c === c.tag || (G.friendly(c.tag, st.prov[i].c) && !G.atWar(c.tag, st.prov[i].c)));
+    if (!line.length) return;
+    const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !(G.inBattle && G.inBattle.has(u)));
+    const quota = Math.max(1, Math.ceil(us.length / line.length)), set = new Set(line), cnt = new Map();
+    for (const u of us) { const tgt = u.path.length ? u.path[u.path.length - 1] : u.loc; if (set.has(tgt)) cnt.set(tgt, (cnt.get(tgt) || 0) + 1); }
+    for (const u of us) {
+      if (u.path.length) continue;
+      const here = set.has(u.loc) ? cnt.get(u.loc) || 0 : 0;
+      if (set.has(u.loc) && here <= quota) continue;
+      let best = -1, bd = Infinity;
+      for (const i of line) if ((cnt.get(i) || 0) < quota) { const d = G.dist(u.loc, i); if (d < bd) { bd = d; best = i; } }
+      if (best < 0) continue;
+      const p = G.findPath(u.loc, best, u.t, G.unitStats(u).spd, { naval: false });
+      if (!p || !p.length) continue;
+      if (set.has(u.loc)) cnt.set(u.loc, here - 1);
+      cnt.set(best, (cnt.get(best) || 0) + 1);
+      u.path = p; u.prog = 0;
+    }
+  };
   // Günlük ordu güncellemesi: planlama dolar ya da harcanır, hedefe ulaşılınca taarruz biter
   G.armyTick = (c) => {
     const st = G.st;
@@ -337,8 +372,14 @@
       else if (a.ord === 'def' && a.front && a.front.length) a.plan = Math.min(mx, a.plan + G.planRate(c, a));
       else a.plan = Math.max(0, a.plan - 0.004);
       if (a.goal != null && st.prov[a.goal].c === c.tag && a.ord === 'atk') {
-        G.log(`${a.n} taarruz hedefine ulaştı: ${G.pname(a.goal)}. Ordu cepheyi tutuyor.`, [c.tag], 'good');
-        a.goal = null; a.ord = 'def';
+        // çok aşamalı taarruz (HOI4): sıradaki aşamaya geç
+        if (a.goals && a.goals.length) {
+          const prev = a.goal; a.goal = a.goals.shift(); c._frontsDirty = 1;
+          G.log(`${a.n} ${G.pname(prev)} hedefini aldı; sonraki aşama: ${G.pname(a.goal)}.`, [c.tag], 'good');
+        } else {
+          G.log(`${a.n} taarruz hedefine ulaştı: ${G.pname(a.goal)}. Ordu cepheyi tutuyor.`, [c.tag], 'good');
+          a.goal = null; a.ord = 'def';
+        }
       }
     }
   };

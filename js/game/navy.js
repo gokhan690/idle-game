@@ -78,6 +78,60 @@
   };
   G.zoneDist = (from, to, tag) => { const p = G.fleetPath(from, to, tag); return p ? p.length : 99; };
 
+  // ---------- Deniz muharebesi (HOI4) ----------
+  const lv = (c, e) => c.mods['eq_' + e] || 1;
+  // tarafın gücü: topçu (muhrip/kruvazör/zırhlı), uçak gemisi saldırısı, denizaltı torpidosu, denizaltı avı ve perde oranı
+  function sideStats(side) {
+    const n = { dd: 0, cr: 0, bb: 0, ss: 0, cv: 0 }; let gun = 0, air = 0, sub = 0, asw = 0;
+    for (const [c, f] of side) {
+      const m = (1 + (c.mods.navy || 0)) * G.fuelNavyMul(c);
+      for (const e of SH) n[e] += f.sh[e] || 0;
+      gun += ((f.sh.dd || 0) * lv(c, 'dd') + (f.sh.cr || 0) * 3 * lv(c, 'cr') + (f.sh.bb || 0) * 10 * lv(c, 'bb')) * m;
+      air += (f.sh.cv || 0) * 12 * lv(c, 'cv') * m * (G.planes(c, 'fig') > 50 ? 1 : 0.4);
+      sub += (f.sh.ss || 0) * 1.8 * lv(c, 'ss') * m;
+      asw += ((f.sh.dd || 0) * 1.5 + (f.sh.cr || 0) * 0.4) * m;
+    }
+    const caps = n.bb + n.cv, scr = n.dd + 0.5 * n.cr;
+    return { n, gun, air, sub, asw, screen: caps > 0.2 ? Math.min(1, scr / (3 * caps)) : 1 };
+  }
+  // hasar (karşı tarafın ateş gücü) gemi türlerine dayanıklılıkları ve hedef alınma ağırlıklarıyla dağılır:
+  // perdesi zayıf filonun büyük gemileri, denizaltılar ise düşman muhriplerince vurulur
+  function hit(side, S, O, dmg) {
+    const w = {
+      dd: 0.6 + 0.8 * S.screen,
+      cr: 1,
+      bb: 0.45 + 0.9 * (1 - S.screen) + (O.sub > 0 ? 0.25 * (1 - S.screen) : 0),
+      cv: 0.5 + 1.1 * (1 - S.screen) + (O.air > 0 ? 0.3 : 0),
+      ss: 0.15 + 1.4 * Math.min(1, O.asw / (2 * S.n.ss + 1)),
+    };
+    const hp = (e) => g.EQUIP[e].str;
+    let tot = 0; for (const e of SH) tot += w[e] * S.n[e] * hp(e);
+    const lost = {}; if (tot <= 0) return lost;
+    for (const [, f] of side) {
+      for (const e of SH) {
+        const before = f.sh[e] || 0; if (!before) continue;
+        const share = dmg * w[e] * before * hp(e) / tot; // bu filodaki bu türe düşen hasar
+        const k = Math.min(0.6, share / hp(e) / before);
+        let after = before * (1 - k); if (after < 0.3) after = 0;
+        f.sh[e] = after; lost[e] = (lost[e] || 0) + before - after;
+      }
+    }
+    return lost;
+  }
+  // muharebe raporu: oyuncunun katıldığı muharebeler aynı bölgede birkaç gün sürerse birleşir
+  function navReport(zone, a, b, A, B, lostA, lostB) {
+    const st = G.st, pl = st.player;
+    G.navalBattles.push({ loc: zone, a, b, adv: (A.gun + A.air + A.sub) / Math.max(1, A.gun + A.air + A.sub + B.gun + B.air + B.sub) });
+    const inA = a === pl || G.sameFaction(a, pl), inB = b === pl || G.sameFaction(b, pl);
+    if (!pl || !(inA || inB)) return;
+    const me = inA ? { t: a, S: A, L: lostA } : { t: b, S: B, L: lostB }, op = inA ? { t: b, S: B, L: lostB } : { t: a, S: A, L: lostA };
+    st.navRep = st.navRep || [];
+    let r = st.navRep.find((x) => x.zone === zone && st.day - x.last <= 3);
+    if (!r) { r = { zone, day: st.day, last: st.day, me: me.t, op: op.t, nMe: { ...me.S.n }, nOp: { ...op.S.n }, lMe: {}, lOp: {} }; st.navRep.unshift(r); if (st.navRep.length > 10) st.navRep.length = 10; }
+    r.last = st.day; r.scMe = me.S.screen; r.scOp = op.S.screen; r.airMe = me.S.air > 0; r.airOp = op.S.air > 0;
+    for (const e of SH) { r.lMe[e] = (r.lMe[e] || 0) + (me.L[e] || 0); r.lOp[e] = (r.lOp[e] || 0) + (op.L[e] || 0); }
+  }
+  G.screenOf = (c, f) => sideStats([[c, f]]).screen;
   G.navalTick = () => {
     const st = G.st;
     G.navalBattles = [];
@@ -106,18 +160,12 @@
       const allies = L.filter(([c]) => !G.atWar(a0, c.tag) && (c.tag === a0 || G.sameFaction(c.tag, a0) || G.coBelligerent(c.tag, a0)));
       const pa = allies.reduce((s, [c, f]) => s + G.fleetPower(c, f), 0), pb = enemies.reduce((s, [c, f]) => s + G.fleetPower(c, f), 0);
       if (pa <= 0 || pb <= 0) continue;
-      const hit = (side, oppP, ownP) => {
-        for (const [c, f] of side) {
-          const frac = 0.05 * oppP / (ownP + oppP) * (0.7 + G.rand() * 0.6);
-          for (const e of SH) {
-            let k = frac * (e === 'ss' ? 1.4 : e === 'bb' ? 0.6 : e === 'cv' ? 0.8 : 1);
-            f.sh[e] = Math.max(0, (f.sh[e] || 0) * (1 - k));
-            if (f.sh[e] < 0.3) f.sh[e] = 0;
-          }
-        }
-      };
-      hit(allies, pb, pa); hit(enemies, pa, pb);
-      G.navalBattles.push({ loc: zone, a: allies[0][0].tag, b: enemies[0][0].tag, adv: pa / (pa + pb) });
+      // HOI4 deniz muharebesi: topçu ateşi, uçak gemisi saldırısı, denizaltı pususu; perde gemileri büyük gemileri korur
+      const A = sideStats(allies), B = sideStats(enemies);
+      const fire = (X, Y) => X.gun * (0.7 + G.rand() * 0.6) + X.air * 1.2 + X.sub * (1.25 - 0.85 * Y.screen) * (0.6 + 0.8 * G.rand());
+      const fA = fire(A, B), fB = fire(B, A);
+      const lostA = hit(allies, A, B, 0.05 * fB), lostB = hit(enemies, B, A, 0.05 * fA);
+      navReport(zone, allies[0][0].tag, enemies[0][0].tag, A, B, lostA, lostB);
       // zayıf taraf limana çekilir
       const retreat = (side, ownP, oppP) => { if (ownP < oppP * 0.35) for (const [c, f] of side) { const p = G.fleetPath(f.loc, f.home, c.tag); if (p) { f.path = p; f.prog = 0; } } };
       retreat(allies, pa, pb); retreat(enemies, pb, pa);

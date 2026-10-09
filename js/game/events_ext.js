@@ -117,6 +117,22 @@
         G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1;
         G.log('Irak: Reşid Ali yenildi; İngiltere\'ye bağlı yeni hükümet kuruldu.', ['IRQ', 'ENG'], 'major');
       } }] },
+    // ---------- Türkiye 1945-47 ----------
+    { id: 'sovnota', date: '1945-03-19', actor: 'TUR', title: 'Sovyet Notası',
+      text: 'Sovyetler Birliği 1925 Dostluk Antlaşması\'nı feshetti. Moskova Kars ve Ardahan\'ı ve Boğazlarda ortak üs istiyor.',
+      cond: () => alive('TUR') && alive('SOV') && !G.atWar('TUR', 'SOV') && !G.sameFaction('TUR', 'SOV'), retryUntil: '1947-12-31',
+      opts: [{ n: 'Reddet ve Batı\'ya yaslan', fx: () => { const c = tur(); rel('SOV', 'TUR', -30); rel('ENG', 'TUR', 15); if (alive('USA')) rel('USA', 'TUR', 20); c.wsX += 0.05; bop(0.3); G.log('Türkiye Sovyet taleplerini reddetti; Batı ile yakınlaşma hızlanıyor.', ['TUR', 'SOV'], 'major'); } },
+        { n: 'Görüşmeye açık ol', fx: () => { const c = tur(); rel('SOV', 'TUR', 10); c.stabX -= 0.05; bop(-0.1); G.log('Türkiye Sovyetlerle Boğazlar konusunda görüşmeyi kabul etti.', ['TUR', 'SOV'], 'info'); } }] },
+    { id: 'cokparti', date: '1946-01-07', actor: 'TUR', title: 'Çok Partili Hayat',
+      text: 'Celal Bayar, Adnan Menderes ve arkadaşları Demokrat Parti\'yi kurdu. Tek parti dönemi sona erecek mi?',
+      cond: () => alive('TUR') && !tur().enemies.length, retryUntil: '1949-12-31',
+      opts: [{ n: 'Demokrat Parti\'ye izin ver', fx: () => { const c = tur(); G.addPop(c, 'dem', 0.15); c.stabX -= 0.03; c.pp += 40; if (alive('USA')) rel('USA', 'TUR', 15); bop(0.15); G.log('Türkiye çok partili hayata geçti: Demokrat Parti kuruldu.', ['TUR'], 'major'); } },
+        { n: 'Tek parti düzenini koru', fx: () => { const c = tur(); c.stabX += 0.03; G.addPop(c, 'dem', -0.05); if (alive('USA')) rel('USA', 'TUR', -10); } }] },
+    { id: 'truman', date: '1947-03-12', actor: 'TUR', title: 'Truman Doktrini',
+      text: 'ABD Başkanı Truman, Türkiye ve Yunanistan\'a Sovyet baskısına karşı askerî ve ekonomik yardım açıkladı.',
+      cond: () => alive('TUR') && alive('USA') && !G.atWar('TUR', 'USA') && !G.sameFaction('TUR', 'GER') && !G.sameFaction('TUR', 'SOV'), retryUntil: '1949-12-31',
+      opts: [{ n: 'Yardımı kabul et', fx: () => { const c = tur(); G.addFactories('TUR', 'civ', 3); G.addFactories('TUR', 'mil', 1); c.stock.inf = (c.stock.inf || 0) + 3000; c.stock.art = (c.stock.art || 0) + 100; c.stock.tank = (c.stock.tank || 0) + 80; c.stock.fig = (c.stock.fig || 0) + 80; rel('USA', 'TUR', 20); bop(0.2); G.needSummary = 1; G.log('Truman Doktrini: Türkiye\'ye Amerikan yardımı (+3 sivil, +1 askerî fabrika, teçhizat).', ['TUR', 'USA'], 'good'); } },
+        { n: 'Tarafsız kal', fx: () => { tur().stabX += 0.02; } }] },
   ];
   for (const e of EXT) { e.day = G.dayOf(e.date); e.ext = 1; G.EVENTS.push(e); }
   // Hatay olayı oyuncu için "Hatay Meselesi" odağına bağlıdır

@@ -166,6 +166,7 @@
       }
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
+        if (a.ord === 'fb') { G.holdLine(c, a); continue; } // savunma hattına çekil
         G.aiMilitary(c, (u) => u.army === a.id && !u.sr, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
       }
     }

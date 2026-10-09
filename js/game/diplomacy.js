@@ -58,11 +58,16 @@
   G.declareWar = (a, b, opts = {}) => {
     const st = G.st;
     if (G.atWar(a, b) || !st.C[b]?.alive) return false;
+    // Vichy Fransası (mütareke ile Anton/kurtuluş arası): YZ onu Mihver'le savaşa sokmaz
+    const axisT = (t) => t === 'GER' || G.sameFaction(t, 'GER');
+    const vichyLock = st.vichy && !st.vichyLib;
+    if (vichyLock && a !== st.player && ((a === 'FRA' && axisT(b)) || (b === 'FRA' && axisT(a)))) return false;
     if (opts.only) { G.setWar(a, b); delete st.goals[a + '>' + b]; G.log(`${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti!`, [a, b], 'major'); if (G.onWar) G.onWar(a, b); return true; }
     const def = new Set(G.sideOf(b));
     const targetAtPeace = !st.C[b].enemies.length;
     if (targetAtPeace) for (const [gt, list] of Object.entries(st.guar)) if (list.includes(b) && st.C[gt]?.alive && gt !== a && !G.sameFaction(gt, a) && (!st.opts.hist || ((st.C[gt].major && !st.C[gt].capd) || gt === st.player))) { for (const t of G.sideOf(gt)) def.add(t); }
     def.delete(a);
+    if (vichyLock && axisT(a) && b !== 'FRA') def.delete('FRA');
     // saldıranın müttefikleri: YZ aynı ideolojideyse çağrıya uyar, oyuncuya sorulur
     const att = new Set([a]);
     const lateWar = !st.opts.hist || st.day >= G.dayOf('1941-06-01');

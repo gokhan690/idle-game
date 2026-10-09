@@ -590,6 +590,7 @@
       const where = SEA_N(f.loc);
       fh += `<div class="item army"><div class="grow"><div class="row"><div class="t grow">${esc(f.n)} <span class="muted small">${where}${f.path.length ? ' · yolda' : ''}</span></div><button class="btn sm" data-act="fleetsel" data-v="${f.id}">Seç</button></div>
         <div class="d">${g.SHIPS.filter((e2) => f.sh[e2] >= 0.5).map((e2) => `${Math.round(f.sh[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ') || 'gemi yok'} · güç ${int(p)}</div>
+        ${(f.sh.bb || 0) + (f.sh.cv || 0) >= 0.5 ? (() => { const sc = G.screenOf(c, f); return `<div class="d ${sc < 0.6 ? 'warn' : 'good'}">Perde %${Math.round(sc * 100)}${sc < 1 ? ' · büyük gemi başına 3 muhrip/kruvazör gerekir; perdesiz zırhlılar torpido ve uçaklara açık' : ''}</div>`; })() : ''}
         <div class="seg sm">${Object.entries(G.MISSIONS).map(([k, n]) => `<button class="${f.mis === k ? 'on' : ''}" data-act="fleetmis" data-k="${f.id}" data-v="${k}">${n}</button>`).join('')}</div>
         <div class="btns"><button class="btn sm" data-act="fleethome" data-v="${f.id}">Limana dön</button><button class="btn sm" data-act="fleetauto" data-v="${f.id}">${f.auto ? '✓ ' : ''}Yeni gemiler buraya</button>${c.fleets.length > 1 ? `<button class="btn sm danger" data-act="fleetmerge" data-v="${f.id}">Birleştir</button>` : ''}</div></div></div>`;
     }
@@ -598,6 +599,20 @@
     fh += `</div>${res.length ? `<div class="item"><div class="grow"><div class="t">Yedek gemiler</div><div class="d">${res.map((e2) => `${Math.floor(c.ships[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(' · ')}</div></div><button class="btn sm pri" data-act="fleetnew">Yeni filo kur</button></div>` : ''}`;
     fh += '<p class="muted small" style="margin:0">Devriye: yakındaki zayıf düşman filolarına saldırır. Saldırı: daha uzağa ve cesurca saldırır. Konvoy akını: düşman ticaretini ve konvoylarını vurur. Refakat: kendi konvoylarını korur. Bir filoyu “Seç”ip haritada bir deniz bölgesine dokunarak elle taşıyabilirsin.</p>';
     html += sec('Filolar', fh);
+    // deniz muharebesi raporları (HOI4)
+    const reps = st.navRep || [];
+    if (reps.length) {
+      const L = (o) => g.SHIPS.filter((e2) => (o[e2] || 0) >= 0.5).map((e2) => `${Math.round(o[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(', ') || 'kayıp yok';
+      const N = (o) => g.SHIPS.filter((e2) => (o[e2] || 0) >= 0.5).map((e2) => `${Math.round(o[e2])} ${g.EQUIP[e2].s.toLowerCase()}`).join(', ');
+      let rh = '<div class="list">';
+      for (const r of reps) {
+        const lm = g.SHIPS.reduce((a, e2) => a + (r.lMe[e2] || 0) * g.EQUIP[e2].str, 0), lo = g.SHIPS.reduce((a, e2) => a + (r.lOp[e2] || 0) * g.EQUIP[e2].str, 0);
+        const won = lo > lm * 1.2, lost = lm > lo * 1.2;
+        rh += `<div class="item nbrep"><div class="grow"><div class="t">${esc(SEA_N(r.zone))} <span class="pill ${won ? 'ally' : lost ? 'enemy' : ''}">${won ? 'Zafer' : lost ? 'Yenilgi' : 'Berabere'}</span></div><div class="d muted">${G.fmtDate(r.day)}${r.last > r.day ? ' – ' + G.fmtDate(r.last) : ''} · ${esc(G.cname(r.me))} – ${esc(G.cname(r.op))}</div>
+          <div class="nbcols"><div><b>Biz</b><span>${esc(N(r.nMe))}</span><span class="bad">Kayıp: ${esc(L(r.lMe))}</span><span class="muted">Perde %${Math.round((r.scMe ?? 1) * 100)}${r.airMe ? ' · uçak gemisi' : ''}</span></div><div><b>Düşman</b><span>${esc(N(r.nOp))}</span><span class="good">Kayıp: ${esc(L(r.lOp))}</span><span class="muted">Perde %${Math.round((r.scOp ?? 1) * 100)}${r.airOp ? ' · uçak gemisi' : ''}</span></div></div></div></div>`;
+      }
+      html += sec('Deniz muharebeleri', rh + '</div><p class="muted small" style="margin:0">Topçu ateşi, uçak gemisi saldırısı ve denizaltı torpidoları birlikte hesaplanır. Perdesi zayıf filonun zırhlı ve uçak gemileri ağır kayıp verir; muhripler denizaltıları avlar.</p>');
+    }
     return { title: 'Donanma', html };
   };
   // ---------- Hava kuvvetleri (HOI4 tarzı) ----------
@@ -720,7 +735,7 @@
   }
 
   // Ordu
-  const ORD_N = { hold: 'Bekle', def: 'Cepheyi tut', atk: 'Uygula ▶' };
+  const ORD_N = { hold: 'Bekle', def: 'Cepheyi tut', atk: 'Uygula ▶', fb: 'Hatta çekil' };
   UI.ORD_N = ORD_N;
   const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · Sv ${gen.lvl}</span>`;
   const genSkills = (gen) => `<span class="skills"><b title="Saldırı">S ${gen.atk}</b><b title="Savunma">Sv ${gen.def}</b><b title="Planlama">P ${gen.plan}</b><b title="Lojistik">L ${gen.log}</b></span>${gen.tr.length ? `<div class="d">${gen.tr.map((t) => g.GEN_TRAITS[t].n).join(' · ')}</div>` : ''}`;
@@ -1059,8 +1074,9 @@
     const modes = UI.MODE_N;
     html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
-    html += sec('Ayarlar', `<div class="list"><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
-    html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
+    const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
+    html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
+    html += sec('Oyun', `<div class="list"><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
   };
 
@@ -1092,6 +1108,10 @@
   <section class="sec"><h3 class="sec-h">Muharebe taktikleri</h3><p class="small" style="margin:0">HOI4'teki gibi her muharebede iki günde bir saldıran ve savunan birer <b>taktik</b> seçer: Taarruz, Şok Taarruzu, Topçu Barajı, Pusu, Kuşatma, Yarma; savunmada Elastik Savunma, Karşı Saldırı, Ters Darbe, Taktik Çekilme… Seçim tümenlerin bileşimine (zırh, topçu, piyade), doktrine, araziye ve kanatlara bağlıdır. Bazı taktikler rakibin taktiğini <b>sayaçlar</b> ve onu boşa çıkarır; komutanın planlama ile saldırı (ya da savunma) becerisi yüksekse rakibinin taktiğine göre doğru karşılığı seçme şansı artar. <b>Göğüs göğüse</b> evresinde zırh ve topçu zayıflar, <b>Atılım</b> evresinde zırhlılar öne çıkar. Muharebe panelinde iki tarafın taktiğini ve evreyi görürsün.</p></section>
   <section class="sec"><h3 class="sec-h">Dünya haberleri ve Türkiye</h3><p class="small" style="margin:0">Başka ülkelerin büyük tarihî hamleleri (Anschluss, Münih, Barbarossa, Pearl Harbor, D-Günü…) HOI4'teki gibi haber penceresi olarak gelir; Menü → Ayarlar'dan kapatabilirsin. Türkiye ile oynarken tarihî kararlar seni bekler: Hatay'ın katılması ("Hatay Meselesi" odağıyla), Üçlü İttifak Antlaşması, Türk-Alman Dostluk Antlaşması, Varlık Vergisi, Adana Görüşmesi, Kahire Konferansı ve 1945'te Mihvere savaş ilanı. Orta Doğu'da 1941'de Irak'taki Reşid Ali darbesi ve İngiliz-Sovyet İran harekâtı da tarihî akışta yer alır.</p></section>
   <section class="sec"><h3 class="sec-h">Kuklalar ve özerklik</h3><p class="small" style="margin:0">HOI4'teki gibi bazı devletler bir efendiye bağlıdır: 1936'da Mançukuo Japonya'ya, Britanya Hindistanı ve dominyonlar (Kanada, Avustralya, Yeni Zelanda, Güney Afrika) Britanya'ya. Barış konferansında kurduğun kuklalar da böyledir. Her bağlı devletin <b>özerklik</b> puanı vardır: Bütünleşik kukla, Kukla, Dominyon, Özerk. Seviye düştükçe efendi, bağlı devletin kaynaklarının ve askerî fabrikalarının daha büyük payını alır. Efendi savaşta çökmeye başlarsa ya da bağlı devlet güçlenirse özerklik artar; %100'de bağımsızlık ilan edilir. Diplomasi panelinde kontrolü siyasi güçle sıkılaştırabilir, özerklik tanıyabilir ya da bağımsızlık verebilirsin; bağlı devletsen daha fazla özerklik isteyebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Deniz muharebesi</h3><p class="small" style="margin:0">HOI4'teki gibi deniz muharebesinde topçu ateşi (muhrip, kruvazör, zırhlı), uçak gemisi saldırısı (avcı uçağın varsa tam güç) ve denizaltı torpidoları birlikte hesaplanır. Hasarı karşı tarafın ateş gücü belirler: güçlü filo zayıfı hızla batırır. <b>Perde:</b> her zırhlı ve uçak gemisi için 3 muhrip ya da kruvazör gerekir; perdesi zayıf filonun büyük gemileri torpido ve uçaklara açık kalır. Muhripler denizaltıları avlar. Donanma panelinde her filonun perde oranı ve son deniz muharebelerinin raporları (iki tarafın gemileri ve kayıpları) görünür; haritadaki mavi halkaya dokunarak da açabilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Tarihî dönüm noktaları</h3><p class="small" style="margin:0"><b>Compiègne Mütarekesi:</b> Paris düşünce Fransa ateşkes imzalayabilir; kuzey ve Atlantik kıyısı Alman işgalinde kalır, güneyde Pétain'in Vichy hükümeti tarafsız olur. <b>Anton Harekâtı</b> (Kasım 1942) Vichy bölgesini de işgal eder; Müttefikler Paris'i alınca <b>Hür Fransa</b> (de Gaulle) savaşa döner. Doğu Cephesi'nde <b>Mozhaisk ve Luga hatları</b> Moskova ve Leningrad'ı tahkim eder; Japonya saldırmazsa <b>Sibirya tümenleri</b> Ekim 1941'de Moskova'ya gelir. Türkiye için 1945 Sovyet Notası, 1946 çok partili hayat ve 1947 Truman Doktrini olayları vardır.</p></section>
+  <section class="sec"><h3 class="sec-h">Savaş planı: aşamalı taarruz ve savunma hattı</h3><p class="small" style="margin:0">Ordu seçiliyken <b>➚ Ok çiz</b> ile ilk hedefi, <b>+ Aşama</b> ile okun ucundan sonraki hedefleri belirlersin; ordu bir hedefi alınca kendiliğinden sıradaki aşamaya geçer (haritada numaralı, kesik oklar). <b>⛉ Savunma hattı</b> ile kendi topraklarında iki eyalete dokunarak dişli bir geri çekilme hattı çizersin; <b>Hatta çekil</b> emri orduyu bu hat boyunca eşit dağıtır. Cephe çökerken orduyu bir nehir ya da dağ hattına çekmek için kullan.</p></section>
+  <section class="sec"><h3 class="sec-h">Ses</h3><p class="small" style="margin:0">Oyun müziği ve efektleri cihazında üretilir (internet gerekmez). Savaş ilanında boru, teslimde davul, araştırma ve odak bitince çan, ekrandaki muharebelerde uzak top sesleri duyulur. Ayarlardan müziği ve efektleri ayrı ayrı kapatabilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen seçimi ve hatta yayma</h3><p class="small" style="margin:0">Haritanın sağındaki seçim düğmesi (kesik kare) bir menü açar: <b>Tüm tümenler</b>, <b>Ekrandakiler</b>, <b>Bölge seç</b> (bir eyalete dokun; o strateji bölgesindeki bütün tümenlerin seçilir ve bölge kısa süre parlar), <b>Alan seç</b> (parmağınla kutu çiz), <b>Emirsiz tümenler</b> ve <b>Cephedekiler</b>. Uzun basış seçime ekler. Uzaklaştırınca HOI4'teki gibi yakın sayaçlar ordu ve ülke bazında birleşir; birleşik sayaca dokununca içindeki bütün tümenler seçilir. Birden çok tümen seçiliyken <b>⟿ Hatta yay</b> ile sınırda bir noktaya dokun: tümenler o noktanın çevresindeki sınır hattına eşit dağılır (yabancı bir eyalete dokunursan o ülkenin sınırına).</p></section>
   <section class="sec"><h3 class="sec-h">Güç dengesi</h3><p class="small" style="margin:0">HOI4'teki gibi bazı ülkelerde iki iç güç arasında bir ibre vardır: ABD'de Yalnızcılık–Müdahalecilik, Almanya'da Nazi Partisi–Generaller, Sovyetlerde Paranoya–Ordunun yükselişi, Japonya'da Kara Ordusu–Donanma, Britanya'da Yatıştırma–Direniş, Türkiye'de Tarafsızlık–Müttefiklere yakınlık, İtalya'da Büyük Konsey–Duçe, Fransa'da Halk Cephesi–Sağ blok. İbrenin bulunduğu kademe (beş kademe) ülkeye değiştirici verir. İbre zamanla kayar, tarihî olaylar onu iter; Siyaset panelinden siyasi güçle bir tarafı destekleyebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Hava indirme</h3><p class="small" style="margin:0">"Hava İndirme" teknolojisi Paraşüt Tümeni şablonunu açar. Paraşüt tümenini hava üssü olan bir dost eyalete getir, seç ve "🪂 Hava indirme"ye bas; sonra en fazla 500 km uzaktaki bir eyalete dokun. Hedef bölgede en az %40 hava üstünlüğü gerekir ve düşman birliği bulunan eyalete atlanamaz. Tümen hedefi hemen ele geçirir ama morali çok düşük iner; düşman hattının gerisinde ikmalsiz kalabilir.</p></section>
@@ -1155,9 +1175,10 @@
       const mx = G.maxPlan(c0, a0);
       html += `<div class="card-h"><div class="grow"><h3><span class="adot" style="background:${G.armyColor(a0)}"></span>${esc(a0.n)} <span class="muted small">${sel.length} tümen</span></h3><div class="muted small">${gen ? esc(gen.n) + ` · S${gen.atk} Sv${gen.def} P${gen.plan} L${gen.log}` : 'Komutansız'} · Cephe: ${a0.vs ? esc(G.cname(a0.vs)) : 'tüm düşmanlar'}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
       html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a0.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a0.plan || 0) / mx, a0.ord === 'atk' ? 'r' : 'g')}</div><span class="small muted">Güç ${pct(avgStr)}</span></div>`;
-      html += `<div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a0.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a0.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
-      html += UI.goalMode === a0.id ? '<div class="hint">Taarruz hedefi olacak düşman eyaletine dokun.</div>' : '<div class="hint small">Düşman eyaletine dokun: taarruz oku · kendi eyaletine: ordu oraya yürür · sayaca dokun: o yığını seç.</div>';
-      html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
+      html += `<div class="seg sm">${Object.entries(ORD_N).filter(([k]) => k !== 'fb' || (a0.fb && a0.fb.length)).map(([k, n]) => `<button class="${a0.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a0.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
+      const fbm = UI.fbMode && UI.fbMode.a === a0.id;
+      html += fbm ? `<div class="hint">${UI.fbMode.s == null ? 'Savunma hattının başlangıç eyaletine dokun (kendi toprağın).' : 'Şimdi hattın bitiş eyaletine dokun.'}</div>` : UI.goalMode === a0.id ? `<div class="hint">${UI.goalAppend ? 'Sonraki taarruz aşamasının hedefine dokun.' : 'Taarruz hedefi olacak düşman eyaletine dokun.'}</div>` : `<div class="hint small">Düşman eyaletine dokun: taarruz oku · kendi eyaletine: ordu oraya yürür · sayaca dokun: o yığını seç.${a0.goals && a0.goals.length ? ` · ${a0.goals.length + 1} aşamalı taarruz` : ''}</div>`;
+      html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id && !UI.goalAppend ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm ${UI.goalMode === a0.id && UI.goalAppend ? 'pri' : ''}" data-act="armygoaladd" data-v="${a0.id}">+ Aşama</button><button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm ${fbm ? 'pri' : ''}" data-act="armyfb" data-v="${a0.id}">⛉ Savunma hattı</button>${a0.fb && a0.fb.length ? `<button class="btn sm" data-act="armyfbclr" data-v="${a0.id}">Hattı sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
     } else {
       // ---- Tümen seçimi ----
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
@@ -1420,7 +1441,10 @@
   ACT.armyadd = (d) => { const c = me(); for (const u of G.st.units) if (R.sel.units.has(u.id) && u.t === c.tag) { u.army = +d.v; u.auto = 0; u.gar = 0; } c._frontsDirty = 1; UI.toast('Tümenler orduya eklendi.', 'good'); UI.render(); UI.renderSel(); };
   ACT.armydel = (d) => { G.disbandArmy(me(), +d.v); UI.render(); };
   ACT.armyord = (d) => {
-    const c = me(), a = armyOf(d.k); a.ord = d.v; c._frontsDirty = 1;
+    const c = me(), a = armyOf(d.k);
+    if (d.v === 'fb' && !(a.fb && a.fb.length)) { UI.toast('Önce “⛉ Savunma hattı” ile bir hat çiz.', 'warn'); return; }
+    a.ord = d.v; c._frontsDirty = 1;
+    if (d.v === 'fb') { for (const u of G.armyUnits(c, a.id)) u.path = []; G.holdLine(c, a); UI.toast(`${a.n} savunma hattına çekiliyor.`); UI.render(); UI.renderSel(); R.dirty = 1; return; }
     if (d.v === 'hold') for (const u of G.armyUnits(c, a.id)) { u.path = []; }
     if (d.v !== 'hold') G.computeFronts(c);
     const noFront = d.v !== 'hold' && !(a.front || []).length;
@@ -1444,7 +1468,24 @@
     if (!UI.selectArmy(a.id, true)) return;
     UI.goalMode = a.id; UI.renderSel(); UI.toast('Taarruz hedefi olacak eyalete dokun.');
   };
-  ACT.armygoalclr = (d) => { const a = armyOf(d.v); if (a) { a.goal = null; UI.goalMode = null; } UI.render(); UI.renderSel(); R.dirty = 1; };
+  ACT.armygoalclr = (d) => { const a = armyOf(d.v); if (a) { a.goal = null; a.goals = []; UI.goalMode = null; UI.goalAppend = 0; } UI.render(); UI.renderSel(); R.dirty = 1; };
+  // çok aşamalı taarruz: mevcut okun ucundan sonraki hedef
+  ACT.armygoaladd = (d) => { const a = armyOf(d.v); if (!a || a.goal == null) return; UI.goalMode = a.id; UI.goalAppend = 1; UI.fbMode = null; UI.renderSel(); UI.toast('Sonraki aşamanın hedef eyaletine dokun.'); };
+  // savunma hattı: iki dokunuşla başlangıç ve bitiş
+  ACT.armyfb = (d) => { const a = armyOf(d.v); if (!a) return; if (UI.fbMode && UI.fbMode.a === a.id) { UI.fbMode = null; UI.renderSel(); return; } if (!UI.selectArmy(a.id, false)) return; UI.fbMode = { a: a.id, s: null }; UI.goalMode = null; UI.renderSel(); UI.toast('Savunma hattının başlangıç eyaletine dokun.'); };
+  ACT.armyfbclr = (d) => { const a = armyOf(d.v); if (!a) return; a.fb = null; if (a.ord === 'fb') { a.ord = 'def'; me()._frontsDirty = 1; } UI.render(); UI.renderSel(); R.dirty = 1; };
+  UI.fbTap = (n) => {
+    const st = G.st, a = armyOf(UI.fbMode.a); if (!a) { UI.fbMode = null; return; }
+    if (n < 0 || n >= NP) { UI.fbMode = null; UI.renderSel(); return; }
+    if (UI.fbMode.s == null) {
+      if (!G.linePath(st.player, n, n)) { UI.toast('Hat kendi topraklarından geçmeli.', 'warn'); return; }
+      UI.fbMode.s = n; R.fbPreview = [n]; UI.renderSel(); R.dirty = 1; return;
+    }
+    const p = G.linePath(st.player, UI.fbMode.s, n); UI.fbMode = null; R.fbPreview = null;
+    if (!p) { UI.toast('Bu iki nokta arasında kendi topraklarından geçen bir hat bulunamadı (en çok 40 eyalet).', 'warn'); UI.renderSel(); return; }
+    a.fb = p; UI.toast(`${a.n}: ${p.length} eyaletlik savunma hattı çizildi. “Hatta çekil” emriyle ordu hatta yerleşir.`, 'good');
+    UI.renderSel(); R.dirty = 1;
+  };
   ACT.armydeploy = (d) => { const c = me(); c.deployArmy = c.deployArmy === +d.v ? null : +d.v; UI.toast(c.deployArmy ? 'Eğitimi biten tümenler bu orduya katılacak.' : 'Yeni tümenler ordusuz konuşlanacak.'); UI.render(); };
   ACT.armydivs = () => { UI.panel = 'army'; UI.sub = 'divs:' + R.sel.army; UI.render(true); };
   ACT.sub2 = (d) => { UI.panel = d.p; UI.sub = d.v; UI.render(true); };
@@ -1538,6 +1579,8 @@
   UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava', occ: 'Direniş' };
   ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air', 'occ']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
   ACT.auto = (d) => { const r = G.autoAct(d.k, d.v); if (!r.ok) UI.toast('Bu eylem şu an yapılamaz.', 'bad'); UI.render(true); UI.hud(); };
+  ACT.tutorial = () => { UI.close(); if (UI.startTutorial) UI.startTutorial(); };
+  ACT.sound = (d) => { if (G.Audio) G.Audio.toggle(d.v); UI.render(); };
   ACT.setting = (d) => { if (d.v === 'hist') G.st.opts.hist = G.st.opts.hist ? 0 : 1; else UI.settings[d.v] = UI.settings[d.v] ? 0 : 1; G.newsOn = !!UI.settings.news; UI.render(); };
   ACT.newgame = () => { UI.close(); G.st.paused = 1; UI.showStart(); };
   ACT.fullscreen = async () => {
@@ -1621,7 +1664,7 @@
     G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => {} }] });
+    UI.showModal({ eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
