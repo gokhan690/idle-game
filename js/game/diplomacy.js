@@ -221,11 +221,12 @@
     if (ok) { st.pacts[G.pairKey(a, b)] = 'nap'; G.log(`${G.cname(a)} ile ${G.cname(b)} saldırmazlık paktı imzaladı.`, [a, b], 'major'); }
     return ok;
   };
-  G.inviteToFaction = (leader, tag) => {
+  // bonus: odakla kurulan bölgesel ittifakların çekiciliği (alternatif tarih dalları)
+  G.inviteToFaction = (leader, tag, bonus = 0) => {
     const st = G.st, c = st.C[tag], L = st.C[leader];
     if (!L.fac || c.fac === L.fac) return false;
     if (c.major && st.factions[c.fac]?.leader === tag) return false;
-    let v = G.opinion(tag, leader);
+    let v = G.opinion(tag, leader) + bonus + (bonus && c.ideo === L.ideo ? 15 : 0);
     const threat = c.enemies.length ? 30 : 0;
     v += threat + (st.tension > 40 ? 15 : 0) - (c.fac ? 40 : 0) - (c.ideo === 'neu' ? 25 : 0);
     // savaşan ittifaka katılmak riskli

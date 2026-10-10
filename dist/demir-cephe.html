@@ -792,18 +792,15 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
   .card .facts { font-size: 12px; gap: 2px 10px; }
   .bslots .bs { width: 19px; height: 19px; } .bslots .bs svg { width: 13px; height: 13px; }
 }
-/* senaryo seçimi */
-.scens { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.scen { display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 8px; text-align: left; background: linear-gradient(180deg, #2f3529, #22271e); border: 1px solid #4a5043; border-radius: 3px; box-shadow: var(--bevel); min-width: 0; }
-.scen .ev-pic { margin: 0 0 4px; border-width: 1px; box-shadow: 0 0 0 1px #6b5d3a; }
-.scen small { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #c9a54e; }
-.scen b { font: 700 15px/1.15 var(--f-serif); color: #f1e7c6; }
-.scen.on { border-color: var(--brass); box-shadow: var(--bevel), 0 0 0 1px var(--brass), 0 0 12px rgba(201,165,78,0.35); }
-.scen:not(.hist) .ev-art { filter: sepia(0.2) hue-rotate(-12deg) saturate(1.3); }
 /* uzak yakınlaştırmada HOI4 gibi yalnızca odak madalyonu */
 .fn.mini { padding: 3px; align-items: center; justify-content: center; }
 .fn.mini .t { display: none; }
 .fn.mini .fic { position: static; width: 72%; height: auto; aspect-ratio: 1; max-height: 88%; padding: 4px; }
+/* alternatif tarih odakları */
+.fn.alt { border: 1px dashed #d9b75a; background: linear-gradient(180deg, #34301f, #221f15); }
+.fn.alt::after { content: ""; position: absolute; right: 0; bottom: 0; border: 7px solid transparent; border-right-color: #d9b75a; border-bottom-color: #d9b75a; opacity: 0.85; }
+.fn.alt.avail { box-shadow: 0 0 0 1px rgba(217,183,90,0.5), 0 0 10px rgba(217,183,90,0.25), 0 3px 10px rgba(0,0,0,0.4); }
+.fcat.altc { --fc: #d9b75a; }
 </style>
 </head>
 <body>
@@ -2114,6 +2111,123 @@ window.IDEOLOGIES = {
   ];
 })(window);
 
+/* js/data/focus_alt.js */
+// Alternatif tarih dalları (HOI4): büyük ülkelerin ulusal odak ağaçlarına eklenir.
+// Kök odak tarihî siyasi yolla ve aynı ülkenin diğer alternatif kökleriyle birbirini dışlar.
+// Yapay zekâ bu dalları almaz (ai: 0); tarihî akış korunur, alternatifleri yalnızca oyuncu seçer.
+(function (g) {
+  // rx/ry: dalın kendi içindeki konumu; ülke ağacının sağına yerleştirilir
+  const F = (id, n, rx, ry, pre, fx, d, extra) => Object.assign({ id, n, rx, y: ry, pre: pre || [], fx: fx || {}, d: d || '', alt: 1, ai: 0 }, extra || {});
+  const ideo = (i, leader) => ({ fn: ['ideo', i, leader] });
+  const A = {
+    GER: { block: ['ger_axis'], roots: ['ger_k_kaiser', 'ger_r_red'], list: [
+      // Kayzer'in dönüşü
+      F('ger_k_kaiser', 'Kayzer\'i Geri Çağır', 0.5, 0, [], Object.assign(ideo('neu', 'Kayzer II. Wilhelm'), { stab: 0.05 }), 'Ordu Hitler\'i devirir; II. Wilhelm Doorn\'dan dönerek tahta çıkar. Nazi yolu kapanır.'),
+      F('ger_k_junker', 'Junker Subay Kolordusu', 0, 1, ['ger_k_kaiser'], { landDef: 0.05, org: 0.05 }, 'Kara savunması +%5, moral +%5.'),
+      F('ger_k_reichstag', 'İmparatorluk Meclisi', 1, 1, ['ger_k_kaiser'], { stab: 0.1, pp: 0.25 }, 'İstikrar +%10, günlük siyasi güç +0,25.'),
+      F('ger_k_mittel', 'Mitteleuropa', 0.5, 2, ['ger_k_junker', 'ger_k_reichstag'], { fn: ['mkFac', 'Orta Avrupa Birliği', ['AUS', 'HUN', 'BUL', 'ROM'], 45] }, 'Orta Avrupa Birliği\'ni kur; Avusturya, Macaristan, Bulgaristan ve Romanya\'yı davet et.'),
+      F('ger_k_hochsee', 'Açık Deniz Filosu', 0, 3, ['ger_k_mittel'], { ships: { bb: 2, cr: 3 }, navy: 0.1 }, '+2 zırhlı, +3 kruvazör, deniz +%10.'),
+      F('ger_k_1914', '1914 Sınırları', 1, 3, ['ger_k_mittel'], { fn: ['goal', ['POL', 'FRA']] }, 'Polonya ve Fransa\'ya karşı savaş gerekçesi.'),
+      F('ger_k_reich', 'Kaiserreich', 0.5, 4, ['ger_k_hochsee', 'ger_k_1914'], { ws: 0.1, landAtk: 0.05, addMil: 3 }, 'Savaş desteği +%10, kara saldırısı +%5, +3 askerî fabrika.'),
+      // Kızıl Almanya
+      F('ger_r_red', 'Spartakist Ayaklanma', 3.5, 0, [], ideo('com', 'Ernst Thälmann'), 'KPD sokakları ele geçirir; Ernst Thälmann Alman Sovyet Cumhuriyeti\'ni ilan eder.'),
+      F('ger_r_council', 'İşçi Konseyleri', 3, 1, ['ger_r_red'], { addCiv: 3, stab: 0.05 }, '+3 sivil fabrika, istikrar +%5.'),
+      F('ger_r_army', 'Kızıl Reichswehr', 4, 1, ['ger_r_red'], { landAtk: 0.05, units: { inf: 4 } }, 'Kara saldırısı +%5, +4 piyade tümeni.'),
+      F('ger_r_comintern', 'Komintern\'e Katıl', 3.5, 2, ['ger_r_council', 'ger_r_army'], { fn: ['joinFac', 'SOV'] }, 'Sovyetler Birliği\'nin ittifakına katıl.'),
+      F('ger_r_export', 'Devrimi İhraç Et', 3, 3, ['ger_r_comintern'], { fn: ['goal', ['AUS', 'CZE', 'POL']] }, 'Avusturya, Çekoslovakya ve Polonya\'ya karşı savaş gerekçesi.'),
+      F('ger_r_planning', 'Merkezî Planlama', 4, 3, ['ger_r_comintern'], { addMil: 4, effCap: 0.05 }, '+4 askerî fabrika, üretim verimi tavanı +%5.'),
+      F('ger_r_world', 'Avrupa Sovyetler Birliği', 3.5, 4, ['ger_r_export', 'ger_r_planning'], { ws: 0.15, org: 0.05, pop: { com: 0.1 } }, 'Savaş desteği +%15, moral +%5.'),
+    ] },
+    USA: { block: ['usa_neutral'], roots: ['usa_f_long', 'usa_s_red'], list: [
+      F('usa_f_long', 'Huey Long Başkan', 0.5, 0, [], ideo('fas', 'Huey Long'), '"Herkes Bir Kral" diyen Huey Long Beyaz Saray\'a girer. Amerika yalnızcılığı bırakır.'),
+      F('usa_f_share', 'Servetimizi Paylaşalım', 0, 1, ['usa_f_long'], { stab: 0.1, addCiv: 4 }, 'İstikrar +%10, +4 sivil fabrika.'),
+      F('usa_f_rearm', 'Amerikan Silahlanması', 1, 1, ['usa_f_long'], { addMil: 8 }, '+8 askerî fabrika.'),
+      F('usa_f_monroe', 'Monroe Doktrini', 0.5, 2, ['usa_f_share', 'usa_f_rearm'], { fn: ['mkFac', 'Amerika Paktı', ['MEX', 'BRA'], 45] }, 'Amerika Paktı\'nı kur; Meksika ve Brezilya\'yı davet et.'),
+      F('usa_f_ocean', 'İki Okyanus Hâkimiyeti', 0, 3, ['usa_f_monroe'], { ships: { cv: 2, bb: 2 }, navy: 0.1 }, '+2 uçak gemisi, +2 zırhlı, deniz +%10.'),
+      F('usa_f_canada', 'Kanada Meselesi', 1, 3, ['usa_f_monroe'], { fn: ['goal', ['CAN']] }, 'Kanada\'ya karşı savaş gerekçesi.'),
+      F('usa_f_order', 'Yeni Amerikan Düzeni', 0.5, 4, ['usa_f_ocean', 'usa_f_canada'], { ws: 0.15, landAtk: 0.05 }, 'Savaş desteği +%15, kara saldırısı +%5.'),
+      F('usa_s_red', 'Sosyalist Amerika', 3, 0, [], ideo('com', 'Earl Browder'), 'Büyük Buhran devrime döner; Earl Browder Amerikan Sosyalist Cumhuriyeti\'ni ilan eder.'),
+      F('usa_s_unions', 'Sendikalar Devleti', 2.5, 1, ['usa_s_red'], { addCiv: 5 }, '+5 sivil fabrika.'),
+      F('usa_s_army', 'Halk Ordusu', 3.5, 1, ['usa_s_red'], { units: { inf: 6 }, org: 0.05 }, '+6 piyade tümeni, moral +%5.'),
+      F('usa_s_intl', 'Enternasyonal ile Birlik', 3, 2, ['usa_s_unions', 'usa_s_army'], { fn: ['joinFac', 'SOV'] }, 'Sovyetler Birliği\'nin ittifakına katıl.'),
+      F('usa_s_west', 'Batı Yarımküre Devrimi', 3, 3, ['usa_s_intl'], { fn: ['goal', ['MEX', 'CAN']], ws: 0.1 }, 'Meksika ve Kanada\'ya karşı savaş gerekçesi, savaş desteği +%10.'),
+    ] },
+    FRA: { block: ['fra_unity'], roots: ['fra_c_commune', 'fra_m_roi'], list: [
+      F('fra_c_commune', 'Halk Cephesi Devrimi', 0.5, 0, [], ideo('com', 'Maurice Thorez'), 'Genel grev devrime döner; Maurice Thorez Fransız Komünü\'nü ilan eder.'),
+      F('fra_c_industry', 'Komün Sanayisi', 0, 1, ['fra_c_commune'], { addMil: 4 }, '+4 askerî fabrika.'),
+      F('fra_c_army', 'Devrim Ordusu', 1, 1, ['fra_c_commune'], { landAtk: 0.05, org: 0.03 }, 'Kara saldırısı +%5, moral +%3.'),
+      F('fra_c_comintern', 'Komintern ile Birlik', 0.5, 2, ['fra_c_industry', 'fra_c_army'], { fn: ['joinFac', 'SOV'] }, 'Sovyetler Birliği\'nin ittifakına katıl.'),
+      F('fra_c_spain', 'İspanya Cumhuriyeti\'ne Yardım', 0, 3, ['fra_c_comintern'], { fn: ['gift', ['SPR'], { inf: 1500, art: 40 }] }, 'Cumhuriyetçi İspanya\'ya 1.500 piyade teçhizatı ve 40 top.'),
+      F('fra_c_europe', 'Avrupa Komünü', 1, 3, ['fra_c_comintern'], { fn: ['goal', ['ITA', 'BEL']], ws: 0.1 }, 'İtalya ve Belçika\'ya karşı savaş gerekçesi, savaş desteği +%10.'),
+      F('fra_m_roi', 'Action Française', 3, 0, [], ideo('neu', 'Paris Kontu Henri'), 'Kralcılar Cumhuriyet\'i devirir; Paris Kontu Henri Fransa tahtına çıkar.'),
+      F('fra_m_army', 'Taç ve Ordu', 2.5, 1, ['fra_m_roi'], { landDef: 0.1 }, 'Kara savunması +%10.'),
+      F('fra_m_latin', 'Latin Bloku', 3.5, 1, ['fra_m_roi'], { fn: ['mkFac', 'Latin Bloku', ['POR', 'ROM', 'YUG'], 45] }, 'Latin Bloku\'nu kur; Portekiz, Romanya ve Yugoslavya\'yı davet et.'),
+      F('fra_m_empire', 'Sömürge İmparatorluğu', 3, 2, ['fra_m_army', 'fra_m_latin'], { addMil: 3, addCiv: 2 }, '+3 askerî, +2 sivil fabrika.'),
+      F('fra_m_rhine', 'Ren Sınırı', 3, 3, ['fra_m_empire'], { fn: ['goal', ['GER']], ws: 0.1 }, 'Almanya\'ya karşı savaş gerekçesi, savaş desteği +%10.'),
+    ] },
+    TUR: { block: ['tur_six_arrows'], roots: ['tur_o_caliph', 'tur_t_turan'], list: [
+      F('tur_o_caliph', 'Osmanlı Restorasyonu', 0.5, 0, [], Object.assign(ideo('neu', 'Halife Abdülmecid'), { stab: 0.05 }), 'Saltanat ve hilafet geri gelir; Abdülmecid anayasal monarşinin başına geçer.'),
+      F('tur_o_sultan', 'Meclis-i Mebusan', 0, 1, ['tur_o_caliph'], { stab: 0.1, pp: 0.25 }, 'İstikrar +%10, günlük siyasi güç +0,25.'),
+      F('tur_o_army', 'Nizam-ı Cedid', 1, 1, ['tur_o_caliph'], { landAtk: 0.05, units: { inf: 4 } }, 'Kara saldırısı +%5, +4 piyade tümeni.'),
+      F('tur_o_mosul', 'Musul Vilayeti', 0, 2, ['tur_o_sultan'], { fn: ['demand', 'IRQ', 'mosul'] }, 'Irak\'tan Musul\'u talep et; reddederse savaş gerekçesi.'),
+      F('tur_o_aegean', 'Onikiadalar', 1, 2, ['tur_o_army'], { fn: ['demand', 'ITA', 'dodecanese'] }, 'İtalya\'dan Onikiadaları talep et.'),
+      F('tur_o_arabia', 'Arap Vilayetleri', 0.5, 3, ['tur_o_mosul', 'tur_o_aegean'], { fn: ['goal', ['IRQ', 'SAU']] }, 'Irak ve Suudi Arabistan\'a karşı savaş gerekçesi.'),
+      F('tur_o_devlet', 'Devlet-i Aliyye', 0.5, 4, ['tur_o_arabia'], { ws: 0.1, addMil: 4, addCiv: 2 }, 'Savaş desteği +%10, +4 askerî ve +2 sivil fabrika.'),
+      F('tur_t_turan', 'Turan Ülküsü', 3, 0, [], ideo('fas', 'Cevat Rıfat Atilhan'), 'Milliyetçi subaylar iktidarı alır; hedef bütün Türk dünyasını birleştirmek.'),
+      F('tur_t_youth', 'Ülkü Ocakları', 2.5, 1, ['tur_t_turan'], { ws: 0.1, mp: 0.01 }, 'Savaş desteği +%10, insan gücü +%1.'),
+      F('tur_t_rearm', 'Askerî Seferberlik', 3.5, 1, ['tur_t_turan'], { addMil: 4 }, '+4 askerî fabrika.'),
+      F('tur_t_axis', 'Mihver\'e Yaklaş', 3, 2, ['tur_t_youth', 'tur_t_rearm'], { fn: ['joinFac', 'GER'] }, 'Almanya\'nın ittifakına katıl.'),
+      F('tur_t_caucasus', 'Kafkasya', 2.5, 3, ['tur_t_axis'], { fn: ['demand', 'SOV', 'batumi'] }, 'Sovyetlerden Batum\'u talep et.'),
+      F('tur_t_thrace', 'Batı Trakya', 3.5, 3, ['tur_t_axis'], { fn: ['demand', 'GRE', 'thrace'] }, 'Yunanistan\'dan Batı Trakya\'yı talep et.'),
+      F('tur_t_union', 'Turan Birliği', 3, 4, ['tur_t_caucasus', 'tur_t_thrace'], { fn: ['goal', ['SOV', 'PER']], landAtk: 0.05 }, 'Sovyetler ve İran\'a karşı savaş gerekçesi, kara saldırısı +%5.'),
+    ] },
+    ENG: { block: ['eng_churchill', 'eng_edward'], roots: ['eng_c_strike'], list: [
+      F('eng_c_strike', 'Genel Grev', 0.5, 0, [], ideo('com', 'Harry Pollitt'), 'Madenci grevi bütün ülkeye yayılır; Harry Pollitt Britanya Sovyet Cumhuriyeti\'ni ilan eder.'),
+      F('eng_c_soviets', 'Britanya Sovyetleri', 0, 1, ['eng_c_strike'], { addCiv: 3, stab: 0.05 }, '+3 sivil fabrika, istikrar +%5.'),
+      F('eng_c_fleet', 'Kızıl Donanma', 1, 1, ['eng_c_strike'], { navy: 0.1 }, 'Deniz +%10.'),
+      F('eng_c_comintern', 'Komintern ile Birlik', 0.5, 2, ['eng_c_soviets', 'eng_c_fleet'], { fn: ['joinFac', 'SOV'] }, 'Sovyetler Birliği\'nin ittifakına katıl.'),
+      F('eng_c_empire', 'Halkların Birliği', 0.5, 3, ['eng_c_comintern'], { pp: 0.5, stab: 0.1, ws: 0.05 }, 'Günlük siyasi güç +0,5, istikrar +%10, savaş desteği +%5.'),
+    ] },
+    SOV: { block: [], roots: ['sov_t_trotsky', 'sov_b_bukharin'], list: [
+      F('sov_t_trotsky', 'Troçki\'yi Geri Çağır', 0.5, 0, [], { fn: ['leaderName', 'Lev Troçki'], stab: -0.05 }, 'Stalin devrilir; Troçki sürgünden döner. Hedef: sürekli devrim.'),
+      F('sov_t_perm', 'Sürekli Devrim', 0, 1, ['sov_t_trotsky'], { ws: 0.1 }, 'Savaş desteği +%10.'),
+      F('sov_t_army', 'Tuhaçevski\'nin Ordusu', 1, 1, ['sov_t_trotsky'], { landAtk: 0.07, org: 0.05, fn: ['general'] }, 'Kara saldırısı +%7, moral +%5, yeni komutan.'),
+      F('sov_t_world', 'Dünya Devrimi', 0.5, 2, ['sov_t_perm', 'sov_t_army'], { fn: ['goal', ['POL', 'FIN', 'ROM']] }, 'Polonya, Finlandiya ve Romanya\'ya karşı savaş gerekçesi.'),
+      F('sov_b_bukharin', 'Buharin\'in Yolu', 3, 0, [], { fn: ['leaderName', 'Nikolay Buharin'], stab: 0.05 }, 'Buharin iktidara gelir; kolektifleştirme yumuşar, köylü ile barışılır.'),
+      F('sov_b_nep', 'Yeni Ekonomi Politikası', 2.5, 1, ['sov_b_bukharin'], { addCiv: 5 }, '+5 sivil fabrika.'),
+      F('sov_b_peace', 'Barış İçinde Bir Arada Yaşam', 3.5, 1, ['sov_b_bukharin'], { fn: ['pact', ['GER', 'JAP']] }, 'Almanya ve Japonya\'ya saldırmazlık paktı öner.'),
+      F('sov_b_trade', 'Batı ile Ticaret', 3, 2, ['sov_b_nep', 'sov_b_peace'], { stab: 0.1, pp: 0.25, effCap: 0.05 }, 'İstikrar +%10, siyasi güç +0,25, üretim verimi tavanı +%5.'),
+    ] },
+    ITA: { block: ['ita_axis', 'ita_king'], roots: ['ita_c_red'], list: [
+      F('ita_c_red', 'Sosyalist İtalya', 0.5, 0, [], ideo('com', 'Palmiro Togliatti'), 'Mussolini devrilir; Palmiro Togliatti İtalyan Sosyalist Cumhuriyeti\'ni kurar.'),
+      F('ita_c_partisans', 'Partizan Tugayları', 0, 1, ['ita_c_red'], { units: { inf: 4 }, org: 0.05 }, '+4 piyade tümeni, moral +%5.'),
+      F('ita_c_north', 'Kuzey Fabrikaları', 1, 1, ['ita_c_red'], { addMil: 3, addCiv: 2 }, '+3 askerî, +2 sivil fabrika.'),
+      F('ita_c_comintern', 'Komintern ile Birlik', 0.5, 2, ['ita_c_partisans', 'ita_c_north'], { fn: ['joinFac', 'SOV'] }, 'Sovyetler Birliği\'nin ittifakına katıl.'),
+      F('ita_c_balkan', 'Balkan Devrimi', 0.5, 3, ['ita_c_comintern'], { fn: ['goal', ['YUG', 'ALB']] }, 'Yugoslavya ve Arnavutluk\'a karşı savaş gerekçesi.'),
+    ] },
+    JAP: { block: ['jap_china'], roots: ['jap_d_civil'], list: [
+      F('jap_d_civil', 'Sivil Hükümet', 0.5, 0, [], ideo('dem', 'Saionji Kinmoçi'), 'Ordunun darbesi bastırılır; Saionji\'nin sivil kabinesi orduyu denetim altına alır.'),
+      F('jap_d_trade', 'Serbest Ticaret', 0, 1, ['jap_d_civil'], { addCiv: 4 }, '+4 sivil fabrika.'),
+      F('jap_d_west', 'Batı ile Uzlaşma', 1, 1, ['jap_d_civil'], { stab: 0.1, pp: 0.25 }, 'İstikrar +%10, siyasi güç +0,25.'),
+      F('jap_d_navy', 'Savunma Donanması', 0.5, 2, ['jap_d_trade', 'jap_d_west'], { navy: 0.1, landDef: 0.05 }, 'Deniz +%10, kara savunması +%5.'),
+      F('jap_d_bank', 'Asya Kalkınma Bankası', 0.5, 3, ['jap_d_navy'], { addCiv: 3, addInfra: 3 }, '+3 sivil fabrika, 3 bölgede altyapı.'),
+    ] },
+  };
+  for (const [tag, def] of Object.entries(A)) {
+    const nat = g.FOCUS_NATIONAL[tag]; if (!nat) continue;
+    const base = Math.max(...nat.map((f) => f.x)) + 1.5;
+    const ids = new Set(nat.map((f) => f.id));
+    for (const f of def.list) { f.x = base + f.rx; delete f.rx; }
+    // kökler: tarihî siyasi yol ve diğer alternatif köklerle karşılıklı dışlama
+    for (const r of def.roots) {
+      const root = def.list.find((f) => f.id === r);
+      root.excl = def.roots.filter((x) => x !== r).concat(def.block.filter((b) => ids.has(b)));
+    }
+    for (const b of def.block) { const f = nat.find((x) => x.id === b); if (f) f.excl = (f.excl || []).concat(def.roots); }
+    nat.push(...def.list);
+  }
+})(window);
+
 /* js/data/rivers.js */
 // Nehirler: II. Dünya Savaşı'nın önemli akarsuları. p = [boylam, enlem, boylam, enlem, ...] (kaynaktan ağza),
 // big = büyük nehir (geçişi zor: saldırı -%50, hareket +%25; küçük nehirde -%25 / +%10). Kenar hesabı js/game/rivers.js içinde.
@@ -3002,7 +3116,6 @@ window.RIVERS = [
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
     if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
-    if (st.opts.scen && st.opts.scen !== 'hist' && G.applyScenario) G.applyScenario(st.opts.scen);
     return st;
   };
 
@@ -4163,11 +4276,12 @@ window.RIVERS = [
     if (ok) { st.pacts[G.pairKey(a, b)] = 'nap'; G.log(`${G.cname(a)} ile ${G.cname(b)} saldırmazlık paktı imzaladı.`, [a, b], 'major'); }
     return ok;
   };
-  G.inviteToFaction = (leader, tag) => {
+  // bonus: odakla kurulan bölgesel ittifakların çekiciliği (alternatif tarih dalları)
+  G.inviteToFaction = (leader, tag, bonus = 0) => {
     const st = G.st, c = st.C[tag], L = st.C[leader];
     if (!L.fac || c.fac === L.fac) return false;
     if (c.major && st.factions[c.fac]?.leader === tag) return false;
-    let v = G.opinion(tag, leader);
+    let v = G.opinion(tag, leader) + bonus + (bonus && c.ideo === L.ideo ? 15 : 0);
     const threat = c.enemies.length ? 30 : 0;
     v += threat + (st.tension > 40 ? 15 : 0) - (c.fac ? 40 : 0) - (c.ideo === 'neu' ? 25 : 0);
     // savaşan ittifaka katılmak riskli
@@ -5343,14 +5457,11 @@ window.RIVERS = [
     for (const k of IDEOS) c.pop[k] = (c.pop[k] || 0) / s;
   }
   G.normalizePop = normalizePop;
-  // senaryo kilidi: alternatif tarihte yapay zekâ ülkesinin ideolojisi kolayca geri dönmez
-  const locked = (c, k) => c.scenLock && c.tag !== G.st.player && k !== c.scenLock;
-  G.addPop = (c, k, v) => { if (v > 0 && locked(c, k)) v *= 0.15; c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
+  G.addPop = (c, k, v) => { c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
 
   G.setIdeology = (c, ideo) => {
     const st = G.st;
     if (c.ideo === ideo) return;
-    if (locked(c, ideo) && (c.pop[ideo] || 0) < 0.8) return;
     const old = c.ideo;
     c.ideo = ideo;
     c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.IDEOLOGIES[ideo].n} Hükümet`;
@@ -5570,12 +5681,23 @@ window.RIVERS = [
       if (st.factions[fid].leader !== leader && st.factions[fid].leader === st.player) { G.log('İttifak lideri oyuncu: katılım isteği gönderildi.', [c.tag], 'info'); }
       G.joinFaction(c.tag, fid);
     },
-    mkFac(c, name, invites) {
+    mkFac(c, name, invites, bonus) {
       if (!c.fac) G.createFaction(c.tag, name);
-      for (const t of invites || []) if (alive(t) && t !== G.st.player) { const ok = G.inviteToFaction(c.tag, t); if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} ittifak davetini reddetti.`, [c.tag], 'warn'); }
+      for (const t of invites || []) if (alive(t) && t !== G.st.player) { const ok = G.inviteToFaction(c.tag, t, bonus || 0); if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} ittifak davetini reddetti.`, [c.tag], 'warn'); }
     },
     invite(c, list) { G.FX.mkFac(c, `${G.cname(c.tag)} İttifakı`, list); },
     leader(c, ideo) { G.setIdeology(c, ideo); },
+    // alternatif tarih: ideoloji ve lider değişimi (aynı ideolojide yalnızca lider değişir)
+    ideo(c, ideo, leader) {
+      if (c.ideo !== ideo) G.setIdeology(c, ideo);
+      // halk desteği yeni iktidara kayar (yoksa eski parti hükümeti geri alır)
+      const rest = Object.keys(c.pop).filter((k) => k !== ideo), sum = rest.reduce((a, k) => a + c.pop[k], 0) || 1;
+      for (const k of rest) c.pop[k] = c.pop[k] / sum * 0.36;
+      c.pop[ideo] = 0.64; normalizePop(c);
+      if (leader) c.leader = leader;
+      G.log(`${G.cname(c.tag)}: ${c.leader} iktidarda (${g.IDEOLOGIES[c.ideo].n}).`, [c.tag], 'major');
+      G.mapDirty = 1;
+    },
     leaderName(c, name) { c.leader = name; G.log(`${G.cname(c.tag)}: ${name} yönetimi devraldı.`, [c.tag], 'major'); },
     gift(c, list, eq) { for (const t of list) if (alive(t)) for (const [e, n] of Object.entries(eq)) G.st.C[t].stock[e] = (G.st.C[t].stock[e] || 0) + n; },
     infra(c, n) {
@@ -5636,7 +5758,7 @@ window.RIVERS = [
     for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag && pr.o === over) { pr.o = pr.c = pr.core = tag; n++; } }
     if (!n) return false;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.scenLock = 0; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     c.cap = G.anyOwnProvince(tag);
@@ -7045,7 +7167,7 @@ window.RIVERS = [
     const st = G.st, c = st.C[tag], o = st.C[over];
     if (!o) return;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.scenLock = 0; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     if (!(c.cap >= 0 && st.prov[c.cap].o === tag)) c.cap = G.anyOwnProvince(tag);
@@ -9313,85 +9435,6 @@ window.RIVERS = [
   G.ledgerTick = () => { const st = G.st; if (st.day % 30 === 0 || !st.led) G.ledgerSnap(); };
 })(window);
 
-/* js/game/scenarios.js */
-// Alternatif senaryolar (HOI4 "alternatif tarih"): 1 Ocak 1936 dünyası, bazı ülkelerin geçmişi farklı akmış olarak başlar.
-// Alternatif senaryolarda tarihî olay zinciri kapalıdır (serbest dünya); yapay zekâ kendi hedeflerini izler.
-(function (g) {
-  const G = g.G;
-  const rel = (a, b, v) => { const st = G.st; if (!st.C[a] || !st.C[b]) return; st.rel = st.rel || {}; for (const k of [a + '>' + b, b + '>' + a]) st.rel[k] = (st.rel[k] || 0) + v; };
-  const off = (...ids) => { for (const id of ids) G.st.ev[id] = 1; };
-  const ideo = (tag, i, leader, sup = 0.62) => {
-    const c = G.st.C[tag]; if (!c) return;
-    c.ideo = i; c.leader = leader; c.scenLock = i;
-    c.pop[i] = Math.max(c.pop[i] || 0, sup); G.normalizePop(c);
-    G.recomputeMods(c);
-  };
-  const join = (tag, fid) => { const st = G.st, c = st.C[tag]; if (!c || !st.factions[fid] || c.fac === fid) return; if (c.fac) G.leaveFaction(tag); G.joinFaction(tag, fid); };
-  // Mihver olaylarını kapat (Almanya'nın faşist olmadığı senaryolar)
-  const noAxisChain = () => off('axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'anschluss', 'sudeten', 'czeend', 'mr', 'poland', 'barbarossa');
-
-  G.SCENARIOS = [
-    { id: 'hist', n: 'Fırtına Yaklaşıyor', y: '1936 · tarihî', d: 'Tarihteki 1 Ocak 1936 dünyası. Almanya yeniden silahlanıyor, İtalya Habeşistan\'da, Japonya Çin\'e göz dikmiş.' },
-    { id: 'redger', n: 'Kızıl Almanya', y: '1936 · alternatif tarih', d: '1932 seçimlerini Komünist Parti kazandı; Ernst Thälmann Berlin\'de Sovyet tipi bir cumhuriyet kurdu ve Komintern\'e katıldı. Faşizmin bayrağını Mussolini taşıyor; Batı, kızıl bir Avrupa\'dan korkuyor.',
-      apply: (st) => {
-        noAxisChain();
-        ideo('GER', 'com', 'Ernst Thälmann', 0.7);
-        join('GER', 'comintern');
-        const it = G.createFaction('ITA', 'Mihver'); if (st.C.HUN) join('HUN', it);
-        for (const t of ['ENG', 'FRA', 'POL', 'USA']) rel('GER', t, -30);
-        rel('GER', 'SOV', 40); rel('ITA', 'JAP', 20);
-        st.tension = 20;
-      } },
-    { id: 'kaiser', n: 'Kayzer Geri Döndü', y: '1936 · alternatif tarih', d: 'Weimar\'ın çöküşünde ordu, nasyonal sosyalistlerin yerine monarşiyi getirdi. II. Wilhelm tahtında; Almanya Orta Avrupa\'yı kendi etrafında topluyor. Mussolini yalnız, Stalin tedirgin.',
-      apply: (st) => {
-        noAxisChain();
-        ideo('GER', 'neu', 'Kayzer II. Wilhelm', 0.65);
-        const c = st.C.GER; c.stabX = (c.stabX || 0) + 0.12;
-        const f = G.createFaction('GER', 'Orta Avrupa Birliği');
-        for (const t of ['AUS', 'HUN', 'BUL']) if (st.C[t]?.alive) join(t, f);
-        G.createFaction('ITA', 'Roma Paktı');
-        rel('GER', 'ENG', 10); rel('GER', 'SOV', -25); rel('GER', 'FRA', -15);
-        st.tension = 12;
-      } },
-    { id: 'usafas', n: 'Amerika Önce', y: '1936 · alternatif tarih', d: 'Büyük Buhran\'ın ortasında Huey Long başkanlığı kazandı; Amerika yalnızcılığı bırakıp "Amerika Önce" diyerek silahlanıyor. Atlantik artık güvenli değil.',
-      apply: (st) => {
-        off('usajoin');
-        ideo('USA', 'fas', 'Huey Long', 0.6);
-        G.addFactories('USA', 'mil', 8);
-        rel('USA', 'ENG', -40); rel('USA', 'GER', 20); rel('USA', 'JAP', -20);
-        st.tension = 18;
-      } },
-    { id: 'redfra', n: 'Halk Cephesi Devrimi', y: '1936 · alternatif tarih', d: 'Paris\'te genel grev devrime dönüştü; Maurice Thorez Fransız Komünü\'nü ilan etti. Fransa Komintern\'de, İngiltere Avrupa\'da yalnız kaldı.',
-      apply: (st) => {
-        ideo('FRA', 'com', 'Maurice Thorez', 0.66);
-        join('FRA', 'comintern');
-        rel('FRA', 'ENG', -40); rel('FRA', 'SOV', 40); rel('FRA', 'GER', -30); rel('FRA', 'ITA', -30);
-        st.tension = 18;
-      } },
-    { id: 'ottoman', n: 'Osmanlı Restorasyonu', y: '1936 · alternatif tarih', d: 'Saltanat kaldırılmadı; Halife Abdülmecid anayasal monarşinin başında. Ordu güçlü, kadim topraklar üzerindeki talepler canlı. Türkiye denge oyununun kilit ülkesi.',
-      apply: (st) => {
-        ideo('TUR', 'neu', 'Halife Abdülmecid', 0.68);
-        const c = st.C.TUR; if (!c) return;
-        c.stabX = (c.stabX || 0) + 0.1; c.wsX = (c.wsX || 0) + 0.1;
-        G.addFactories('TUR', 'mil', 3); G.addFactories('TUR', 'civ', 2);
-        rel('TUR', 'ENG', -10); rel('TUR', 'ITA', -10); rel('TUR', 'GER', 10);
-        st.tension = 10;
-      } },
-  ];
-  G.scenario = (id) => G.SCENARIOS.find((s) => s.id === id) || G.SCENARIOS[0];
-  G.applyScenario = (id) => {
-    const s = G.scenario(id), st = G.st;
-    if (!s.apply) return;
-    st.opts.hist = 0; st.opts.scen = id;
-    s.apply(st);
-    G.refreshEnemies(); G.relClear && G.relClear();
-    G.updateSummaries();
-    for (const c of Object.values(st.C)) if (c.alive) { G.recomputeMods(c); G.econCalc(c); }
-    G.mapDirty = 1;
-    G.log(`Senaryo: ${s.n}. ${s.d}`, [], 'major');
-  };
-})(window);
-
 /* js/ui/flags.js */
 // Basitleştirilmiş bayraklar (SVG). Bilinmeyen ülkeler için ülke renginden üretilir.
 (function (g) {
@@ -10805,7 +10848,7 @@ window.RIVERS = [
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
       const cat = FOCUS_CAT[focusCat(f)][1];
       const days = active ? `${Math.ceil(G.focusDays(f) - c.focus.p)} gün kaldı` : done ? 'Tamamlandı' : `${G.focusDays(f)} gün`;
-      nodes += `<button class="fn ${cls}${mini ? ' mini' : ''}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${f.alt ? ' alt' : ''}${mini ? ' mini' : ''}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
@@ -10820,7 +10863,7 @@ window.RIVERS = [
       const hev = G.EV_OF_FOCUS && G.EV_OF_FOCUS[sf.id] && G.EVENTS.find((e) => e.id === G.EV_OF_FOCUS[sf.id]);
       const histD = hev && !done ? `<div class="d muted">Tarihte: ${esc(hev.title)} · ${G.fmtDate(hev.day)}${G.st.ev[hev.id] ? ' (gerçekleşti)' : ''}</div>` : '';
       const sfx = histD + (addS ? `<div class="d">Ulusal ruh ekler: <b>${esc(addS.n)}</b></div><div class="fxl">${fxChips(addS.fx)}</div>` : '') + (rmS.length && !done ? `<div class="d good">Kaldırır: ${rmS.map(esc).join(', ')}</div>` : '');
-      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d"><span class="fcat" style="--fc:${FOCUS_CAT[focusCat(sf)][1]}">${FOCUS_CAT[focusCat(sf)][0]}</span> ${esc(sf.d)}</div>${fxParts(sf.fx).length ? `<div class="fxl">${fxChips(sf.fx)}</div>` : ''}${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
+      html += `<div class="fdetail"><div class="row"><div class="grow"><div class="t">${esc(sf.n)}</div><div class="d"><span class="fcat" style="--fc:${FOCUS_CAT[focusCat(sf)][1]}">${FOCUS_CAT[focusCat(sf)][0]}</span>${sf.alt ? ' <span class="fcat altc">Alternatif tarih</span>' : ''} ${esc(sf.d)}</div>${fxParts(sf.fx).length ? `<div class="fxl">${fxChips(sf.fx)}</div>` : ''}${sfx}<div class="d ${avail ? 'good' : 'warn'}">${why}</div></div><button class="x" data-act="focusclose" aria-label="Kapat" style="width:32px;height:32px;color:var(--muted)">✕</button></div>${avail ? `<button class="btn pri" data-act="focusgo" data-v="${sf.id}">${c.focus.cur ? 'Bu odağa geç' : 'Odağı başlat'}</button>` : ''}</div>`;
     }
     return { title: g.FOCUS_NATIONAL[c.tag] ? `${G.cname(c.tag)} odak ağacı` : 'Odak ağacı', html };
   }
@@ -11574,7 +11617,7 @@ window.RIVERS = [
 
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
-  <section class="sec"><h3 class="sec-h">Senaryolar</h3><p class="small" style="margin:0">Başlangıç ekranında senaryo seçilir. "Fırtına Yaklaşıyor" tarihî 1936 dünyasıdır. Alternatif tarih senaryoları: Kızıl Almanya (Thälmann, Almanya Komintern'de), Kayzer Geri Döndü (monarşist Almanya ve Orta Avrupa Birliği), Amerika Önce (Huey Long, faşist ve silahlanan ABD), Halk Cephesi Devrimi (komünist Fransa) ve Osmanlı Restorasyonu (Halife Abdülmecid, güçlü Türk ordusu). Alternatif senaryolarda tarihî olay zinciri kapalıdır; yapay zekâ ülkeleri senaryodaki ideolojilerine bağlı kalır.</p></section>
+  <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
   <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında kara (kırmızı), hava (açık mavi) ve deniz (lacivert) için tek bir dal vardır: ülkenin kendi ulusal dalı varsa o kullanılır, yoksa genel dal; ayrıca sanayi (altın) ve siyaset/diplomasi dalları bulunur. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita</h3><p class="small" style="margin:0">Tek parmakla kaydır, iki parmakla yakınlaştır. Bir eyalete dokununca bilgi kartı açılır. Sağdaki düğmeler harita modunu değiştirir, alan seçimini açar ve başkente döner.</p></section>
@@ -12161,13 +12204,10 @@ window.RIVERS = [
     const meta = G.saveMeta('auto');
     let html = '';
     if (meta) html += `<div class="sec"><h3 class="sec-h">Kaldığın yerden</h3><button class="item" data-act="continue"><span>${G.flag(meta.player, 30, 20)}</span><div class="grow"><div class="t">${esc(G.cname(meta.player))}</div><div class="d">${G.fmtDate(meta.day)} · otomatik kayıt</div></div><span class="btn sm pri">Devam et</span></button></div>`;
-    // senaryolar (HOI4 başlangıç seçimi + alternatif tarih)
-    const scen = UI.startOpts.scen || 'hist';
-    html += `<div class="sec"><h3 class="sec-h">Senaryo<span>${G.SCENARIOS.length}</span></h3><div class="scens">${G.SCENARIOS.map((s) => `<button class="scen ${scen === s.id ? 'on' : ''} ${s.id}" data-act="scen" data-v="${s.id}"><div class="ev-pic">${G.eventArt ? G.eventArt({ art: s.id === 'hist' ? 'city' : s.id === 'usafas' ? 'industry' : s.id === 'kaiser' || s.id === 'ottoman' ? 'surrender' : 'politics' }) : ''}</div><small>${esc(s.y)}</small><b>${esc(s.n)}</b></button>`).join('')}</div><p class="small muted" style="margin:0">${esc(G.scenario(scen).d)}</p></div>`;
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
-      ${scen === 'hist' ? `<div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>` : '<p class="small muted" style="margin:0">Alternatif tarih senaryolarında dünya serbest akar: tarihî olay zinciri kapalıdır, ülkeler kendi hedeflerini izler.</p>'}
+      <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
       <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
     const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
     if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
@@ -12176,14 +12216,11 @@ window.RIVERS = [
   };
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
-  ACT.scen = (d) => { UI.startOpts.scen = d.v; UI.renderStart(); };
   ACT.begin = () => {
-    const scn = G.scenario(UI.startOpts.scen || 'hist');
-    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff, scen: scn.id });
+    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    if (scn.apply) UI.showModal({ art: 'politics', eyebrow: `1 Ocak 1936 · ${scn.n}`, title: G.cname(UI.startSel), text: `${scn.d} ${G.st.C[UI.startSel].leader} yönetimindeki ${G.cname(UI.startSel)} için yeni bir çağ başlıyor.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
-    else UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
