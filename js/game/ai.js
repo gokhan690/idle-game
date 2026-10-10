@@ -617,14 +617,22 @@
     if (c.ideo === 'dem' || c.ideo === 'neu') return;
     if (!c.major && c.sum.mil < 10) return;
     if (c.enemies.length >= 2 || c.just) return;
+    // serbest dünya temposu: 1937 ortasına kadar saldırı yok; sonra gerginliğe, tek savaşa ve beklemeye bağlı
+    const free = !st.opts.hist;
+    if (free) {
+      if (st.day < G.dayOf('1937-07-01')) return;
+      if (c.enemies.length >= 1) return;
+      if (c.ideo === 'com' && st.tension < 25) return;
+    }
     // hazır gerekçe varsa savaş ilan et
     for (const k of Object.keys(st.goals)) {
       const [a, b] = k.split('>');
       if (a !== tag || !st.C[b]?.alive) continue;
       const my = G.armyPower(tag), their = G.sidePower(b, (x) => G.armyPower(x.tag));
-      if (my > their * 1.4) { G.declareWar(tag, b); return; }
+      if (my > their * 1.4) { G.declareWar(tag, b); c.ai.lastWar = st.day; return; }
     }
     if (c.pp < 80 || st.tension < G.tensionNeeded(c)) return;
+    if (free && st.day - (c.ai.lastJust ?? -9999) < 365) return; // yılda en çok bir yeni gerekçe
     // zayıf komşu seç
     const neigh = new Set();
     for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) for (const j of P[i].a) { const t = st.prov[j].c; if (t !== tag) neigh.add(t); }
@@ -635,8 +643,10 @@
       if (t === st.player && st.day < 365) continue;
       const their = G.sidePower(t, (x) => G.armyPower(x.tag));
       const r = my / (their + 1);
-      if (r > 1.8 && r > bv) { bv = r; best = t; }
+      if (r > (free ? 2.4 : 1.8) && r > bv) { bv = r; best = t; }
     }
-    if (best && G.rand() < 0.35) G.startJustify(tag, best);
+    // olasılık yıllar geçtikçe artar (1937: düşük, 1939 sonrası tam)
+    const pAgg = free ? Math.min(0.35, 0.08 + 0.09 * Math.max(0, yr - 1937)) : 0.35;
+    if (best && G.rand() < pAgg) { G.startJustify(tag, best); c.ai.lastJust = st.day; }
   };
 })(window);
