@@ -8,7 +8,7 @@
   const facOf = (t) => G.st.C[t]?.fac;
   const ensureAxis = () => {
     const st = G.st;
-    if (!alive('GER')) return null;
+    if (!alive('GER') || st.C.GER.ideo !== 'fas') return null; // alternatif tarih: faşist olmayan Almanya Mihver kurmaz
     if (facOf('GER')) return facOf('GER');
     return G.createFaction('GER', 'Mihver');
   };

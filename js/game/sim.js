@@ -685,6 +685,9 @@
       const th = civil ? 0.85 : Math.min(0.95, (c.tag === 'SOV' ? 0.9 : c.tag === 'CHI' ? 0.96 : c.major ? (c.ideo === 'fas' || c.ideo === 'com' ? 0.88 : 0.68) : 0.58) + ((c.ws ?? 0.3) - 0.3) * 0.12);
       c.surrender = lost / th;
       if (lost >= th) G.capitulate(c.tag);
+      // uzayan dinamik iç savaş (oyuncu dışı): 20 ay sonra daha az toprağı olan taraf çöker
+      const cwp = civil && (st.civil || []).find((p) => p.includes(c.tag) && p[2] != null && st.day - p[2] > 600 && !p.includes(st.player));
+      if (cwp && c.alive) { const o = cwp[0] === c.tag ? cwp[1] : cwp[0]; if ((c.sum.provs || 0) < (st.C[o]?.sum.provs || 0)) G.capitulate(c.tag); }
     }
   }
 
