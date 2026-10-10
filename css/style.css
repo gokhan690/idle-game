@@ -727,3 +727,57 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
   .hud-flag svg { width: 48px; height: 32px; }
   .alert { width: 32px; height: 32px; }
 }
+
+/* ---------- Tek tip simge seti ---------- */
+.hi.med { width: 22px; height: 22px; padding: 4px; border-radius: 50%; color: #f6ecd0; background: radial-gradient(circle at 50% 28%, rgba(255,255,255,0.32), rgba(255,255,255,0) 55%), var(--mc); border: 1px solid #0b0c09; box-shadow: inset 0 0 0 1px rgba(255,232,170,0.38), 0 1px 2px rgba(0,0,0,0.7); filter: drop-shadow(0 1px 0 rgba(0,0,0,0.4)); }
+.hi.med svg { filter: drop-shadow(0 1px 0 rgba(0,0,0,0.55)); }
+.res .hi.med { width: 22px; height: 22px; }
+.alert .hi { color: #f3e3b4; filter: drop-shadow(0 1px 0 #000); }
+.alert.a-hi .hi { color: #ffd6c9; }
+.bslots .bs { color: #e8dcb8; }
+.bslots .bs.mil { color: #dfe6bf; } .bslots .bs.dock { color: #cfe3f2; }
+.fn .fic { color: var(--fc, #ccc); }
+.navi { width: 24px; height: 24px; color: currentColor; filter: drop-shadow(0 1px 0 #000); }
+#nav button.on .navi { color: #ffe9a8; }
+.tico { width: 22px; height: 22px; margin-right: 9px; vertical-align: -4px; color: #e7c66e; filter: drop-shadow(0 1px 0 #000); }
+
+/* ---------- Yatay ekran: haritaya yer aç ---------- */
+@media (orientation: landscape) and (max-height: 560px) {
+  :root { --rail: 50px; }
+  /* sol menü yalnızca simge (HOI4 sol üst düğmeleri gibi) */
+  #nav { padding: calc(var(--safe-t) + 3px) 3px calc(var(--safe-b) + 3px) calc(var(--safe-l) + 3px); gap: 3px; }
+  #nav button { gap: 0; }
+  #nav button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #nav .navi { width: 23px; height: 23px; }
+  /* üst çubuk tek satır; uyarılar haritanın üstünde yüzer */
+  #hud { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "flag res clock"; padding: calc(var(--safe-t) + 3px) calc(6px + var(--safe-r)) 3px 6px; gap: 0 8px; }
+  .hud-flag { padding: 2px; }
+  .hud-flag svg { width: 36px; height: 24px; }
+  .hud-flag::after { inset: 3px; }
+  .res { padding: 1px 6px 1px 4px; gap: 3px; } .res b { font-size: 12.5px; }
+  .res .hi.med { width: 20px; height: 20px; padding: 3.5px; }
+  .sp-pause { width: 30px; height: 30px; }
+  .hud-datebox { min-width: 0; padding: 2px 7px 3px; gap: 1px; }
+  #hud-date { font-size: 12px; }
+  .hud-datebox .speed { height: 12px; gap: 3px; }
+  .hud-datebox .speed button:nth-child(1)::before { height: 4px; } .hud-datebox .speed button:nth-child(2)::before { height: 6px; } .hud-datebox .speed button:nth-child(3)::before { height: 8px; } .hud-datebox .speed button:nth-child(4)::before { height: 10px; } .hud-datebox .speed button:nth-child(5)::before { height: 12px; }
+  .hud-alerts { position: absolute; left: 6px; top: calc(100% + 6px); max-width: 55vw; padding: 2px; gap: 6px; overflow-x: auto; }
+  .alert { width: 30px; height: 30px; box-shadow: 0 0 0 1px #0b0c08, 0 3px 8px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.15); }
+  #toasts { top: calc(var(--hud-b, 40px) + 46px); }
+  /* paneller üst çubuğun altında kalır: tarih ve hız her zaman görünür */
+  .sheet { top: var(--hud-b, 40px); width: min(420px, 48vw); }
+  .sheet-head { padding-top: 3px; padding-bottom: 3px; }
+  .sheet-head h2 { font-size: 16px; }
+  .sheet-close, .sheet-back, .sheet-tall { width: 30px; height: 30px; }
+  .card, .selbar { max-height: calc(100vh - var(--hud-b, 40px) - 16px); }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  #map-tools button { width: 36px; height: 36px; }
+  #map-tools button::before { width: 19px; height: 19px; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .card, .selbar { width: min(380px, 42vw); padding: 8px 10px; gap: 6px; }
+  .card-h h3 { font-size: 17px; }
+  .card .facts { font-size: 12px; gap: 2px 10px; }
+  .bslots .bs { width: 19px; height: 19px; } .bslots .bs svg { width: 13px; height: 13px; }
+}
