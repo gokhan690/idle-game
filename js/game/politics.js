@@ -70,14 +70,11 @@
     for (const k of IDEOS) c.pop[k] = (c.pop[k] || 0) / s;
   }
   G.normalizePop = normalizePop;
-  // senaryo kilidi: alternatif tarihte yapay zekâ ülkesinin ideolojisi kolayca geri dönmez
-  const locked = (c, k) => c.scenLock && c.tag !== G.st.player && k !== c.scenLock;
-  G.addPop = (c, k, v) => { if (v > 0 && locked(c, k)) v *= 0.15; c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
+  G.addPop = (c, k, v) => { c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
 
   G.setIdeology = (c, ideo) => {
     const st = G.st;
     if (c.ideo === ideo) return;
-    if (locked(c, ideo) && (c.pop[ideo] || 0) < 0.8) return;
     const old = c.ideo;
     c.ideo = ideo;
     c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.IDEOLOGIES[ideo].n} Hükümet`;
@@ -297,12 +294,23 @@
       if (st.factions[fid].leader !== leader && st.factions[fid].leader === st.player) { G.log('İttifak lideri oyuncu: katılım isteği gönderildi.', [c.tag], 'info'); }
       G.joinFaction(c.tag, fid);
     },
-    mkFac(c, name, invites) {
+    mkFac(c, name, invites, bonus) {
       if (!c.fac) G.createFaction(c.tag, name);
-      for (const t of invites || []) if (alive(t) && t !== G.st.player) { const ok = G.inviteToFaction(c.tag, t); if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} ittifak davetini reddetti.`, [c.tag], 'warn'); }
+      for (const t of invites || []) if (alive(t) && t !== G.st.player) { const ok = G.inviteToFaction(c.tag, t, bonus || 0); if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} ittifak davetini reddetti.`, [c.tag], 'warn'); }
     },
     invite(c, list) { G.FX.mkFac(c, `${G.cname(c.tag)} İttifakı`, list); },
     leader(c, ideo) { G.setIdeology(c, ideo); },
+    // alternatif tarih: ideoloji ve lider değişimi (aynı ideolojide yalnızca lider değişir)
+    ideo(c, ideo, leader) {
+      if (c.ideo !== ideo) G.setIdeology(c, ideo);
+      // halk desteği yeni iktidara kayar (yoksa eski parti hükümeti geri alır)
+      const rest = Object.keys(c.pop).filter((k) => k !== ideo), sum = rest.reduce((a, k) => a + c.pop[k], 0) || 1;
+      for (const k of rest) c.pop[k] = c.pop[k] / sum * 0.36;
+      c.pop[ideo] = 0.64; normalizePop(c);
+      if (leader) c.leader = leader;
+      G.log(`${G.cname(c.tag)}: ${c.leader} iktidarda (${g.IDEOLOGIES[c.ideo].n}).`, [c.tag], 'major');
+      G.mapDirty = 1;
+    },
     leaderName(c, name) { c.leader = name; G.log(`${G.cname(c.tag)}: ${name} yönetimi devraldı.`, [c.tag], 'major'); },
     gift(c, list, eq) { for (const t of list) if (alive(t)) for (const [e, n] of Object.entries(eq)) G.st.C[t].stock[e] = (G.st.C[t].stock[e] || 0) + n; },
     infra(c, n) {
@@ -363,7 +371,7 @@
     for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag && pr.o === over) { pr.o = pr.c = pr.core = tag; n++; } }
     if (!n) return false;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.scenLock = 0; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     c.cap = G.anyOwnProvince(tag);
