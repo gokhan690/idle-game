@@ -276,13 +276,14 @@
   }
 
   // odak türü (HOI4'teki simge renkleri): sanayi, kara, hava/deniz, siyaset, diplomasi
-  const FOCUS_ICO = { ind: 'civ', land: 'tank', sea: 'navy', pol: 'pp', dip: 'hand' };
-  const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara kuvvetleri', '#c9614a'], sea: ['Hava ve deniz', '#5f9bd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
+  const FOCUS_ICO = { ind: 'civ', land: 'tank', air: 'air', sea: 'navy', pol: 'pp', dip: 'hand' };
+  const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara', '#c9614a'], air: ['Hava', '#8fc3e8'], sea: ['Deniz', '#4c7fd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
   const focusCat = (f) => {
     const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
     if (['demand', 'demandMany', 'guar', 'invite', 'joinFac', 'mkFac', 'pact', 'goal', 'gift'].includes(fn)) return 'dip';
-    if (k.some((x) => ['addCiv', 'addMil', 'construct', 'factory', 'effCap', 'addInfra', 'synth', 'stock', 'steel', 'oil', 'al', 'rub', 'tun', 'chr', 'research'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'ind' || r[0] === 'elec')) return 'ind';
-    if (k.some((x) => ['addPlanes', 'addBombers', 'addCas', 'air', 'navy', 'ships', 'addDock', 'addConv', 'invasion'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'air' || r[0] === 'nav')) return 'sea';
+    if (k.some((x) => ['addCiv', 'addMil', 'construct', 'factory', 'effCap', 'addInfra', 'synth', 'stock', 'steel', 'oil', 'al', 'rub', 'tun', 'chr', 'research', 'slots'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'ind' || r[0] === 'elec')) return 'ind';
+    if (k.some((x) => ['addPlanes', 'addBombers', 'addCas', 'air'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'air')) return 'air';
+    if (k.some((x) => ['navy', 'ships', 'addDock', 'addConv', 'invasion'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'nav')) return 'sea';
     if (k.some((x) => ['landAtk', 'landDef', 'armAtk', 'org', 'units', 'forts', 'tech', 'plan', 'entrench', 'brk', 'train', 'mp', 'speed', 'xpGain'].includes(x)) || fn === 'general' || fn === 'fortRegion' || (fx.rb || []).length) return 'land';
     return 'pol';
   };
@@ -327,7 +328,7 @@
       const cls = done ? 'done' : active ? 'active' : excl ? 'excl' : avail ? 'avail' : 'locked';
       const cat = FOCUS_CAT[focusCat(f)][1];
       const days = active ? `${Math.ceil(G.focusDays(f) - c.focus.p)} gün kaldı` : done ? 'Tamamlandı' : `${G.focusDays(f)} gün`;
-      nodes += `<button class="fn ${cls}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
+      nodes += `<button class="fn ${cls}${mini ? ' mini' : ''}${UI.fsel === f.id ? ' sel' : ''}" style="left:${p.x}px;top:${p.y}px;width:${NW}px;height:${NH}px;--fc:${cat}" data-act="focus" data-v="${f.id}" aria-label="${esc(f.n)}">${G.ico ? G.ico(FOCUS_ICO[focusCat(f)], 'fic') : ''}<span class="t">${done ? '✓ ' : ''}${esc(f.n)}</span>${mini ? '' : `<span class="dd">${days}</span>`}${active ? `<i class="fp" style="width:${(c.focus.p / G.focusDays(f) * 100).toFixed(0)}%"></i>` : ''}</button>`;
     }
     const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
     const nAvail = list.filter((f) => G.focusAvailable(c, f)).length;
@@ -1096,6 +1097,8 @@
 
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
+  <section class="sec"><h3 class="sec-h">Senaryolar</h3><p class="small" style="margin:0">Başlangıç ekranında senaryo seçilir. "Fırtına Yaklaşıyor" tarihî 1936 dünyasıdır. Alternatif tarih senaryoları: Kızıl Almanya (Thälmann, Almanya Komintern'de), Kayzer Geri Döndü (monarşist Almanya ve Orta Avrupa Birliği), Amerika Önce (Huey Long, faşist ve silahlanan ABD), Halk Cephesi Devrimi (komünist Fransa) ve Osmanlı Restorasyonu (Halife Abdülmecid, güçlü Türk ordusu). Alternatif senaryolarda tarihî olay zinciri kapalıdır; yapay zekâ ülkeleri senaryodaki ideolojilerine bağlı kalır.</p></section>
+  <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında ulusal odakların yanında HOI4'teki gibi kara (kırmızı), hava (açık mavi), deniz (lacivert), sanayi (altın) ve siyaset/diplomasi dalları vardır. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita</h3><p class="small" style="margin:0">Tek parmakla kaydır, iki parmakla yakınlaştır. Bir eyalete dokununca bilgi kartı açılır. Sağdaki düğmeler harita modunu değiştirir, alan seçimini açar ve başkente döner.</p></section>
   <section class="sec"><h3 class="sec-h">Birlikler</h3><p class="small" style="margin:0">Kendi tümenlerinin bulunduğu eyalete (veya sayaca) dokun: tümenler seçilir. Sonra hedef eyalete dokun: en kısa yol bulunur. Deniz aşırı hedeflerde birlikler gemiyle taşınır; düşman kıyısına çıkarma için yeterli deniz gücü gerekir. Düşman birliği olan eyalete yürümek saldırı başlatır. Muharebe simgesindeki renk üstünlüğü gösterir.</p></section>
@@ -1681,10 +1684,13 @@
     const meta = G.saveMeta('auto');
     let html = '';
     if (meta) html += `<div class="sec"><h3 class="sec-h">Kaldığın yerden</h3><button class="item" data-act="continue"><span>${G.flag(meta.player, 30, 20)}</span><div class="grow"><div class="t">${esc(G.cname(meta.player))}</div><div class="d">${G.fmtDate(meta.day)} · otomatik kayıt</div></div><span class="btn sm pri">Devam et</span></button></div>`;
+    // senaryolar (HOI4 başlangıç seçimi + alternatif tarih)
+    const scen = UI.startOpts.scen || 'hist';
+    html += `<div class="sec"><h3 class="sec-h">Senaryo<span>${G.SCENARIOS.length}</span></h3><div class="scens">${G.SCENARIOS.map((s) => `<button class="scen ${scen === s.id ? 'on' : ''} ${s.id}" data-act="scen" data-v="${s.id}"><div class="ev-pic">${G.eventArt ? G.eventArt({ art: s.id === 'hist' ? 'city' : s.id === 'usafas' ? 'industry' : s.id === 'kaiser' || s.id === 'ottoman' ? 'surrender' : 'politics' }) : ''}</div><small>${esc(s.y)}</small><b>${esc(s.n)}</b></button>`).join('')}</div><p class="small muted" style="margin:0">${esc(G.scenario(scen).d)}</p></div>`;
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
-      <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
+      ${scen === 'hist' ? `<div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>` : '<p class="small muted" style="margin:0">Alternatif tarih senaryolarında dünya serbest akar: tarihî olay zinciri kapalıdır, ülkeler kendi hedeflerini izler.</p>'}
       <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
     const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
     if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
@@ -1693,11 +1699,14 @@
   };
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
+  ACT.scen = (d) => { UI.startOpts.scen = d.v; UI.renderStart(); };
   ACT.begin = () => {
-    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
+    const scn = G.scenario(UI.startOpts.scen || 'hist');
+    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff, scen: scn.id });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
-    UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    if (scn.apply) UI.showModal({ art: 'politics', eyebrow: `1 Ocak 1936 · ${scn.n}`, title: G.cname(UI.startSel), text: `${scn.d} ${G.st.C[UI.startSel].leader} yönetimindeki ${G.cname(UI.startSel)} için yeni bir çağ başlıyor.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    else UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };

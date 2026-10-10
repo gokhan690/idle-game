@@ -5,6 +5,7 @@
   const rb = (...cats) => ({ rb: cats.map((c) => (Array.isArray(c) ? c : [c, 0.5])) });
 
   // ---------- Genel ağaç ----------
+  g.FOCUS_NAVAL = ['naval_effort', 'flexible_navy', 'large_navy', 'submarine_effort', 'cruiser_effort', 'amphib_effort', 'carrier_program', 'convoy_raiding', 'naval_dominance'];
   g.FOCUS_GENERIC = [
     // Ordu
     F('army_effort', 'Ordu Çalışmaları', 1, 0, [], rb('doc'), 'Doktrin araştırmasına %50 bonus.'),
@@ -24,7 +25,10 @@
     F('bomber_focus', 'Bombardıman Odaklı Hava Kuvvetleri', 5, 1, ['aviation_effort'], Object.assign(rb('air'), { addBombers: 60 }), '+60 bombardıman uçağı.', { excl: ['fighter_focus'] }),
     F('aviation_effort_2', 'Havacılık Çalışmaları II', 4, 2, [['fighter_focus', 'bomber_focus']], { air: 0.1 }, 'Hava gücü +%10.'),
     F('cas_effort', 'Yakın Destek Çalışmaları', 5, 2, [['fighter_focus', 'bomber_focus']], { addCas: 60, landAtk: 0.02 }, '+60 yakın destek uçağı.'),
-    F('rocket_effort', 'Roket Çalışmaları', 4.5, 3, ['aviation_effort_2'], { research: 0.05, air: 0.05 }, 'Araştırma +%5, hava +%5.'),
+    F('rocket_effort', 'Roket Çalışmaları', 4.5, 3, ['aviation_effort_2'], Object.assign(rb('air'), { air: 0.05 }), 'Hava araştırma bonusu, hava +%5.'),
+    F('air_superiority', 'Hava Üstünlüğü Doktrini', 4, 4, ['rocket_effort'], { air: 0.1, landDef: 0.02 }, 'Hava gücü +%10, kara savunması +%2.'),
+    F('strategic_bombing', 'Stratejik Bombardıman', 5, 4, ['rocket_effort'], { addBombers: 80, air: 0.05 }, '+80 bombardıman uçağı, hava +%5.'),
+    F('paratroopers', 'Paraşüt Kuvvetleri', 4.5, 5, [['air_superiority', 'strategic_bombing']], { tech: 'para1', air: 0.03, org: 0.03 }, 'Paraşütçü tümen teknolojisi, hava +%3, moral +%3.'),
     // Deniz
     F('naval_effort', 'Deniz Çalışmaları', 6.5, 0, [], Object.assign(rb('nav'), { addDock: 2 }), '+2 tersane.'),
     F('flexible_navy', 'Esnek Donanma', 6, 1, ['naval_effort'], { ships: { ss: 10 }, navy: 0.05 }, '+10 denizaltı, deniz +%5.', { excl: ['large_navy'] }),
@@ -32,6 +36,9 @@
     F('submarine_effort', 'Denizaltı Çalışmaları', 6, 2, [['flexible_navy', 'large_navy']], Object.assign(rb('nav'), { ships: { ss: 10 } }), '+10 denizaltı.'),
     F('cruiser_effort', 'Kruvazör Çalışmaları', 7, 2, [['flexible_navy', 'large_navy']], Object.assign(rb('nav'), { ships: { cr: 2 } }), '+2 kruvazör.'),
     F('amphib_effort', 'Çıkarma Çalışmaları', 6.5, 3, [['submarine_effort', 'cruiser_effort']], { tech: 'mar1', invasion: 0.25 }, 'Deniz piyadesi, çıkarma cezası -%25.'),
+    F('carrier_program', 'Uçak Gemisi Programı', 6, 4, ['amphib_effort'], { ships: { cv: 1 }, navy: 0.1 }, '+1 uçak gemisi, deniz +%10.'),
+    F('convoy_raiding', 'Ticaret Akıncıları', 7, 4, ['amphib_effort'], { ships: { ss: 12 }, navy: 0.05 }, '+12 denizaltı, deniz +%5.'),
+    F('naval_dominance', 'Deniz Hâkimiyeti', 6.5, 5, [['carrier_program', 'convoy_raiding']], { addDock: 2, addConv: 30, navy: 0.05 }, '+2 tersane, +30 konvoy, deniz +%5.'),
     // Sanayi
     F('industrial_effort', 'Sanayi Çalışmaları', 9.5, 0, [], rb('ind'), 'Sanayi araştırma bonusu.'),
     F('construction_effort', 'İnşaat Çalışmaları', 8.5, 1, ['industrial_effort'], { addCiv: 1, construct: 0.05 }, '+1 sivil fabrika, inşaat +%5.'),
