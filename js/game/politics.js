@@ -162,7 +162,7 @@
     // ulusal ağaçta en az iki odaklı kara/hava/deniz dalı varsa genel karşılığı çıkar (her kuvvetin tek yönü olur, HOI4);
     // kıyısı olmayan ülkede deniz dalı yok; kalan dallar sola kaydırılır
     const drop = new Set(ll ? ['sea'] : []);
-    if (nat) { const cnt = {}; for (const f of nat) { const k = G.focusCat(f); cnt[k] = (cnt[k] || 0) + 1; } for (const k of Object.keys(GEN_BRANCH)) if ((cnt[k] || 0) >= 2) drop.add(k); }
+    if (nat) { const cnt = {}; for (const f of nat) { if (f.alt) continue; const k = G.focusCat(f); cnt[k] = (cnt[k] || 0) + 1; } for (const k of Object.keys(GEN_BRANCH)) if ((cnt[k] || 0) >= 2) drop.add(k); }
     const shift = (x) => { let d = 0; for (const k of drop) if (x >= GEN_BRANCH[k].start + GEN_BRANCH[k].w) d += GEN_BRANCH[k].w; return d; };
     const gen = g.FOCUS_GENERIC.filter((f) => !drop.has(branchOf(f)) && !(nat && f.pol));
     if (nat) {
@@ -228,7 +228,8 @@
     // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
     if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
     // alternatif tarih kökü: bu ülkenin kendi tarihî olayları kapanır
-    if (f.alt && !f.pre.length && G.closeHistEvents) G.closeHistEvents(c);
+    if (f.alt && !f.pre.length && G.closeHistEvents) { G.closeHistEvents(c); if (G.altRootNews) G.altRootNews(c, f); }
+    if (G.altOnFocus) G.altOnFocus(c, id);
     G.recomputeMods(c);
     G.needSummary = 1;
     if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
@@ -337,7 +338,7 @@
   G.aiFocus = (c) => {
     if (c.focus.cur) return;
     const list = G.focusList(c);
-    const f = list.find((x) => x.ai !== 0 && G.focusAvailable(c, x));
+    const f = (G.altAiPick && G.altAiPick(c, list)) || list.find((x) => x.ai !== 0 && G.focusAvailable(c, x) && !(G.altBlocked && G.altBlocked(c, x)));
     if (f) { c.focus.cur = f.id; c.focus.p = 0; }
   };
   const ADV_PRIORITY = ['captain', 'warind', 'd_ind', 'a_atk', 'workhorse', 'hc_inf', 'propaganda', 'd_tank', 'air_sup', 'theo', 'a_def', 'figurehead', 'n_fleet', 'recruiter', 'd_plane', 'hc_arm'];

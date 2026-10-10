@@ -647,6 +647,8 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
 .dialog.ev .btns, .dialog.news .btns { padding: 12px 14px 14px; gap: 6px; }
 .btn.evopt { min-height: 42px; font-size: 15px; justify-content: flex-start; padding-left: 14px; }
 .btn.evopt.pri { background: linear-gradient(180deg, #535c47, #333a2b); box-shadow: var(--bevel), inset 3px 0 0 #c9a54e; }
+.btn.evopt:has(.evd) { flex-direction: column; align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
+.btn.evopt .evd { display: block; font-size: 11.5px; font-weight: 400; color: #c9bf9f; letter-spacing: 0; text-transform: none; margin-top: 2px; text-align: left; line-height: 1.3; }
 @media (orientation: landscape) and (max-height: 560px) {
   .dialog.ev { width: min(760px, 100%); display: grid; grid-template-columns: 44% 1fr; grid-template-areas: "head head" "pic eb" "pic text" "btns btns"; align-content: start; }
   .ev-head { grid-area: head; padding: 6px 12px; } .dialog.ev h3 { font-size: 19px; }
@@ -2306,7 +2308,8 @@ window.IDEOLOGIES = {
       ]),
     ] },
   };
-  for (const [tag, def] of Object.entries(A)) {
+  g.ALT_PATH = path; g.ALT_IDEO = ideo;
+  g.addAltPaths = (A) => { for (const [tag, def] of Object.entries(A)) {
     const nat = g.FOCUS_NATIONAL[tag]; if (!nat) continue;
     const base = Math.max(...nat.map((f) => f.x)) + 2;
     const ids = new Set(nat.map((f) => f.id));
@@ -2318,7 +2321,136 @@ window.IDEOLOGIES = {
     }
     for (const b of def.block) { const f = nat.find((x) => x.id === b); if (f) f.excl = (f.excl || []).concat(def.roots); }
     nat.push(...def.list);
-  }
+  } };
+  g.addAltPaths(A);
+})(window);
+
+/* js/data/focus_minor.js */
+// Küçük ve orta devletlerin alternatif tarih yolları (HOI4): Polonya, Macaristan, Romanya, Yunanistan, Yugoslavya,
+// Çin, Bulgaristan, İsveç, Brezilya. Her yol 10 odaktır; bazıları iç savaş başlatır. YZ bu dalları almaz.
+(function (g) {
+  const path = g.ALT_PATH, ideo = g.ALT_IDEO;
+  const box = (a, b, c, d) => (p) => p.lon >= a && p.lon <= c && p.lat >= b && p.lat <= d;
+  Object.assign(g.FOCUS_REGIONS, {
+    teschen: box(17.4, 49.4, 19.2, 50.2),
+    vilnius: box(24.2, 54, 26.8, 55.6),
+    slovakia: (p) => p.lon > 17.2,
+    transylvania: box(21, 45.4, 25.9, 48.2),
+    vojvodina: box(18.8, 44.7, 21.6, 46.2),
+    northepirus: box(19.4, 39.5, 21.2, 40.9),
+    smyrna: box(26, 37.3, 28.8, 39.6),
+    aland: box(19, 59.7, 21.4, 60.7),
+  });
+  g.addAltPaths({
+    POL: { block: ['pol_west'], roots: ['pol_a_ozon'], list: path(1, [
+      ['pol_a_ozon', 'Ulusal Birlik Kampı', ideo('fas', 'Edward Rydz-Śmigły', { n: 'Polonya Cumhuriyeti', l: 'Władysław Sikorski', id: 'dem', share: 0.2 }), 'Mareşal Rydz-Śmigły OZON ile tek parti yönetimi kurar. Sürgündeki demokratlar Sikorski etrafında ayaklanır: İÇ SAVAŞ.'],
+      ['pol_a_legion', 'Lejyoner Ruhu', { org: 0.05, ws: 0.05 }, 'Moral +%5, savaş desteği +%5.'],
+      ['pol_a_cop', 'Silahlanma Fonu', { addMil: 3 }, '+3 askerî fabrika.'],
+      ['pol_a_mieedzymorze', 'Międzymorze Paktı', { fn: ['mkFac', 'Międzymorze', ['LIT', 'LAT', 'EST', 'ROM', 'HUN'], 45] }, 'Baltık\'tan Karadeniz\'e Międzymorze ittifakını kur.'],
+      ['pol_a_vilnius', 'Litvanya Birliği', { fn: ['demand', 'LIT'] }, 'Litvanya\'dan Polonya-Litvanya birliğini talep et.'],
+      ['pol_a_tank', '7TP Zırhlı Tugayları', { units: { arm: 2 }, armAtk: 0.05 }, '+2 zırhlı tümen, zırh saldırısı +%5.'],
+      ['pol_a_teschen', 'Zaolzie', { fn: ['demand', 'CZE', 'teschen'] }, 'Çekoslovakya\'dan Cieszyn bölgesini talep et.'],
+      ['pol_a_danzig', 'Danzig Polonyalıdır', { fn: ['goal', ['GER']], landDef: 0.05 }, 'Almanya\'ya karşı savaş gerekçesi, kara savunması +%5.'],
+      ['pol_a_baltic', 'Baltık Donanması', { ships: { dd: 4, ss: 4 }, navy: 0.05 }, '+4 muhrip, +4 denizaltı.'],
+      ['pol_a_great', 'Mocarstwo', { ws: 0.1, landAtk: 0.05, addMil: 2 }, 'Büyük güç Polonya: savaş desteği +%10, kara saldırısı +%5, +2 askerî fabrika.'],
+    ]) },
+    HUN: { block: ['hun_axis'], roots: ['hun_a_habsburg'], list: path(1, [
+      ['hun_a_habsburg', 'Habsburg Restorasyonu', ideo('neu', 'Kral Otto', { n: 'Macar Milliyetçi Devleti', l: 'Ferenc Szálasi', id: 'fas', share: 0.2 }), 'Horthy naipliği bırakır; Otto von Habsburg Macar tahtına çıkar. Ok Haçlılar ayaklanır: İÇ SAVAŞ.'],
+      ['hun_a_crown', 'Aziz İstvan Tacı', { stab: 0.1, pp: 0.2 }, 'İstikrar +%10, günlük siyasi güç +0,2.'],
+      ['hun_a_army', 'Honvéd Reformu', { landAtk: 0.05, units: { inf: 3 } }, 'Kara saldırısı +%5, +3 piyade tümeni.'],
+      ['hun_a_austria', 'Avusturya ile Kişisel Birlik', { fn: ['demand', 'AUS'] }, 'Habsburg tacı altında Avusturya ile birleşmeyi teklif et.'],
+      ['hun_a_slovakia', 'Felvidék', { fn: ['demand', 'CZE', 'slovakia'] }, 'Çekoslovakya\'dan Slovakya\'yı talep et.'],
+      ['hun_a_industry', 'Tuna Sanayisi', { addCiv: 2, addMil: 2 }, '+2 sivil, +2 askerî fabrika.'],
+      ['hun_a_vojvodina', 'Délvidék', { fn: ['demand', 'YUG', 'vojvodina'] }, 'Yugoslavya\'dan Voyvodina\'yı talep et.'],
+      ['hun_a_transylvania', 'Erdély', { fn: ['goal', ['ROM']], ws: 0.05 }, 'Romanya\'ya karşı savaş gerekçesi (Transilvanya).'],
+      ['hun_a_danube', 'Tuna Konfederasyonu', { fn: ['mkFac', 'Tuna Konfederasyonu', ['AUS', 'CZE', 'YUG', 'BUL'], 45] }, 'Tuna Konfederasyonu\'nu kur.'],
+      ['hun_a_empire', 'Avusturya-Macaristan', { ws: 0.1, landDef: 0.05, addMil: 3 }, 'İkili Monarşi yeniden doğuyor: savaş desteği +%10, +3 askerî fabrika.'],
+    ]) },
+    ROM: { block: ['rom_axis', 'rom_guard'], roots: ['rom_a_maniu'], list: path(1, [
+      ['rom_a_maniu', 'Köylü Partisi Hükümeti', ideo('dem', 'Iuliu Maniu', { n: 'Lejyoner Romanya', l: 'Corneliu Codreanu', id: 'fas', share: 0.25 }), 'Kral II. Carol\'un baskısına rağmen Maniu iktidara gelir. Demir Muhafız ayaklanır: İÇ SAVAŞ.'],
+      ['rom_a_land', 'Toprak Reformu', { stab: 0.1, addCiv: 2 }, 'İstikrar +%10, +2 sivil fabrika.'],
+      ['rom_a_army', 'Ordu Temizliği', { org: 0.05, landDef: 0.05 }, 'Moral +%5, kara savunması +%5.'],
+      ['rom_a_entente', 'Küçük İtilaf', { fn: ['mkFac', 'Küçük İtilaf', ['CZE', 'YUG', 'GRE', 'TUR'], 45] }, 'Küçük İtilaf\'ı yeniden canlandır.'],
+      ['rom_a_oil', 'Petrol Konsorsiyumu', { addCiv: 3, addInfra: 2 }, '+3 sivil fabrika, 2 bölgede altyapı.'],
+      ['rom_a_air', 'IAR-80 Avcıları', { addPlanes: 60, air: 0.05 }, '+60 avcı uçağı, hava +%5.'],
+      ['rom_a_bess', 'Besarabya Savunması', { forts: 2, landDef: 0.05 }, 'Doğu sınırına tahkimat, kara savunması +%5.'],
+      ['rom_a_west', 'Batı ile İttifak', { fn: ['pact', ['FRA', 'ENG']] }, 'Fransa ve İngiltere\'ye pakt öner.'],
+      ['rom_a_carpath', 'Karpat Kalesi', { landDef: 0.1, units: { mtn: 2 } }, 'Kara savunması +%10, +2 dağ tümeni.'],
+      ['rom_a_great', 'Büyük Romanya Demokrasisi', { stab: 0.1, ws: 0.1, addMil: 2 }, 'İstikrar +%10, savaş desteği +%10, +2 askerî fabrika.'],
+    ]) },
+    GRE: { block: ['gre_britain'], roots: ['gre_a_megali'], list: path(1, [
+      ['gre_a_megali', 'Megali İdea', ideo('neu', 'Kral II. Yorgos'), 'Kral II. Yorgos Metaksas\'ı görevden alır ve Büyük Yunanistan hayalini canlandırır.'],
+      ['gre_a_army', 'Evzon Alayları', { units: { mtn: 2 }, org: 0.05 }, '+2 dağ tümeni, moral +%5.'],
+      ['gre_a_navy', 'Averof Filosu', { ships: { dd: 4, cr: 1 }, navy: 0.1 }, '+4 muhrip, +1 kruvazör, deniz +%10.'],
+      ['gre_a_balkan', 'Balkan Hegemonyası', { fn: ['mkFac', 'Helen Birliği', ['BUL', 'ALB', 'YUG'], 30] }, 'Balkan devletlerini Helen Birliği\'ne çağır.'],
+      ['gre_a_epirus', 'Kuzey Epir', { fn: ['demand', 'ALB', 'northepirus'] }, 'Arnavutluk\'tan Kuzey Epir\'i talep et.'],
+      ['gre_a_industry', 'Pire Tersaneleri', { addDock: 2, addCiv: 2 }, '+2 tersane, +2 sivil fabrika.'],
+      ['gre_a_dodecanese', 'Onikiadalar', { fn: ['goal', ['ITA']] }, 'İtalya\'ya karşı savaş gerekçesi (Onikiadalar).'],
+      ['gre_a_thrace', 'Doğu Trakya', { fn: ['goal', ['BUL']], ws: 0.05 }, 'Bulgaristan\'a karşı savaş gerekçesi.'],
+      ['gre_a_ionia', 'İyonya', { fn: ['goal', ['TUR']], ws: 0.1 }, 'Türkiye\'ye karşı savaş gerekçesi.'],
+      ['gre_a_byzantium', 'Bizans\'ın Mirası', { ws: 0.1, landAtk: 0.05, navy: 0.05 }, 'Savaş desteği +%10, kara saldırısı +%5, deniz +%5.'],
+    ]) },
+    YUG: { block: ['yug_balkan'], roots: ['yug_a_tito'], list: path(1, [
+      ['yug_a_tito', 'Partizan Devrimi', ideo('com', 'Josip Broz Tito', { n: 'Yugoslavya Krallığı', l: 'Kral II. Petar', share: 0.3 }), 'Tito önderliğindeki partizanlar Belgrad\'ı ele geçirir. Kraliyetçi Çetnikler ayaklanır: İÇ SAVAŞ.'],
+      ['yug_a_brotherhood', 'Kardeşlik ve Birlik', { stab: 0.1 }, 'İstikrar +%10.'],
+      ['yug_a_army', 'Halk Kurtuluş Ordusu', { units: { inf: 4 }, landDef: 0.05 }, '+4 piyade tümeni, kara savunması +%5.'],
+      ['yug_a_comintern', 'Moskova ile Bağ', { fn: ['joinFac', 'SOV'] }, 'Sovyet ittifakına katıl.'],
+      ['yug_a_mines', 'Bor ve Trepça Madenleri', { addCiv: 2, addMil: 2 }, '+2 sivil, +2 askerî fabrika.'],
+      ['yug_a_mountain', 'Dağ Partizanları', { units: { mtn: 3 }, org: 0.05 }, '+3 dağ tümeni, moral +%5.'],
+      ['yug_a_albania', 'Arnavutluk Devrimi', { fn: ['goal', ['ALB']] }, 'Arnavutluk\'a karşı savaş gerekçesi.'],
+      ['yug_a_industry', 'Beş Yıllık Plan', { addMil: 3 }, '+3 askerî fabrika.'],
+      ['yug_a_bulgaria', 'Bulgar Yoldaşlar', { fn: ['goal', ['BUL', 'GRE']] }, 'Bulgaristan ve Yunanistan\'a karşı savaş gerekçesi.'],
+      ['yug_a_federation', 'Balkan Federasyonu', { ws: 0.15, landAtk: 0.05 }, 'Savaş desteği +%15, kara saldırısı +%5.'],
+    ]) },
+    CHI: { block: [], roots: ['chi_a_wang'], list: path(1, [
+      ['chi_a_wang', 'Wang Jingwei\'nin Barışı', ideo('fas', 'Wang Jingwei', { n: 'Milliyetçi Çin', l: 'Çan Kay-şek', id: 'neu', share: 0.35 }), 'Wang Jingwei Japonya ile uzlaşmayı savunarak Nanking\'de iktidarı alır. Çan Kay-şek yanlıları ayaklanır: İÇ SAVAŞ.'],
+      ['chi_a_peace', 'Japonya ile Ateşkes', { fn: ['pact', ['JAP']] }, 'Japonya\'ya saldırmazlık paktı öner.'],
+      ['chi_a_reorg', 'Yeniden Düzenlenmiş Hükümet', { stab: 0.1, pp: 0.2 }, 'İstikrar +%10, günlük siyasi güç +0,2.'],
+      ['chi_a_coprosperity', 'Ortak Refah', { fn: ['joinFac', 'JAP'] }, 'Japonya\'nın ittifakına katıl.'],
+      ['chi_a_rail', 'Mançurya Demiryolu Anlaşması', { addCiv: 4, addInfra: 3 }, '+4 sivil fabrika, 3 bölgede altyapı.'],
+      ['chi_a_army', 'Ulusal Barış Ordusu', { units: { inf: 6 } }, '+6 piyade tümeni.'],
+      ['chi_a_reds', 'Kızıllara Karşı', { fn: ['goal', ['PRC']], landAtk: 0.05 }, 'Komünist Çin\'e karşı savaş gerekçesi.'],
+      ['chi_a_industry', 'Şanghay Sanayisi', { addMil: 4 }, '+4 askerî fabrika.'],
+      ['chi_a_south', 'Güney Asya Hedefi', { fn: ['goal', ['RAJ']] }, 'Britanya Hindistanı\'na karşı savaş gerekçesi.'],
+      ['chi_a_order', 'Doğu Asya Yeni Düzeni', { stab: 0.1, ws: 0.1, factory: 0.05 }, 'İstikrar +%10, savaş desteği +%10.'],
+    ]) },
+    BUL: { block: ['bul_axis'], roots: ['bul_a_greater'], list: path(1, [
+      ['bul_a_greater', 'Büyük Bulgaristan', ideo('neu', 'Çar III. Boris'), 'Çar Boris San Stefano sınırlarını hedefleyen ulusal programı ilan eder.'],
+      ['bul_a_army', 'Bulgar Ordusu', { units: { inf: 3 }, landAtk: 0.05 }, '+3 piyade tümeni, kara saldırısı +%5.'],
+      ['bul_a_rail', 'Sofya-Varna Demiryolu', { addCiv: 2, addInfra: 2 }, '+2 sivil fabrika, 2 bölgede altyapı.'],
+      ['bul_a_tsar', 'Çarlık Otoritesi', { stab: 0.1, ws: 0.05 }, 'İstikrar +%10, savaş desteği +%5.'],
+      ['bul_a_dobruja', 'Güney Dobruca', { fn: ['demand', 'ROM', 'dobruja'] }, 'Romanya\'dan Güney Dobruca\'yı talep et.'],
+      ['bul_a_arms', 'Silah Fabrikaları', { addMil: 3 }, '+3 askerî fabrika.'],
+      ['bul_a_macedonia', 'Makedonya', { fn: ['demand', 'YUG', 'macedonia'] }, 'Yugoslavya\'dan Makedonya\'yı talep et.'],
+      ['bul_a_aegean', 'Ege\'ye Çıkış', { fn: ['goal', ['GRE']] }, 'Yunanistan\'a karşı savaş gerekçesi.'],
+      ['bul_a_thrace', 'Doğu Trakya', { fn: ['goal', ['TUR']], ws: 0.05 }, 'Türkiye\'ye karşı savaş gerekçesi.'],
+      ['bul_a_stefano', 'San Stefano Bulgaristanı', { ws: 0.1, landAtk: 0.05, addMil: 2 }, 'Savaş desteği +%10, kara saldırısı +%5.'],
+    ]) },
+    SWE: { block: ['swe_neutral'], roots: ['swe_a_kalmar'], list: path(1, [
+      ['swe_a_kalmar', 'Kalmar Birliği', { stab: 0.05, pop: { neu: 0.1 } }, 'İsveç İskandinav birliğine öncülük eder; tarafsızlık politikası biter.'],
+      ['swe_a_army', 'Kuzey Ordusu', { units: { inf: 3 }, org: 0.05 }, '+3 piyade tümeni, moral +%5.'],
+      ['swe_a_iron', 'Kiruna Anlaşması', { addMil: 3 }, '+3 askerî fabrika.'],
+      ['swe_a_nordic', 'İskandinav Savunma Birliği', { fn: ['mkFac', 'Kalmar Birliği', ['NOR', 'DEN', 'FIN'], 45] }, 'Norveç, Danimarka ve Finlandiya\'yı birliğe çağır.'],
+      ['swe_a_aland', 'Åland Adaları', { fn: ['demand', 'FIN', 'aland'] }, 'Finlandiya\'dan Åland Adaları\'nı talep et.'],
+      ['swe_a_air', 'SAAB Filoları', { addPlanes: 80, air: 0.05 }, '+80 avcı uçağı, hava +%5.'],
+      ['swe_a_navy', 'Kıyı Zırhlıları', { ships: { cr: 2, dd: 4 }, navy: 0.05 }, '+2 kruvazör, +4 muhrip.'],
+      ['swe_a_baltic', 'Baltık Hâkimiyeti', { fn: ['mkFac', 'Kalmar Birliği', ['EST', 'LAT'], 30] }, 'Estonya ve Letonya\'yı birliğe çağır.'],
+      ['swe_a_finland', 'Finlandiya Savunması', { fn: ['guar', ['FIN', 'NOR']] }, 'Finlandiya ve Norveç\'e garanti ver.'],
+      ['swe_a_union', 'Kuzey İmparatorluğu', { stab: 0.1, ws: 0.1, factory: 0.05 }, 'İstikrar +%10, savaş desteği +%10.'],
+    ]) },
+    BRA: { block: ['bra_usa'], roots: ['bra_a_integral'], list: path(1, [
+      ['bra_a_integral', 'Entegralist Darbe', ideo('fas', 'Plínio Salgado', { n: 'Brezilya Birleşik Devletleri', l: 'Getúlio Vargas', id: 'neu', share: 0.3 }), 'Yeşil gömlekli Entegralistler iktidarı ele geçirir. Vargas yanlıları güneyde direnir: İÇ SAVAŞ.'],
+      ['bra_a_greenshirts', 'Yeşil Gömlekler', { units: { inf: 4 }, ws: 0.05 }, '+4 piyade tümeni, savaş desteği +%5.'],
+      ['bra_a_steel', 'Volta Redonda', { addMil: 3, addCiv: 2 }, '+3 askerî, +2 sivil fabrika.'],
+      ['bra_a_sigma', 'Sigma Devleti', { stab: 0.1, pp: 0.2 }, 'İstikrar +%10, günlük siyasi güç +0,2.'],
+      ['bra_a_navy', 'Güney Atlantik Filosu', { ships: { cr: 2, dd: 4 }, navy: 0.05 }, '+2 kruvazör, +4 muhrip.'],
+      ['bra_a_axis', 'Avrupa ile Yakınlaşma', { fn: ['pact', ['GER', 'ITA']] }, 'Almanya ve İtalya\'ya pakt öner.'],
+      ['bra_a_army', 'Amazon Lejyonları', { units: { inf: 4 }, landDef: 0.05 }, '+4 piyade tümeni, kara savunması +%5.'],
+      ['bra_a_plata', 'La Plata Meselesi', { fn: ['goal', ['URU', 'PAR']] }, 'Uruguay ve Paraguay\'a karşı savaş gerekçesi.'],
+      ['bra_a_argentina', 'Arjantin Rekabeti', { fn: ['goal', ['ARG']], ws: 0.05 }, 'Arjantin\'e karşı savaş gerekçesi.'],
+      ['bra_a_empire', 'Güney Amerika Hegemonyası', { ws: 0.1, landAtk: 0.05, addMil: 2 }, 'Savaş desteği +%10, kara saldırısı +%5.'],
+    ]) },
+  });
 })(window);
 
 /* js/data/rivers.js */
@@ -2851,6 +2983,8 @@ window.RIVERS = [
     add(c.fmods);
     for (const sp of c.spirits || []) if (g.SPIRITS[sp]) add(g.SPIRITS[sp].fx);
     if (G.bopFx) { const bf = G.bopFx(c); if (bf) add(bf); } // güç dengesi kademesi
+    if (G.diffFx && G.st) { const df = G.diffFx(c); if (df) add(df); } // zorluk seviyesi
+    if (G.intelFx) { const xf = G.intelFx(c); if (xf) add(xf); } // istihbarat: propaganda bürosu
     for (const list of Object.values(c.adv || {})) for (const t of list) if (g.ADV_TYPES[t]) add(g.ADV_TYPES[t].fx);
     // süren kararların değiştiricileri (js/data/decisions.js)
     for (const x of Array.isArray(c.dec) ? c.dec : []) { const d = g.DEC_BY_ID && g.DEC_BY_ID[x.id]; if (d && d.mod) add(d.mod); }
@@ -3234,6 +3368,8 @@ window.RIVERS = [
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
     if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
+    if (G.scoreStart) G.scoreStart(); // oyun sonu karşılaştırması için başlangıç değerleri
+    if (G.altSetup) G.altSetup(); // alternatif dünya: hangi YZ ülkeleri alternatif yola girecek
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
   };
@@ -3817,7 +3953,7 @@ window.RIVERS = [
     const A = fit(atts, width), D = fit(defs, baseW);
     for (const u of defs) G.inBattle.add(u);
     for (const u of atts) { G.inBattle.add(u); u.bd = u.bt === n ? (u.bd || 0) + 1 : 0; u.bt = n; }
-    const diffMul = (tag) => (tag === st.player ? 1 : [1.15, 1, 0.9][st.opts.diff] || 1);
+    const diffMul = G.diffCombat;
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     // uçaksavar: düşman hava üstünlüğünü azaltır
     const aaOf = (L) => Math.min(0.5, L.reduce((s, u) => s + (u._s.t.aa || 0), 0) / L.length * 2);
@@ -4052,6 +4188,7 @@ window.RIVERS = [
       G.cwDirty = 1; st.C[win].startW = G.coreWeight(win, true);
       G.log(`${G.cname(win)} iç savaşı kazandı: ${G.cname(tag)} teslim oldu ve tüm ülke ${G.cname(win)} yönetimine geçti.`, [win, tag], 'major');
       if (G.onCapitulate) G.onCapitulate(tag, win, true, null);
+      if (G.onCivilEnd) G.onCivilEnd(win, tag);
       return;
     }
     // savaşlardan çık; yabancı topraklardaki işgal sona erer; verdiği garantiler düşer
@@ -4137,7 +4274,12 @@ window.RIVERS = [
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
+    if (G.altTick) G.altTick();
     if (st.day % 5 === 0) G.timedSpirits();
+    if (st.day % 30 === 25 && G.civilAid) G.civilAid();
+    if (st.day % 5 === 2 && G.intelTick) G.intelTick();
+    if (st.day % 30 === 0 && G.achCheck) G.achCheck();
+    if (G.endCheck) G.endCheck();
     G.decTick();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();
@@ -4761,7 +4903,7 @@ window.RIVERS = [
       }
       const war0 = Math.min(...c.enemies.map((e) => st.wars[G.pairKey(tag, e)]?.since ?? st.day));
       const stalemate = Math.min(0.25, Math.max(0, (st.day - war0 - 60) / 400));
-      const aggr = ((st.opts.diff === 2 ? 1.2 : st.opts.diff === 0 ? 1.6 : 1.4) - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
+      const aggr = (G.diffAggr() - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       // (Afrika ve Ortadoğu hariç: Pusula, Habeşistan, Irak, Suriye harekâtları)
       const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
@@ -5672,7 +5814,7 @@ window.RIVERS = [
     // ulusal ağaçta en az iki odaklı kara/hava/deniz dalı varsa genel karşılığı çıkar (her kuvvetin tek yönü olur, HOI4);
     // kıyısı olmayan ülkede deniz dalı yok; kalan dallar sola kaydırılır
     const drop = new Set(ll ? ['sea'] : []);
-    if (nat) { const cnt = {}; for (const f of nat) { const k = G.focusCat(f); cnt[k] = (cnt[k] || 0) + 1; } for (const k of Object.keys(GEN_BRANCH)) if ((cnt[k] || 0) >= 2) drop.add(k); }
+    if (nat) { const cnt = {}; for (const f of nat) { if (f.alt) continue; const k = G.focusCat(f); cnt[k] = (cnt[k] || 0) + 1; } for (const k of Object.keys(GEN_BRANCH)) if ((cnt[k] || 0) >= 2) drop.add(k); }
     const shift = (x) => { let d = 0; for (const k of drop) if (x >= GEN_BRANCH[k].start + GEN_BRANCH[k].w) d += GEN_BRANCH[k].w; return d; };
     const gen = g.FOCUS_GENERIC.filter((f) => !drop.has(branchOf(f)) && !(nat && f.pol));
     if (nat) {
@@ -5738,7 +5880,8 @@ window.RIVERS = [
     // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
     if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
     // alternatif tarih kökü: bu ülkenin kendi tarihî olayları kapanır
-    if (f.alt && !f.pre.length && G.closeHistEvents) G.closeHistEvents(c);
+    if (f.alt && !f.pre.length && G.closeHistEvents) { G.closeHistEvents(c); if (G.altRootNews) G.altRootNews(c, f); }
+    if (G.altOnFocus) G.altOnFocus(c, id);
     G.recomputeMods(c);
     G.needSummary = 1;
     if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
@@ -5847,7 +5990,7 @@ window.RIVERS = [
   G.aiFocus = (c) => {
     if (c.focus.cur) return;
     const list = G.focusList(c);
-    const f = list.find((x) => x.ai !== 0 && G.focusAvailable(c, x));
+    const f = (G.altAiPick && G.altAiPick(c, list)) || list.find((x) => x.ai !== 0 && G.focusAvailable(c, x) && !(G.altBlocked && G.altBlocked(c, x)));
     if (f) { c.focus.cur = f.id; c.focus.p = 0; }
   };
   const ADV_PRIORITY = ['captain', 'warind', 'd_ind', 'a_atk', 'workhorse', 'hc_inf', 'propaganda', 'd_tank', 'air_sup', 'theo', 'a_def', 'figurehead', 'n_fleet', 'recruiter', 'd_plane', 'hc_arm'];
@@ -9161,7 +9304,7 @@ window.RIVERS = [
     if (cb.enemies.some((e) => G.sameFaction(a, e))) return no('Alıcının düşmanıyla aynı ittifaktasın.');
     for (const m of G.sideOf(b)) if (ca.eset.has(m)) return no('Alıcının müttefikleriyle savaştasın.');
     if (!opts.force) {
-      if (st.tension < 10) return no('Dünya gerginliği en az %10 olmalı.');
+      if (st.tension < 10 && !(st.civil || []).some((p) => p.includes(b))) return no('Dünya gerginliği en az %10 olmalı.');
       if (b !== st.player && G.opinion(b, a) <= -20) return no('Alıcı hükümet, ideolojik nedenlerle gönüllüleri kabul etmiyor.');
     }
     if (!G.volReach(a, b)) return no('Alıcıya kara ya da deniz yoluyla ulaşılamıyor.');
@@ -9622,6 +9765,657 @@ window.RIVERS = [
     for (const e of G.EVENTS || []) if (e.actor === c.tag && !st.ev[e.id]) { st.ev[e.id] = 1; n++; }
     c.altPath = 1;
     if (c.tag === st.player && n) G.log(`Alternatif tarih yolu: ${G.cname(c.tag)} için ${n} tarihî olay artık gerçekleşmeyecek; dünyanın geri kalanı tarihî akışını sürdürüyor.`, [c.tag], 'info');
+  };
+})(window);
+
+/* js/game/altevents.js */
+// Alternatif tarih olay zincirleri (HOI4): alternatif yola giren ülkenin kapanan tarihî olaylarının yerini alır.
+// Olaylar alternatif odaklar tamamlanınca (gecikmeli) gelir; oyuncu seçer, YZ ilk seçeneği alır.
+// İç savaş bitince kazanan tarafa "İç Savaşın Sonu" olayı gelir.
+(function (g) {
+  const G = g.G;
+  const C = (t) => G.st.C[t];
+  const alive = (t) => !!C(t)?.alive;
+  const ai = (t) => t !== G.st.player;
+  const free = (t) => alive(t) && ai(t);
+  const sp = (c, id) => { if (!c.spirits.includes(id)) { c.spirits.push(id); G.recomputeMods(c); } };
+  const tsp = (c, id, d) => G.timedSpirit(c.tag, id, d);
+  const rmsp = (c, id) => { if (c.spirits.includes(id)) { c.spirits = c.spirits.filter((s) => s !== id); G.recomputeMods(c); } };
+  const fac = (c, civ, mil) => { if (civ) G.addFactories(c.tag, 'civ', civ); if (mil) G.addFactories(c.tag, 'mil', mil); G.needSummary = 1; };
+  const units = (c, n, type = 'inf') => { const st = G.st; for (let k = 0; k < n; k++) st.units.push(G.makeUnit(c.tag, type, c.cap, 1)); G.rebuildUnitIndex(); };
+  const stock = (c, e, n) => { c.stock[e] = (c.stock[e] || 0) + n; };
+  const rel = (a, b, v) => { const st = G.st; st.rel = st.rel || {}; for (const [x, y] of [[a, b], [b, a]]) st.rel[x + '>' + y] = Math.max(-100, Math.min(100, (st.rel[x + '>' + y] || 0) + v)); };
+  const pop = (t, k, v) => { if (alive(t)) G.addPop(C(t), k, v); };
+  const goal = (c, list) => G.FX.goal(c, list.filter(alive));
+  const invite = (c, list) => G.FX.invite(c, list.filter(alive));
+  const flip = (t, ideo) => { if (free(t) && C(t).ideo !== ideo && !C(t).enemies.length) G.setIdeology(C(t), ideo); };
+  const tension = (v) => { const st = G.st; st.tension = Math.max(0, Math.min(100, st.tension + v)); };
+  const log = (c, m, k = 'major') => G.log(m, [c.tag], k);
+
+  // olaylara özel ulusal ruhlar
+  Object.assign(g.SPIRITS, {
+    alt_kaiser: { n: 'İkinci Reich', h: 'Hohenzollern tahtı yeniden kuruldu; Prusya disiplini ve imparatorluk sanayisi tek elde.', fx: { stab: 0.1, landAtk: 0.05, factory: 0.05 } },
+    alt_redger: { n: 'Avrupa\'nın Kızıl Kalbi', h: 'Alman işçi sınıfı kıtanın devrim merkezi.', fx: { ws: 0.1, org: 0.05, factory: 0.05 } },
+    alt_longusa: { n: 'Herkes Bir Kral', h: 'Huey Long\'un popülist düzeni: servet paylaşılıyor, eleştiri susturuluyor.', fx: { stab: 0.05, ws: 0.1, factory: 0.05 } },
+    alt_redusa: { n: 'Amerikan Sosyalist Birliği', h: 'Kıtanın sanayisi halkın elinde, plan komiteleri yönetiyor.', fx: { factory: 0.1, mp: 0.5 } },
+    alt_commune: { n: 'Fransız Komünü', h: '1871\'in mirası: işçi konseyleri ve yurttaş orduları.', fx: { ws: 0.1, org: 0.05, landDef: 0.05 } },
+    alt_bourbon: { n: 'Zambaklar Tahtı', h: 'Kral, ordu ve kilise ittifakı Fransa\'yı yönetiyor.', fx: { stab: 0.15, landDef: 0.05 } },
+    alt_ottoman: { n: 'Devlet-i Aliyye', h: 'Osmanlı hanedanı ve Hilafet yeniden İstanbul\'da.', fx: { stab: 0.1, mp: 0.5, landDef: 0.05 } },
+    alt_turan: { n: 'Turan Ülküsü', h: 'Bütün Türklerin birliği hayali milleti seferber ediyor.', fx: { ws: 0.15, landAtk: 0.05 } },
+    alt_redbrit: { n: 'Britanya Sosyalist Cumhuriyeti', h: 'Kraliyet yok; donanma ve fabrikalar halk komitelerinde.', fx: { navy: 0.1, factory: 0.05, stab: 0.05 } },
+    alt_trotsky: { n: 'Sürekli Devrim', h: 'Troçki\'nin Kızıl Ordusu devrimi sınırların ötesine taşımaya hazır.', fx: { landAtk: 0.1, ws: 0.1, stab: -0.05 } },
+    alt_bukharin: { n: 'Sosyalist Refah', h: 'Köylü ve işçi barışı; tüketim malları ve istikrar.', fx: { stab: 0.15, factory: 0.05, research: 0.05 } },
+    alt_redita: { n: 'İtalyan Sovyetleri', h: 'Kuzeyin fabrikaları ve güneyin toprak komiteleri birleşti.', fx: { factory: 0.05, org: 0.05, ws: 0.05 } },
+    alt_taisho: { n: 'Taisho Demokrasisi', h: 'Sivil hükümet orduyu denetliyor; ticaret ve diplomasi öncelikli.', fx: { stab: 0.1, factory: 0.1, research: 0.05 } },
+    alt_pol: { n: 'Mocarstwo', h: 'Polonya Baltık\'tan Karadeniz\'e uzanan bir büyük güç.', fx: { ws: 0.1, landDef: 0.05, mp: 0.5 } },
+    alt_hun: { n: 'İkili Monarşi', h: 'Habsburg tacı altında Tuna halkları yeniden bir arada.', fx: { stab: 0.1, landDef: 0.05, factory: 0.05 } },
+    alt_rom: { n: 'Köylü Demokrasisi', h: 'Toprak reformu köylüleri rejimin en sadık destekçisi yaptı.', fx: { stab: 0.15, mp: 0.5 } },
+    alt_gre: { n: 'Megali İdea', h: 'İki kıta ve beş denizin Yunanistan\'ı.', fx: { ws: 0.1, navy: 0.1 } },
+    alt_yug: { n: 'Balkan Federasyonu', h: 'Partizan ordusu bütün Güney Slavları tek bayrak altında topluyor.', fx: { org: 0.1, landDef: 0.1 } },
+    alt_chi: { n: 'Doğu Asya Yeni Düzeni', h: 'Nanking ve Tokyo ortak refah alanında birleşti.', fx: { stab: 0.1, factory: 0.1 } },
+    alt_bul: { n: 'San Stefano Sınırları', h: 'Bulgar ulusu 1878\'in vaadine kavuştu.', fx: { ws: 0.1, landAtk: 0.05 } },
+    alt_swe: { n: 'Kuzey İmparatorluğu', h: 'Kalmar\'ın mirası: İskandinavya tek bir güç.', fx: { stab: 0.1, factory: 0.05, landDef: 0.05 } },
+    alt_bra: { n: 'Sigma Devleti', h: 'Entegralist düzen Brezilya\'yı kıtanın hâkimi yapmak istiyor.', fx: { ws: 0.1, mp: 0.5, factory: 0.05 } },
+    alt_purge: { n: 'Devrimci Tasfiye', h: 'Eski rejimin subayları ordudan uzaklaştırıldı.', fx: { stab: 0.05, org: -0.1, landAtk: -0.05 } },
+    alt_mutiny: { n: 'Huzursuz Subaylar', h: 'Ordu yeni rejime tam güvenmiyor.', fx: { org: -0.05, stab: -0.05 } },
+    alt_marketboom: { n: 'Pazar Canlanması', h: 'Serbest pazar ve dış krediler ekonomiyi canlandırıyor.', fx: { factory: 0.1, construct: 0.1 } },
+    alt_militia: { n: 'Halk Milisleri', h: 'Silahlı işçi milisleri her mahallede.', fx: { mp: 0.5, landDef: 0.1, org: -0.05 } },
+    alt_crusade: { n: 'Kutsal Dava', h: 'Kilise ve taht rejimin arkasında.', fx: { stab: 0.05, ws: 0.1 } },
+    alt_reconcile: { n: 'Ulusal Uzlaşma', h: 'İç savaşın yaraları sarılıyor; eski düşmanlar affedildi.', fx: { stab: 0.1, factory: 0.05 } },
+    alt_reckoning: { n: 'Hesaplaşma', h: 'İç savaşın kaybedenleri yargılanıyor; korku ve disiplin hâkim.', fx: { ws: 0.1, stab: -0.05, mp: 0.5 } },
+    alt_ruins: { n: 'İç Savaşın Yıkıntıları', h: 'Fabrikalar ve köprüler harap; yeniden inşa gerekiyor.', fx: { factory: -0.1, construct: 0.1 } },
+  });
+
+  // [kimlik, ülke, tetikleyen odak, gecikme (gün), başlık, metin, sanat, [[seçenek, etki, açıklama], ...]]
+  const E = [
+    // ---------- Almanya: Kayzer ----------
+    ['k_hitler', 'GER', 'ger_k_kaiser', 15, 'Hitler\'in Akıbeti', 'Ordu Reichskanzlei\'yi kuşattı; Hitler ve yakın çevresi tutuklandı. Generaller ne yapılacağını soruyor.', 'politics', [
+      ['Sürgüne gönder', (c) => { c.stabX += 0.05; pop('GER', 'fas', -0.08); log(c, 'Hitler Arjantin\'e sürgüne gönderildi.'); }, 'İstikrar +%5, faşist destek −%8'],
+      ['Leipzig\'de yargıla', (c) => { c.wsX += 0.05; c.stabX -= 0.03; pop('GER', 'fas', -0.15); log(c, 'Hitler vatana ihanetten yargılanıyor.'); }, 'Savaş desteği +%5, istikrar −%3, faşist destek −%15']]],
+    ['k_crown', 'GER', 'ger_k_reichstag', 20, 'Veliaht Prens', 'Yaşlı Kayzer günlük işleri yürütmekte zorlanıyor. Veliaht Prens Wilhelm naip olmaya hazır.', 'politics', [
+      ['Veliahtı naip yap', (c) => { c.leader = 'Veliaht Prens Wilhelm'; c.pp += 60; log(c, 'Veliaht Prens Wilhelm naip oldu.'); }, '+60 siyasi güç, yeni lider'],
+      ['Kayzer yönetmeye devam etsin', (c) => { c.stabX += 0.05; }, 'İstikrar +%5']]],
+    ['k_habsburg', 'GER', 'ger_k_mittel', 30, 'Habsburg Sorunu', 'Viyana\'daki monarşistler Habsburg tahtının yeniden kurulmasını istiyor. Berlin\'in onayı belirleyici olacak.', 'diplomacy', [
+      ['Habsburg Avusturya\'sını destekle', (c) => { if (free('AUS')) { flip('AUS', 'neu'); C('AUS').leader = 'Otto von Habsburg'; invite(c, ['AUS', 'HUN']); } rel('GER', 'AUS', 30); log(c, 'Otto von Habsburg Viyana\'da tahta çıktı; Avusturya Orta Avrupa Birliği\'ne çağrıldı.'); }, 'Avusturya monarşi olur ve ittifaka çağrılır'],
+      ['Avusturya Reich\'a katılsın', (c) => { if (free('AUS') && !G.atWar('GER', 'AUS')) { G.annex('GER', 'AUS'); tension(6); log(c, 'Avusturya, imparatorluğa barışla katıldı.'); } }, 'Avusturya ilhak edilir, dünya gerginliği +6']]],
+    ['k_britain', 'GER', 'ger_k_hochsee', 15, 'Londra Tedirgin', 'Açık Deniz Filosu\'nun yeniden doğuşu Londra\'yı 1914\'ü hatırlatıyor. İngiliz büyükelçi bir deniz antlaşması öneriyor.', 'navy', [
+      ['Deniz antlaşmasını imzala', (c) => { rel('GER', 'ENG', 30); if (alive('ENG') && ai('ENG')) G.proposePact('GER', 'ENG'); c.stabX += 0.03; }, 'İngiltere ile ilişkiler +30, saldırmazlık paktı'],
+      ['Filo yarışı sürsün', (c) => { c.ships.bb = (c.ships.bb || 0) + 1; c.ships.cr = (c.ships.cr || 0) + 2; rel('GER', 'ENG', -30); tension(4); }, '+1 zırhlı, +2 kruvazör; İngiltere ilişkisi −30']]],
+    ['k_reich', 'GER', 'ger_k_reich', 5, 'Kaiserreich', 'Versay\'ın zincirleri kırıldı. Hohenzollern bayrağı Berlin\'de yeniden dalgalanıyor; imparatorluk Avrupa\'nın merkezinde.', 'surrender', [
+      ['Yaşasın Kayzer!', (c) => sp(c, 'alt_kaiser'), 'Ulusal ruh: İkinci Reich (istikrar +%10, kara saldırısı +%5, fabrika +%5)']]],
+    // ---------- Almanya: Spartakist ----------
+    ['r_officers', 'GER', 'ger_r_council', 10, 'Reichswehr Subayları', 'Eski imparatorluk subaylarının çoğu kışlalarda bekliyor. Konseyler onlara güvenmiyor.', 'politics', [
+      ['Kızıl komiserler ata', (c) => { c.stabX += 0.05; tsp(c, 'alt_mutiny', 240); }, 'İstikrar +%5; 8 ay huzursuz subaylar'],
+      ['Subayları tasfiye et', (c) => { tsp(c, 'alt_purge', 365); c.wsX += 0.05; }, 'Savaş desteği +%5; 1 yıl devrimci tasfiye (moral −%10)']]],
+    ['r_moscow', 'GER', 'ger_r_comintern', 20, 'Moskova ile İlişkiler', 'Stalin Alman yoldaşları Komintern disiplinine çağırıyor; ama devrimin kalbi artık Berlin\'de atıyor.', 'diplomacy', [
+      ['Stalin\'e bağlı kal', (c) => { if (alive('SOV')) { G.lend('SOV', 'GER', 'inf', 3000); G.lend('SOV', 'GER', 'art', 60); } rel('GER', 'SOV', 25); }, 'Sovyet teçhizat yardımı'],
+      ['Komintern\'in liderliğini iste', (c) => { c.pp += 100; rel('GER', 'SOV', -25); pop('POL', 'com', 0.05); pop('CZE', 'com', 0.08); }, '+100 siyasi güç, komşu ülkelerde komünist destek; Sovyet ilişkisi −25']]],
+    ['r_poland', 'GER', 'ger_r_export', 25, 'Varşova\'da Grev', 'Polonya\'da işçiler genel greve gitti. Polonya Komünist Partisi Berlin\'den yardım istiyor.', 'war', [
+      ['Polonyalı yoldaşları destekle', (c) => { pop('POL', 'com', 0.2); if (alive('POL')) C('POL').stabX -= 0.1; }, 'Polonya\'da komünist destek +%20, istikrar −%10'],
+      ['Kızıl Ordu sınırı geçsin', (c) => { if (alive('POL') && !G.atWar('GER', 'POL')) G.declareWar('GER', 'POL'); }, 'Polonya\'ya savaş ilan et']]],
+    ['r_world', 'GER', 'ger_r_world', 5, 'Avrupa Sovyetler Birliği', 'Berlin\'deki Kongre, kıtanın bütün işçi cumhuriyetlerini tek bir birliğe çağırdı.', 'surrender', [
+      ['Bütün ülkelerin işçileri, birleşin!', (c) => sp(c, 'alt_redger'), 'Ulusal ruh: Avrupa\'nın Kızıl Kalbi']]],
+    // ---------- ABD: Huey Long ----------
+    ['l_court', 'USA', 'usa_f_share', 10, 'Yüksek Mahkeme Direniyor', 'Yüksek Mahkeme "Servetimizi Paylaşalım" yasalarını anayasaya aykırı buldu. Başkan Long öfkeli.', 'politics', [
+      ['Mahkemeyi sadık yargıçlarla doldur', (c) => { c.pp += 100; c.stabX -= 0.05; pop('USA', 'dem', -0.05); }, '+100 siyasi güç, istikrar −%5'],
+      ['Kararı kabul et', (c) => { c.stabX += 0.05; pop('USA', 'dem', 0.05); }, 'İstikrar +%5, demokratik destek +%5']]],
+    ['l_shot', 'USA', 'usa_f_rearm', 35, 'Baton Rouge\'da Suikast', 'Başkan Long, Louisiana Meclisi\'nde vuruldu ama kurtuldu. Ülke diken üstünde.', 'politics', [
+      ['Sıkıyönetim ilan et', (c) => { c.wsX += 0.1; c.stabX -= 0.03; units(c, 3); }, 'Savaş desteği +%10, +3 tümen, istikrar −%3'],
+      ['Halka seslen', (c) => { pop('USA', 'fas', 0.1); c.stabX += 0.05; }, 'Faşist destek +%10, istikrar +%5']]],
+    ['l_mexico', 'USA', 'usa_f_monroe', 25, 'Meksika Petrolü', 'Meksika petrol şirketlerini millîleştirdi. Washington Amerikan şirketlerinin haklarının geri verilmesini istiyor.', 'industry', [
+      ['Petrol imtiyazı iste', (c) => { if (alive('MEX')) { rel('USA', 'MEX', -30); goal(c, ['MEX']); } fac(c, 2, 0); }, '+2 sivil fabrika, Meksika\'ya karşı savaş gerekçesi'],
+      ['İyi komşuluk', (c) => { rel('USA', 'MEX', 30); if (free('MEX')) invite(c, ['MEX']); }, 'Meksika ilişkisi +30, ittifak daveti']]],
+    ['l_order', 'USA', 'usa_f_order', 5, 'Yeni Amerikan Düzeni', 'Beyaz Saray\'dan yeni bir çağ ilan edildi: Amerika artık kendi yolunu çiziyor.', 'surrender', [
+      ['Herkes bir kral!', (c) => sp(c, 'alt_longusa'), 'Ulusal ruh: Herkes Bir Kral']]],
+    // ---------- ABD: Sosyalist ----------
+    ['s_wall', 'USA', 'usa_s_unions', 10, 'Wall Street Kapandı', 'Borsa kapatıldı; bankaların akıbeti belirsiz. Sendika konseyleri kamulaştırma istiyor.', 'industry', [
+      ['Bankaları kamulaştır', (c) => { fac(c, 3, 0); c.stabX -= 0.05; }, '+3 sivil fabrika, istikrar −%5'],
+      ['Tazminat öde', (c) => { c.stabX += 0.05; c.pp -= 50; }, 'İstikrar +%5, −50 siyasi güç']]],
+    ['s_canada', 'USA', 'usa_s_west', 20, 'Kanada\'da Grevler', 'Winnipeg ve Toronto\'da genel grev; Kanadalı sendikalar Amerikan yoldaşlarından yardım bekliyor.', 'war', [
+      ['Kanadalı işçileri destekle', (c) => { pop('CAN', 'com', 0.25); if (alive('CAN')) C('CAN').stabX -= 0.1; }, 'Kanada\'da komünist destek +%25'],
+      ['Kuzeye yürü', (c) => goal(c, ['CAN']), 'Kanada\'ya karşı savaş gerekçesi']]],
+    ['s_latam', 'USA', 'usa_s_latam', 20, 'Meksika Devrimi', 'Cárdenas hükümeti sosyalist Amerika ile yakınlaşmak istiyor.', 'diplomacy', [
+      ['Meksika\'yı birliğe çağır', (c) => { flip('MEX', 'com'); invite(c, ['MEX']); }, 'Meksika komünist olur ve ittifaka çağrılır'],
+      ['Brezilya\'ya yönel', (c) => { pop('BRA', 'com', 0.25); }, 'Brezilya\'da komünist destek +%25']]],
+    ['s_union', 'USA', 'usa_s_union', 5, 'Amerikan Sosyalist Birliği', 'Kıtanın dört bir yanından delegeler Chicago\'da toplandı.', 'surrender', [
+      ['Yeni bir dünya!', (c) => sp(c, 'alt_redusa'), 'Ulusal ruh: Amerikan Sosyalist Birliği']]],
+    // ---------- Fransa: Komün ----------
+    ['c_maginot', 'FRA', 'fra_c_army', 10, 'Maginot Garnizonları', 'Maginot Hattı\'ndaki subaylar Komün\'e bağlılık yemini etmekte ağır davranıyor.', 'war', [
+      ['İşçi milislerini gönder', (c) => { tsp(c, 'alt_militia', 365); }, '1 yıl halk milisleri (insan gücü, kara savunması +%10)'],
+      ['Subaylara güvence ver', (c) => { c.stabX += 0.05; c.pp -= 40; }, 'İstikrar +%5, −40 siyasi güç']]],
+    ['c_spain', 'FRA', 'fra_c_spain', 5, 'Pireneler', 'İspanya Cumhuriyeti hayatta kalma savaşı veriyor. Komün yardım edecek mi?', 'war', [
+      ['Gönüllü ve silah gönder', (c) => { if (alive('SPR')) { G.lend('FRA', 'SPR', 'inf', 3000); G.lend('FRA', 'SPR', 'art', 60); rel('FRA', 'SPR', 40); } }, 'İspanya Cumhuriyeti\'ne teçhizat'],
+      ['Doğrudan müdahale', (c) => { if (alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && !G.atWar('FRA', 'SPN')) G.declareWar('FRA', 'SPN'); }, 'Milliyetçi İspanya\'ya savaş ilan et']]],
+    ['c_algeria', 'FRA', 'fra_c_colonies', 15, 'Cezayir Kongresi', 'Cezayirli milliyetçiler Komün\'ün sömürgecilik karşıtı vaatlerinin yerine getirilmesini istiyor.', 'politics', [
+      ['Özerklik tanı', (c) => { c.stabX += 0.05; c.pp += 50; }, 'İstikrar +%5, +50 siyasi güç'],
+      ['Önce devrim, sonra özerklik', (c) => { c.wsX += 0.05; c.stabX -= 0.03; }, 'Savaş desteği +%5, istikrar −%3']]],
+    ['c_union', 'FRA', 'fra_c_union', 5, 'Fransız Sovyetler Birliği', 'Paris Komünü\'nün düştüğü yerde yeni bir Komün doğdu.', 'surrender', [
+      ['Vive la Commune!', (c) => sp(c, 'alt_commune'), 'Ulusal ruh: Fransız Komünü']]],
+    // ---------- Fransa: Action Française ----------
+    ['m_concordat', 'FRA', 'fra_m_church', 10, 'Vatikan ile Konkordato', 'Papa XI. Pius, kraliyet Fransa\'sıyla yeni bir konkordato imzalamaya hazır.', 'diplomacy', [
+      ['Konkordatoyu imzala', (c) => { tsp(c, 'alt_crusade', 730); }, '2 yıl Kutsal Dava (istikrar +%5, savaş desteği +%10)'],
+      ['Laik devleti koru', (c) => { c.stabX -= 0.03; c.pp += 60; }, '+60 siyasi güç, istikrar −%3']]],
+    ['m_latin', 'FRA', 'fra_m_latin', 20, 'Latin Tahtları', 'İspanya ve Portekiz\'deki monarşistler Paris\'ten destek bekliyor.', 'diplomacy', [
+      ['Latin Bloku\'nu kur', (c) => { invite(c, ['POR', 'SPN', 'ITA'].filter((t) => alive(t) && C(t).ideo !== 'com')); }, 'Portekiz, İspanya ve İtalya ittifaka çağrılır'],
+      ['Yalnız Fransa', (c) => { c.wsX += 0.05; }, 'Savaş desteği +%5']]],
+    ['m_rhine', 'FRA', 'fra_m_rhine', 10, 'Ren Sınırı', 'Kraliyet generalleri doğal sınırın Ren olduğunu söylüyor.', 'war', [
+      ['Ren\'e yürü', (c) => { goal(c, ['GER']); c.wsX += 0.1; }, 'Almanya\'ya karşı savaş gerekçesi, savaş desteği +%10'],
+      ['Tahkimat yeter', (c) => { c.stabX += 0.05; c.wsX -= 0.03; }, 'İstikrar +%5, savaş desteği −%3']]],
+    ['m_bourbon', 'FRA', 'fra_m_bourbon', 5, 'Zambaklar Tahtı', 'Reims Katedrali\'nde taç giyme töreni: Fransa yeniden bir krallık.', 'surrender', [
+      ['Vive le Roi!', (c) => sp(c, 'alt_bourbon'), 'Ulusal ruh: Zambaklar Tahtı']]],
+    // ---------- Türkiye: Osmanlı ----------
+    ['o_heir', 'TUR', 'tur_o_meclis', 10, 'Hanedanın Dönüşü', 'Sürgündeki Osmanlı hanedanı İstanbul\'a dönüyor. Dolmabahçe yeniden saray olacak.', 'politics', [
+      ['Hanedana büyük tören', (c) => { c.stabX += 0.05; c.pp -= 30; }, 'İstikrar +%5, −30 siyasi güç'],
+      ['Sade bir dönüş', (c) => { c.pp += 40; }, '+40 siyasi güç']]],
+    ['o_jihad', 'TUR', 'tur_o_caliphate', 15, 'Hilafet Çağrısı', 'Halife\'nin sesi İslam dünyasında yankılanıyor. Arap ve İran ulemasından mektuplar geliyor.', 'diplomacy', [
+      ['Müslüman ülkeleri ittifaka çağır', (c) => { invite(c, ['IRQ', 'SAU', 'PER', 'AFG', 'YEM']); for (const t of ['IRQ', 'SAU', 'PER', 'AFG']) rel('TUR', t, 25); }, 'Irak, Suudi Arabistan, İran, Afganistan, Yemen davet edilir'],
+      ['Yalnız manevi otorite', (c) => { c.stabX += 0.05; for (const t of ['IRQ', 'SAU', 'PER', 'EGY']) rel('TUR', t, 15); }, 'İstikrar +%5, ilişkiler +15']]],
+    ['o_mosul', 'TUR', 'tur_o_mosul', 10, 'Musul Meselesi', 'Musul\'daki Türkmenler ve Kürt aşiretleri İstanbul\'a bağlılık bildiriyor.', 'war', [
+      ['Musul\'u talep et', (c) => { goal(c, ['IRQ']); c.wsX += 0.05; }, 'Irak\'a karşı savaş gerekçesi'],
+      ['Aşiretleri silahlandır', (c) => { if (alive('IRQ')) C('IRQ').stabX -= 0.1; units(c, 2, 'cav'); }, 'Irak istikrarı −%10, +2 süvari tümeni']]],
+    ['o_devlet', 'TUR', 'tur_o_devlet', 5, 'Devlet-i Aliyye', 'Topkapı\'da Hırka-i Şerif önünde biat töreni: Osmanlı Devleti yeniden kuruldu.', 'surrender', [
+      ['Padişahım çok yaşa!', (c) => sp(c, 'alt_ottoman'), 'Ulusal ruh: Devlet-i Aliyye']]],
+    // ---------- Türkiye: Turan ----------
+    ['t_ocak', 'TUR', 'tur_t_youth', 10, 'Ülkü Ocakları', 'Turancı gençlik örgütleri büyüyor; hükümet onları orduya mı bağlamalı?', 'politics', [
+      ['Gençlik tugayları kur', (c) => { units(c, 3); c.wsX += 0.05; }, '+3 piyade tümeni, savaş desteği +%5'],
+      ['Okullarda Turan dersi', (c) => { c.pp += 50; pop('TUR', 'fas', 0.05); }, '+50 siyasi güç']]],
+    ['t_caucasus', 'TUR', 'tur_t_caucasus', 15, 'Kafkas Gönüllüleri', 'Azerbaycan ve Dağıstan\'dan kaçan gönüllüler Kars\'ta toplandı.', 'war', [
+      ['Kafkas Lejyonu kur', (c) => { units(c, 3, 'mtn'); if (alive('SOV')) rel('TUR', 'SOV', -20); }, '+3 dağ tümeni, Sovyet ilişkisi −20'],
+      ['Sovyetleri kızdırma', (c) => { c.stabX += 0.05; }, 'İstikrar +%5']]],
+    ['t_turkestan', 'TUR', 'tur_t_turkestan', 20, 'Türkistan Ayaklanması', 'Fergana Vadisi\'nde Basmacılar yeniden silaha sarıldı.', 'war', [
+      ['Basmacılara silah gönder', (c) => { if (alive('SOV')) { C('SOV').stabX -= 0.05; rel('TUR', 'SOV', -25); } stock(c, 'inf', -500); }, 'Sovyet istikrarı −%5, −500 tüfek'],
+      ['Doğrudan Türkistan\'a yürü', (c) => { goal(c, ['SOV']); c.wsX += 0.1; }, 'Sovyetlere karşı savaş gerekçesi, savaş desteği +%10']]],
+    ['t_union', 'TUR', 'tur_t_union', 5, 'Turan Birliği', 'Adriyatik\'ten Çin Seddi\'ne bütün Türkler tek bayrak altında toplanma çağrısı yaptı.', 'surrender', [
+      ['Ergenekon\'dan çıkış!', (c) => sp(c, 'alt_turan'), 'Ulusal ruh: Turan Ülküsü']]],
+    // ---------- İngiltere: Genel Grev ----------
+    ['e_king', 'ENG', 'eng_c_soviets', 10, 'Kraliyet Ailesinin Akıbeti', 'Buckingham Sarayı işçi milislerinin elinde. Kral ve ailesi ne olacak?', 'politics', [
+      ['Kanada\'ya sürgün', (c) => { c.stabX += 0.05; if (alive('CAN')) rel('ENG', 'CAN', -20); }, 'İstikrar +%5, Kanada ilişkisi −20'],
+      ['Cumhuriyeti ilan et, saray müze olsun', (c) => { c.pp += 80; c.wsX += 0.05; }, '+80 siyasi güç, savaş desteği +%5']]],
+    ['e_dominion', 'ENG', 'eng_c_dominion', 15, 'Dominyonlar Ayrılıyor', 'Kanada, Avustralya ve Güney Afrika Londra\'daki devrimi tanımıyor.', 'diplomacy', [
+      ['Sosyalist Milletler Topluluğu öner', (c) => { for (const t of ['CAN', 'AST', 'SAF', 'NZL']) pop(t, 'com', 0.15); invite(c, ['AST', 'NZL']); }, 'Dominyonlarda komünist destek +%15, ittifak daveti'],
+      ['Bırak gitsinler', (c) => { c.stabX += 0.05; c.pp += 50; }, 'İstikrar +%5, +50 siyasi güç']]],
+    ['e_india', 'ENG', 'eng_c_peoples', 10, 'Hindistan\'ın Geleceği', 'Gandhi ve Nehru, devrimci Londra\'dan tam bağımsızlık istiyor.', 'politics', [
+      ['Bağımsızlık ver', (c) => { if (alive('RAJ')) { C('RAJ').overlord = null; rel('ENG', 'RAJ', 40); } c.pp += 60; }, 'Hindistan bağımsız, +60 siyasi güç'],
+      ['Sosyalist Hindistan', (c) => { flip('RAJ', 'com'); invite(c, ['RAJ']); }, 'Hindistan komünist olur ve ittifaka çağrılır']]],
+    ['e_union', 'ENG', 'eng_c_union', 5, 'Britanya Sosyalist Cumhuriyeti', 'Westminster\'da kızıl bayrak dalgalanıyor. İmparatorluk bitti, Cumhuriyet başladı.', 'surrender', [
+      ['Yoldaşlar, ileri!', (c) => sp(c, 'alt_redbrit'), 'Ulusal ruh: Britanya Sosyalist Cumhuriyeti']]],
+    // ---------- Sovyetler: Troçki ----------
+    ['t_stalinists', 'SOV', 'sov_t_perm', 10, 'Stalin\'in Yandaşları', 'Stalin\'in eski adamları NKVD\'de ve parti aygıtında hâlâ güçlü.', 'politics', [
+      ['Aygıtı temizle', (c) => { tsp(c, 'alt_purge', 365); c.stabX += 0.05; }, 'İstikrar +%5; 1 yıl devrimci tasfiye'],
+      ['Genel af', (c) => { c.stabX -= 0.05; c.pp += 80; }, '+80 siyasi güç, istikrar −%5']]],
+    ['t_fourth', 'SOV', 'sov_t_fourth', 20, 'Dördüncü Enternasyonal', 'Troçkist partiler Avrupa\'nın dört bir yanında örgütleniyor.', 'politics', [
+      ['Avrupa\'yı ayaklandır', (c) => { for (const t of ['FRA', 'SPR', 'ITA', 'POL', 'CZE']) pop(t, 'com', 0.1); tension(4); }, 'Avrupa\'da komünist destek +%10'],
+      ['Önce Sovyetleri güçlendir', (c) => { fac(c, 0, 3); }, '+3 askerî fabrika']]],
+    ['t_china', 'SOV', 'sov_t_asia', 15, 'Çin Devrimi', 'Mao\'nun Kızıl Ordusu Yenan\'da; Çan Kay-şek ise Japonya\'ya karşı savaşıyor.', 'war', [
+      ['Çin\'e teçhizat gönder', (c) => { if (alive('CHI')) { G.lend('SOV', 'CHI', 'inf', 3000); pop('CHI', 'com', 0.15); } }, 'Çin\'e teçhizat, komünist destek +%15'],
+      ['Mançurya\'ya yürü', (c) => goal(c, ['MAN', 'JAP']), 'Mançukuo ve Japonya\'ya karşı savaş gerekçesi']]],
+    ['t_world', 'SOV', 'sov_t_union', 5, 'Dünya Sovyetler Birliği', 'Troçki\'nin hayali gerçek oluyor: devrim sürekli ve sınırsız.', 'surrender', [
+      ['Sürekli devrim!', (c) => sp(c, 'alt_trotsky'), 'Ulusal ruh: Sürekli Devrim']]],
+    // ---------- Sovyetler: Buharin ----------
+    ['b_market', 'SOV', 'sov_b_nep', 10, 'Köylü Pazarları', 'Kolhozlar dağıtıldı; köylüler ürünlerini serbestçe satmaya başladı.', 'industry', [
+      ['Pazarları serbest bırak', (c) => tsp(c, 'alt_marketboom', 540), '18 ay pazar canlanması (fabrika +%10, inşaat +%10)'],
+      ['Sınırlı serbestlik', (c) => { c.stabX += 0.05; }, 'İstikrar +%5']]],
+    ['b_credit', 'SOV', 'sov_b_trade', 15, 'Batı Kredileri', 'Londra ve New York bankaları Sovyetlere kredi açmaya hazır.', 'industry', [
+      ['Krediyi kabul et', (c) => { fac(c, 5, 0); rel('SOV', 'USA', 20); rel('SOV', 'ENG', 20); }, '+5 sivil fabrika, Batı ilişkileri +20'],
+      ['Bağımsızlığı koru', (c) => { c.pp += 60; }, '+60 siyasi güç']]],
+    ['b_tukha', 'SOV', 'sov_b_reform', 10, 'Tuhaçevski Rehabilite Edildi', 'Mareşal Tuhaçevski ve tasfiye edilen subaylar orduya geri döndü.', 'war', [
+      ['Subayları geri çağır', (c) => { rmsp(c, 'purge'); c.stabX += 0.03; }, 'Büyük Temizlik ruhu kalkar'],
+      ['Yalnız Tuhaçevski', (c) => { G.FX.general(c); }, 'Yeni komutan']]],
+    ['b_welfare', 'SOV', 'sov_b_welfare', 5, 'Sosyalist Refah', 'Buharin\'in Rusya\'sı dünyaya başka bir sosyalizmin mümkün olduğunu gösteriyor.', 'surrender', [
+      ['Zenginleşin!', (c) => sp(c, 'alt_bukharin'), 'Ulusal ruh: Sosyalist Refah']]],
+    // ---------- İtalya: Sosyalist ----------
+    ['i_pope', 'ITA', 'ita_c_land', 10, 'Vatikan ile Gerginlik', 'Papa, toprak reformunu ve kilise mülklerinin kamulaştırılmasını kınadı.', 'politics', [
+      ['Lateran Antlaşması\'nı tanı', (c) => { c.stabX += 0.05; }, 'İstikrar +%5'],
+      ['Kilise mülklerini kamulaştır', (c) => { fac(c, 2, 0); c.stabX -= 0.05; }, '+2 sivil fabrika, istikrar −%5']]],
+    ['i_ethiopia', 'ITA', 'ita_c_ethiopia', 5, 'Habeşistan', 'Habeş direnişi sürüyor; sosyalist hükümet sömürge savaşının bedelini sorguluyor.', 'war', [
+      ['Habeşistan\'dan çekil', (c) => { c.stabX += 0.1; c.pp += 50; if (alive('ETH')) rel('ITA', 'ETH', 50); }, 'İstikrar +%10, +50 siyasi güç'],
+      ['Sömürgeyi tut', (c) => { c.wsX += 0.05; }, 'Savaş desteği +%5']]],
+    ['i_yugo', 'ITA', 'ita_c_balkan', 20, 'Balkan Partizanları', 'Yugoslav ve Arnavut komünistleri Roma\'dan silah istiyor.', 'war', [
+      ['Silah gönder', (c) => { pop('YUG', 'com', 0.2); pop('ALB', 'com', 0.2); if (alive('YUG')) C('YUG').stabX -= 0.1; }, 'Yugoslavya ve Arnavutluk\'ta komünist destek +%20'],
+      ['Savaş gerekçesi', (c) => goal(c, ['YUG', 'ALB']), 'Yugoslavya ve Arnavutluk\'a karşı savaş gerekçesi']]],
+    ['i_union', 'ITA', 'ita_c_union', 5, 'İtalyan Sovyetler Birliği', 'Torino\'dan Palermo\'ya konseyler iktidarda.', 'surrender', [
+      ['Avanti popolo!', (c) => sp(c, 'alt_redita'), 'Ulusal ruh: İtalyan Sovyetleri']]],
+    // ---------- Japonya: Sivil Hükümet ----------
+    ['j_kwantung', 'JAP', 'jap_d_control', 10, 'Kwantung Ordusu', 'Mançurya\'daki Kwantung Ordusu Tokyo\'nun emirlerini dinlemiyor.', 'war', [
+      ['Komutanları geri çağır', (c) => { c.stabX += 0.05; tsp(c, 'alt_mutiny', 180); }, 'İstikrar +%5; 6 ay huzursuz subaylar'],
+      ['Ordunun bütçesini kes', (c) => { fac(c, 3, 0); c.wsX -= 0.05; }, '+3 sivil fabrika, savaş desteği −%5']]],
+    ['j_navy', 'JAP', 'jap_d_treaty', 15, 'Londra Deniz Konferansı', 'ABD ve İngiltere deniz sınırlamalarının yenilenmesini öneriyor.', 'navy', [
+      ['Antlaşmayı imzala', (c) => { rel('JAP', 'USA', 30); rel('JAP', 'ENG', 30); fac(c, 2, 0); }, 'ABD ve İngiltere ilişkisi +30, +2 sivil fabrika'],
+      ['Eşitlik iste', (c) => { c.ships.cv = (c.ships.cv || 0) + 1; rel('JAP', 'USA', -10); }, '+1 uçak gemisi']]],
+    ['j_china', 'JAP', 'jap_d_china', 20, 'Çin ile Barış', 'Nanking hükümeti kalıcı barış için Mançurya\'nın statüsünün görüşülmesini istiyor.', 'diplomacy', [
+      ['Mançukuo bağımsız kalsın', (c) => { rel('JAP', 'CHI', 20); c.stabX += 0.03; }, 'Çin ilişkisi +20'],
+      ['Ortak kalkınma bölgesi', (c) => { fac(c, 2, 0); rel('JAP', 'CHI', 40); if (alive('CHI')) G.addFactories('CHI', 'civ', 2); }, 'Japonya ve Çin\'e +2 sivil fabrika']]],
+    ['j_taisho', 'JAP', 'jap_d_taisho', 5, 'Taisho Demokrasisinin Dönüşü', 'Diyet yeniden ülkenin kalbinde; Japonya Asya\'nın ticaret merkezi oluyor.', 'surrender', [
+      ['Banzai!', (c) => sp(c, 'alt_taisho'), 'Ulusal ruh: Taisho Demokrasisi']]],
+    // ---------- Polonya ----------
+    ['p_beck', 'POL', 'pol_a_legion', 10, 'Albay Beck\'in Diplomasisi', 'Dışişleri Bakanı Beck, Almanya ile Sovyetler arasında denge politikasını sürdürmek istiyor.', 'diplomacy', [
+      ['Berlin\'le saldırmazlık', (c) => { if (alive('GER') && ai('GER')) G.proposePact('POL', 'GER'); }, 'Almanya\'ya saldırmazlık paktı'],
+      ['Paris\'e yaslan', (c) => { rel('POL', 'FRA', 30); if (alive('FRA') && ai('FRA')) G.guarantee('FRA', 'POL'); }, 'Fransa garantisi']]],
+    ['p_lit', 'POL', 'pol_a_vilnius', 20, 'Kaunas\'ın Cevabı', 'Litvanya hükümeti birlik teklifini tartışıyor. Vilnius meselesi yaraları kanatıyor.', 'diplomacy', [
+      ['Federal birlik öner', (c) => { rel('POL', 'LIT', 30); c.stabX += 0.03; }, 'Litvanya ilişkisi +30'],
+      ['Ültimatom ver', (c) => { goal(c, ['LIT']); }, 'Litvanya\'ya karşı savaş gerekçesi']]],
+    ['p_great', 'POL', 'pol_a_great', 5, 'Mocarstwo', 'Polonya artık büyük güçler arasında anılıyor.', 'surrender', [
+      ['Jeszcze Polska nie zginęła!', (c) => sp(c, 'alt_pol'), 'Ulusal ruh: Mocarstwo']]],
+    // ---------- Macaristan ----------
+    ['h_horthy', 'HUN', 'hun_a_crown', 10, 'Horthy\'nin Akıbeti', 'Eski naip Amiral Horthy saraydan ayrılmaya hazırlanıyor.', 'politics', [
+      ['Ordu başkomutanı olsun', (c) => { G.FX.general(c); c.stabX += 0.03; }, 'Yeni komutan, istikrar +%3'],
+      ['Emekliye ayır', (c) => { c.pp += 60; }, '+60 siyasi güç']]],
+    ['h_vienna', 'HUN', 'hun_a_austria', 15, 'Viyana Kararsız', 'Avusturya Habsburg tacını kabul etmekte ikircikli; Schuschnigg zaman istiyor.', 'diplomacy', [
+      ['Sabırla bekle', (c) => { rel('HUN', 'AUS', 30); if (free('AUS')) { flip('AUS', 'neu'); invite(c, ['AUS']); } }, 'Avusturya ittifaka çağrılır'],
+      ['Baskıyı artır', (c) => goal(c, ['AUS']), 'Avusturya\'ya karşı savaş gerekçesi']]],
+    ['h_empire', 'HUN', 'hun_a_empire', 5, 'Avusturya-Macaristan', 'Budapeşte\'de Kral Otto, iki tacın birliğini ilan etti.', 'surrender', [
+      ['Viribus Unitis!', (c) => sp(c, 'alt_hun'), 'Ulusal ruh: İkili Monarşi']]],
+    // ---------- Romanya ----------
+    ['ro_carol', 'ROM', 'rom_a_land', 10, 'Kral Carol\'un Hesabı', 'II. Carol, Maniu hükümetini devirmek için saray darbesi planlıyor.', 'politics', [
+      ['Kralı tahttan indir', (c) => { c.leader = 'Iuliu Maniu'; c.stabX -= 0.03; c.pp += 80; }, '+80 siyasi güç, istikrar −%3'],
+      ['Anayasal monarşi', (c) => { c.stabX += 0.05; }, 'İstikrar +%5']]],
+    ['ro_great', 'ROM', 'rom_a_great', 5, 'Büyük Romanya Demokrasisi', 'Köylü Partisi ülkeyi Balkanların en istikrarlı demokrasisine dönüştürdü.', 'surrender', [
+      ['Trăiască România!', (c) => sp(c, 'alt_rom'), 'Ulusal ruh: Köylü Demokrasisi']]],
+    // ---------- Yunanistan ----------
+    ['g_metaxas', 'GRE', 'gre_a_army', 10, 'Metaksas Direniyor', 'Görevden alınan Metaksas ordudaki taraftarlarıyla gizli toplantılar yapıyor.', 'politics', [
+      ['Sürgüne gönder', (c) => { c.stabX += 0.05; }, 'İstikrar +%5'],
+      ['Ordunun başına geçir', (c) => { G.FX.general(c); c.wsX += 0.05; }, 'Yeni komutan, savaş desteği +%5']]],
+    ['g_byz', 'GRE', 'gre_a_byzantium', 5, 'Bizans\'ın Mirası', 'Atina\'da çanlar çalıyor: Megali İdea gerçek oluyor.', 'surrender', [
+      ['Zito i Ellas!', (c) => sp(c, 'alt_gre'), 'Ulusal ruh: Megali İdea']]],
+    // ---------- Yugoslavya ----------
+    ['y_stalin', 'YUG', 'yug_a_comintern', 20, 'Tito ve Stalin', 'Moskova Yugoslav partisini kendi denetiminde tutmak istiyor; Tito bağımsız bir yol arıyor.', 'diplomacy', [
+      ['Moskova\'ya bağlı kal', (c) => { if (alive('SOV')) G.lend('SOV', 'YUG', 'inf', 2000); }, 'Sovyet teçhizatı'],
+      ['Kendi yolumuz', (c) => { if (c.fac) G.leaveFaction('YUG'); c.stabX += 0.1; c.pp += 60; }, 'İttifaktan çık, istikrar +%10, +60 siyasi güç']]],
+    ['y_fed', 'YUG', 'yug_a_federation', 5, 'Balkan Federasyonu', 'Belgrad\'da Balkan halklarının federasyonu ilan edildi.', 'surrender', [
+      ['Smrt fašizmu!', (c) => sp(c, 'alt_yug'), 'Ulusal ruh: Balkan Federasyonu']]],
+    // ---------- Çin ----------
+    ['ch_tokyo', 'CHI', 'chi_a_peace', 15, 'Tokyo\'nun Şartları', 'Japonya barış için Kuzey Çin\'de askerî üsler ve ekonomik imtiyazlar istiyor.', 'diplomacy', [
+      ['Şartları kabul et', (c) => { if (alive('JAP') && G.atWar('CHI', 'JAP') && ai('JAP')) G.makePeace('CHI', 'JAP'); rel('CHI', 'JAP', 40); c.stabX -= 0.05; }, 'Japonya ilişkisi +40, istikrar −%5'],
+      ['Pazarlık et', (c) => { rel('CHI', 'JAP', 15); c.pp += 40; }, '+40 siyasi güç']]],
+    ['ch_order', 'CHI', 'chi_a_order', 5, 'Doğu Asya Yeni Düzeni', 'Nanking ve Tokyo ortak refah alanının temellerini attı.', 'surrender', [
+      ['Yeni düzen!', (c) => sp(c, 'alt_chi'), 'Ulusal ruh: Doğu Asya Yeni Düzeni']]],
+    // ---------- Bulgaristan ----------
+    ['bu_imro', 'BUL', 'bul_a_macedonia', 10, 'İç Makedonya Devrimci Örgütü', 'İMRO komitacıları Üsküp ve Ohri\'de eylem için emir bekliyor.', 'war', [
+      ['Komitacıları silahlandır', (c) => { if (alive('YUG')) C('YUG').stabX -= 0.1; }, 'Yugoslavya istikrarı −%10'],
+      ['Örgütü dağıt', (c) => { c.stabX += 0.05; rel('BUL', 'YUG', 20); }, 'İstikrar +%5']]],
+    ['bu_stefano', 'BUL', 'bul_a_stefano', 5, 'San Stefano Bulgaristanı', 'Bulgaristan 1878\'de vaat edilen sınırlarına ulaştı.', 'surrender', [
+      ['Bulgaristan çok yaşa!', (c) => sp(c, 'alt_bul'), 'Ulusal ruh: San Stefano Sınırları']]],
+    // ---------- İsveç ----------
+    ['sw_norway', 'SWE', 'swe_a_nordic', 15, 'Oslo ve Kopenhag', 'Norveç ve Danimarka hükümetleri birlik teklifini Stockholm\'ün hegemonyası olarak görüyor.', 'diplomacy', [
+      ['Eşit ortaklık öner', (c) => { rel('SWE', 'NOR', 30); rel('SWE', 'DEN', 30); }, 'Norveç ve Danimarka ilişkisi +30'],
+      ['İsveç önderliği', (c) => { c.wsX += 0.05; }, 'Savaş desteği +%5']]],
+    ['sw_union', 'SWE', 'swe_a_union', 5, 'Kuzey İmparatorluğu', 'Kalmar Birliği yeniden doğdu.', 'surrender', [
+      ['Leve Norden!', (c) => sp(c, 'alt_swe'), 'Ulusal ruh: Kuzey İmparatorluğu']]],
+    // ---------- Brezilya ----------
+    ['br_vargas', 'BRA', 'bra_a_sigma', 10, 'Vargas Sürgünde', 'Getúlio Vargas Montevideo\'dan direnişi örgütlüyor.', 'politics', [
+      ['Uruguay\'dan iadesini iste', (c) => { goal(c, ['URU']); }, 'Uruguay\'a karşı savaş gerekçesi'],
+      ['Görmezden gel', (c) => { c.stabX += 0.03; }, 'İstikrar +%3']]],
+    ['br_empire', 'BRA', 'bra_a_empire', 5, 'Güney Amerika Hegemonyası', 'Rio de Janeiro kıtanın yeni başkenti olmaya aday.', 'surrender', [
+      ['Anauê!', (c) => sp(c, 'alt_bra'), 'Ulusal ruh: Sigma Devleti']]],
+  ];
+  const EV = {}, TRIG = {};
+  for (const [id, t, f, delay, title, text, art, opts] of E) {
+    EV[id] = { id, t, title, text, art, opts: opts.map(([n, fx, d]) => ({ n, fx, d })) };
+    (TRIG[f] || (TRIG[f] = [])).push([id, delay]);
+  }
+  G.ALTEV = EV; G.ALT_TRIG = TRIG;
+  // dışarıdan (küçük ülke yolları vb.) olay ekleme
+  G.addAltEvents = (list) => { for (const [id, t, f, delay, title, text, art, opts] of list) { EV[id] = { id, t, title, text, art, opts: opts.map(([n, fx, d]) => ({ n, fx, d })) }; (TRIG[f] || (TRIG[f] = [])).push([id, delay]); } };
+
+  // olayı hemen gerçekleştir (oyuncuya pencere, YZ ilk seçenek)
+  G.altFire = (tag, id) => {
+    const st = G.st, c = st.C[tag], e = EV[id];
+    if (!e || !c || !c.alive) return;
+    (st.altDone || (st.altDone = {}))[id] = 1;
+    if (tag === st.player) G.queuePopup({ title: e.title, text: e.text, art: e.art, date: st.day, opts: e.opts.map((o) => ({ n: o.n, d: o.d, fx: () => o.fx(st.C[tag]) })) });
+    else { try { e.opts[0].fx(c); } catch (err) { console.error('altev', id, err); } if (G.newsAlt) G.newsAlt(tag, e); }
+  };
+  // YZ ülkesinin alternatif yol zirvesi oyuncuya dünya haberi olarak gelir
+  G.newsAlt = (tag, e) => {
+    const st = G.st;
+    if (e.art !== 'surrender' || !G.newsOn || !st.player || st._newsDay === st.day) return;
+    st._newsDay = st.day;
+    G.queuePopup({ news: 1, art: 'politics', eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: `${G.cname(tag)}: ${e.title}`, text: e.text, opts: [{ n: 'Dünya değişiyor', fx: () => {} }] });
+  };
+  // odak tamamlanınca zincirdeki olayı sıraya koy
+  G.altOnFocus = (c, fid) => {
+    const st = G.st;
+    for (const [id, delay] of TRIG[fid] || []) {
+      if (st.altDone && st.altDone[id]) continue;
+      (st.altq || (st.altq = [])).push({ t: c.tag, id, day: st.day + delay });
+    }
+  };
+  G.altTick = () => {
+    const st = G.st; if (!st.altq || !st.altq.length) return;
+    const due = st.altq.filter((x) => st.day >= x.day);
+    if (!due.length) return;
+    st.altq = st.altq.filter((x) => st.day < x.day);
+    for (const x of due) G.altFire(x.t, x.id);
+  };
+
+  // iç savaşın sonu: kazanan tarafa uzlaşma ya da hesaplaşma seçimi
+  G.onCivilEnd = (win, lose) => {
+    const st = G.st, c = st.C[win]; if (!c || !c.alive) return;
+    G.timedSpirit(win, 'alt_ruins', 540);
+    if (win === st.player && G.achFlag) G.achFlag('civil');
+    const opts = [
+      { n: 'Ulusal uzlaşma', d: '2 yıl Ulusal Uzlaşma (istikrar +%10, fabrika +%5)', fx: () => G.timedSpirit(win, 'alt_reconcile', 730) },
+      { n: 'Hesap sor', d: '2 yıl Hesaplaşma (savaş desteği +%10, insan gücü, istikrar −%5)', fx: () => G.timedSpirit(win, 'alt_reckoning', 730) },
+    ];
+    if (win === st.player) G.queuePopup({ title: 'İç Savaşın Sonu', art: 'surrender', date: st.day, text: `${G.cname(lose)} teslim oldu; ülke yeniden tek bayrak altında. Ama şehirler yıkık, aileler bölünmüş. Kaybedenlere nasıl davranacağız? (18 ay boyunca "İç Savaşın Yıkıntıları": fabrika −%10)`, opts });
+    else opts[0].fx();
+  };
+})(window);
+
+/* js/game/modes.js */
+// Oyun modları: zorluk seviyeleri, "Alternatif dünya" modu (YZ ülkeleri alternatif tarih yollarına girer)
+// ve iç savaşlara dış müdahale (aynı ideolojideki büyük güçler taraflara silah ve gönüllü yollar).
+(function (g) {
+  const G = g.G;
+
+  // ---------- Zorluk (HOI4: Kolay / Normal / Zor / Elit) ----------
+  G.DIFF = [
+    { n: 'Kolay', d: 'Sana +%15 fabrika, +%10 araştırma ve istikrar; yapay zekâ daha zayıf savaşır ve daha temkinli saldırır.', pl: { factory: 0.15, research: 0.1, stab: 0.1, ws: 0.05 }, ai: { factory: -0.1 }, cm: 0.9, aggr: 1.6 },
+    { n: 'Normal', d: 'Tarihî denge: kimseye bonus yok.', pl: null, ai: null, cm: 1, aggr: 1.4 },
+    { n: 'Zor', d: 'Büyük güçler +%10 fabrika ve +%5 araştırma alır, yapay zekâ daha iyi savaşır ve daha saldırgandır.', pl: { stab: -0.03 }, ai: { factory: 0.05 }, aiMajor: { factory: 0.1, research: 0.05 }, cm: 1.08, aggr: 1.25 },
+    { n: 'Elit', d: 'Yapay zekâya +%20 fabrika, +%10 araştırma ve moral; sana istikrar ve savaş desteği cezası. Yalnızca tecrübeli komutanlar için.', pl: { stab: -0.08, ws: -0.05, factory: -0.05 }, ai: { factory: 0.2, research: 0.1, org: 0.05 }, cm: 1.15, aggr: 1.15 },
+  ];
+  const D = () => G.DIFF[G.st.opts.diff ?? 1] || G.DIFF[1];
+  G.diffFx = (c) => { const d = D(); if (c.tag === G.st.player) return d.pl; return (c.major && d.aiMajor) || d.ai; };
+  G.diffCombat = (tag) => (tag === G.st.player ? 1 : D().cm);
+  G.diffAggr = () => D().aggr;
+
+  // ---------- Alternatif dünya ----------
+  // Alternatif köklerin listesi ve her kökün dalındaki odaklar
+  const rootsOf = (tag) => (g.FOCUS_NATIONAL[tag] || []).filter((f) => f.alt && !f.pre.length).map((f) => f.id);
+  const branch = {};
+  const branchOf = (tag, root) => {
+    const k = tag + ':' + root; if (branch[k]) return branch[k];
+    const all = (g.FOCUS_NATIONAL[tag] || []).filter((f) => f.alt), ids = new Set([root]);
+    let grew = 1; while (grew) { grew = 0; for (const f of all) if (!ids.has(f.id) && f.pre.length && f.pre.some((p) => ids.has(p))) { ids.add(f.id); grew = 1; } }
+    return (branch[k] = ids);
+  };
+  G.altSetup = () => {
+    const st = G.st; if (!st.opts.alt) return;
+    const cands = Object.keys(g.FOCUS_NATIONAL).filter((t) => t !== st.player && st.C[t]?.alive && rootsOf(t).length);
+    const n = Math.min(cands.length, 4 + Math.floor(G.rand() * 3));
+    st.altPlan = {};
+    for (let k = 0; k < n; k++) {
+      const i = Math.floor(G.rand() * cands.length), t = cands.splice(i, 1)[0], rs = rootsOf(t);
+      st.altPlan[t] = { root: rs[Math.floor(G.rand() * rs.length)], day: 20 + Math.floor(G.rand() * 520) };
+    }
+  };
+  // YZ odak seçimi: planı olan ülke zamanı gelince alternatif dalı izler
+  G.altAiPick = (c, list) => {
+    const st = G.st; if (!st.opts.alt || !st.altPlan) return null;
+    const p = st.altPlan[c.tag]; if (!p || st.day < p.day) return null;
+    const ids = branchOf(c.tag, p.root);
+    const f = list.find((x) => ids.has(x.id) && G.focusAvailable(c, x));
+    if (!f && !c.focus.done[p.root]) delete st.altPlan[c.tag]; // kök artık alınamıyor (tarihî yol seçildi)
+    return f || null;
+  };
+  // planlı ülke, alternatif kökü dışlayan tarihî odakları almaz
+  G.altBlocked = (c, f) => {
+    const st = G.st; if (!st.opts.alt || !st.altPlan) return false;
+    const p = st.altPlan[c.tag]; if (!p || c.focus.done[p.root]) return false;
+    const r = (g.FOCUS_NATIONAL[c.tag] || []).find((x) => x.id === p.root);
+    return !!(r && r.excl && r.excl.includes(f.id));
+  };
+  // dünya haberi: bir YZ ülkesi alternatif yola girdi
+  G.altRootNews = (c, f) => {
+    const st = G.st;
+    if (c.tag === st.player || !st.player) return;
+    G.log(`${G.cname(c.tag)} alternatif bir yola girdi: ${f.n}.`, [c.tag], 'major');
+    if (!G.newsOn || st._newsDay === st.day) return;
+    st._newsDay = st.day;
+    G.queuePopup({ news: 1, art: 'politics', eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: `${G.cname(c.tag)}: ${f.n}`, text: f.d, opts: [{ n: 'Dünya değişiyor', fx: () => {} }] });
+  };
+
+  // ---------- İç savaşlara dış müdahale ----------
+  G.civilAid = () => {
+    const st = G.st; if (!st.civil || !st.civil.length) return;
+    // taraflardan biri başka yoldan yok olduysa dinamik iç savaş kaydı kapanır
+    st.civil = st.civil.filter((p) => p[2] == null || (st.C[p[0]]?.alive && st.C[p[1]]?.alive));
+    st.cwVol = st.cwVol || {};
+    for (const pr of st.civil) {
+      const [a, b] = pr; if (!pr[2] && pr[2] !== 0) continue; // tarihî İspanya İç Savaşı kendi yardımını alır
+      if (!st.C[a]?.alive || !st.C[b]?.alive) continue;
+      for (const m of Object.values(st.C)) {
+        if (!m.alive || !m.major || m.tag === st.player || m.tag === a || m.tag === b || m.enemies.length) continue;
+        const side = [a, b].find((t) => st.C[t].ideo === m.ideo && st.C[t === a ? b : a].ideo !== m.ideo);
+        if (!side) continue;
+        G.lend(m.tag, side, 'inf', 500); G.lend(m.tag, side, 'art', 10);
+        const k = m.tag + '>' + side;
+        if (!st.cwVol[k] && G.sendVolunteers && G.volCheck(m.tag, side, { force: 1 }).ok) {
+          const r = G.sendVolunteers(m.tag, side, 2, { force: 1 });
+          if (r && r.ok) { st.cwVol[k] = 1; G.log(`${G.cname(m.tag)}, ${G.cname(side)} saflarına ${r.n} gönüllü tümen gönderdi.`, [m.tag, side], 'info'); }
+        }
+      }
+    }
+  };
+})(window);
+
+/* js/game/espionage.js */
+// İstihbarat teşkilatı (HOI4 La Résistance): ajan yetiştir, ülkelere gönderip casus ağı kur, ağ yeterince güçlenince
+// operasyon düzenle (teknoloji çalma, sabotaj, şifre kırma, direniş, propaganda, darbe). Geliştirmeler teşkilatı güçlendirir;
+// karşı istihbarat düşman ağlarını yavaşlatır ve ajan yakalar.
+// Durum yalnızca teşkilat kurulunca oluşur (c.intel). YZ büyük güçleri tarihî olmayan modlarda kendi teşkilatını kurar.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const alive = (t) => !!G.st.C[t]?.alive;
+
+  G.INTEL_FOUND = 150;
+  G.INTEL_UPG = {
+    school: { n: 'Ajan Okulu', d: 'Ajan sınırı +2, eğitim süresi yarıya iner, ağlar %25 hızlı kurulur.', cost: 60, days: 45 },
+    ci: { n: 'Karşı İstihbarat Dairesi', d: 'Düşman ağları ülkende %40 yavaş kurulur, düşman ajanlarını yakalama şansın artar.', cost: 60, days: 45 },
+    field: { n: 'Saha Operasyonları', d: 'Operasyon başarı şansı +%15, başarısızlıkta ajan kaybı yarıya iner.', cost: 70, days: 60 },
+    crypto: { n: 'Kriptoloji Dairesi', d: 'Şifre kırma etkisi 2 yıl sürer; ülkene karşı kırılan şifrelerin etkisi yarıya iner.', cost: 70, days: 60 },
+    prop: { n: 'Propaganda Bürosu', d: 'Kalıcı istikrar +%3, savaş desteği +%3; propaganda operasyonları iki kat etkili.', cost: 50, days: 45 },
+  };
+  G.SPY_OPS = {
+    propaganda: { n: 'Kara Propaganda', d: 'Hedefin istikrarı ve savaş desteği −%6 (Propaganda Bürosu ile −%12).', net: 20, cost: 30, days: 20 },
+    resist: { n: 'Direnişi Örgütle', d: 'Hedefin işgal ettiği topraklarda direniş artar, uyum düşer.', net: 30, cost: 40, days: 30 },
+    sabotage: { n: 'Sanayi Sabotajı', d: 'Hedef 2 askerî fabrika kaybeder (Saha Operasyonları ile 3).', net: 35, cost: 45, days: 30 },
+    steal: { n: 'Teknoloji Çal', d: 'Hedefin bildiği, senin araştırabileceğin bir teknolojiyi ele geçir.', net: 45, cost: 60, days: 40 },
+    decrypt: { n: 'Şifreleri Kır', d: 'Hedefe karşı muharebede +%12 (1 yıl, Kriptoloji ile 2 yıl).', net: 50, cost: 60, days: 45 },
+    coup: { n: 'Darbe Hazırla', d: 'Hedefte ideolojinin desteği en az %25 ise hükümeti devirir (büyük güçlerde olmaz).', net: 70, cost: 120, days: 60 },
+  };
+  G.intelMax = (c) => !c.intel ? 0 : 2 + (c.major ? 1 : 0) + (c.intel.up.school ? 2 : 0);
+  G.intelCI = (tag) => { const x = G.st.C[tag]; if (!x) return 0; return (x.major ? 0.2 : 0.1) + (x.intel && x.intel.up.ci ? 0.4 : 0); };
+  G.intelFree = (c) => { const I = c.intel; if (!I) return 0; return I.ag - Object.values(I.as).reduce((a, b) => a + b, 0); };
+  G.intelChance = (c, t, op) => { const I = c.intel, n = (I.net[t] || 0); return clamp(0.5 + n / 200 + (I.up.field ? 0.15 : 0) - G.intelCI(t) * 0.5 - (op === 'coup' ? 0.15 : 0), 0.05, 0.95); };
+
+  G.intelFound = (c) => {
+    if (c.intel) return { ok: false, why: 'Teşkilat zaten kurulu' };
+    if (c.pp < G.INTEL_FOUND) return { ok: false, why: `${G.INTEL_FOUND} siyasi güç gerekli` };
+    c.pp -= G.INTEL_FOUND;
+    c.intel = { ag: 1, tr: [], as: {}, net: {}, up: {}, upq: null, ops: [] };
+    if (c.tag === G.st.player) G.log('İstihbarat teşkilatı kuruldu. İlk ajanımız göreve hazır.', [c.tag], 'good');
+    return { ok: true };
+  };
+  G.intelRecruit = (c) => {
+    const I = c.intel; if (!I) return { ok: false, why: 'Önce teşkilatı kur' };
+    if (I.ag + I.tr.length >= G.intelMax(c)) return { ok: false, why: 'Ajan sınırı dolu' };
+    if (c.pp < 25) return { ok: false, why: '25 siyasi güç gerekli' };
+    c.pp -= 25; I.tr.push(I.up.school ? 15 : 30);
+    return { ok: true };
+  };
+  G.intelAssign = (c, t, dv) => {
+    const I = c.intel; if (!I || t === c.tag) return false;
+    if (dv > 0 && G.intelFree(c) < 1) return false;
+    if (dv < 0 && !(I.as[t] > 0)) return false;
+    I.as[t] = (I.as[t] || 0) + dv; if (!I.as[t]) delete I.as[t];
+    return true;
+  };
+  G.intelUpgrade = (c, id) => {
+    const I = c.intel, U = G.INTEL_UPG[id];
+    if (!I || !U || I.up[id]) return { ok: false, why: 'Kullanılamaz' };
+    if (I.upq) return { ok: false, why: 'Başka bir geliştirme sürüyor' };
+    if (c.pp < U.cost) return { ok: false, why: `${U.cost} siyasi güç gerekli` };
+    c.pp -= U.cost; I.upq = { id, d: U.days };
+    return { ok: true };
+  };
+  G.spyAllowed = (c, t, op) => {
+    const I = c.intel, O = G.SPY_OPS[op], x = G.st.C[t];
+    if (!I) return { ok: false, why: 'İstihbarat teşkilatı yok' };
+    if (!x || !x.alive) return { ok: false, why: 'Hedef yok' };
+    if (I.ops.some((o) => o.t === t && o.op === op)) return { ok: false, why: 'Operasyon sürüyor' };
+    if ((I.net[t] || 0) < O.net) return { ok: false, why: `Casus ağı en az %${O.net} olmalı (şu an %${Math.floor(I.net[t] || 0)})` };
+    if (c.pp < O.cost) return { ok: false, why: `${O.cost} siyasi güç gerekli` };
+    if (op === 'coup') { if (x.major) return { ok: false, why: 'Büyük güçlerde darbe olmaz' }; if (x.ideo === c.ideo) return { ok: false, why: 'Zaten aynı ideoloji' }; if ((x.pop[c.ideo] || 0) < 0.25) return { ok: false, why: `${g.PARTY_N[c.ideo]} hedefte en az %25 olmalı` }; }
+    if (op === 'steal' && !stealable(c, x).length) return { ok: false, why: 'Çalınabilecek teknoloji yok' };
+    if (op === 'resist' && !occupiedBy(t).length) return { ok: false, why: 'Hedefin işgal ettiği toprak yok' };
+    return { ok: true };
+  };
+  const stealable = (c, x) => Object.keys(x.tech).filter((id) => G.techAvailable(c, id));
+  const occupiedBy = (t) => { const L = []; for (let i = 0; i < NP; i++) { const pr = G.st.prov[i]; if (pr.c === t && pr.rs != null) L.push(i); } return L; };
+  G.spyStart = (c, t, op) => {
+    const r = G.spyAllowed(c, t, op); if (!r.ok) return r;
+    c.pp -= G.SPY_OPS[op].cost; c.intel.ops.push({ t, op, d: G.SPY_OPS[op].days });
+    return { ok: true };
+  };
+  const rel = (a, b, v) => { const st = G.st; st.rel = st.rel || {}; st.rel[b + '>' + a] = clamp((st.rel[b + '>' + a] || 0) + v, -100, 100); };
+  // operasyonun sonucu
+  const resolve = (c, o) => {
+    const st = G.st, x = st.C[o.t], I = c.intel, pl = st.player, mine = c.tag === pl, vict = o.t === pl;
+    if (!x || !x.alive) return;
+    const O = G.SPY_OPS[o.op];
+    if (G.rand() > G.intelChance(c, o.t, o.op)) {
+      // başarısız: ajan yakalanır, ağ zarar görür
+      I.net[o.t] = Math.max(0, (I.net[o.t] || 0) - 30);
+      if (G.rand() < (I.up.field ? 0.2 : 0.4) && I.as[o.t] > 0) { I.as[o.t]--; I.ag--; if (!I.as[o.t]) delete I.as[o.t]; }
+      rel(c.tag, o.t, -15);
+      if (mine) G.log(`İstihbarat: ${O.n} (${G.cname(o.t)}) başarısız oldu; ajanlarımız deşifre edildi.`, [c.tag, o.t], 'bad');
+      else if (vict) G.log(`Karşı istihbarat: ${G.cname(c.tag)} casuslarının "${O.n}" girişimini engelledik.`, [o.t, c.tag], 'good');
+      return;
+    }
+    I.net[o.t] = Math.max(0, (I.net[o.t] || 0) - 25);
+    let what = '';
+    switch (o.op) {
+      case 'propaganda': { const k = I.up.prop ? 0.12 : 0.06; x.stabX -= k; x.wsX -= k; what = `istikrar ve savaş desteği −%${Math.round(k * 100)}`; break; }
+      case 'resist': { let n = 0; for (const i of occupiedBy(o.t)) { const pr = st.prov[i]; pr.rs = Math.min(0.9, pr.rs + 0.2); pr.cp = Math.max(0, (pr.cp || 0) - 0.15); n++; } what = `${n} işgal eyaletinde direniş arttı`; break; }
+      case 'sabotage': { let n = I.up.field ? 3 : 2; const L = []; for (let i = 0; i < NP; i++) if (st.prov[i].c === o.t && st.prov[i].mil > 0) L.push(i); for (let k = 0; k < n && L.length; k++) { const i = L[Math.floor(G.rand() * L.length)]; if (st.prov[i].mil > 0) st.prov[i].mil--; } G.needSummary = 1; what = `${n} askerî fabrika yok edildi`; break; }
+      case 'steal': { const L = stealable(c, x); if (L.length) { const id = L[Math.floor(G.rand() * L.length)]; c.tech[id] = 1; G.recomputeMods(c); what = `teknoloji ele geçirildi: ${g.TECH_BY_ID[id].n}`; } break; }
+      case 'decrypt': { c.decrypt = c.decrypt || {}; const half = x.intel && x.intel.up.crypto; c.decrypt[o.t] = st.day + (I.up.crypto ? 730 : 365) / (half ? 2 : 1); what = 'şifreleri kırıldı'; break; }
+      case 'coup': if (!G.atWar(c.tag, o.t) && (x.pop[c.ideo] || 0) >= 0.25) { G.setIdeology(x, c.ideo); x.leader = (g.ALT_LEADERS[o.t] || {})[c.ideo] || x.leader; if (c.fac && G.st.factions[c.fac]) G.joinFaction(o.t, c.fac); what = 'hükümet devrildi'; } break;
+    }
+    if (mine && (o.op === 'steal' || o.op === 'coup') && what && G.achFlag) G.achFlag(o.op);
+    if (mine) G.log(`İstihbarat: ${O.n} (${G.cname(o.t)}) başarılı — ${what}.`, [c.tag, o.t], 'good');
+    else if (vict) G.log(`Düşman casusları (${G.cname(c.tag)}): ${O.n} — ${what}.`, [o.t, c.tag], 'bad');
+  };
+
+  // 5 günde bir: eğitim, geliştirme, ağ kurma, ajan yakalama, operasyonlar
+  G.intelTick = () => {
+    const st = G.st;
+    for (const c of Object.values(st.C)) {
+      const I = c.intel; if (!I) continue;
+      if (!c.alive) { delete c.intel; continue; }
+      // eğitim
+      for (let k = 0; k < I.tr.length; k++) if ((I.tr[k] -= 5) <= 0) { I.tr.splice(k--, 1); I.ag++; if (c.tag === st.player) G.log('İstihbarat: yeni ajan eğitimini tamamladı.', [c.tag], 'info'); }
+      // geliştirme
+      if (I.upq && (I.upq.d -= 5) <= 0) { I.up[I.upq.id] = 1; if (c.tag === st.player) G.log(`İstihbarat: ${G.INTEL_UPG[I.upq.id].n} kuruldu.`, [c.tag], 'good'); I.upq = null; G.recomputeMods(c); }
+      // ağlar
+      for (const t of Object.keys(I.net)) if (!I.as[t]) { I.net[t] -= 1.5; if (I.net[t] <= 0) delete I.net[t]; }
+      for (const [t, n] of Object.entries(I.as)) {
+        if (!alive(t)) { delete I.as[t]; delete I.net[t]; I.ag -= n; continue; }
+        const ci = G.intelCI(t);
+        I.net[t] = Math.min(100, (I.net[t] || 0) + n * 2.2 * (I.up.school ? 1.25 : 1) * (1 - ci));
+        // karşı istihbarat ajan yakalar (yüksek ağ daha görünür)
+        if (G.rand() < ci * 0.03 * (1 + (I.net[t] || 0) / 100)) {
+          I.as[t]--; I.ag--; if (!I.as[t]) delete I.as[t];
+          I.net[t] = Math.max(0, I.net[t] - 15);
+          rel(c.tag, t, -10);
+          if (c.tag === st.player) G.log(`İstihbarat: ${G.cname(t)} ajanımızı yakaladı.`, [c.tag, t], 'bad');
+          else if (t === st.player) G.log(`Karşı istihbarat: ${G.cname(c.tag)} ajanı yakalandı.`, [t, c.tag], 'good');
+        }
+      }
+      // operasyonlar
+      for (let k = 0; k < I.ops.length; k++) { const o = I.ops[k]; if ((o.d -= 5) > 0) continue; I.ops.splice(k--, 1); resolve(c, o); }
+    }
+    if (!st.opts.hist && st.day % 30 === 2) aiIntel();
+  };
+  // propaganda bürosu kalıcı etkisi (recomputeMods)
+  G.intelFx = (c) => (c.intel && c.intel.up.prop ? { stab: 0.03, ws: 0.03 } : null);
+
+  // YZ (tarihî olmayan modlar): büyük güçler 1937'den sonra teşkilat kurar, düşmanlarına ve rakiplerine ağ örüp operasyon yapar
+  function aiIntel() {
+    const st = G.st;
+    if (st.day < 365) return;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player) continue;
+      if (!c.intel) { c.pp += G.INTEL_FOUND; G.intelFound(c); continue; } // YZ teşkilatı bedelsiz kurulur
+      const I = c.intel;
+      if (I.ag + I.tr.length < G.intelMax(c) && c.pp > 40) G.intelRecruit(c);
+      if (!I.upq && c.pp > 90) { const u = ['ci', 'school', 'field', 'crypto', 'prop'].find((k) => !I.up[k]); if (u) G.intelUpgrade(c, u); }
+      // hedefler: savaştaki düşmanlar, sonra ideolojik rakip büyük güçler
+      const tg = c.enemies.filter(alive).concat(Object.values(st.C).filter((x) => x.alive && x.major && x.tag !== c.tag && x.ideo !== c.ideo && G.opinion(c.tag, x.tag) < -20).map((x) => x.tag));
+      for (const t of tg) { if (G.intelFree(c) < 1) break; if (!I.as[t]) G.intelAssign(c, t, 1); }
+      for (const t of Object.keys(I.as)) {
+        const n = I.net[t] || 0, war = G.atWar(c.tag, t);
+        const pick = war ? ['decrypt', 'sabotage', 'resist', 'propaganda'] : ['steal', 'propaganda'];
+        for (const op of pick) if (n >= G.SPY_OPS[op].net && G.spyAllowed(c, t, op).ok && c.pp > G.SPY_OPS[op].cost + 20) { G.spyStart(c, t, op); break; }
+      }
+    }
+  }
+})(window);
+
+/* js/game/score.js */
+// Puan, başarımlar ve oyun sonu (HOI4: 1948 sonunda oyun biter; ülke yok olursa yenilgi).
+// Başarımlar cihazda saklanır (arayüz katmanı); burada yalnızca koşullar ve puan hesabı var.
+(function (g) {
+  const G = g.G;
+  const { P, NP } = G;
+
+  G.END_DATE = '1949-01-01';
+  // puan: zafer noktaları, eyaletler, sanayi, ordu
+  G.score = (tag) => {
+    const st = G.st, c = st.C[tag]; if (!c || !c.alive) return 0;
+    let vp = 0; for (let i = 0; i < NP; i++) if (st.prov[i].c === tag) vp += P[i].vp || 0;
+    const divs = st.units.filter((u) => u.t === tag).length;
+    return Math.round(vp * 3 + (c.sum.provs || 0) + (c.sum.civ || 0) * 2 + (c.sum.mil || 0) * 3 + divs * 2);
+  };
+  G.scoreBoard = () => Object.values(G.st.C).filter((c) => c.alive && (c.major || c.tag === G.st.player)).map((c) => ({ t: c.tag, s: G.score(c.tag) })).sort((a, b) => b.s - a.s);
+  // oyunun başındaki değerler (karşılaştırma için; oyuncu ülkesi)
+  G.scoreStart = () => {
+    const st = G.st, c = st.C[st.player]; if (!c || st.s0) return;
+    st.s0 = { provs: c.sum.provs || 0, civ: c.sum.civ || 0, mil: c.sum.mil || 0, divs: st.units.filter((u) => u.t === st.player).length };
+  };
+
+  const capOf = (tag) => { const d = g.COUNTRY_DEFS[tag]; return P.findIndex((p) => p.n === d.cap); };
+  const holds = (tag, other) => { const i = capOf(other); return i >= 0 && G.st.prov[i].c === tag; };
+  const yr = () => G.year(G.st.day);
+  const ALT_CAPS = ['alt_kaiser', 'alt_redger', 'alt_longusa', 'alt_redusa', 'alt_commune', 'alt_bourbon', 'alt_ottoman', 'alt_turan', 'alt_redbrit', 'alt_trotsky', 'alt_bukharin', 'alt_redita', 'alt_taisho', 'alt_pol', 'alt_hun', 'alt_rom', 'alt_gre', 'alt_yug', 'alt_chi', 'alt_bul', 'alt_swe', 'alt_bra'];
+  // [kimlik, ad, açıklama, koşul(c, st)]
+  G.ACH = [
+    ['survivor', 'Hayatta Kal', '1945 yılına ülkeni ayakta tutarak ulaş.', (c) => yr() >= 1945],
+    ['peace', 'Barışsever', '1940\'a hiç savaşa girmeden ulaş.', (c, st) => yr() >= 1940 && !st.achF?.war],
+    ['conqueror', 'Fatih', 'Başlangıçtaki eyalet sayının iki katını kontrol et.', (c, st) => st.s0 && c.sum.provs >= st.s0.provs * 2 && c.sum.provs >= 10],
+    ['industry', 'Sanayi Devi', '100 fabrikaya (sivil + askerî) ulaş.', (c) => (c.sum.civ || 0) + (c.sum.mil || 0) >= 100],
+    ['army', 'Büyük Ordu', '100 tümenlik bir orduya sahip ol.', (c, st) => st.units.filter((u) => u.t === c.tag).length >= 100],
+    ['minor', 'Küçükten Büyüğe', 'Küçük bir devletle 50 fabrikaya ulaş.', (c) => !c.major && (c.sum.civ || 0) + (c.sum.mil || 0) >= 50],
+    ['faction', 'İttifak Lideri', 'En az 4 üyeli bir ittifakın lideri ol.', (c, st) => { const f = c.fac && st.factions[c.fac]; return !!f && f.leader === c.tag && f.members.filter((t) => st.C[t]?.alive).length >= 4; }],
+    ['capitals', 'Başkentler Fatihi', 'Kendin dışında üç büyük gücün başkentini kontrol et.', (c, st) => ['GER', 'ENG', 'FRA', 'SOV', 'ITA', 'JAP', 'USA'].filter((t) => t !== c.tag && holds(c.tag, t)).length >= 3],
+    ['istanbul', 'Boğazların Efendisi', 'Türkiye dışında bir ülkeyle İstanbul\'u kontrol et.', (c) => c.tag !== 'TUR' && P.some((p, i) => p.n === 'İstanbul' && G.st.prov[i].c === c.tag)],
+    ['altpath', 'Tarih Yeniden Yazıldı', 'Bir alternatif tarih yolunu sonuna kadar tamamla.', (c) => c.spirits.some((s) => ALT_CAPS.includes(s))],
+    ['ottoman', 'Devlet-i Aliyye', 'Türkiye ile Osmanlı Restorasyonu yolunu tamamla.', (c) => c.spirits.includes('alt_ottoman')],
+    ['kaiser', 'Kayzer\'in Dönüşü', 'Almanya ile Kaiserreich\'ı kur.', (c) => c.spirits.includes('alt_kaiser')],
+    ['civilwar', 'İç Savaş Galibi', 'Bir iç savaşı kazan.', (c, st) => !!st.achF?.civil],
+    ['spysteal', 'Endüstriyel Casusluk', 'Casuslarınla bir teknoloji çal.', (c, st) => !!st.achF?.steal],
+    ['spycoup', 'Gölge Hükümet', 'Casuslarınla bir ülkede darbe yap.', (c, st) => !!st.achF?.coup],
+    ['elite', 'Demir Komutan', 'Elit zorlukta 1945\'e ulaş.', (c, st) => (st.opts.diff ?? 1) >= 3 && yr() >= 1945],
+    ['altworld', 'Başka Bir Dünya', 'Alternatif dünya modunda 1940\'a ulaş.', (c, st) => !!st.opts.alt && yr() >= 1940],
+  ];
+  // oyuncunun bu ayki başarım kontrolü; yeni kazanılanlar G.onAch'a gider (arayüz saklar)
+  G.achCheck = () => {
+    const st = G.st, c = st.C[st.player];
+    if (!c || !c.alive || !G.onAch) return;
+    if (c.enemies.length) (st.achF || (st.achF = {})).war = 1;
+    for (const [id, n, d, f] of G.ACH) { let ok = false; try { ok = f(c, st); } catch (e) {} if (ok) G.onAch(id, n, d); }
+  };
+  G.achFlag = (k) => { const st = G.st; (st.achF || (st.achF = {}))[k] = 1; };
+  // oyun sonu: tarih dolunca bir kez
+  G.endCheck = () => {
+    const st = G.st;
+    if (st.ended || !st.player || !st.C[st.player]?.alive || st.day < G.dayOf(G.END_DATE)) return;
+    st.ended = 1;
+    if (G.onGameEnd) G.onGameEnd('time');
   };
 })(window);
 
@@ -11669,7 +12463,9 @@ window.RIVERS = [
   PANELS.dip = () => {
     const st = G.st, c = me();
     if (UI.sub && UI.sub.startsWith('c:')) return countryView(UI.sub.slice(2));
+    if (UI.sub === 'intel') return intelView(c);
     let html = '';
+    html += intelSummary(c);
     const fac = c.fac ? st.factions[c.fac] : null;
     if (fac) {
       html += sec('İttifak', `<div class="item"><div class="grow"><div class="t">${esc(fac.n)}</div><div class="d">Lider: ${esc(G.cname(fac.leader))}</div><div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">${fac.members.filter((t) => st.C[t].alive).map((t) => `<span title="${esc(G.cname(t))}">${G.flag(t, 24, 16)}</span>`).join('')}</div></div></div>`);
@@ -11737,6 +12533,42 @@ window.RIVERS = [
     if (sentD || sentA) h += `<button class="btn sm" data-act="volback" data-v="${tag}">Gönüllüleri geri çağır</button>`;
     return sec('Gönüllü kuvvetler', `<p class="muted small" style="margin:0">Savaşa girmeden dost bir ülkeye tümen ve uçak gönder. Gönüllüler alıcının komutasında savaşır; insan gücü ve takviye sana yazılır, savaş bitince eve dönerler, deneyim sende kalır. En çok ordunun %10'u.</p>${h}`);
   }
+  // ---------- İstihbarat teşkilatı ----------
+  function intelSummary(c) {
+    const I = c.intel;
+    if (!I) return sec('İstihbarat teşkilatı', `<p class="muted small" style="margin:0">Ajan yetiştir, ülkelere casus ağı kur; ağ güçlenince teknoloji çal, sabotaj yap, şifre kır, direnişi örgütle ya da darbe hazırla.</p><button class="btn pri" data-act="intelfound" ${c.pp >= G.INTEL_FOUND ? '' : 'disabled'}>Teşkilatı kur · ${G.INTEL_FOUND} SG</button>`);
+    const nets = Object.entries(I.net).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return sec('İstihbarat teşkilatı', `${kv([['Ajan', `${G.intelFree(c)} boşta / ${I.ag}`], ['Eğitimde', I.tr.length], ['Ağ', Object.keys(I.as).length], ['Operasyon', I.ops.length]])}${nets.length ? `<div class="row" style="flex-wrap:wrap;gap:8px;margin:4px 0">${nets.map(([t, n]) => `<span class="small">${G.flag(t, 21, 14)} %${Math.floor(n)}</span>`).join('')}</div>` : ''}<button class="btn pri" data-act="intelopen">Teşkilatı yönet</button>`);
+  }
+  function intelView(c) {
+    const st = G.st, I = c.intel;
+    if (!I) { UI.sub = null; return PANELS.dip(); }
+    let html = `<button class="btn sm" data-act="intelback">‹ Diplomasi</button>`;
+    const max = G.intelMax(c);
+    html += sec('Ajanlar', `${kv([['Toplam', `${I.ag}/${max}`], ['Boşta', G.intelFree(c)], ['Eğitimde', I.tr.length ? I.tr.map((d) => d + ' gün').join(', ') : '—']])}<p class="muted small" style="margin:0">Ajanları bir ülkenin sayfasından (Diplomasi → ülke → Casus ağı) gönder. Her ajan ağı her 5 günde ~%2 büyütür; hedefin karşı istihbaratı yavaşlatır ve ajan yakalayabilir.</p><button class="btn ${I.ag + I.tr.length < max && c.pp >= 25 ? 'pri' : ''}" data-act="intelrec" ${I.ag + I.tr.length < max && c.pp >= 25 ? '' : 'disabled'}>Ajan yetiştir · 25 SG</button>`);
+    let uh = '<div class="list">';
+    for (const [k, U] of Object.entries(G.INTEL_UPG)) {
+      const has = I.up[k], run = I.upq && I.upq.id === k, ok = !has && !I.upq && c.pp >= U.cost;
+      uh += `<div class="item"><div class="grow"><div class="t">${U.n}${has ? ' <span class="good small">✓</span>' : ''}</div><div class="d">${U.d}${has ? '' : ` · ${U.cost} SG · ${U.days} gün`}</div>${run ? `<div class="d good">Kuruluyor: ${I.upq.d} gün</div>` : ''}</div>${has || run ? '' : `<button class="btn sm ${ok ? 'pri' : ''}" data-act="intelupg" data-v="${k}" ${ok ? '' : 'disabled'}>Kur</button>`}</div>`;
+    }
+    html += sec('Geliştirmeler', uh + '</div>');
+    const ts = [...new Set(Object.keys(I.net).concat(Object.keys(I.as)))].filter((t) => st.C[t]?.alive).sort((a, b) => (I.net[b] || 0) - (I.net[a] || 0));
+    html += sec('Casus ağları', ts.length ? `<div class="list">${ts.map((t) => `<button class="item" data-act="opencountry" data-v="${t}">${G.flag(t, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(t))} <span class="muted small">%${Math.floor(I.net[t] || 0)}</span></div>${bar((I.net[t] || 0) / 100)}<div class="d">${I.as[t] || 0} ajan · karşı istihbarat %${Math.round(G.intelCI(t) * 100)}${I.ops.filter((o) => o.t === t).map((o) => ` · ${G.SPY_OPS[o.op].n} (${o.d} gün)`).join('')}</div></div><span class="muted">›</span></button>`).join('')}</div>` : '<p class="muted small" style="margin:0">Henüz casus ağı yok.</p>');
+    const foes = Object.values(st.C).filter((x) => x.alive && x.intel && x.intel.as[c.tag]);
+    if (I.up.ci) html += sec('Karşı istihbarat raporu', foes.length ? `<div class="list">${foes.map((x) => `<div class="item">${G.flag(x.tag, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(x.tag))}</div><div class="d">${x.intel.as[c.tag]} ajan · ağ %${Math.floor(x.intel.net[c.tag] || 0)}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Ülkemizde bilinen yabancı casus ağı yok.</p>');
+    else html += `<p class="muted small">Karşı İstihbarat Dairesi kurulunca ülkendeki yabancı casus ağları burada görünür.</p>`;
+    return { title: 'İstihbarat teşkilatı', html };
+  }
+  function spySection(c, tag) {
+    const I = c.intel; if (!I) return '';
+    const st = G.st, n = I.net[tag] || 0;
+    let h = `<div class="item"><div class="grow"><div class="t">Casus ağı %${Math.floor(n)}</div>${bar(n / 100)}<div class="d">${I.as[tag] || 0} ajan görevde · ${G.intelFree(c)} ajan boşta · karşı istihbarat %${Math.round(G.intelCI(tag) * 100)}</div></div><div class="btns"><button class="btn sm" data-act="intelas" data-k="${tag}" data-v="-1" ${I.as[tag] ? '' : 'disabled'}>−</button><button class="btn sm pri" data-act="intelas" data-k="${tag}" data-v="1" ${G.intelFree(c) ? '' : 'disabled'}>+ Ajan</button></div></div>`;
+    for (const [op, O] of Object.entries(G.SPY_OPS)) {
+      const run = I.ops.find((o) => o.t === tag && o.op === op), r = G.spyAllowed(c, tag, op);
+      h += `<div class="item"><div class="grow"><div class="t">${O.n} <span class="muted small">ağ %${O.net}</span></div><div class="d">${O.d} · ${O.cost} SG · ${O.days} gün${n >= O.net ? ` · başarı %${Math.round(G.intelChance(c, tag, op) * 100)}` : ''}</div>${run ? `<div class="d good">Sürüyor: ${run.d} gün</div>` : !r.ok ? `<div class="d warn">${esc(r.why)}</div>` : ''}</div>${run ? '' : `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="spyop" data-k="${tag}" data-v="${op}" ${r.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
+    }
+    return sec('Casus ağı', `<div class="list">${h}</div>`);
+  }
   function countryView(tag) {
     const st = G.st, c = me(), x = st.C[tag], d = G.def(tag);
     const divs = st.units.filter((u) => u.t === tag).length;
@@ -11744,6 +12576,8 @@ window.RIVERS = [
     const ratio = G.armyPower(tag) / (G.armyPower(c.tag) + 1);
     html += kv([['Tümen', divs], ['Sivil fab.', x.sum.civ], ['Askerî fab.', x.sum.mil], ['Eyalet', x.sum.provs], ['Ordu gücü', ratio > 1.3 ? 'Bizden güçlü' : ratio < 0.7 ? 'Bizden zayıf' : 'Denk', ratio > 1.3 ? 'bad' : ratio < 0.7 ? 'good' : ''], ['Görüş', G.opinion(tag, c.tag) > 20 ? 'Dostane' : G.opinion(tag, c.tag) < -20 ? 'Düşmanca' : 'Nötr']]);
     if (x.enemies.length) html += `<p class="small" style="margin:0">Savaşta: ${x.enemies.map((t) => esc(G.cname(t))).join(', ')}</p>`;
+    const cwp = (st.civil || []).find((p) => p.includes(tag));
+    if (cwp) { const o = cwp[0] === tag ? cwp[1] : cwp[0]; html += sec('İç savaş', `<p class="small" style="margin:0">${esc(G.cname(cwp[1]))} hükümeti ile ${esc(G.cname(cwp[0]))} asileri savaşıyor. Kazanan bütün ülkeyi alır. Taraflardan birine gönüllü, teçhizat ya da casus göndererek savaşın sonucunu etkileyebilirsin.</p><div class="list"><button class="item" data-act="opencountry" data-v="${o}">${G.flag(o, 30, 20)}<div class="grow"><div class="t">Karşı taraf: ${esc(G.cname(o))}</div><div class="d">${esc(st.C[o].leader)} · ${st.C[o].sum.provs} eyalet</div></div><span class="muted">›</span></button></div>`); }
     if (x.overlord && st.C[x.overlord]?.alive) html += `<p class="small" style="margin:0">${esc(G.cname(x.overlord))} devletine bağlı · ${G.AUTO_LV[G.autoLevel(x)].n} (özerklik %${Math.round(x.auto ?? 30)})</p>`;
     const xs = G.subjectsOf(tag); if (xs.length) html += `<p class="small" style="margin:0">Bağlı devletleri: ${xs.map((y) => esc(G.cname(y.tag))).join(', ')}</p>`;
     const xsp = (x.spirits || []).filter((s) => g.SPIRITS[s]);
@@ -11779,7 +12613,8 @@ window.RIVERS = [
       const r = G.opAllowed(c.tag, tag, op);
       ih += `<div class="item"><div class="grow"><div class="t">${O.n}</div><div class="d">${O.d} · ${O.cost} SG · ${O.days} gün</div>${run ? `<div class="d good">Sürüyor: ${run.d} gün kaldı</div>` : !r.ok ? `<div class="d warn">${esc(r.why)}</div>` : ''}</div>${run ? '' : `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="op" data-k="${tag}" data-v="${op}" ${r.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
     }
-    html += sec('İstihbarat operasyonları', ih + '</div>');
+    html += spySection(c, tag);
+    html += sec(c.intel ? 'Siyasi operasyonlar' : 'İstihbarat operasyonları', ih + '</div>');
     return { title: d.n, html };
   }
 
@@ -11788,6 +12623,7 @@ window.RIVERS = [
     const st = G.st;
     if (UI.sub === 'log') return { title: 'Olay günlüğü', html: `<div class="list">${st.log.slice(0, 80).map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div></div>`).join('')}</div>` };
     if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: HELP };
+    if (UI.sub === 'ach') return achView();
     if (UI.sub === 'new') return { title: 'Yeni oyun', html: `<p style="margin:0">Mevcut oyun kaydedilmediyse kaybolur. Otomatik kayıt yine de saklanır.</p><div class="btns"><button class="btn danger" data-act="newgame">Yeni oyuna başla</button><button class="btn" data-act="back">Vazgeç</button></div>` };
     let html = '';
     let sh = '<div class="list">';
@@ -11801,14 +12637,18 @@ window.RIVERS = [
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
-    html += sec('Oyun', `<div class="list"><button class="item" data-act="panel" data-p="ledger"><div class="grow"><div class="t">Defter</div><div class="d">Ülkelerin sanayi, ordu, hava, deniz ve kayıp karşılaştırması</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
+    html += `<p class="muted small" style="margin:-4px 0 10px">Zorluk: <b>${esc((G.DIFF[st.opts.diff ?? 1] || G.DIFF[1]).n)}</b> · Mod: <b>${st.opts.alt ? 'Alternatif dünya' : st.opts.hist ? 'Tarihî' : 'Serbest'}</b></p>`;
+    html += sec('Oyun', `<div class="list"><button class="item" data-act="panel" data-p="ledger"><div class="grow"><div class="t">Defter</div><div class="d">Ülkelerin sanayi, ordu, hava, deniz ve kayıp karşılaştırması</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="ach"><div class="grow"><div class="t">Başarımlar ve puan</div><div class="d">${UI.achN()}/${G.ACH.length} başarım · puan ${G.score(st.player)}</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
   };
 
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
-  <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
-  <section class="sec"><h3 class="sec-h">İç savaş</h3><p class="small" style="margin:0">Bazı alternatif yollarda ("İÇ SAVAŞ" yazan odaklar) eski rejim yanlıları ayaklanır: ülkenin başkentten uzak bir bölgesi asi devlet olur, ordunun bir kısmı onlara katılır ve aynı ideolojideki büyük güçler asilere silah yollar. Taraflardan biri teslim olunca kazanan bütün ülkeyi alır. İç savaşlı yollar: Spartakist Almanya, Huey Long ve Sosyalist Amerika, Halk Cephesi Devrimi ve Action Française, Osmanlı Restorasyonu, Genel Grev (İngiltere), Troçki, Sosyalist İtalya, Sivil Hükümet (Japonya).</p></section>
+  <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Küçük devletlerde de birer alternatif yol var: Polonya (Ulusal Birlik Kampı), Macaristan (Habsburg Restorasyonu), Romanya (Köylü Partisi), Yunanistan (Megali İdea), Yugoslavya (Partizan Devrimi), Çin (Wang Jingwei), Bulgaristan (Büyük Bulgaristan), İsveç (Kalmar Birliği), Brezilya (Entegralist Darbe). Her yolun kendi olay zinciri vardır: odaklar ilerledikçe seçim pencereleri gelir, son odakta yola özel bir ulusal ruh kazanırsın. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
+  <section class="sec"><h3 class="sec-h">Oyun modları ve zorluk</h3><p class="small" style="margin:0"><b>Tarihî</b>: yapay zekâ tarihî olayları izler. <b>Serbest</b>: ülkeler kendi hedeflerini kovalar. <b>Alternatif</b>: serbest dünyaya ek olarak 4-6 yapay zekâ ülkesi rastgele alternatif yollara girer (iç savaşlar dahil); her oyun farklıdır ve bu ülkelerin olayları dünya haberi olarak gelir. Zorluk: <b>Kolay</b> sana fabrika/araştırma/istikrar bonusu verir; <b>Normal</b> tarafsızdır; <b>Zor</b> ve <b>Elit</b> yapay zekâya sanayi, araştırma ve muharebe bonusu verir.</p></section>
+  <section class="sec"><h3 class="sec-h">İstihbarat teşkilatı</h3><p class="small" style="margin:0">Diplomasi panelinden teşkilatı kur (150 SG). Ajan yetiştir (25 SG, 30 gün), bir ülkenin sayfasında "Casus ağı" bölümünden ajan gönder. Ağ büyüdükçe operasyonlar açılır: Kara Propaganda (%20), Direnişi Örgütle (%30), Sanayi Sabotajı (%35), Teknoloji Çal (%45), Şifreleri Kır (%50), Darbe Hazırla (%70). Başarı şansı ağın gücüne ve hedefin karşı istihbaratına bağlıdır; başarısızlıkta ajan yakalanabilir. Geliştirmeler: Ajan Okulu, Karşı İstihbarat, Saha Operasyonları, Kriptoloji, Propaganda Bürosu. Serbest ve alternatif modlarda büyük güçler de teşkilat kurar.</p></section>
+  <section class="sec"><h3 class="sec-h">Puan, başarımlar ve oyunun sonu</h3><p class="small" style="margin:0">Menü → Başarımlar ve puan: büyük güçlerin puan tablosu ve 17 başarım (cihazında saklanır). Oyun 1 Ocak 1949'da sona erer ve bir özet gösterir; istersen oynamaya devam edebilirsin. Ülken yok olursa yenilgi ekranı çıkar.</p></section>
+  <section class="sec"><h3 class="sec-h">İç savaş</h3><p class="small" style="margin:0">Bazı alternatif yollarda ("İÇ SAVAŞ" yazan odaklar) eski rejim yanlıları ayaklanır: ülkenin başkentten uzak bir bölgesi asi devlet olur, ordunun bir kısmı onlara katılır ve aynı ideolojideki büyük güçler asilere silah yollar. Taraflardan biri teslim olunca kazanan bütün ülkeyi alır; kazanan "İç Savaşın Sonu" olayında uzlaşma ya da hesaplaşma seçer. Başka ülkelerin iç savaşlarına gönüllü, teçhizat ve casus göndererek karışabilirsin (ülke sayfasında "İç savaş" bölümü). İç savaşlı yollar: Spartakist Almanya, Huey Long ve Sosyalist Amerika, Halk Cephesi Devrimi ve Action Française, Osmanlı Restorasyonu, Genel Grev (İngiltere), Troçki, Sosyalist İtalya, Sivil Hükümet (Japonya); küçük devletlerde Polonya, Macaristan, Romanya, Yugoslavya, Çin ve Brezilya yolları.</p></section>
   <section class="sec"><h3 class="sec-h">Parti kampanyaları</h3><p class="small" style="margin:0">Kararlar → Siyaset: her parti için bir kampanya kararı (50 SG, 60 gün) o partinin halk desteğini %12 artırır. Bir muhalefet partisi %50'yi geçince "… Kur" kararıyla hükümeti devralabilirsin (100 SG, savaşta olmaz). Eski iktidarın desteği hâlâ %35 üstündeyse yanlıları ayaklanır ve iç savaş çıkar; önce kampanyalarla eski partiyi zayıflatmak daha güvenlidir. Hükümeti değiştirmek de alternatif yol sayılır, ülkenin tarihî olayları kapanır.</p></section>
   <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında kara (kırmızı), hava (açık mavi) ve deniz (lacivert) için tek bir dal vardır: ülkenin kendi ulusal dalı varsa o kullanılır, yoksa genel dal; ayrıca sanayi (altın) ve siyaset/diplomasi dalları bulunur. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
@@ -11948,7 +12788,7 @@ window.RIVERS = [
     UI.modalOpen = 1;
     G.st.paused = 1;
     const opts = p.opts || [{ n: 'Tamam', fx: () => {} }];
-    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div>`;
+    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}${o.d ? `<small class="evd">${esc(o.d)}</small>` : ''}</button>`).join('')}</div>`;
     const art = G.eventArt ? G.eventArt(p) : '';
     if (p.news) {
       // HOI4 dünya haberi: gazete sayfası
@@ -12318,6 +13158,13 @@ window.RIVERS = [
   ACT.elsusp = () => { const r = G.elecSuspend(me()); UI.toast(r.ok ? 'Seçimler askıya alındı.' : r.why, r.ok ? 'warn' : 'bad'); UI.render(); UI.hud(); };
   ACT.elres = () => { G.elecResume(me()); UI.toast('Seçimler yeniden başlıyor.', 'good'); UI.render(); UI.hud(); };
   ACT.lend = (d) => { const ok = G.lend(me().tag, d.k, d.e, +d.v); UI.toast(ok ? `${G.cname(d.k)} ülkesine gönderildi.` : 'Yeterli stok yok.', ok ? 'good' : 'warn'); UI.render(); };
+  ACT.intelfound = () => { const r = G.intelFound(me()); if (!r.ok) UI.toast(r.why, 'warn'); UI.render(); UI.hud(); };
+  ACT.intelopen = () => { UI.sub = 'intel'; UI.render(true); };
+  ACT.intelback = () => { UI.sub = null; UI.render(true); };
+  ACT.intelrec = () => { const r = G.intelRecruit(me()); UI.toast(r.ok ? 'Ajan eğitime başladı.' : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.intelupg = (d) => { const r = G.intelUpgrade(me(), d.v); UI.toast(r.ok ? `${G.INTEL_UPG[d.v].n} kuruluyor.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.intelas = (d) => { G.intelAssign(me(), d.k, +d.v); UI.render(); };
+  ACT.spyop = (d) => { const r = G.spyStart(me(), d.k, d.v); UI.toast(r.ok ? `${G.SPY_OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
   ACT.op = (d) => { const r = G.startOp(me().tag, d.k, d.v); UI.toast(r.ok ? `${G.OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
   ACT.release = (d) => { const ok = G.makePuppet(me().tag, d.v); UI.toast(ok ? `${G.cname(d.v)} kukla devlet olarak kuruldu.` : 'Kurulamadı.', ok ? 'good' : 'warn'); G.mapDirty = 1; UI.render(); };
   ACT.save = (d) => { const ok = G.saveGame(d.v); UI.toast(ok ? 'Oyun kaydedildi.' : 'Kayıt başarısız: tarayıcı depolaması kullanılamıyor.', ok ? 'good' : 'bad'); UI.render(); };
@@ -12377,7 +13224,7 @@ window.RIVERS = [
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
   try { UI.tall = localStorage.getItem('dc_tall') === '1'; } catch (e) {}
-  UI.startOpts = { hist: 1, diff: 1 };
+  UI.startOpts = { mode: 0, diff: 1 };
   UI.showStart = () => {
     $('start').hidden = false;
     ['hud', 'nav', 'map-tools'].forEach((id) => ($(id).hidden = true));
@@ -12399,8 +13246,10 @@ window.RIVERS = [
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
-      <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
-      <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
+      <div class="seg"><button class="${UI.startOpts.mode === 0 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="0">Tarihî</button><button class="${UI.startOpts.mode === 1 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="1">Serbest</button><button class="${UI.startOpts.mode === 2 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="2">Alternatif</button></div>
+      <p class="muted small" style="margin:0 0 8px">${['Yapay zekâ tarihî olayları izler: Anschluss, Barbarossa, Pearl Harbor…', 'Yapay zekâ kendi hedeflerini kovalar; tarihî olaylar yalnızca ittifaklar için gerçekleşir.', 'Serbest dünya + birkaç yapay zekâ ülkesi rastgele alternatif yollara girer (Kayzer Almanyası, Troçki, Osmanlı…). Her oyun farklı.'][UI.startOpts.mode]}</p>
+      <div class="seg">${G.DIFF.map((x, i) => `<button class="${UI.startOpts.diff === i ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="${i}">${x.n}</button>`).join('')}</div>
+      <p class="muted small" style="margin:0">${esc(G.DIFF[UI.startOpts.diff].d)}</p></div>`;
     const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
     if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
     html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
@@ -12409,7 +13258,7 @@ window.RIVERS = [
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
   ACT.begin = () => {
-    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
+    G.newGame(UI.startSel, { hist: UI.startOpts.mode === 0 ? 1 : 0, alt: UI.startOpts.mode === 2 ? 1 : 0, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
     UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
@@ -12443,7 +13292,35 @@ window.RIVERS = [
       G.queuePopup({ title: `${G.cname(tag)} teslim oldu`, text: 'Barış konferansı:' + sum, opts: [{ n: 'Anlaşıldı', fx: () => {} }] });
     }
   };
-  G.onGameOver = () => {};
+  // ---------- Başarımlar ve oyun sonu ----------
+  const achGet = () => { try { return JSON.parse(localStorage.getItem('dc_ach') || '{}'); } catch (e) { return {}; } };
+  UI.achN = () => Object.keys(achGet()).filter((k) => G.ACH.some((a) => a[0] === k)).length;
+  G.onAch = (id, n, d) => {
+    const A = achGet(); if (A[id]) return;
+    A[id] = `${G.cname(G.st.player)} · ${G.fmtDate(G.st.day)}`;
+    try { localStorage.setItem('dc_ach', JSON.stringify(A)); } catch (e) {}
+    G.log(`Başarım: ${n} — ${d}`, [G.st.player], 'good');
+  };
+  function achView() {
+    const st = G.st, A = achGet();
+    let html = sec('Puan tablosu', `<div class="list">${G.scoreBoard().map((x, i) => `<div class="item"><b style="width:22px">${i + 1}</b>${G.flag(x.t, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(x.t))}${x.t === st.player ? ' <span class="good small">(sen)</span>' : ''}</div></div><b>${x.s}</b></div>`).join('')}</div><p class="muted small" style="margin:0">Puan: zafer noktası ×3, eyalet, sivil fabrika ×2, askerî fabrika ×3, tümen ×2. Oyun ${G.fmtDate(G.dayOf(G.END_DATE))} tarihinde sona erer.</p>`);
+    html += sec('Başarımlar', `<div class="list">${G.ACH.map(([id, n, d]) => `<div class="item" style="${A[id] ? '' : 'opacity:.55'}"><span style="font-size:20px">${A[id] ? '🏅' : '🔒'}</span><div class="grow"><div class="t">${esc(n)}</div><div class="d">${esc(d)}${A[id] ? ` · <span class="good">${esc(A[id])}</span>` : ''}</div></div></div>`).join('')}</div>`, `${UI.achN()}/${G.ACH.length}`);
+    return { title: 'Başarımlar ve puan', html };
+  }
+  const endSummary = () => {
+    const st = G.st, c = st.C[st.player], s0 = st.s0 || {};
+    const board = G.scoreBoard(), rank = board.findIndex((x) => x.t === st.player) + 1;
+    const divs = st.units.filter((u) => u.t === st.player).length;
+    return `Puan: ${G.score(st.player)} (büyük güçler arasında ${rank}. sıra). Eyalet ${s0.provs ?? '?'} → ${c.sum.provs}, sivil fabrika ${s0.civ ?? '?'} → ${c.sum.civ}, askerî fabrika ${s0.mil ?? '?'} → ${c.sum.mil}, tümen ${s0.divs ?? '?'} → ${divs}. En güçlü devlet: ${G.cname(board[0].t)}. Başarımlar: ${UI.achN()}/${G.ACH.length}.`;
+  };
+  G.onGameEnd = () => {
+    G.achCheck();
+    G.queuePopup({ art: 'surrender', title: 'Oyunun Sonu', eyebrow: G.fmtDate(G.st.day), text: `İkinci Dünya Savaşı çağı sona erdi. ${G.cname(G.st.player)} yeni dünyada yerini aldı. ${endSummary()}`, opts: [{ n: 'Oynamaya devam et', fx: () => {} }, { n: 'Yeni oyun', fx: () => ACT.newgame() }] });
+  };
+  G.onGameOver = () => {
+    const st = G.st;
+    G.queuePopup({ art: 'surrender', title: 'Yenilgi', eyebrow: G.fmtDate(st.day), text: `${G.cname(st.player)} artık haritada yok. Hükümet dağıldı, ordular teslim oldu. Tarih kazananlar tarafından yazılacak. Ayakta kalan en güçlü devlet: ${G.cname(G.scoreBoard()[0]?.t || st.player)}.`, opts: [{ n: 'Yeni oyun', fx: () => ACT.newgame() }, { n: 'Kayıt yükle', fx: () => { UI.open('menu'); } }] });
+  };
 })(window);
 
 /* js/ui/audio.js */

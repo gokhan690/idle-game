@@ -55,7 +55,7 @@
     if (cb.enemies.some((e) => G.sameFaction(a, e))) return no('Alıcının düşmanıyla aynı ittifaktasın.');
     for (const m of G.sideOf(b)) if (ca.eset.has(m)) return no('Alıcının müttefikleriyle savaştasın.');
     if (!opts.force) {
-      if (st.tension < 10) return no('Dünya gerginliği en az %10 olmalı.');
+      if (st.tension < 10 && !(st.civil || []).some((p) => p.includes(b))) return no('Dünya gerginliği en az %10 olmalı.');
       if (b !== st.player && G.opinion(b, a) <= -20) return no('Alıcı hükümet, ideolojik nedenlerle gönüllüleri kabul etmiyor.');
     }
     if (!G.volReach(a, b)) return no('Alıcıya kara ya da deniz yoluyla ulaşılamıyor.');
