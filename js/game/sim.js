@@ -473,7 +473,7 @@
     const A = fit(atts, width), D = fit(defs, baseW);
     for (const u of defs) G.inBattle.add(u);
     for (const u of atts) { G.inBattle.add(u); u.bd = u.bt === n ? (u.bd || 0) + 1 : 0; u.bt = n; }
-    const diffMul = (tag) => (tag === st.player ? 1 : [1.15, 1, 0.9][st.opts.diff] || 1);
+    const diffMul = G.diffCombat;
     const lat = P[n].lat, month = G.dateOf(st.day).getUTCMonth();
     // uçaksavar: düşman hava üstünlüğünü azaltır
     const aaOf = (L) => Math.min(0.5, L.reduce((s, u) => s + (u._s.t.aa || 0), 0) / L.length * 2);
@@ -708,6 +708,7 @@
       G.cwDirty = 1; st.C[win].startW = G.coreWeight(win, true);
       G.log(`${G.cname(win)} iç savaşı kazandı: ${G.cname(tag)} teslim oldu ve tüm ülke ${G.cname(win)} yönetimine geçti.`, [win, tag], 'major');
       if (G.onCapitulate) G.onCapitulate(tag, win, true, null);
+      if (G.onCivilEnd) G.onCivilEnd(win, tag);
       return;
     }
     // savaşlardan çık; yabancı topraklardaki işgal sona erer; verdiği garantiler düşer
@@ -793,7 +794,12 @@
     if (G.needSummary) { G.updateSummaries(); G.needSummary = 0; }
     capitulations();
     G.checkEvents();
+    if (G.altTick) G.altTick();
     if (st.day % 5 === 0) G.timedSpirits();
+    if (st.day % 30 === 25 && G.civilAid) G.civilAid();
+    if (st.day % 5 === 2 && G.intelTick) G.intelTick();
+    if (st.day % 30 === 0 && G.achCheck) G.achCheck();
+    if (G.endCheck) G.endCheck();
     G.decTick();
     if (st.day % 10 === 0) G.expelUnits();
     if (st.day % 10 === 5 && G.occTick) G.occTick();

@@ -636,6 +636,8 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
 .dialog.ev .btns, .dialog.news .btns { padding: 12px 14px 14px; gap: 6px; }
 .btn.evopt { min-height: 42px; font-size: 15px; justify-content: flex-start; padding-left: 14px; }
 .btn.evopt.pri { background: linear-gradient(180deg, #535c47, #333a2b); box-shadow: var(--bevel), inset 3px 0 0 #c9a54e; }
+.btn.evopt:has(.evd) { flex-direction: column; align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
+.btn.evopt .evd { display: block; font-size: 11.5px; font-weight: 400; color: #c9bf9f; letter-spacing: 0; text-transform: none; margin-top: 2px; text-align: left; line-height: 1.3; }
 @media (orientation: landscape) and (max-height: 560px) {
   .dialog.ev { width: min(760px, 100%); display: grid; grid-template-columns: 44% 1fr; grid-template-areas: "head head" "pic eb" "pic text" "btns btns"; align-content: start; }
   .ev-head { grid-area: head; padding: 6px 12px; } .dialog.ev h3 { font-size: 19px; }

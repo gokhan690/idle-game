@@ -951,7 +951,9 @@
   PANELS.dip = () => {
     const st = G.st, c = me();
     if (UI.sub && UI.sub.startsWith('c:')) return countryView(UI.sub.slice(2));
+    if (UI.sub === 'intel') return intelView(c);
     let html = '';
+    html += intelSummary(c);
     const fac = c.fac ? st.factions[c.fac] : null;
     if (fac) {
       html += sec('İttifak', `<div class="item"><div class="grow"><div class="t">${esc(fac.n)}</div><div class="d">Lider: ${esc(G.cname(fac.leader))}</div><div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">${fac.members.filter((t) => st.C[t].alive).map((t) => `<span title="${esc(G.cname(t))}">${G.flag(t, 24, 16)}</span>`).join('')}</div></div></div>`);
@@ -1019,6 +1021,42 @@
     if (sentD || sentA) h += `<button class="btn sm" data-act="volback" data-v="${tag}">Gönüllüleri geri çağır</button>`;
     return sec('Gönüllü kuvvetler', `<p class="muted small" style="margin:0">Savaşa girmeden dost bir ülkeye tümen ve uçak gönder. Gönüllüler alıcının komutasında savaşır; insan gücü ve takviye sana yazılır, savaş bitince eve dönerler, deneyim sende kalır. En çok ordunun %10'u.</p>${h}`);
   }
+  // ---------- İstihbarat teşkilatı ----------
+  function intelSummary(c) {
+    const I = c.intel;
+    if (!I) return sec('İstihbarat teşkilatı', `<p class="muted small" style="margin:0">Ajan yetiştir, ülkelere casus ağı kur; ağ güçlenince teknoloji çal, sabotaj yap, şifre kır, direnişi örgütle ya da darbe hazırla.</p><button class="btn pri" data-act="intelfound" ${c.pp >= G.INTEL_FOUND ? '' : 'disabled'}>Teşkilatı kur · ${G.INTEL_FOUND} SG</button>`);
+    const nets = Object.entries(I.net).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return sec('İstihbarat teşkilatı', `${kv([['Ajan', `${G.intelFree(c)} boşta / ${I.ag}`], ['Eğitimde', I.tr.length], ['Ağ', Object.keys(I.as).length], ['Operasyon', I.ops.length]])}${nets.length ? `<div class="row" style="flex-wrap:wrap;gap:8px;margin:4px 0">${nets.map(([t, n]) => `<span class="small">${G.flag(t, 21, 14)} %${Math.floor(n)}</span>`).join('')}</div>` : ''}<button class="btn pri" data-act="intelopen">Teşkilatı yönet</button>`);
+  }
+  function intelView(c) {
+    const st = G.st, I = c.intel;
+    if (!I) { UI.sub = null; return PANELS.dip(); }
+    let html = `<button class="btn sm" data-act="intelback">‹ Diplomasi</button>`;
+    const max = G.intelMax(c);
+    html += sec('Ajanlar', `${kv([['Toplam', `${I.ag}/${max}`], ['Boşta', G.intelFree(c)], ['Eğitimde', I.tr.length ? I.tr.map((d) => d + ' gün').join(', ') : '—']])}<p class="muted small" style="margin:0">Ajanları bir ülkenin sayfasından (Diplomasi → ülke → Casus ağı) gönder. Her ajan ağı her 5 günde ~%2 büyütür; hedefin karşı istihbaratı yavaşlatır ve ajan yakalayabilir.</p><button class="btn ${I.ag + I.tr.length < max && c.pp >= 25 ? 'pri' : ''}" data-act="intelrec" ${I.ag + I.tr.length < max && c.pp >= 25 ? '' : 'disabled'}>Ajan yetiştir · 25 SG</button>`);
+    let uh = '<div class="list">';
+    for (const [k, U] of Object.entries(G.INTEL_UPG)) {
+      const has = I.up[k], run = I.upq && I.upq.id === k, ok = !has && !I.upq && c.pp >= U.cost;
+      uh += `<div class="item"><div class="grow"><div class="t">${U.n}${has ? ' <span class="good small">✓</span>' : ''}</div><div class="d">${U.d}${has ? '' : ` · ${U.cost} SG · ${U.days} gün`}</div>${run ? `<div class="d good">Kuruluyor: ${I.upq.d} gün</div>` : ''}</div>${has || run ? '' : `<button class="btn sm ${ok ? 'pri' : ''}" data-act="intelupg" data-v="${k}" ${ok ? '' : 'disabled'}>Kur</button>`}</div>`;
+    }
+    html += sec('Geliştirmeler', uh + '</div>');
+    const ts = [...new Set(Object.keys(I.net).concat(Object.keys(I.as)))].filter((t) => st.C[t]?.alive).sort((a, b) => (I.net[b] || 0) - (I.net[a] || 0));
+    html += sec('Casus ağları', ts.length ? `<div class="list">${ts.map((t) => `<button class="item" data-act="opencountry" data-v="${t}">${G.flag(t, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(t))} <span class="muted small">%${Math.floor(I.net[t] || 0)}</span></div>${bar((I.net[t] || 0) / 100)}<div class="d">${I.as[t] || 0} ajan · karşı istihbarat %${Math.round(G.intelCI(t) * 100)}${I.ops.filter((o) => o.t === t).map((o) => ` · ${G.SPY_OPS[o.op].n} (${o.d} gün)`).join('')}</div></div><span class="muted">›</span></button>`).join('')}</div>` : '<p class="muted small" style="margin:0">Henüz casus ağı yok.</p>');
+    const foes = Object.values(st.C).filter((x) => x.alive && x.intel && x.intel.as[c.tag]);
+    if (I.up.ci) html += sec('Karşı istihbarat raporu', foes.length ? `<div class="list">${foes.map((x) => `<div class="item">${G.flag(x.tag, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(x.tag))}</div><div class="d">${x.intel.as[c.tag]} ajan · ağ %${Math.floor(x.intel.net[c.tag] || 0)}</div></div></div>`).join('')}</div>` : '<p class="muted small" style="margin:0">Ülkemizde bilinen yabancı casus ağı yok.</p>');
+    else html += `<p class="muted small">Karşı İstihbarat Dairesi kurulunca ülkendeki yabancı casus ağları burada görünür.</p>`;
+    return { title: 'İstihbarat teşkilatı', html };
+  }
+  function spySection(c, tag) {
+    const I = c.intel; if (!I) return '';
+    const st = G.st, n = I.net[tag] || 0;
+    let h = `<div class="item"><div class="grow"><div class="t">Casus ağı %${Math.floor(n)}</div>${bar(n / 100)}<div class="d">${I.as[tag] || 0} ajan görevde · ${G.intelFree(c)} ajan boşta · karşı istihbarat %${Math.round(G.intelCI(tag) * 100)}</div></div><div class="btns"><button class="btn sm" data-act="intelas" data-k="${tag}" data-v="-1" ${I.as[tag] ? '' : 'disabled'}>−</button><button class="btn sm pri" data-act="intelas" data-k="${tag}" data-v="1" ${G.intelFree(c) ? '' : 'disabled'}>+ Ajan</button></div></div>`;
+    for (const [op, O] of Object.entries(G.SPY_OPS)) {
+      const run = I.ops.find((o) => o.t === tag && o.op === op), r = G.spyAllowed(c, tag, op);
+      h += `<div class="item"><div class="grow"><div class="t">${O.n} <span class="muted small">ağ %${O.net}</span></div><div class="d">${O.d} · ${O.cost} SG · ${O.days} gün${n >= O.net ? ` · başarı %${Math.round(G.intelChance(c, tag, op) * 100)}` : ''}</div>${run ? `<div class="d good">Sürüyor: ${run.d} gün</div>` : !r.ok ? `<div class="d warn">${esc(r.why)}</div>` : ''}</div>${run ? '' : `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="spyop" data-k="${tag}" data-v="${op}" ${r.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
+    }
+    return sec('Casus ağı', `<div class="list">${h}</div>`);
+  }
   function countryView(tag) {
     const st = G.st, c = me(), x = st.C[tag], d = G.def(tag);
     const divs = st.units.filter((u) => u.t === tag).length;
@@ -1026,6 +1064,8 @@
     const ratio = G.armyPower(tag) / (G.armyPower(c.tag) + 1);
     html += kv([['Tümen', divs], ['Sivil fab.', x.sum.civ], ['Askerî fab.', x.sum.mil], ['Eyalet', x.sum.provs], ['Ordu gücü', ratio > 1.3 ? 'Bizden güçlü' : ratio < 0.7 ? 'Bizden zayıf' : 'Denk', ratio > 1.3 ? 'bad' : ratio < 0.7 ? 'good' : ''], ['Görüş', G.opinion(tag, c.tag) > 20 ? 'Dostane' : G.opinion(tag, c.tag) < -20 ? 'Düşmanca' : 'Nötr']]);
     if (x.enemies.length) html += `<p class="small" style="margin:0">Savaşta: ${x.enemies.map((t) => esc(G.cname(t))).join(', ')}</p>`;
+    const cwp = (st.civil || []).find((p) => p.includes(tag));
+    if (cwp) { const o = cwp[0] === tag ? cwp[1] : cwp[0]; html += sec('İç savaş', `<p class="small" style="margin:0">${esc(G.cname(cwp[1]))} hükümeti ile ${esc(G.cname(cwp[0]))} asileri savaşıyor. Kazanan bütün ülkeyi alır. Taraflardan birine gönüllü, teçhizat ya da casus göndererek savaşın sonucunu etkileyebilirsin.</p><div class="list"><button class="item" data-act="opencountry" data-v="${o}">${G.flag(o, 30, 20)}<div class="grow"><div class="t">Karşı taraf: ${esc(G.cname(o))}</div><div class="d">${esc(st.C[o].leader)} · ${st.C[o].sum.provs} eyalet</div></div><span class="muted">›</span></button></div>`); }
     if (x.overlord && st.C[x.overlord]?.alive) html += `<p class="small" style="margin:0">${esc(G.cname(x.overlord))} devletine bağlı · ${G.AUTO_LV[G.autoLevel(x)].n} (özerklik %${Math.round(x.auto ?? 30)})</p>`;
     const xs = G.subjectsOf(tag); if (xs.length) html += `<p class="small" style="margin:0">Bağlı devletleri: ${xs.map((y) => esc(G.cname(y.tag))).join(', ')}</p>`;
     const xsp = (x.spirits || []).filter((s) => g.SPIRITS[s]);
@@ -1061,7 +1101,8 @@
       const r = G.opAllowed(c.tag, tag, op);
       ih += `<div class="item"><div class="grow"><div class="t">${O.n}</div><div class="d">${O.d} · ${O.cost} SG · ${O.days} gün</div>${run ? `<div class="d good">Sürüyor: ${run.d} gün kaldı</div>` : !r.ok ? `<div class="d warn">${esc(r.why)}</div>` : ''}</div>${run ? '' : `<button class="btn sm ${r.ok ? 'pri' : ''}" data-act="op" data-k="${tag}" data-v="${op}" ${r.ok ? '' : 'disabled'}>Başlat</button>`}</div>`;
     }
-    html += sec('İstihbarat operasyonları', ih + '</div>');
+    html += spySection(c, tag);
+    html += sec(c.intel ? 'Siyasi operasyonlar' : 'İstihbarat operasyonları', ih + '</div>');
     return { title: d.n, html };
   }
 
@@ -1070,6 +1111,7 @@
     const st = G.st;
     if (UI.sub === 'log') return { title: 'Olay günlüğü', html: `<div class="list">${st.log.slice(0, 80).map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div></div>`).join('')}</div>` };
     if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: HELP };
+    if (UI.sub === 'ach') return achView();
     if (UI.sub === 'new') return { title: 'Yeni oyun', html: `<p style="margin:0">Mevcut oyun kaydedilmediyse kaybolur. Otomatik kayıt yine de saklanır.</p><div class="btns"><button class="btn danger" data-act="newgame">Yeni oyuna başla</button><button class="btn" data-act="back">Vazgeç</button></div>` };
     let html = '';
     let sh = '<div class="list">';
@@ -1083,14 +1125,18 @@
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.autosave ? 'on' : ''}" data-act="setting" data-v="autosave"><span><b>Aylık otomatik kayıt</b></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
-    html += sec('Oyun', `<div class="list"><button class="item" data-act="panel" data-p="ledger"><div class="grow"><div class="t">Defter</div><div class="d">Ülkelerin sanayi, ordu, hava, deniz ve kayıp karşılaştırması</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
+    html += `<p class="muted small" style="margin:-4px 0 10px">Zorluk: <b>${esc((G.DIFF[st.opts.diff ?? 1] || G.DIFF[1]).n)}</b> · Mod: <b>${st.opts.alt ? 'Alternatif dünya' : st.opts.hist ? 'Tarihî' : 'Serbest'}</b></p>`;
+    html += sec('Oyun', `<div class="list"><button class="item" data-act="panel" data-p="ledger"><div class="grow"><div class="t">Defter</div><div class="d">Ülkelerin sanayi, ordu, hava, deniz ve kayıp karşılaştırması</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="ach"><div class="grow"><div class="t">Başarımlar ve puan</div><div class="d">${UI.achN()}/${G.ACH.length} başarım · puan ${G.score(st.player)}</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="log"><div class="grow"><div class="t">Olay günlüğü</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="help"><div class="grow"><div class="t">Nasıl oynanır</div></div><span class="muted">›</span></button><button class="item" data-act="tutorial"><div class="grow"><div class="t">Başlangıç rehberi</div><div class="d">Temel ekranları adım adım gösterir</div></div><span class="muted">›</span></button><button class="item" data-act="sub" data-v="new"><div class="grow"><div class="t">Yeni oyun</div></div><span class="muted">›</span></button></div>`);
     return { title: 'Menü', html };
   };
 
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
-  <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
-  <section class="sec"><h3 class="sec-h">İç savaş</h3><p class="small" style="margin:0">Bazı alternatif yollarda ("İÇ SAVAŞ" yazan odaklar) eski rejim yanlıları ayaklanır: ülkenin başkentten uzak bir bölgesi asi devlet olur, ordunun bir kısmı onlara katılır ve aynı ideolojideki büyük güçler asilere silah yollar. Taraflardan biri teslim olunca kazanan bütün ülkeyi alır. İç savaşlı yollar: Spartakist Almanya, Huey Long ve Sosyalist Amerika, Halk Cephesi Devrimi ve Action Française, Osmanlı Restorasyonu, Genel Grev (İngiltere), Troçki, Sosyalist İtalya, Sivil Hükümet (Japonya).</p></section>
+  <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Küçük devletlerde de birer alternatif yol var: Polonya (Ulusal Birlik Kampı), Macaristan (Habsburg Restorasyonu), Romanya (Köylü Partisi), Yunanistan (Megali İdea), Yugoslavya (Partizan Devrimi), Çin (Wang Jingwei), Bulgaristan (Büyük Bulgaristan), İsveç (Kalmar Birliği), Brezilya (Entegralist Darbe). Her yolun kendi olay zinciri vardır: odaklar ilerledikçe seçim pencereleri gelir, son odakta yola özel bir ulusal ruh kazanırsın. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
+  <section class="sec"><h3 class="sec-h">Oyun modları ve zorluk</h3><p class="small" style="margin:0"><b>Tarihî</b>: yapay zekâ tarihî olayları izler. <b>Serbest</b>: ülkeler kendi hedeflerini kovalar. <b>Alternatif</b>: serbest dünyaya ek olarak 4-6 yapay zekâ ülkesi rastgele alternatif yollara girer (iç savaşlar dahil); her oyun farklıdır ve bu ülkelerin olayları dünya haberi olarak gelir. Zorluk: <b>Kolay</b> sana fabrika/araştırma/istikrar bonusu verir; <b>Normal</b> tarafsızdır; <b>Zor</b> ve <b>Elit</b> yapay zekâya sanayi, araştırma ve muharebe bonusu verir.</p></section>
+  <section class="sec"><h3 class="sec-h">İstihbarat teşkilatı</h3><p class="small" style="margin:0">Diplomasi panelinden teşkilatı kur (150 SG). Ajan yetiştir (25 SG, 30 gün), bir ülkenin sayfasında "Casus ağı" bölümünden ajan gönder. Ağ büyüdükçe operasyonlar açılır: Kara Propaganda (%20), Direnişi Örgütle (%30), Sanayi Sabotajı (%35), Teknoloji Çal (%45), Şifreleri Kır (%50), Darbe Hazırla (%70). Başarı şansı ağın gücüne ve hedefin karşı istihbaratına bağlıdır; başarısızlıkta ajan yakalanabilir. Geliştirmeler: Ajan Okulu, Karşı İstihbarat, Saha Operasyonları, Kriptoloji, Propaganda Bürosu. Serbest ve alternatif modlarda büyük güçler de teşkilat kurar.</p></section>
+  <section class="sec"><h3 class="sec-h">Puan, başarımlar ve oyunun sonu</h3><p class="small" style="margin:0">Menü → Başarımlar ve puan: büyük güçlerin puan tablosu ve 17 başarım (cihazında saklanır). Oyun 1 Ocak 1949'da sona erer ve bir özet gösterir; istersen oynamaya devam edebilirsin. Ülken yok olursa yenilgi ekranı çıkar.</p></section>
+  <section class="sec"><h3 class="sec-h">İç savaş</h3><p class="small" style="margin:0">Bazı alternatif yollarda ("İÇ SAVAŞ" yazan odaklar) eski rejim yanlıları ayaklanır: ülkenin başkentten uzak bir bölgesi asi devlet olur, ordunun bir kısmı onlara katılır ve aynı ideolojideki büyük güçler asilere silah yollar. Taraflardan biri teslim olunca kazanan bütün ülkeyi alır; kazanan "İç Savaşın Sonu" olayında uzlaşma ya da hesaplaşma seçer. Başka ülkelerin iç savaşlarına gönüllü, teçhizat ve casus göndererek karışabilirsin (ülke sayfasında "İç savaş" bölümü). İç savaşlı yollar: Spartakist Almanya, Huey Long ve Sosyalist Amerika, Halk Cephesi Devrimi ve Action Française, Osmanlı Restorasyonu, Genel Grev (İngiltere), Troçki, Sosyalist İtalya, Sivil Hükümet (Japonya); küçük devletlerde Polonya, Macaristan, Romanya, Yugoslavya, Çin ve Brezilya yolları.</p></section>
   <section class="sec"><h3 class="sec-h">Parti kampanyaları</h3><p class="small" style="margin:0">Kararlar → Siyaset: her parti için bir kampanya kararı (50 SG, 60 gün) o partinin halk desteğini %12 artırır. Bir muhalefet partisi %50'yi geçince "… Kur" kararıyla hükümeti devralabilirsin (100 SG, savaşta olmaz). Eski iktidarın desteği hâlâ %35 üstündeyse yanlıları ayaklanır ve iç savaş çıkar; önce kampanyalarla eski partiyi zayıflatmak daha güvenlidir. Hükümeti değiştirmek de alternatif yol sayılır, ülkenin tarihî olayları kapanır.</p></section>
   <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında kara (kırmızı), hava (açık mavi) ve deniz (lacivert) için tek bir dal vardır: ülkenin kendi ulusal dalı varsa o kullanılır, yoksa genel dal; ayrıca sanayi (altın) ve siyaset/diplomasi dalları bulunur. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
@@ -1230,7 +1276,7 @@
     UI.modalOpen = 1;
     G.st.paused = 1;
     const opts = p.opts || [{ n: 'Tamam', fx: () => {} }];
-    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}</button>`).join('')}</div>`;
+    const btns = `<div class="btns">${opts.map((o, i) => `<button class="btn evopt ${i === 0 ? 'pri' : ''}" data-act="modalopt" data-v="${i}">${esc(o.n)}${o.d ? `<small class="evd">${esc(o.d)}</small>` : ''}</button>`).join('')}</div>`;
     const art = G.eventArt ? G.eventArt(p) : '';
     if (p.news) {
       // HOI4 dünya haberi: gazete sayfası
@@ -1600,6 +1646,13 @@
   ACT.elsusp = () => { const r = G.elecSuspend(me()); UI.toast(r.ok ? 'Seçimler askıya alındı.' : r.why, r.ok ? 'warn' : 'bad'); UI.render(); UI.hud(); };
   ACT.elres = () => { G.elecResume(me()); UI.toast('Seçimler yeniden başlıyor.', 'good'); UI.render(); UI.hud(); };
   ACT.lend = (d) => { const ok = G.lend(me().tag, d.k, d.e, +d.v); UI.toast(ok ? `${G.cname(d.k)} ülkesine gönderildi.` : 'Yeterli stok yok.', ok ? 'good' : 'warn'); UI.render(); };
+  ACT.intelfound = () => { const r = G.intelFound(me()); if (!r.ok) UI.toast(r.why, 'warn'); UI.render(); UI.hud(); };
+  ACT.intelopen = () => { UI.sub = 'intel'; UI.render(true); };
+  ACT.intelback = () => { UI.sub = null; UI.render(true); };
+  ACT.intelrec = () => { const r = G.intelRecruit(me()); UI.toast(r.ok ? 'Ajan eğitime başladı.' : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.intelupg = (d) => { const r = G.intelUpgrade(me(), d.v); UI.toast(r.ok ? `${G.INTEL_UPG[d.v].n} kuruluyor.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.intelas = (d) => { G.intelAssign(me(), d.k, +d.v); UI.render(); };
+  ACT.spyop = (d) => { const r = G.spyStart(me(), d.k, d.v); UI.toast(r.ok ? `${G.SPY_OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
   ACT.op = (d) => { const r = G.startOp(me().tag, d.k, d.v); UI.toast(r.ok ? `${G.OPS[d.v].n} başladı.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
   ACT.release = (d) => { const ok = G.makePuppet(me().tag, d.v); UI.toast(ok ? `${G.cname(d.v)} kukla devlet olarak kuruldu.` : 'Kurulamadı.', ok ? 'good' : 'warn'); G.mapDirty = 1; UI.render(); };
   ACT.save = (d) => { const ok = G.saveGame(d.v); UI.toast(ok ? 'Oyun kaydedildi.' : 'Kayıt başarısız: tarayıcı depolaması kullanılamıyor.', ok ? 'good' : 'bad'); UI.render(); };
@@ -1659,7 +1712,7 @@
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
   try { UI.tall = localStorage.getItem('dc_tall') === '1'; } catch (e) {}
-  UI.startOpts = { hist: 1, diff: 1 };
+  UI.startOpts = { mode: 0, diff: 1 };
   UI.showStart = () => {
     $('start').hidden = false;
     ['hud', 'nav', 'map-tools'].forEach((id) => ($(id).hidden = true));
@@ -1681,8 +1734,10 @@
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
-      <div class="seg"><button class="${UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="1">Tarihî gidişat</button><button class="${!UI.startOpts.hist ? 'on' : ''}" data-act="sopt" data-k="hist" data-v="0">Serbest dünya</button></div>
-      <div class="seg"><button class="${UI.startOpts.diff === 0 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="0">Kolay</button><button class="${UI.startOpts.diff === 1 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="1">Normal</button><button class="${UI.startOpts.diff === 2 ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="2">Zor</button></div></div>`;
+      <div class="seg"><button class="${UI.startOpts.mode === 0 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="0">Tarihî</button><button class="${UI.startOpts.mode === 1 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="1">Serbest</button><button class="${UI.startOpts.mode === 2 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="2">Alternatif</button></div>
+      <p class="muted small" style="margin:0 0 8px">${['Yapay zekâ tarihî olayları izler: Anschluss, Barbarossa, Pearl Harbor…', 'Yapay zekâ kendi hedeflerini kovalar; tarihî olaylar yalnızca ittifaklar için gerçekleşir.', 'Serbest dünya + birkaç yapay zekâ ülkesi rastgele alternatif yollara girer (Kayzer Almanyası, Troçki, Osmanlı…). Her oyun farklı.'][UI.startOpts.mode]}</p>
+      <div class="seg">${G.DIFF.map((x, i) => `<button class="${UI.startOpts.diff === i ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="${i}">${x.n}</button>`).join('')}</div>
+      <p class="muted small" style="margin:0">${esc(G.DIFF[UI.startOpts.diff].d)}</p></div>`;
     const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
     if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
     html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
@@ -1691,7 +1746,7 @@
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
   ACT.begin = () => {
-    G.newGame(UI.startSel, { hist: UI.startOpts.hist, diff: UI.startOpts.diff });
+    G.newGame(UI.startSel, { hist: UI.startOpts.mode === 0 ? 1 : 0, alt: UI.startOpts.mode === 2 ? 1 : 0, diff: UI.startOpts.diff });
     G.st.speed = 2; G.st.paused = 1;
     UI.enterGame();
     UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
@@ -1725,5 +1780,33 @@
       G.queuePopup({ title: `${G.cname(tag)} teslim oldu`, text: 'Barış konferansı:' + sum, opts: [{ n: 'Anlaşıldı', fx: () => {} }] });
     }
   };
-  G.onGameOver = () => {};
+  // ---------- Başarımlar ve oyun sonu ----------
+  const achGet = () => { try { return JSON.parse(localStorage.getItem('dc_ach') || '{}'); } catch (e) { return {}; } };
+  UI.achN = () => Object.keys(achGet()).filter((k) => G.ACH.some((a) => a[0] === k)).length;
+  G.onAch = (id, n, d) => {
+    const A = achGet(); if (A[id]) return;
+    A[id] = `${G.cname(G.st.player)} · ${G.fmtDate(G.st.day)}`;
+    try { localStorage.setItem('dc_ach', JSON.stringify(A)); } catch (e) {}
+    G.log(`Başarım: ${n} — ${d}`, [G.st.player], 'good');
+  };
+  function achView() {
+    const st = G.st, A = achGet();
+    let html = sec('Puan tablosu', `<div class="list">${G.scoreBoard().map((x, i) => `<div class="item"><b style="width:22px">${i + 1}</b>${G.flag(x.t, 30, 20)}<div class="grow"><div class="t">${esc(G.cname(x.t))}${x.t === st.player ? ' <span class="good small">(sen)</span>' : ''}</div></div><b>${x.s}</b></div>`).join('')}</div><p class="muted small" style="margin:0">Puan: zafer noktası ×3, eyalet, sivil fabrika ×2, askerî fabrika ×3, tümen ×2. Oyun ${G.fmtDate(G.dayOf(G.END_DATE))} tarihinde sona erer.</p>`);
+    html += sec('Başarımlar', `<div class="list">${G.ACH.map(([id, n, d]) => `<div class="item" style="${A[id] ? '' : 'opacity:.55'}"><span style="font-size:20px">${A[id] ? '🏅' : '🔒'}</span><div class="grow"><div class="t">${esc(n)}</div><div class="d">${esc(d)}${A[id] ? ` · <span class="good">${esc(A[id])}</span>` : ''}</div></div></div>`).join('')}</div>`, `${UI.achN()}/${G.ACH.length}`);
+    return { title: 'Başarımlar ve puan', html };
+  }
+  const endSummary = () => {
+    const st = G.st, c = st.C[st.player], s0 = st.s0 || {};
+    const board = G.scoreBoard(), rank = board.findIndex((x) => x.t === st.player) + 1;
+    const divs = st.units.filter((u) => u.t === st.player).length;
+    return `Puan: ${G.score(st.player)} (büyük güçler arasında ${rank}. sıra). Eyalet ${s0.provs ?? '?'} → ${c.sum.provs}, sivil fabrika ${s0.civ ?? '?'} → ${c.sum.civ}, askerî fabrika ${s0.mil ?? '?'} → ${c.sum.mil}, tümen ${s0.divs ?? '?'} → ${divs}. En güçlü devlet: ${G.cname(board[0].t)}. Başarımlar: ${UI.achN()}/${G.ACH.length}.`;
+  };
+  G.onGameEnd = () => {
+    G.achCheck();
+    G.queuePopup({ art: 'surrender', title: 'Oyunun Sonu', eyebrow: G.fmtDate(G.st.day), text: `İkinci Dünya Savaşı çağı sona erdi. ${G.cname(G.st.player)} yeni dünyada yerini aldı. ${endSummary()}`, opts: [{ n: 'Oynamaya devam et', fx: () => {} }, { n: 'Yeni oyun', fx: () => ACT.newgame() }] });
+  };
+  G.onGameOver = () => {
+    const st = G.st;
+    G.queuePopup({ art: 'surrender', title: 'Yenilgi', eyebrow: G.fmtDate(st.day), text: `${G.cname(st.player)} artık haritada yok. Hükümet dağıldı, ordular teslim oldu. Tarih kazananlar tarafından yazılacak. Ayakta kalan en güçlü devlet: ${G.cname(G.scoreBoard()[0]?.t || st.player)}.`, opts: [{ n: 'Yeni oyun', fx: () => ACT.newgame() }, { n: 'Kayıt yükle', fx: () => { UI.open('menu'); } }] });
+  };
 })(window);

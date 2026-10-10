@@ -192,7 +192,8 @@
       ]),
     ] },
   };
-  for (const [tag, def] of Object.entries(A)) {
+  g.ALT_PATH = path; g.ALT_IDEO = ideo;
+  g.addAltPaths = (A) => { for (const [tag, def] of Object.entries(A)) {
     const nat = g.FOCUS_NATIONAL[tag]; if (!nat) continue;
     const base = Math.max(...nat.map((f) => f.x)) + 2;
     const ids = new Set(nat.map((f) => f.id));
@@ -204,5 +205,6 @@
     }
     for (const b of def.block) { const f = nat.find((x) => x.id === b); if (f) f.excl = (f.excl || []).concat(def.roots); }
     nat.push(...def.list);
-  }
+  } };
+  g.addAltPaths(A);
 })(window);

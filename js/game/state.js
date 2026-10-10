@@ -138,6 +138,8 @@
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
     if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
+    if (G.scoreStart) G.scoreStart(); // oyun sonu karşılaştırması için başlangıç değerleri
+    if (G.altSetup) G.altSetup(); // alternatif dünya: hangi YZ ülkeleri alternatif yola girecek
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
     return st;
   };
