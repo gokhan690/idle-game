@@ -70,11 +70,14 @@
     for (const k of IDEOS) c.pop[k] = (c.pop[k] || 0) / s;
   }
   G.normalizePop = normalizePop;
-  G.addPop = (c, k, v) => { c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
+  // senaryo kilidi: alternatif tarihte yapay zekâ ülkesinin ideolojisi kolayca geri dönmez
+  const locked = (c, k) => c.scenLock && c.tag !== G.st.player && k !== c.scenLock;
+  G.addPop = (c, k, v) => { if (v > 0 && locked(c, k)) v *= 0.15; c.pop[k] = clamp((c.pop[k] || 0) + v, 0.01, 0.98); normalizePop(c); };
 
   G.setIdeology = (c, ideo) => {
     const st = G.st;
     if (c.ideo === ideo) return;
+    if (locked(c, ideo) && (c.pop[ideo] || 0) < 0.8) return;
     const old = c.ideo;
     c.ideo = ideo;
     c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.IDEOLOGIES[ideo].n} Hükümet`;
@@ -138,9 +141,11 @@
   };
 
   // ---------- Odak motoru ----------
-  const flCache = {};
+  const flCache = {}, llCache = {};
+  // denize kıyısı olmayan ülke (deniz dalı gösterilmez); başlangıç durumuna göre bir kez hesaplanır
+  const landlocked = (c) => { if (llCache[c.tag] == null && G.homeZone && G.st && G.st.C[c.tag]) llCache[c.tag] = G.homeZone(c) < 0 ? 1 : 0; return llCache[c.tag] === 1; };
   G.focusList = (c) => {
-    const key = c.tag;
+    const ll = landlocked(c), key = c.tag + (ll ? ':L' : '');
     if (flCache[key]) return flCache[key];
     const nat = g.FOCUS_NATIONAL[c.tag];
     let list;
@@ -148,6 +153,8 @@
       const off = Math.max(...nat.map((f) => f.x)) + 1.5;
       list = nat.concat(g.FOCUS_GENERIC.filter((f) => !f.pol).map((f) => Object.assign({}, f, { x: f.x + off })));
     } else list = g.FOCUS_GENERIC;
+    // denize kıyısı olmayan ülke deniz dalını görmez (HOI4)
+    if (ll) { const nv = new Set(g.FOCUS_NAVAL || []); list = list.filter((f) => !nv.has(f.id)); }
     return (flCache[key] = list);
   };
   G.focusById = (c, id) => G.focusList(c).find((f) => f.id === id);
@@ -339,7 +346,7 @@
     for (let i = 0; i < NP; i++) { const pr = st.prov[i]; if (pr.oc === tag && pr.o === over) { pr.o = pr.c = pr.core = tag; n++; } }
     if (!n) return false;
     for (const k of Object.keys(st.wars)) { const [a, b] = k.split('|'); if (a === tag || b === tag) delete st.wars[k]; }
-    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
+    c.alive = 1; c.overlord = over; c.auto = 30; c.ideo = o.ideo; c.scenLock = 0; c.pop[o.ideo] = Math.max(c.pop[o.ideo] || 0, 0.6); G.normalizePop(c);
     c.leader = `${G.cname(over)} yanlısı hükümet`;
     G.updateSummaries();
     c.cap = G.anyOwnProvince(tag);
