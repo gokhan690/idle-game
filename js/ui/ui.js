@@ -278,15 +278,7 @@
   // odak türü (HOI4'teki simge renkleri): sanayi, kara, hava/deniz, siyaset, diplomasi
   const FOCUS_ICO = { ind: 'civ', land: 'tank', air: 'air', sea: 'navy', pol: 'pp', dip: 'hand' };
   const FOCUS_CAT = { ind: ['Sanayi', '#d6aa4c'], land: ['Kara', '#c9614a'], air: ['Hava', '#8fc3e8'], sea: ['Deniz', '#4c7fd0'], pol: ['Siyaset', '#a783d1'], dip: ['Diplomasi', '#6dba73'] };
-  const focusCat = (f) => {
-    const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
-    if (['demand', 'demandMany', 'guar', 'invite', 'joinFac', 'mkFac', 'pact', 'goal', 'gift'].includes(fn)) return 'dip';
-    if (k.some((x) => ['addCiv', 'addMil', 'construct', 'factory', 'effCap', 'addInfra', 'synth', 'stock', 'steel', 'oil', 'al', 'rub', 'tun', 'chr', 'research', 'slots'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'ind' || r[0] === 'elec')) return 'ind';
-    if (k.some((x) => ['addPlanes', 'addBombers', 'addCas', 'air'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'air')) return 'air';
-    if (k.some((x) => ['navy', 'ships', 'addDock', 'addConv', 'invasion'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'nav')) return 'sea';
-    if (k.some((x) => ['landAtk', 'landDef', 'armAtk', 'org', 'units', 'forts', 'tech', 'plan', 'entrench', 'brk', 'train', 'mp', 'speed', 'xpGain'].includes(x)) || fn === 'general' || fn === 'fortRegion' || (fx.rb || []).length) return 'land';
-    return 'pol';
-  };
+  const focusCat = (f) => G.focusCat(f);
   // varsayılan yakınlaştırma: dikeyde birkaç sütun, yatayda daha fazlası sığsın
   const FT_Z = [0.45, 0.6, 0.75, 0.9, 1.1];
   UI.ftZoom = () => UI.ftZ || (innerWidth < innerHeight ? 0.6 : 0.75);
@@ -1098,7 +1090,7 @@
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Senaryolar</h3><p class="small" style="margin:0">Başlangıç ekranında senaryo seçilir. "Fırtına Yaklaşıyor" tarihî 1936 dünyasıdır. Alternatif tarih senaryoları: Kızıl Almanya (Thälmann, Almanya Komintern'de), Kayzer Geri Döndü (monarşist Almanya ve Orta Avrupa Birliği), Amerika Önce (Huey Long, faşist ve silahlanan ABD), Halk Cephesi Devrimi (komünist Fransa) ve Osmanlı Restorasyonu (Halife Abdülmecid, güçlü Türk ordusu). Alternatif senaryolarda tarihî olay zinciri kapalıdır; yapay zekâ ülkeleri senaryodaki ideolojilerine bağlı kalır.</p></section>
-  <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında ulusal odakların yanında HOI4'teki gibi kara (kırmızı), hava (açık mavi), deniz (lacivert), sanayi (altın) ve siyaset/diplomasi dalları vardır. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
+  <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında kara (kırmızı), hava (açık mavi) ve deniz (lacivert) için tek bir dal vardır: ülkenin kendi ulusal dalı varsa o kullanılır, yoksa genel dal; ayrıca sanayi (altın) ve siyaset/diplomasi dalları bulunur. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita</h3><p class="small" style="margin:0">Tek parmakla kaydır, iki parmakla yakınlaştır. Bir eyalete dokununca bilgi kartı açılır. Sağdaki düğmeler harita modunu değiştirir, alan seçimini açar ve başkente döner.</p></section>
   <section class="sec"><h3 class="sec-h">Birlikler</h3><p class="small" style="margin:0">Kendi tümenlerinin bulunduğu eyalete (veya sayaca) dokun: tümenler seçilir. Sonra hedef eyalete dokun: en kısa yol bulunur. Deniz aşırı hedeflerde birlikler gemiyle taşınır; düşman kıyısına çıkarma için yeterli deniz gücü gerekir. Düşman birliği olan eyalete yürümek saldırı başlatır. Muharebe simgesindeki renk üstünlüğü gösterir.</p></section>

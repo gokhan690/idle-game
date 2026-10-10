@@ -803,7 +803,11 @@
     G.opsTick();
     if (G.volTick) G.volTick(); // gönüllü kuvvetler
     if (G.elecTick) G.elecTick(); // seçimler
-    if (st.day % 30 === 0) st.tension = Math.max(0, st.tension - 0.3);
+    if (st.day % 30 === 0) {
+      if (st.opts.hist) st.tension = Math.max(0, st.tension - 0.3);
+      // serbest dünya: 1937'den sonra silahlanma yarışıyla gerginlik ayda biraz artar (savaşlar dışında da)
+      else st.tension = Math.max(0, Math.min(100, st.tension + (st.day >= 365 ? 0.5 : -0.3)));
+    }
     if (G.ledgerTick) G.ledgerTick(); // defter istatistikleri (aylık)
   }
   // yarım kalmış günü tamamla (kayıt, yükleme ve senkron çağrılardan önce)

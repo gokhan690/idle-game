@@ -141,6 +141,19 @@
   };
 
   // ---------- Odak motoru ----------
+  // odak türü (HOI4 simge renkleri): sanayi, kara, hava, deniz, siyaset, diplomasi
+  G.focusCat = (f) => {
+    const fx = f.fx || {}, k = Object.keys(fx), fn = Array.isArray(fx.fn) ? fx.fn[0] : '';
+    if (['demand', 'demandMany', 'guar', 'invite', 'joinFac', 'mkFac', 'pact', 'goal', 'gift'].includes(fn)) return 'dip';
+    if (k.some((x) => ['addCiv', 'addMil', 'construct', 'factory', 'effCap', 'addInfra', 'synth', 'stock', 'steel', 'oil', 'al', 'rub', 'tun', 'chr', 'research', 'slots'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'ind' || r[0] === 'elec')) return 'ind';
+    if (k.some((x) => ['addPlanes', 'addBombers', 'addCas', 'air'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'air')) return 'air';
+    if (k.some((x) => ['navy', 'ships', 'addDock', 'addConv', 'invasion'].includes(x)) || (fx.rb || []).some((r) => r[0] === 'nav')) return 'sea';
+    if (k.some((x) => ['landAtk', 'landDef', 'armAtk', 'org', 'units', 'forts', 'tech', 'plan', 'entrench', 'brk', 'train', 'mp', 'speed', 'xpGain'].includes(x)) || fn === 'general' || fn === 'fortRegion' || (fx.rb || []).length) return 'land';
+    return 'pol';
+  };
+  // genel ağacın askerî dalları (ulusal ağaçta aynı türden dal varsa genel dal gösterilmez: her kuvvetin tek yönü olur, HOI4)
+  const GEN_BRANCH = { land: { start: 0, w: 4 }, air: { start: 4, w: 2 }, sea: { start: 6, w: 2 } };
+  const branchOf = (f) => (f.pol ? null : f.x < 4 ? 'land' : f.x < 6 ? 'air' : f.x < 8 ? 'sea' : null);
   const flCache = {}, llCache = {};
   // denize kıyısı olmayan ülke (deniz dalı gösterilmez); başlangıç durumuna göre bir kez hesaplanır
   const landlocked = (c) => { if (llCache[c.tag] == null && G.homeZone && G.st && G.st.C[c.tag]) llCache[c.tag] = G.homeZone(c) < 0 ? 1 : 0; return llCache[c.tag] === 1; };
@@ -149,12 +162,16 @@
     if (flCache[key]) return flCache[key];
     const nat = g.FOCUS_NATIONAL[c.tag];
     let list;
+    // ulusal ağaçta en az iki odaklı kara/hava/deniz dalı varsa genel karşılığı çıkar (her kuvvetin tek yönü olur, HOI4);
+    // kıyısı olmayan ülkede deniz dalı yok; kalan dallar sola kaydırılır
+    const drop = new Set(ll ? ['sea'] : []);
+    if (nat) { const cnt = {}; for (const f of nat) { const k = G.focusCat(f); cnt[k] = (cnt[k] || 0) + 1; } for (const k of Object.keys(GEN_BRANCH)) if ((cnt[k] || 0) >= 2) drop.add(k); }
+    const shift = (x) => { let d = 0; for (const k of drop) if (x >= GEN_BRANCH[k].start + GEN_BRANCH[k].w) d += GEN_BRANCH[k].w; return d; };
+    const gen = g.FOCUS_GENERIC.filter((f) => !drop.has(branchOf(f)) && !(nat && f.pol));
     if (nat) {
       const off = Math.max(...nat.map((f) => f.x)) + 1.5;
-      list = nat.concat(g.FOCUS_GENERIC.filter((f) => !f.pol).map((f) => Object.assign({}, f, { x: f.x + off })));
-    } else list = g.FOCUS_GENERIC;
-    // denize kıyısı olmayan ülke deniz dalını görmez (HOI4)
-    if (ll) { const nv = new Set(g.FOCUS_NAVAL || []); list = list.filter((f) => !nv.has(f.id)); }
+      list = nat.concat(gen.map((f) => Object.assign({}, f, { x: f.x + off - shift(f.x) })));
+    } else list = drop.size ? gen.map((f) => Object.assign({}, f, { x: f.x - shift(f.x) })) : gen;
     return (flCache[key] = list);
   };
   G.focusById = (c, id) => G.focusList(c).find((f) => f.id === id);
