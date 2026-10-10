@@ -227,6 +227,8 @@
     }
     // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
     if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
+    // alternatif tarih kökü: bu ülkenin kendi tarihî olayları kapanır
+    if (f.alt && !f.pre.length && G.closeHistEvents) G.closeHistEvents(c);
     G.recomputeMods(c);
     G.needSummary = 1;
     if (c.tag === st.player) G.log(`Ulusal odak tamamlandı: ${f.n}`, [c.tag], 'good');
@@ -301,12 +303,15 @@
     invite(c, list) { G.FX.mkFac(c, `${G.cname(c.tag)} İttifakı`, list); },
     leader(c, ideo) { G.setIdeology(c, ideo); },
     // alternatif tarih: ideoloji ve lider değişimi (aynı ideolojide yalnızca lider değişir)
-    ideo(c, ideo, leader) {
+    ideo(c, ideo, leader, cw) {
+      const old = c.ideo;
       if (c.ideo !== ideo) G.setIdeology(c, ideo);
       // halk desteği yeni iktidara kayar (yoksa eski parti hükümeti geri alır)
       const rest = Object.keys(c.pop).filter((k) => k !== ideo), sum = rest.reduce((a, k) => a + c.pop[k], 0) || 1;
       for (const k of rest) c.pop[k] = c.pop[k] / sum * 0.36;
       c.pop[ideo] = 0.64; normalizePop(c);
+      // eski rejim yanlıları ayaklanır (iç savaş)
+      if (cw && G.civilWar) G.civilWar(c, Object.assign({ id: old }, cw));
       if (leader) c.leader = leader;
       G.log(`${G.cname(c.tag)}: ${c.leader} iktidarda (${g.IDEOLOGIES[c.ideo].n}).`, [c.tag], 'major');
       G.mapDirty = 1;

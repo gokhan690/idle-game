@@ -29,7 +29,32 @@
     literacy: { n: 'Okuma Yazma Seferberliği', h: 'Okuma yazma oranı hızla yükseliyor.', fx: { research: 0.03, mp: 0.02 } },
   });
 
+  // HOI4 "siyasi kampanya": bir partinin halk desteğini artırır; yönetmeyen bir parti %50'yi geçerse hükümet değişikliği gündeme gelir
+  const PARTY = { dem: ['Demokratik Kampanya', 'Seçim mitingleri, sendikalar ve basın özgürlüğü kampanyası.'], fas: ['Milliyetçi Kampanya', 'Yürüyüşler, gençlik örgütleri ve milliyetçi basın.'], com: ['Komünist Ajitasyon', 'Fabrika hücreleri, grev komiteleri ve yeraltı gazeteleri.'], neu: ['Bağımsız Hareket', 'Ordu, kilise ve aristokrasi etrafında sessiz bir örgütlenme.'] };
+  const partyDec = Object.entries(PARTY).map(([k, [n, d]]) => ({
+    id: 'party_' + k, n, d: d + ' Bu partinin halk desteğini artırır.', cat: 'pol', cost: 50, days: 60, cd: 45,
+    mod: { stab: -0.02 },
+    fxd: [`${g.PARTY_N ? g.PARTY_N[k] : k} desteği +%12`],
+    allowed: (c) => ((c.pop[k] || 0) < 0.9 || 'Bu partinin desteği zaten çok yüksek'),
+    fx: (c) => { G().addPop(c, k, 0.12); G().log(`${G().cname(c.tag)}: ${g.PARTY_N[k]} desteği arttı (%${Math.round(c.pop[k] * 100)}).`, [c.tag], 'info'); },
+  }));
+  // desteği %50'yi aşan muhalefet partisi iktidara gelebilir; eski rejimin desteği %35 üstündeyse yanlıları ayaklanır (iç savaş)
+  const GOV = { dem: 'Demokratik Hükümet', fas: 'Milliyetçi Rejim', com: 'Halk Cumhuriyeti', neu: 'Ulusal Hükümet' };
+  const govDec = Object.entries(GOV).map(([k, n]) => ({
+    id: 'gov_' + k, n: n + ' Kur', d: `${g.PARTY_N ? g.PARTY_N[k] : k} halkın çoğunluğunu arkasına aldı; hükümeti devralabilir. Ülkenin tarihî olayları sona erer. Eski iktidarın desteği %35 üstündeyse yanlıları ayaklanır: İÇ SAVAŞ.`, cat: 'pol', cost: 100, days: 30, cd: 365,
+    mod: { stab: -0.05 },
+    fxd: [`İdeoloji: ${g.IDEOLOGIES ? g.IDEOLOGIES[k].n : k}`, 'Eski iktidar güçlüyse iç savaş'],
+    allowed: (c) => (c.ideo === k ? 'Zaten iktidarda' : (c.pop[k] || 0) < 0.5 ? `${g.PARTY_N[k]} desteği en az %50 olmalı` : war(c) ? 'Savaş sırasında hükümet değiştirilemez' : true),
+    fx: (c) => {
+      const Gx = G(), old = c.ideo, oldL = c.leader, strong = (c.pop[old] || 0) >= 0.35;
+      const lead = (g.ALT_LEADERS[c.tag] || {})[k];
+      Gx.FX.ideo(c, k, lead, strong ? { n: `${g.IDEOLOGIES[old].n} ${Gx.cname(c.tag)}`, l: oldL, share: 0.25 } : null);
+      if (Gx.closeHistEvents) Gx.closeHistEvents(c);
+    },
+  }));
   const D = [
+    ...partyDec,
+    ...govDec,
     // ---------- Siyaset ----------
     { id: 'propaganda', n: 'Savaş Propagandası', d: 'Afişler, radyo ve sinema halkı davaya hazırlıyor.', cat: 'pol', cost: 60, days: 90, cd: 30,
       mod: { ws: 0.08 }, allowed: (c) => c.ws < 0.9 || 'Savaş desteği zaten çok yüksek',
