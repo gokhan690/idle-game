@@ -57,7 +57,7 @@
     ];
     if (c.enemies.length) res.push(['war', c.enemies.length, 'neg', 'Savaşta olunan ülkeler', c.enemies.map((t) => G.cname(t)).join(', ')]);
     UI._resInfo = Object.fromEntries(res.map(([k, v, , n, d]) => [k, `${n}: ${v}${d ? ' · ' + d : ''}`]));
-    const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.ico(k)}<b>${v}</b></button>`).join('');
+    const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.med(k)}<b>${v}</b></button>`).join('');
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
     // HOI4 tarzı uyarılar: yuvarlak simgeler (dokununca ilgili panel + açıklama)
     const al = [];
@@ -110,7 +110,8 @@
     const out = PANELS[UI.panel]();
     if (auto && out.html === UI.lastHtml && !sheet.hidden) return;
     UI.lastHtml = out.html;
-    $('sheet-title').textContent = out.title;
+    const tk = PANEL_ICO[UI.panel];
+    $('sheet-title').innerHTML = (tk && G.ico ? G.ico(tk, 'tico') : '') + esc(out.title);
     $('sheet-back').hidden = !UI.sub;
     body.innerHTML = out.html;
     sheet.hidden = false;
@@ -158,6 +159,10 @@
 
   // ---------- Paneller ----------
   const PANELS = {};
+  // HOI4 menü simgeleri (alt/sol menü ve panel başlığı aynı seti kullanır)
+  const PANEL_ICO = { pol: 'pp', res: 'res', prod: 'mil', con: 'con', trade: 'trade', army: 'div', navy: 'navy', dip: 'hand', air: 'air', menu: 'dec', ledger: 'dec' };
+  UI.PANEL_ICO = PANEL_ICO;
+  if (G.ico) document.querySelectorAll('#nav [data-p]').forEach((b) => { const k = PANEL_ICO[b.dataset.p]; const i = b.querySelector('.ic'); if (k && i) i.outerHTML = G.ico(k, 'navi'); b.setAttribute('aria-label', b.textContent.trim()); });
   const sec = (title, inner, aside = '') => `<section class="sec"><h3 class="sec-h">${title}${aside ? `<span>${aside}</span>` : ''}</h3>${inner}</section>`;
   const kv = (pairs) => `<div class="kv">${pairs.map(([k, v, cl]) => `<div><small>${k}</small><b class="${cl || ''}">${v}</b></div>`).join('')}</div>`;
 
