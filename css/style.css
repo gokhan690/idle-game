@@ -792,3 +792,10 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
 .fn.alt::after { content: ""; position: absolute; right: 0; bottom: 0; border: 7px solid transparent; border-right-color: #d9b75a; border-bottom-color: #d9b75a; opacity: 0.85; }
 .fn.alt.avail { box-shadow: 0 0 0 1px rgba(217,183,90,0.5), 0 0 10px rgba(217,183,90,0.25), 0 3px 10px rgba(0,0,0,0.4); }
 .fcat.altc { --fc: #d9b75a; }
+/* HOI4 harita modu menüsü */
+#mm-menu { position: absolute; right: 58px; top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); z-index: 30; width: min(250px, calc(100vw - 80px)); max-height: calc(100vh - var(--hud-b, 120px) - 90px); overflow-y: auto; display: flex; flex-direction: column; gap: 3px; padding: 6px; background: linear-gradient(180deg, #2c3227, #1d211a); border: 1px solid var(--brass, #b8913a); border-radius: 8px; box-shadow: 0 8px 22px rgba(0,0,0,0.55); }
+#mm-menu[hidden] { display: none; }
+#mm-menu button { text-align: left; padding: 6px 9px; border-radius: 5px; background: rgba(255,255,255,0.03); border: 1px solid transparent; color: var(--paper, #f4efe0); display: flex; flex-direction: column; gap: 1px; }
+#mm-menu button b { font-size: 14px; }
+#mm-menu button small { font-size: 11px; color: #b9b29a; }
+#mm-menu button.on { border-color: var(--brass, #b8913a); background: rgba(214,170,76,0.18); }

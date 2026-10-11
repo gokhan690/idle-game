@@ -52,8 +52,22 @@
       if (Gx.closeHistEvents) Gx.closeHistEvents(c);
     },
   }));
+  // Ar-Ge programları (HOI4 araştırma bonusları): bir sonraki araştırmalara tek kullanımlık hız bonusu
+  const RD = [
+    ['rd_land', 'Kara Kuvvetleri Ar-Ge Programı', 'Ordu laboratuvarları piyade, topçu ve zırh projelerine yoğunlaşıyor.', [['inf', 0.5], ['art', 0.5], ['arm', 0.5]]],
+    ['rd_air', 'Havacılık Ar-Ge Programı', 'Uçak tasarım büroları devlet desteğiyle çalışıyor.', [['air', 0.75], ['air', 0.5]]],
+    ['rd_sea', 'Deniz Ar-Ge Programı', 'Tersane mühendisleri ve deniz kurmayları yeni sınıflar üzerinde çalışıyor.', [['nav', 0.75], ['nav', 0.5]]],
+    ['rd_ind', 'Sanayi ve Elektronik Ar-Ge Programı', 'Üniversiteler ve sanayi laboratuvarları seferber ediliyor.', [['ind', 0.5], ['elec', 0.5], ['ind', 0.5]]],
+  ];
+  const rdDec = RD.map(([id, n, d, rb]) => ({
+    id, n, d, cat: 'eco', cost: 80, days: 0, cd: 365,
+    fxd: rb.map(([k, v]) => `${g.TECH_CATS ? g.TECH_CATS[k] : k} araştırma bonusu +%${Math.round(v * 100)} (bir kez)`),
+    allowed: (c) => ((c.rb || []).length < 4 || 'Kullanılmamış çok fazla araştırma bonusu var'),
+    fx: (c) => { (c.rb || (c.rb = [])).push(...rb.map((x) => x.slice())); G().log(`${n}: araştırma bonusları eklendi.`, [c.tag], 'good'); },
+  }));
   const D = [
     ...partyDec,
+    ...rdDec,
     ...govDec,
     // ---------- Siyaset ----------
     { id: 'propaganda', n: 'Savaş Propagandası', d: 'Afişler, radyo ve sinema halkı davaya hazırlıyor.', cat: 'pol', cost: 60, days: 90, cd: 30,
