@@ -9,20 +9,49 @@
   const store = {
     get(k) { try { return g.localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { g.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+    del(k) { try { g.localStorage.removeItem(k); } catch (e) { /* */ } },
   };
+  // kayda yazılmadan önce: yarım günü bitir, oturum içi listeleri duruma aktar
+  const prep = () => { G.finishTick(); const st = G.st; st.tsrc = G.TSRC || {}; st.tl = (G.TL || []).slice(-400); return st; };
+  // yuva bilgisi: ülke, tarih, mod (0 tarihî, 1 serbest, 2 alternatif), zorluk ve gerçek kayıt zamanı
+  const metaOf = (st) => ({ player: st.player, day: st.day, mode: st.opts.alt ? 2 : st.opts.hist ? 0 : 1, diff: st.opts.diff ?? 1, at: Date.now(), v: st.v });
   G.saveGame = (slot) => {
     const st = G.st; if (!st) return false;
-    G.finishTick(); // yarım günü kaydetme
-    st.tsrc = G.TSRC || {}; st.tl = (G.TL || []).slice(-400); // gerginlik kaynakları ve zaman çizelgesi kayda
+    prep();
     const ok = store.set(KEY(slot), G.serialize());
-    if (ok) store.set(KEY(slot) + '_meta', JSON.stringify({ player: st.player, day: st.day }));
+    if (ok) store.set(KEY(slot) + '_meta', JSON.stringify(metaOf(st)));
     return ok;
   };
   G.saveMeta = (slot) => { const m = store.get(KEY(slot) + '_meta'); try { return m ? JSON.parse(m) : null; } catch (e) { return null; } };
+  G.saveDel = (slot) => { store.del(KEY(slot)); store.del(KEY(slot) + '_meta'); };
+  const afterLoad = () => { G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); };
   G.loadGame = (slot) => {
     const s = store.get(KEY(slot)); if (!s) return false;
-    try { G.deserialize(s); G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); return true; } catch (e) { console.error(e); return false; }
+    try { G.deserialize(s); afterLoad(); return true; } catch (e) { console.error(e); return false; }
   };
+  // dosyaya aktar: kayıt JSON dosyası olarak indirilir (başka cihaza taşımak ya da yedeklemek için)
+  G.exportSave = () => {
+    const st = G.st; if (!st) return false;
+    prep();
+    const d = G.dateOf(st.day), ds = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    try {
+      const url = URL.createObjectURL(new Blob([G.serialize()], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = `demir-cephe-${st.player}-${ds}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      return true;
+    } catch (e) { console.error(e); return false; }
+  };
+  // dosyadan yükle: bozuk ya da uyumsuz dosyada mevcut oyun korunur
+  G.importSave = (text) => {
+    const back = G.st && $('start').hidden ? G.serialize() : null;
+    try { G.deserialize(text); afterLoad(); return { ok: true }; } catch (e) {
+      if (back) try { G.deserialize(back); } catch (e2) { /* */ }
+      return { ok: false, why: e.message };
+    }
+  };
+  // otomatik kayıt aralığı (ay): 0 kapalı
+  G.autosaveDue = (day) => { const n = +UI.settings.autosave || 0; if (!n) return false; const d = G.dateOf(day); return (d.getUTCFullYear() * 12 + d.getUTCMonth()) % n === 0; };
 
   // ---------- Oyun döngüsü ----------
   const SPEEDS = [0, 0.6, 1.25, 2.5, 5, 12]; // gün/saniye (HOI4 temposu)
@@ -47,7 +76,7 @@
         if (!G.tickSlice(end)) break;
         ticks++;
         const m = G.dateOf(st.day).getUTCMonth();
-        if (m !== lastMonth) { if (lastMonth >= 0 && UI.settings.autosave) G.saveGame('auto'); lastMonth = m; }
+        if (m !== lastMonth) { if (lastMonth >= 0 && G.autosaveDue(st.day)) G.saveGame('auto'); lastMonth = m; }
         if (st.day === G.dayOf('1948-01-01')) endOfWar();
         if (performance.now() >= end) break;
       }

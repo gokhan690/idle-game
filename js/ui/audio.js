@@ -112,6 +112,6 @@
   }, 700);
   document.addEventListener('pointerdown', () => A.unlock(), { capture: true });
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-act]'); if (b && !b.disabled) A.click(); }, { capture: true });
-  // günlüğe bağlan (ui.js G.onLog'u tanımladıktan sonra yüklenir)
+  // günlüğe bağlan (ui_menu.js G.onLog'u tanımladıktan sonra yüklenir)
   const prev = G.onLog; G.onLog = (l) => { if (prev) prev(l); try { A.log(l); } catch (e) { /* ses hatası oyunu durdurmasın */ } };
 })(window);

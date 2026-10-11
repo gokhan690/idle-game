@@ -806,3 +806,6 @@ details.hsec > summary { cursor: pointer; padding: 9px 11px; font-weight: 700; l
 details.hsec > summary::after { content: '▾'; float: right; color: #b9b29a; }
 details.hsec[open] > summary::after { content: '▴'; }
 details.hsec > p { padding: 0 11px 10px; }
+/* kayıt yuvaları: düğmeler sabit genişlikte dikey sütun */
+.item.slot > .btns { display: grid; grid-auto-rows: auto; gap: 6px; width: 104px; flex: none; margin: 0 0 0 auto; }
+.item.slot > .btns .btn { width: 100%; }
