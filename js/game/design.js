@@ -283,11 +283,19 @@
     fig: (c, t) => ({ w1: t >= 3 ? 'cn' : 'hmg', w2: 'none', eng: 'std', sp1: 'sst', sp2: c.tag === 'USA' || c.tag === 'ENG' ? 'drop' : 'none' }),
     cas: (c, t) => ({ w1: c.tag === 'GER' || c.tag === 'SOV' ? 'at' : 'hbl', w2: 'none', eng: 'std', sp1: c.tag === 'GER' ? 'dive' : 'none', sp2: 'none' }),
     bom: (c, t) => ({ eng: c.tag === 'USA' || c.tag === 'ENG' ? '4' : '2', bay: c.tag === 'JAP' || c.tag === 'ITA' ? 'tor' : 'std', tur: 1, sp1: 'sight', sp2: 'none' }),
+    // gemiler (yalnızca tarihî olmayan modlar): ulusal tercihler
+    dd: (c, t) => ({ torp: t >= 2 && c.tag === 'JAP' ? 'adv' : 'tube', aaa: c.tag === 'USA' || c.tag === 'ENG' ? 1 : 0, sp1: 'sonar' }),
+    cr: (c, t) => ({ main: c.tag === 'JAP' ? 'big' : 'std', torp: c.tag === 'JAP' ? 'tube' : 'none', aaa: 1, arm: 1, sp1: t >= 2 && (c.tag === 'ENG' || c.tag === 'USA') ? 'radar' : 'none' }),
+    bb: (c, t) => ({ main: c.tag === 'JAP' || c.tag === 'GER' ? 'big' : 'std', aaa: 1, arm: c.tag === 'GER' ? 2 : 1, sp1: t >= 2 ? 'radar' : 'none' }),
+    ss: (c, t) => ({ torp: t >= 2 ? 'adv' : 'tube', eng: c.tag === 'GER' ? 1 : 0, sp1: t >= 2 && c.tag === 'GER' ? 'snork' : 'none' }),
+    cv: (c, t) => ({ deck: c.tag === 'USA' || c.tag === 'JAP' ? 'big' : 'arm', aaa: 2, sp1: 'none' }),
   };
   G.aiDesign = (c, e) => {
     if (!c.major || !G.DESIGNABLE.has(e) || !AI_PRESET[e] || c.tag === G.st.player) return null;
+    const ship = g.DESIGN[e].ship;
+    if (ship && G.st.opts.hist) return null; // tarihî modda YZ gemileri standart kalır
     const t = Math.floor(G.bestLevel(c, e));
-    if (t < 2) return null;
+    if (t < (ship ? 1 : 2)) return null;
     const id = 'ai' + e + t;
     let d = (c.designs || []).find((x) => x.id === id);
     if (!d) {

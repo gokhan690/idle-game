@@ -113,6 +113,13 @@
     FRA: 'fr', BEL: 'fr', ITA: 'it', JAP: 'ja', MAN: 'ja', CHI: 'zh', PRC: 'zh', TIB: 'zh', SIK: 'zh', SIA: 'zh', SPR: 'es', POR: 'es', MEX: 'es', ARG: 'es', CHL: 'es', PRU: 'es', BOL: 'es', PAR: 'es', URU: 'es', VEN: 'es', COL: 'es', ECU: 'es',
     GUA: 'es', HON: 'es', ELS: 'es', NIC: 'es', COS: 'es', PAN: 'es', CUB: 'es', DOM: 'es', BRA: 'es', PER: 'ar', IRQ: 'ar', SAU: 'ar', YEM: 'ar', OMA: 'ar', AFG: 'ar', ETH: 'ar',
     NOR: 'no', SWE: 'no', DEN: 'no', FIN: 'no', EST: 'no', LAT: 'no', LIT: 'sl', HOL: 'no' };
+  // ideolojiye göre yedek hükümet başkanı adı (rastgelelik kullanmaz; tarihî akışı etkilemez)
+  const GOV_TITLE = { dem: 'Başbakan', fas: 'Önder', com: 'Genel Sekreter', neu: 'Mareşal' };
+  G.fallbackLeader = (tag, ideo) => {
+    const pool = SURNAMES[LANG[tag] || 'en'];
+    let h = 0; for (const ch of tag + ideo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return `${GOV_TITLE[ideo] || 'Lider'} ${pool[h % pool.length]}`;
+  };
   G.newGeneral = (c, opts = {}) => {
     const st = G.st;
     const pool = SURNAMES[LANG[c.tag] || 'en'];

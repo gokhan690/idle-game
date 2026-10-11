@@ -3,14 +3,16 @@
   const G = g.G;
   const { P, NP } = G;
 
-  const TECH_PRIORITY = ['ind1', 'con1', 'inf1', 'art1', 'sup1', 'ind2', 'con2', 'eff1', 'D1', 'radio1', 'mot1', 'tank1', 'fig1', 'inf2', 'art2', 'at1', 'tank2', 'aa1', 'fig2', 'cas1', 'D2', 'eff2', 'ind3', 'con3', 'syn1', 'mtn1', 'sup2', 'doc_air', 'comp', 'cas2', 'tank3', 'inf3', 'art3', 'at2', 'eff3', 'D3', 'ind4', 'fig3', 'enc1', 'dec1', 'aa2', 'sup3', 'D4', 'con4', 'eff4', 'syn2', 'bom1', 'bom2', 'tank4', 'inf4', 'art4', 'cas3', 'bom3', 'comp2', 'jet', 'mar1', 'dd1', 'ss1', 'dd2', 'ss2', 'bb1', 'bb2', 'cv1', 'radar', 'doc_nav', 'atom'];
+  const TECH_PRIORITY = ['ind1', 'con1', 'inf1', 'art1', 'sup1', 'ind2', 'con2', 'eff1', 'D1', 'radio1', 'mot1', 'tank1', 'fig1', 'inf2', 'art2', 'at1', 'tank2', 'aa1', 'fig2', 'cas1', 'D2', 'eff2', 'ind3', 'con3', 'syn1', 'mtn1', 'sup2', 'doc_air', 'comp', 'cas2', 'tank3', 'inf3', 'art3', 'at2', 'eff3', 'D3', 'ind4', 'fig3', 'enc1', 'dec1', 'aa2', 'sup3', 'D4', 'con4', 'eff4', 'syn2', 'bom1', 'bom2', 'tank4', 'inf4', 'art4', 'cas3', 'bom3', 'comp2', 'jet', 'mar1', 'dd1', 'ss1', 'dd2', 'ss2', 'bb1', 'bb2', 'cv1', 'radar', 'doc_nav', 'N1', 'N2', 'atom', 'N3'];
+  const NAV_PREF = { ENG: 'f', USA: 'c', JAP: 'c', GER: 't', ITA: 'f', SOV: 't', FRA: 'f' };
 
   G.aiResearch = (c) => {
     const yr = G.year(G.st.day);
     while (c.res.length < c.mods.slots) {
       let pick = null;
       for (const id0 of TECH_PRIORITY) {
-        const id = /^D[1-4]$/.test(id0) ? 'd' + (G.docTree(c) || G.docPref(c)) + id0[1] : id0;
+        if (/^N[1-3]$/.test(id0) && G.st.opts.hist) continue; // tarihî modda YZ deniz doktrini dalı seçmez
+        const id = /^D[1-4]$/.test(id0) ? 'd' + (G.docTree(c) || G.docPref(c)) + id0[1] : /^N[1-3]$/.test(id0) ? 'n' + (G.navDocTree(c) || NAV_PREF[c.tag] || 'f') + id0[1] : id0;
         const t = g.TECH_BY_ID[id]; if (!t) continue;
         if (!G.techAvailable(c, id) || t.year > yr + 1) continue;
         if (t.cat === 'nav' && (c.sum.dock || 0) < 2) continue;
@@ -103,7 +105,7 @@
       for (const l of dl) lines.splice(lines.indexOf(l), 1);
       const dw = c.major ? [['dd', 0.25], ['ss', 0.25], ['cr', 0.15], ['bb', 0.15], ['conv', 0.2]] : [['dd', 0.4], ['ss', 0.3], ['conv', 0.3]];
       let du = 0;
-      for (const [e, v] of dw) { const f = Math.floor(docks * v); if (f > 0) { const old = dl.find((l) => l.e === e); lines.push({ e, f, eff: 1, acc: old ? old.acc : 0 }); du += f; } }
+      for (const [e, v] of dw) { const f = Math.floor(docks * v); if (f > 0) { const old = dl.find((l) => l.e === e); const d = e !== 'conv' && G.aiDesign ? G.aiDesign(c, e) : null; lines.push(Object.assign({ e, f, eff: 1, acc: old ? old.acc : 0 }, d ? { d } : {})); du += f; } }
       if (docks > du) { const l = lines.find((x) => x.e === 'dd'); if (l) l.f += docks - du; else lines.push({ e: 'dd', f: docks - du, eff: 1, acc: 0 }); }
     }
     c.lines = lines;

@@ -72,6 +72,21 @@
     return { ok: true, accepted: ok, ratio };
   };
 
+  // YZ (tarihî olmayan modlar): faşist ve komünist büyük güçler yılda en çok bir kez zayıf, ittifaksız komşulara ültimatom verir
+  G.aiUltimatum = () => {
+    const st = G.st; if (st.opts.hist) return;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player || c.enemies.length || (c.ideo !== 'fas' && c.ideo !== 'com')) continue;
+      if ((c.lastUlt != null && st.day - c.lastUlt < 365) || G.rand() > 0.12) continue;
+      const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) neigh.add(st.prov[j].c);
+      const my = G.armyPower(c.tag);
+      const cands = [...neigh].filter((t) => t !== c.tag && alive(t) && !st.C[t].major && !st.C[t].fac && G.armyPower(t) < my * 0.5 && G.ultAllowed(c.tag, t, 'border').ok);
+      if (!cands.length) continue;
+      const t = cands[Math.floor(G.rand() * cands.length)];
+      if (G.ultimatum(c.tag, t, 'border').ok) c.lastUlt = st.day;
+    }
+  };
+
   // ---------- Müttefikleri savaşa çağır ----------
   G.ctaAllowed = (a, t) => {
     const st = G.st, c = st.C[a], x = st.C[t];

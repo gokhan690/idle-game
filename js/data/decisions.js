@@ -63,7 +63,8 @@
     id, n, d, cat: 'eco', cost: 80, days: 0, cd: 365,
     fxd: rb.map(([k, v]) => `${g.TECH_CATS ? g.TECH_CATS[k] : k} araştırma bonusu +%${Math.round(v * 100)} (bir kez)`),
     allowed: (c) => ((c.rb || []).length < 4 || 'Kullanılmamış çok fazla araştırma bonusu var'),
-    fx: (c) => { (c.rb || (c.rb = [])).push(...rb.map((x) => x.slice())); G().log(`${n}: araştırma bonusları eklendi.`, [c.tag], 'good'); },
+    fx: (c) => { (c.rb || (c.rb = [])).push(...rb.map((x) => x.slice())); if (c.tag === G().st.player) G().log(`${n}: araştırma bonusları eklendi.`, [c.tag], 'good'); },
+    ai: (c) => (!G().st.opts.hist && c.major && (c.rb || []).length < 2 ? 2 : 0), // tarihî modda YZ kullanmaz
   }));
   const D = [
     ...partyDec,

@@ -291,6 +291,8 @@
     const st = G.st;
     st.log.unshift({ d: st.day, m: msg, k: kind || 'info', t: tags || [] });
     if (st.log.length > 150) st.log.length = 150;
+    // zaman çizelgesi (büyük olaylar; kayda oyuncu kaydederken yazılır)
+    if (kind === 'major' && G.TL) { G.TL.push(st.log[0]); if (G.TL.length > 400) G.TL.shift(); }
     if (G.onLog) G.onLog(st.log[0]);
   };
 })(window);

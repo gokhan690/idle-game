@@ -77,7 +77,8 @@
     if (c.ideo === ideo) return;
     const old = c.ideo;
     c.ideo = ideo;
-    c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || `${g.IDEOLOGIES[ideo].n} Hükümet`;
+    const d0 = g.COUNTRY_DEFS[c.tag];
+    c.leader = (g.ALT_LEADERS[c.tag] || {})[ideo] || (d0 && d0.id === ideo ? d0.l : G.fallbackLeader(c.tag, ideo));
     if ((c.pop[ideo] || 0) < 0.55) { c.pop[ideo] = 0.55; normalizePop(c); }
     c.stabX -= 0.1;
     // ittifak lideriyle ideoloji uyuşmazsa ittifaktan çık
