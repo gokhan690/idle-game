@@ -496,7 +496,7 @@
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   // yuva silme: ilk dokunuş onay ister, ikincisi siler
   ACT.delsave = (d) => { if (UI.delArm !== d.v) { UI.delArm = d.v; UI.render(); return; } G.saveDel(d.v); UI.delArm = null; UI.toast('Kayıt silindi.', 'info'); UI.render(); };
-  ACT.exportsave = () => { const ok = G.exportSave(); UI.toast(ok ? 'Kayıt dosyası indirildi.' : 'Dosya oluşturulamadı.', ok ? 'good' : 'bad'); };
+  ACT.exportsave = async () => { const r = await G.exportSave(); UI.toast(r.ok ? 'Kayıt dosyası indirildi.' : r.why || 'Dosya oluşturulamadı.', r.ok ? 'good' : 'bad'); };
   ACT.autosave = (d) => { UI.settings.autosave = +d.v; UI.saveSettings(); UI.render(); };
   // dosyadan yükle (menü ve başlangıç ekranı): dosya seçici panel dışında tek bir gizli girdi; panel yenilense de kaybolmaz
   ACT.importsave = () => {
