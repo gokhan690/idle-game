@@ -49,7 +49,7 @@
   G.newGame = (player, opts) => {
     G.tickIt = null;
     if (G.dynClear) G.dynClear(); // önceki oyunun iç savaş ülkeleri
-    G.TSRC = {}; // gerginlik kaynakları (oturum içi)
+    G.TSRC = {}; G.TL = []; // gerginlik kaynakları ve zaman çizelgesi (kaydederken st'ye yazılır)
     const st = {
       v: 4, day: 0, seed: (opts && opts.seed) || 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {}, deals: [], embargo: {}, ops: [],
@@ -215,7 +215,7 @@
     const st = JSON.parse(s);
     if (!st || st.v !== 4) throw new Error('Kayıt sürümü uyumsuz');
     G.tickIt = null; // yarım kalmış gün eski oyuna aittir
-    G.TSRC = {}; if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
+    G.TSRC = st.tsrc || {}; G.TL = (st.tl || []).slice(); if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
     G.st = st;
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
     const OLD = { doc_mob: 'm1', doc_mob2: 'm2', doc_fire: 'f1', doc_fire2: 'f2', doc_grand: 'g1', doc_grand2: 'g2', doc_mass: 'a1', doc_mass2: 'a2' };

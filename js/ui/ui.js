@@ -534,7 +534,7 @@
     html += sec('Kara ve hava üretimi', `<div class="list">${idx('mil').map(([l, i]) => line(l, i)).join('')}</div><div class="btns">${avail('mil').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>`, `${s.mil - milA} boşta`);
     html += sec('Tersaneler', `<div class="list">${idx('dock').map(([l, i]) => line(l, i)).join('') || '<p class="muted small" style="margin:0">Tersane hattı yok. İnşaat panelinden kıyı eyaletlerine tersane kurabilirsin.</p>'}</div>${s.dock ? `<div class="btns">${avail('dock').map(([k, v]) => `<button class="btn sm" data-act="addline" data-v="${k}">+ ${v.s}</button>`).join('')}</div>` : ''}`, `${s.dock - dockA} boşta`);
     // teçhizat stoğu ve modeller
-    const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Sv ' + r1(G.lvl(c, k))}</span></div>`).join('');
+    const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Model ' + r1(G.lvl(c, k))}</span></div>`).join('');
     // tasarım bürosu
     const cus = (c.designs || []).filter((d) => !d.id.startsWith('ai'));
     let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span><span class="small">${XPN.nxp}: <b>${Math.floor(c.nxp ?? 30)}</b></span></div>`;
@@ -748,7 +748,7 @@
   // Ordu
   const ORD_N = { hold: 'Bekle', def: 'Cepheyi tut', atk: 'Uygula ▶', fb: 'Hatta çekil' };
   UI.ORD_N = ORD_N;
-  const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · Sv ${gen.lvl}</span>`;
+  const genLine = (gen) => `${esc(gen.n)} <span class="muted small">${gen.fm ? 'Mareşal' : 'General'} · ${gen.lvl}. seviye</span>`;
   const genSkills = (gen) => `<span class="skills"><b title="Saldırı">S ${gen.atk}</b><b title="Savunma">Sv ${gen.def}</b><b title="Planlama">P ${gen.plan}</b><b title="Lojistik">L ${gen.log}</b></span>${gen.tr.length ? `<div class="d">${gen.tr.map((t) => g.GEN_TRAITS[t].n).join(' · ')}</div>` : ''}`;
   PANELS.army = () => {
     const st = G.st, c = me();
@@ -838,7 +838,7 @@
     let html = `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b>${u.vol ? ` <span class="pill ally">Gönüllü (${esc(G.cname(u.vol))})</span>` : ''}</div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
     html += kv([['Güç', pct(u.str), u.str < 0.5 ? 'bad' : ''], ['Moral', `${Math.round(Math.max(0, u.org))}/${Math.round(s2.org)}`, u.org < s2.org * 0.3 ? 'bad' : ''], ['Tecrübe', xl], ['Yumuşak saldırı', r1(s2.sa)], ['Sert saldırı', r1(s2.ha)], ['Savunma', r1(s2.df)], ['Atılım', r1(s2.bt)], ['Sertlik', pct(s2.hd)], ['Zırh', Math.round(s2.arm)], ['Zırh delme', Math.round(s2.prc)], ['Genişlik', t.w], ['Hız', r1(s2.spd / 2.4) + ' km/s'], ['Siper', pct(u.ent || 0)], ['İkmal', pct(G.supplyRatio(u)), G.supplyRatio(u) < 0.8 ? 'bad' : ''], ['İkmal kullanımı', r1(G.supplyUse(u))]]);
     html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Tecrübe</span><div class="grow">${bar(u.xp ?? 0.25)}</div></div><div class="small muted" style="margin-top:-6px">${G.XP_LV.map(([, n]) => n === xl ? `<b style="color:var(--paper)">${n}</b>` : n).join(' › ')}</div>`;
-    html += sec('Komuta', `<div class="small">${a ? `${esc(a.n)}${gen ? ' · ' + esc(gen.n) : ''}` : 'Ordusuz'}${u.auto ? ' · otomatik kurmay' : ''}</div><div class="small muted">Teçhizat modelleri: piyade ${g.MODEL_N?.inf?.[Math.floor(u.lv?.inf || 1)] || 'Sv ' + r1(u.lv?.inf || 1)}${t.eq.art ? ' · topçu ' + (g.MODEL_N?.art?.[Math.floor(u.lv?.art || 1)] || r1(u.lv?.art || 1)) : ''}${t.eq.tank ? ' · tank ' + (g.MODEL_N?.tank?.[Math.floor(u.lv?.tank || 1)] || r1(u.lv?.tank || 1)) : ''}</div>`);
+    html += sec('Komuta', `<div class="small">${a ? `${esc(a.n)}${gen ? ' · ' + esc(gen.n) : ''}` : 'Ordusuz'}${u.auto ? ' · otomatik kurmay' : ''}</div><div class="small muted">Teçhizat modelleri: piyade ${g.MODEL_N?.inf?.[Math.floor(u.lv?.inf || 1)] || 'Model ' + r1(u.lv?.inf || 1)}${t.eq.art ? ' · topçu ' + (g.MODEL_N?.art?.[Math.floor(u.lv?.art || 1)] || r1(u.lv?.art || 1)) : ''}${t.eq.tank ? ' · tank ' + (g.MODEL_N?.tank?.[Math.floor(u.lv?.tank || 1)] || r1(u.lv?.tank || 1)) : ''}</div>`);
     html += `<div class="btns"><button class="btn sm" data-act="divonly" data-v="${u.id}">Yalnız bunu seç</button><button class="btn sm" data-act="divrm" data-v="${u.id}">Seçimden çıkar</button>${(c.armies || []).length ? `<button class="btn sm" data-act="divarmy" data-v="${u.id}">Ordusu: ${a ? esc(a.n) : 'yok'} ›</button>` : ''}</div>`;
     html += `<p class="muted small" style="margin:0">Düşmana verilen vuruş, düşmanın sertliğine göre yumuşak ve sert saldırıdan oluşur (sertlik = zırhlı araç oranı). Savunurken savunma, saldırırken atılım gelen vuruşları karşılar: karşılanan vuruşların yalnızca %10'u, fazlası ise %40 oranında hasar verir. Zırh, düşmanın zırh delmesinden yüksekse alınan hasar yarıya kadar düşer. Tecrübe muharebede kazanılır; takviye gelen acemi askerler tecrübeyi düşürür.</p>`;
     return { title: 'Tümen', html };
@@ -992,7 +992,7 @@
     // dünya gerginliği (HOI4): eşikler ve kaynaklar
     const ts = Object.entries(G.TSRC || {}).filter(([t]) => st.C[t]).sort((a, b) => b[1].v - a[1].v).slice(0, 6);
     const need = G.tensionNeeded(c);
-    html += sec('Dünya gerginliği', `${bar(st.tension / 100, st.tension > 50 ? 'r' : '')}<p class="small" style="margin:4px 0 0">%${Math.round(st.tension)} · ${g.IDEOLOGIES[c.ideo].n} hükümetin savaş gerekçesi için en az %${need}, ültimatom için %${Math.round(need / 2)} gerginlik gerekir. Kısmi Seferberlik %20, Kapsamlı Askerlik %25, Savaş Ekonomisi %40 ister.</p>${ts.length ? `<div class="list">${ts.map(([t, e]) => `<div class="item">${G.flag(t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(t))} <span class="muted small">+${r1(e.v)}</span></div><div class="d">${Object.entries(e.w).sort((a, b) => b[1] - a[1]).map(([w, v]) => `${esc(w)} +${r1(v)}`).join(' · ')}</div></div></div>`).join('')}</div><p class="muted small" style="margin:0">Bu oturumdaki gerginlik kaynakları.</p>` : ''}`, `%${Math.round(st.tension)}`);
+    html += sec('Dünya gerginliği', `${bar(st.tension / 100, st.tension > 50 ? 'r' : '')}<p class="small" style="margin:4px 0 0">%${Math.round(st.tension)} · ${g.IDEOLOGIES[c.ideo].n} hükümetin savaş gerekçesi için en az %${need}, ültimatom için %${Math.round(need / 2)} gerginlik gerekir. Kısmi Seferberlik %20, Kapsamlı Askerlik %25, Savaş Ekonomisi %40 ister.</p>${ts.length ? `<div class="list">${ts.map(([t, e]) => `<div class="item">${G.flag(t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(t))} <span class="muted small">+${r1(e.v)}</span></div><div class="d">${Object.entries(e.w).sort((a, b) => b[1] - a[1]).map(([w, v]) => `${esc(w)} +${r1(v)}`).join(' · ')}</div></div></div>`).join('')}</div><p class="muted small" style="margin:0">Oyunun başından beri gerginliği en çok artıranlar.</p>` : ''}`, `%${Math.round(st.tension)}`);
     const fac = c.fac ? st.factions[c.fac] : null;
     if (fac) {
       const lead = fac.leader === c.tag;
@@ -1159,7 +1159,7 @@
     if (UI.sub === 'ach') return achView();
     if (UI.sub === 'tl') {
       const seen = new Set(), all = [];
-      for (const l of UI.tl.concat(st.log.filter((x) => x.k === 'major'))) { const k = l.d + '|' + l.m; if (seen.has(k)) continue; seen.add(k); all.push(l); }
+      for (const l of (G.TL || []).concat(st.log.filter((x) => x.k === 'major'))) { const k = l.d + '|' + l.m; if (seen.has(k)) continue; seen.add(k); all.push(l); }
       all.sort((a, b) => b.d - a.d);
       let h = '', yr = null;
       for (const l of all) { const y = G.year(l.d); if (y !== yr) { if (yr != null) h += '</div>'; h += `<h3 class="sec-h">${y}</h3><div class="list">`; yr = y; } h += `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div>${(l.t || []).slice(0, 2).map((t) => G.def(t) ? G.flag(t, 24, 16) : '').join('')}</div>`; }
@@ -1843,10 +1843,8 @@
   };
 
   // günlükten bildirime
-  UI.tl = []; // oturum zaman çizelgesi (büyük olaylar)
   G.onLog = (l) => {
     const st = G.st; if (!st.player) return;
-    if (l.k === 'major') { UI.tl.push(l); if (UI.tl.length > 600) UI.tl.shift(); }
     const mineRel = l.t.includes(st.player) || l.t.some((t) => G.sameFaction(t, st.player) || G.atWar(t, st.player));
     if (l.k === 'major' || mineRel) UI.toast(l.m, l.k === 'major' ? 'major' : l.k);
   };
@@ -1854,6 +1852,7 @@
     const st = G.st;
     const sum = cf && cf.summary ? ' ' + cf.summary : '';
     if (tag === st.player) {
+      if (full) UI._capDay = st.day;
       if (full) G.queuePopup({ title: 'Teslim olduk', text: 'Ordularımız dağıldı ve ülkemiz galipler arasında paylaşıldı.' + sum + ' Savaşı izlemeye devam edebilir ya da yeni bir oyuna başlayabilirsin.', opts: [{ n: 'Yeni oyun', fx: () => UI.showStart() }, { n: 'İzlemeye devam et', fx: () => {} }] });
       else G.queuePopup({ title: 'Barış antlaşması', text: 'Hükümetimiz teslim oldu ve barış konferansında topraklarımız paylaşıldı.' + sum, opts: [{ n: 'Devam et', fx: () => {} }] });
     } else if (cf && cf.parts.some((p) => p.t === st.player)) {
@@ -1889,6 +1888,7 @@
   };
   G.onGameOver = () => {
     const st = G.st;
+    if (UI._capDay === st.day) return; // teslimiyet penceresi zaten gösterildi
     G.queuePopup({ art: 'surrender', title: 'Yenilgi', eyebrow: G.fmtDate(st.day), text: `${G.cname(st.player)} artık haritada yok. Hükümet dağıldı, ordular teslim oldu. Tarih kazananlar tarafından yazılacak. Ayakta kalan en güçlü devlet: ${G.cname(G.scoreBoard()[0]?.t || st.player)}.`, opts: [{ n: 'Yeni oyun', fx: () => ACT.newgame() }, { n: 'Kayıt yükle', fx: () => { UI.open('menu'); } }] });
   };
 })(window);

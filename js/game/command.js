@@ -36,6 +36,16 @@
     if (c.enemies.length) return { ok: false, why: 'Savaşta tatbikat yapılamaz' };
     a.drill = 1; return { ok: true, on: 1 };
   };
+  // YZ (tarihî olmayan modlar): savaştaki büyük güçler ayda bir ülke geneli emir verir
+  // (taarruzdaysa Taarruz Emri, toprak kaybediyorsa Savunma Emri; 15 gün)
+  G.aiCommand = () => {
+    const st = G.st; if (st.opts.hist) return;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player || !c.enemies.length) continue;
+      if (c.aiOrd && c.aiOrd.until > st.day - 20) continue;
+      c.aiOrd = { k: (c.surrender || 0) > 0.15 ? 'def' : 'atk', until: st.day + 15 };
+    }
+  };
   // deniz çıkarması hazırlık süresi (gün): deniz piyadesi ve çıkarma doktrinleri kısaltır
   G.invPrep = (c, u) => { const t = G.T(u.t, u.u); return Math.max(4, Math.round(14 - (t.amph || 0) * 8 - (c.mods.invasion || 0) * 12)); };
   // ordu emirleri: KG harcayarak süreli bonus
@@ -56,7 +66,8 @@
   };
   // ordu biriminin emir ve ordu grubu çarpanları (unitStats içinden)
   G.armyMul = (c, u, t) => {
-    const a = u.army && G.armyById(c, u.army); if (!a) return null;
+    const a = u.army && G.armyById(c, u.army);
+    if (!a) { const o = c.aiOrd; return o && o.until > G.st.day ? (o.k === 'atk' ? { atk: 1.08, def: 1, spd: 1 } : { atk: 1, def: 1.1, spd: 1 }) : null; }
     let atk = 1, def = 1, spd = 1;
     if (a.boost && a.boost.until > G.st.day) {
       if (a.boost.k === 'atk') atk *= 1.1;

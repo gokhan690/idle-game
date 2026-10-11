@@ -13,6 +13,7 @@
   G.saveGame = (slot) => {
     const st = G.st; if (!st) return false;
     G.finishTick(); // yarım günü kaydetme
+    st.tsrc = G.TSRC || {}; st.tl = (G.TL || []).slice(-400); // gerginlik kaynakları ve zaman çizelgesi kayda
     const ok = store.set(KEY(slot), G.serialize());
     if (ok) store.set(KEY(slot) + '_meta', JSON.stringify({ player: st.player, day: st.day }));
     return ok;

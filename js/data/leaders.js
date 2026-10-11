@@ -249,7 +249,24 @@
     USA: { fas: 'William Pelley', com: 'Earl Browder', neu: 'Charles Lindbergh' },
     ITA: { dem: 'Ivanoe Bonomi', com: 'Palmiro Togliatti', neu: 'III. Vittorio Emanuele' },
     JAP: { dem: 'Saionji Kinmoçi', com: 'Sanzo Nosaka', neu: 'Kantaro Suzuki' },
-    CHI: { dem: 'Sun Fo', com: 'Mao Zedong', fas: 'Wang Jingwei' },
+    CHI: { dem: 'Sun Fo', com: 'Mao Zedong', fas: 'Wang Jingwei', neu: 'Çan Kay-şek' },
+    POL: { dem: 'Władysław Sikorski', fas: 'Bolesław Piasecki', com: 'Bolesław Bierut', neu: 'Ignacy Mościcki' },
+    HUN: { dem: 'Károly Peyer', fas: 'Ferenc Szálasi', com: 'Mátyás Rákosi', neu: 'Miklós Horthy' },
+    ROM: { dem: 'Iuliu Maniu', fas: 'Corneliu Codreanu', com: 'Ana Pauker', neu: 'II. Carol' },
+    YUG: { dem: 'Vladko Maček', fas: 'Ante Pavelić', com: 'Josip Broz Tito', neu: 'Prens Pavle' },
+    GRE: { dem: 'Themistoklis Sofoulis', fas: 'Georgios Kondylis', com: 'Nikos Zachariadis', neu: 'İoannis Metaksas' },
+    BUL: { dem: 'Nikola Mushanov', fas: 'Aleksandar Tsankov', com: 'Georgi Dimitrov', neu: 'III. Boris' },
+    SPR: { dem: 'Manuel Azaña', fas: 'Francisco Franco', com: 'José Díaz', neu: 'Niceto Alcalá-Zamora' },
+    SPN: { dem: 'José María Gil-Robles', fas: 'Francisco Franco', com: 'Dolores Ibárruri', neu: 'Juan de Borbón' },
+    POR: { dem: 'Bernardino Machado', fas: 'Rolão Preto', com: 'Bento Gonçalves', neu: 'António Salazar' },
+    BRA: { dem: 'Armando de Sales', fas: 'Plínio Salgado', com: 'Luís Carlos Prestes', neu: 'Getúlio Vargas' },
+    MEX: { dem: 'Manuel Ávila Camacho', fas: 'Salvador Abascal', com: 'Hernán Laborde', neu: 'Lázaro Cárdenas' },
+    ARG: { dem: 'Marcelo de Alvear', fas: 'Juan Perón', com: 'Victorio Codovilla', neu: 'Agustín Justo' },
+    SWE: { dem: 'Per Albin Hansson', fas: 'Sven Olov Lindholm', com: 'Sven Linderot', neu: 'V. Gustaf' },
+    CZE: { dem: 'Edvard Beneš', fas: 'Radola Gajda', com: 'Klement Gottwald', neu: 'Emil Hácha' },
+    AUS: { dem: 'Karl Renner', fas: 'Arthur Seyss-Inquart', com: 'Johann Koplenig', neu: 'Kurt Schuschnigg' },
+    PER: { dem: 'Mohammad Mosaddegh', fas: 'Davud Monshizadeh', com: 'Iraj Eskandari', neu: 'Rıza Şah Pehlevi' },
+
   };
   g.PARTY_N = { dem: 'Demokratlar', fas: 'Faşistler', com: 'Komünistler', neu: 'Bağlantısızlar' };
 })(window);
