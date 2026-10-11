@@ -84,7 +84,7 @@
     }
     delete st.goals[a + '>' + b];
     for (const t of def) { const ct = st.C[t]; if (!ct) continue; ct.defensive = 1; ct.wsX = (ct.wsX || 0) + (t === b ? 0.2 : 0.1); }
-    st.tension = Math.min(100, st.tension + (st.C[b].major ? 12 : 6));
+    st.tension = Math.min(100, st.tension + (st.C[b].major ? 12 : 6)); G.tsrc(a, st.C[b].major ? 12 : 6, 'savaş ilanı');
     const msg = `${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti!`;
     G.log(msg, [a, b], 'major');
     if (G.onWar) G.onWar(a, b);
@@ -129,7 +129,7 @@
     f.members.push(tag); c.fac = fid;
     G.relClear();
     G.log(`${G.cname(tag)}, ${f.n} ittifakına katıldı.`, [tag, f.leader], 'major');
-    st.tension = Math.min(100, st.tension + 2);
+    st.tension = Math.min(100, st.tension + 2); G.tsrc(f.leader, 2, 'ittifak genişlemesi');
     G.mapDirty = 1;
   };
   G.leaveFaction = (tag) => {
@@ -278,7 +278,7 @@
     const r = G.canJustify(a, b); if (!r.ok) return r;
     c.pp -= G.justifyCost(c);
     c.just = { t: b, d: G.justifyDays(c) };
-    st.tension = Math.min(100, st.tension + 3);
+    st.tension = Math.min(100, st.tension + 3); G.tsrc(a, 3, 'savaş gerekçesi');
     return { ok: true };
   };
 })(window);

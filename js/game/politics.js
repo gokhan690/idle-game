@@ -135,9 +135,17 @@
     c.res.push(r);
     return r;
   };
+  // ittifak içi teknoloji paylaşımı (HOI4): teknolojiyi bilen her müttefik için +%10 (en çok +%30).
+  // Tarihî modda yalnızca oyuncuya uygulanır (YZ'nin tarihî araştırma temposu korunur).
+  G.techShare = (c, id) => {
+    const st = G.st; if (!c.fac || (st.opts.hist && c.tag !== st.player)) return 0;
+    const f = st.factions[c.fac]; if (!f) return 0;
+    let n = 0; for (const t of f.members) if (t !== c.tag && st.C[t]?.alive && st.C[t].tech[id]) n++;
+    return Math.min(0.3, n * 0.1);
+  };
   G.resSpeed = (c, id) => {
     const t = g.TECH_BY_ID[id], m = c.mods;
-    return 1 + (m.research || 0) + (m['rc_' + t.cat] || 0);
+    return 1 + (m.research || 0) + (m['rc_' + t.cat] || 0) + G.techShare(c, id);
   };
 
   // ---------- Odak motoru ----------
@@ -214,7 +222,7 @@
         case 'rmSpirit': c.spirits = c.spirits.filter((s) => s !== v); break;
         case 'pop': if (v === 'auth') G.addPop(c, c.ideo === 'com' ? 'com' : 'fas', 0.1); else for (const [ik, x] of Object.entries(v)) G.addPop(c, ik, x); break;
         case 'rb': for (const r of v) c.rb.push(r); break;
-        case 'tension': st.tension = Math.min(100, st.tension + v); break;
+        case 'tension': st.tension = Math.min(100, st.tension + v); G.tsrc(c.tag, v, 'ulusal odak'); break;
         case 'ships': if (G.homeZone && G.homeZone(c) < 0) break; for (const [e, n] of Object.entries(v)) c.ships[e] = (c.ships[e] || 0) + n; break; // denize kıyısı olmayan ülke gemi almaz
         case 'stock': for (const [e, n] of Object.entries(v)) c.stock[e] = (c.stock[e] || 0) + n; break;
         case 'units': for (const [t, n] of Object.entries(v)) for (let i = 0; i < n; i++) { const u = G.makeUnit(c.tag, t, c.cap, 1); st.units.push(u); } G.rebuildUnitIndex(); break;
@@ -252,7 +260,7 @@
       const accept = () => {
         G.annex(c.tag, target, regionFilter(region, target));
         G.log(`${G.cname(target)}, ${G.cname(c.tag)}'${G.ek(c.tag)} boyun eğdi (${label}).`, [c.tag, target], 'major');
-        st.tension = Math.min(100, st.tension + 5);
+        st.tension = Math.min(100, st.tension + 5); G.tsrc(c.tag, 5, 'toprak talebi');
       };
       const refuse = () => {
         st.goals[c.tag + '>' + target] = st.day;

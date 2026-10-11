@@ -59,7 +59,7 @@
     pr.inf = Math.max(1, (pr.inf || 1) - 2); if (pr.rail != null) pr.rail = Math.max(0, pr.rail - 2); pr.fort = Math.max(0, pr.fort - 2);
     for (const u of G.unitsAt[n] || []) { u.str *= 0.4; u.org = 0; }
     vc.wsX -= 0.15; vc.stabX -= 0.05;
-    st.tension = Math.min(100, st.tension + 5);
+    st.tension = Math.min(100, st.tension + 5); G.tsrc(tag, 5, 'atom bombası');
     G.needSummary = 1; G.mapDirty = 1; G.supDirty = 1;
     const msg = `${G.cname(tag)} ${G.pname(n)} şehrine atom bombası attı!`;
     G.log(msg, [tag, v], 'major');

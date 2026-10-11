@@ -97,7 +97,7 @@
     }
     ca._mpu = null; cb._mpu = null;
     G.rebuildUnitIndex(); G.needSummary = 1; G.mapDirty = 1;
-    st.tension = Math.min(100, st.tension + 1);
+    st.tension = Math.min(100, st.tension + 1); G.tsrc(a, 1, 'gönüllüler');
     notify(a, b, `${pName(a)}, ${pName(b)}'${G.ek(b)} ${pick.length} gönüllü tümen gönderdi.`);
     return { ok: true, n: pick.length };
   };
@@ -141,7 +141,7 @@
       sent += took;
     }
     if (!sent) return { ok: false, why: 'Gönderilemedi.', n: 0 };
-    st.tension = Math.min(100, st.tension + 0.5);
+    st.tension = Math.min(100, st.tension + 0.5); G.tsrc(a, 0.5, 'gönüllüler');
     notify(a, b, `${pName(a)}, ${pName(b)}'${G.ek(b)} ${Math.round(sent)} uçaklık hava gönüllüsü gönderdi (${G.WING_TYPES[e].n.toLowerCase()}).`);
     return { ok: true, n: sent };
   };

@@ -85,6 +85,10 @@
         return 'airn' + (r % 6);
       }
       if (R.mode === 'sea') return 'nosup:' + pr.c;
+      if (R.mode === 'res') { const o = P[i].oil || 0, s = P[i].st || 0; return o >= s && o > 0 ? 'roil' + Math.min(3, Math.ceil(o / 8)) : s > 0 ? 'rst' + Math.min(3, Math.ceil(s / 8)) : 'nosup:' + pr.c; }
+      if (R.mode === 'ideo') return 'ideo:' + (st.C[pr.c]?.ideo || 'neu');
+      if (R.mode === 'vp') { const v = P[i].vp || 0; return 'vp' + (v >= 25 ? 4 : v >= 10 ? 3 : v >= 5 ? 2 : v >= 1 ? 1 : 0); }
+      if (R.mode === 'goal') { const pl = st.player; return G.atWar(pl, pr.c) ? 'gwar' : st.goals[pl + '>' + pr.c] != null ? 'ggoal' : (st.C[pl]?.just && st.C[pl].just.t === pr.c) ? 'gjust' : 'nosup:' + pr.c; }
       if (R.mode === 'occ') return pr.rs == null ? 'nooc:' + pr.c : 'occ' + Math.min(5, Math.floor(pr.rs * 7));
       if (R.mode === 'sup') {
         const pl = st.player, av = G.supAvail[pl];
@@ -339,6 +343,10 @@
         else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
         else if (R.mode === 'peace') { const t = k.slice(3); col = k.startsWith('pk:') ? R.ccolor(t) : k.startsWith('pu:') ? mix(R.ccolor(t), '#d8d2bc', 0.35) : mix(R.ccolor(t), '#33362f', 0.78); }
         else if (R.mode === 'sea') col = mix(R.ccolor(k.slice(6)), '#3a3d36', 0.6);
+        else if (R.mode === 'res') col = k.startsWith('roil') ? ['#3a3d36', '#6b5a3a', '#3f3020', '#1d150c'][+k.slice(4)] : k.startsWith('rst') ? ['#3a3d36', '#7d8a96', '#5b6d80', '#3d5068'][+k.slice(3)] : mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75);
+        else if (R.mode === 'ideo') col = (g.IDEOLOGIES[k.slice(5)] || g.IDEOLOGIES.neu).c;
+        else if (R.mode === 'vp') col = ['#3d4038', '#6b6a4a', '#9a8a48', '#c99a3a', '#e8c35a'][+k.slice(2)];
+        else if (R.mode === 'goal') col = k === 'gwar' ? '#b8402e' : k === 'ggoal' ? '#d98a3a' : k === 'gjust' ? '#c9b25a' : mix(R.ccolor(k.slice(6)), '#3a3d36', 0.7);
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else if (R.mode === 'occ') { col = k.startsWith('nooc:') ? mix(R.ccolor(k.slice(5)), '#3a3d36', 0.7) : SUP_COLORS[5 - +k.slice(3)]; }
         else col = R.ccolor(k);
@@ -400,6 +408,7 @@
     const st = G.st, ctx = R.ctx, cam = R.cam, z = cam.z, dpr = R.dpr;
     if (!st) return;
     if (R.mode === 'sup' && R.supTick !== G.supTick) { R.supTick = G.supTick; R.mapDirty = 1; }
+    if ((R.mode === 'goal' || R.mode === 'ideo') && R.gDay !== (st.day / 5 | 0)) { R.gDay = st.day / 5 | 0; R.mapDirty = 1; }
     if (R.mode === 'occ' && R.occDay !== (st.day / 10 | 0)) { R.occDay = st.day / 10 | 0; R.mapDirty = 1; }
     if (R.mode === 'air' && R.airDay !== (st.day / 5 | 0)) { R.airDay = st.day / 5 | 0; R.mapDirty = 1; }
     if (R.mapDirty || (G.mapDirty && performance.now() - (R.lastRebuild || 0) > 350)) { rebuild(); G.mapDirty = 0; R.lastRebuild = performance.now(); mapVer++; }
@@ -458,6 +467,7 @@
       drawPaths(ctx);
       drawArrows(ctx, z);
       drawBattles(ctx);
+      drawBorderConflicts(ctx);
       drawUnits(ctx, z);
       drawArmyTags(ctx, z);
     }
@@ -467,6 +477,20 @@
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
+  // sınır çatışmaları: eyalette turuncu çerçeveli çapraz kılıç ve kalan gün
+  function drawBorderConflicts(ctx) {
+    const st = G.st; if (!st.bc || !st.bc.length) return;
+    ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const x of st.bc) {
+      const s = visible(G.nodeX[x.prov], G.nodeY[x.prov], 30); if (!s) continue;
+      const pulse = 0.6 + 0.4 * Math.sin(R.t / 220);
+      ctx.fillStyle = 'rgba(20,16,10,0.85)'; ctx.strokeStyle = `rgba(240,140,50,${pulse})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y - 14); ctx.lineTo(s.x + 14, s.y); ctx.lineTo(s.x, s.y + 14); ctx.lineTo(s.x - 14, s.y); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#f2c46a'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(s.x - 6, s.y - 6); ctx.lineTo(s.x + 6, s.y + 6); ctx.moveTo(s.x + 6, s.y - 6); ctx.lineTo(s.x - 6, s.y + 6); ctx.stroke();
+      ctx.fillStyle = '#f4efe0'; ctx.fillText(`${Math.max(0, x.e - st.day)}g`, s.x, s.y + 22);
+    }
+    R.dirty = 1;
+  }
   // deniz üstünlüğü haritası: her deniz bölgesinde oyuncunun (ve müttefiklerinin) üstünlüğü
   let seaCache = null;
   function drawSeaMode(ctx, z) {

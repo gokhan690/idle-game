@@ -806,6 +806,7 @@
     if (st.day % 30 === 25 && G.civilAid) G.civilAid();
     if (st.day % 5 === 2 && G.intelTick) G.intelTick();
     if (G.cpTick) G.cpTick();
+    if (G.bcTick) { G.bcHistTick(); G.bcTick(); if (st.day % 30 === 12) G.bcAi(); }
     if (st.day % 30 === 0 && G.achCheck) G.achCheck();
     if (G.endCheck) G.endCheck();
     G.decTick();

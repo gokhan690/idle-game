@@ -73,13 +73,13 @@
     { id: 'anschluss', date: '1938-03-12', actor: 'GER', title: 'Anschluss',
       text: 'Almanya, Avusturya\'nın Reich\'a katılmasını talep ediyor.',
       cond: () => alive('GER') && alive('AUS') && !G.atWar('GER', 'AUS'),
-      opts: [{ n: 'Avusturya\'yı talep et', fx: () => demand('GER', 'AUS', 'Anschluss', 'Almanya, Avusturya\'nın Reich\'a katılmasını talep ediyor.', () => { G.annex('GER', 'AUS'); G.log('Avusturya, Almanya\'ya katıldı (Anschluss).', ['GER', 'AUS'], 'major'); G.st.tension += 8; }, () => war('GER', 'AUS')) }, { n: 'Vazgeç', fx: () => {} }] },
+      opts: [{ n: 'Avusturya\'yı talep et', fx: () => demand('GER', 'AUS', 'Anschluss', 'Almanya, Avusturya\'nın Reich\'a katılmasını talep ediyor.', () => { G.annex('GER', 'AUS'); G.log('Avusturya, Almanya\'ya katıldı (Anschluss).', ['GER', 'AUS'], 'major'); G.st.tension += 8; G.tsrc('GER', 8, 'Anschluss'); }, () => war('GER', 'AUS')) }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'sudeten', date: '1938-09-30', actor: 'GER', title: 'Münih Anlaşması',
       text: 'Almanya, Çekoslovakya\'nın Südet bölgesini talep ediyor. Britanya ve Fransa savaşa girmek istemiyor.',
       cond: () => alive('GER') && alive('CZE') && !G.atWar('GER', 'CZE'),
       opts: [{ n: 'Südetleri talep et', fx: () => demand('GER', 'CZE', 'Münih Anlaşması', 'Almanya, Südet bölgesini talep ediyor. Büyük güçler araya girmeyecek.', () => {
         G.annex('GER', 'CZE', (i) => P[i].lon < 18.2 && P[i].a.some((j) => G.st.prov[j].o === 'GER'));
-        G.log('Südet bölgesi Almanya\'ya bırakıldı.', ['GER', 'CZE'], 'major'); G.st.tension += 8;
+        G.log('Südet bölgesi Almanya\'ya bırakıldı.', ['GER', 'CZE'], 'major'); G.st.tension += 8; G.tsrc('GER', 8, 'Südetler');
       }, () => war('GER', 'CZE')) }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'czeend', date: '1939-03-15', actor: 'GER', title: 'Çekoslovakya\'nın Sonu',
       text: 'Slovakya bağımsızlık ilan etti. Almanya, Bohemya ve Moravya\'yı himayesine almak istiyor.',
@@ -89,7 +89,7 @@
         if (alive('HUN')) G.annex('HUN', 'CZE', (i) => P[i].lon >= 22.3);
         G.annex('GER', 'CZE');
         if (alive('SLO')) joinAxis('SLO');
-        G.log('Çekoslovakya parçalandı. Slovakya bağımsız.', ['GER', 'CZE'], 'major'); G.st.tension += 10;
+        G.log('Çekoslovakya parçalandı. Slovakya bağımsız.', ['GER', 'CZE'], 'major'); G.st.tension += 10; G.tsrc('GER', 10, 'Çekoslovakya');
       }, () => war('GER', 'CZE')) }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'albania', date: '1939-04-07', actor: 'ITA', title: 'Arnavutluk\'un İşgali',
       text: 'İtalya, Arnavutluk\'u himayesine almak istiyor.',
