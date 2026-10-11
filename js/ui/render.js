@@ -473,23 +473,37 @@
     }
     drawAirRegions(ctx, z);
     if (R.mode === 'sea') drawSeaMode(ctx, z);
+    if (R.mode === 'vp') drawVpMode(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
   // sınır çatışmaları: eyalette turuncu çerçeveli çapraz kılıç ve kalan gün
   function drawBorderConflicts(ctx) {
-    const st = G.st; if (!st.bc || !st.bc.length) return;
+    const st = G.st; R.bcMarks = []; if (!st.bc || !st.bc.length) return;
     ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const x of st.bc) {
       const s = visible(G.nodeX[x.prov], G.nodeY[x.prov], 30); if (!s) continue;
+      R.bcMarks.push({ x: s.x, y: s.y, x0: x });
       const pulse = 0.6 + 0.4 * Math.sin(R.t / 220);
       ctx.fillStyle = 'rgba(20,16,10,0.85)'; ctx.strokeStyle = `rgba(240,140,50,${pulse})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(s.x, s.y - 14); ctx.lineTo(s.x + 14, s.y); ctx.lineTo(s.x, s.y + 14); ctx.lineTo(s.x - 14, s.y); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = '#f2c46a'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(s.x - 6, s.y - 6); ctx.lineTo(s.x + 6, s.y + 6); ctx.moveTo(s.x + 6, s.y - 6); ctx.lineTo(s.x - 6, s.y + 6); ctx.stroke();
       ctx.fillStyle = '#f4efe0'; ctx.fillText(`${Math.max(0, x.e - st.day)}g`, s.x, s.y + 22);
     }
-    R.dirty = 1;
+  }
+  // zafer noktası modu: büyük şehirlerde VP sayısı
+  function drawVpMode(ctx, z) {
+    ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const min = z < 1.2 ? 15 : z < 2 ? 8 : 3;
+    for (let i = 0; i < NP; i++) {
+      const v = P[i].vp || 0; if (v < min) continue;
+      const s = visible(G.nodeX[i], G.nodeY[i], 20); if (!s) continue;
+      const w = v >= 10 ? 20 : 16;
+      ctx.fillStyle = 'rgba(20,16,10,0.85)'; ctx.fillRect(s.x - w / 2, s.y + 6, w, 13);
+      ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 1; ctx.strokeRect(s.x - w / 2, s.y + 6, w, 13);
+      ctx.fillStyle = '#f2d27a'; ctx.fillText(String(v), s.x, s.y + 12.5);
+    }
   }
   // deniz üstünlüğü haritası: her deniz bölgesinde oyuncunun (ve müttefiklerinin) üstünlüğü
   let seaCache = null;
@@ -501,7 +515,7 @@
       for (let s = 0; s < SEAS.length; s++) if (busy.has(NP + s)) v[s] = G.navalSupremacy(pl, NP + s);
       seaCache = { d: st.day, v };
     }
-    const r = Math.max(9, Math.min(32, 20 * z));
+    const r = Math.max(8, Math.min(22, 14 * z));
     ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let s = 0; s < SEAS.length; s++) {
       const sc = visible(SEAS[s].x, SEAS[s].y, r); if (!sc) continue;
@@ -927,7 +941,7 @@
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
     // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
-    const iu = gl.find((u) => u.inv); if (iu) { ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, y - 5, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, y - 4, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
+    const iu = gl.find((u) => u.inv); if (iu) { const yy = gl.some((u) => u.sr) ? y - 9 : y - 5; ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, yy, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, yy + 1, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
     let xs = 0; for (const u of gl) xs += u.xp ?? 0.25;
     const xl = G.xpIdx ? G.xpIdx(xs / gl.length) - 1 : 0;

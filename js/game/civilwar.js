@@ -34,7 +34,7 @@
     const flip = (u, loc) => { u.t = rt; u.auto = 1; u.army = 0; u.path = []; u.gar = 0; u.prog = 0; if (loc != null) u.loc = loc; };
     let n = 0; for (const u of mine) if (pick.has(u.loc)) { flip(u); n++; }
     for (let k = 0, i = 0; n < quota && i < mine.length; i++) { const u = mine[(i * 7) % mine.length]; if (u.t === tag) { flip(u, pl[k++ % pl.length]); n++; } }
-    const mil = Math.max(4, Math.round(mine.length * sh * 0.5));
+    const mil = Math.max(7, Math.round(mine.length * sh * 0.6)); // küçük ülkelerde de iç savaş birkaç ay sürsün
     for (let k = 0; k < mil; k++) st.units.push(G.makeUnit(rt, k % 4 === 3 ? 'art' : 'inf', pl[k % pl.length], 0.9));
     r.stock.inf += 2500; r.stock.art += 60;
     if (c.ships && r.ships) { for (const e of ['dd', 'cr', 'ss']) { const m = Math.floor((c.ships[e] || 0) * 0.3); c.ships[e] -= m; r.ships[e] = (r.ships[e] || 0) + m; } }

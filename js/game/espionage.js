@@ -27,7 +27,7 @@
   G.intelMax = (c) => !c.intel ? 0 : 2 + (c.major ? 1 : 0) + (c.intel.up.school ? 2 : 0);
   G.intelCI = (tag) => { const x = G.st.C[tag]; if (!x) return 0; return (x.major ? 0.2 : 0.1) + (x.intel && x.intel.up.ci ? 0.4 : 0); };
   G.intelFree = (c) => { const I = c.intel; if (!I) return 0; return I.ag - Object.values(I.as).reduce((a, b) => a + b, 0); };
-  G.intelChance = (c, t, op) => { const I = c.intel, n = (I.net[t] || 0); return clamp(0.5 + n / 200 + (I.up.field ? 0.15 : 0) - G.intelCI(t) * 0.5 - (op === 'coup' ? 0.15 : 0), 0.05, 0.95); };
+  G.intelChance = (c, t, op) => { const I = c.intel, n = (I.net[t] || 0); return clamp(0.55 + n / 200 + (I.up.field ? 0.15 : 0) - G.intelCI(t) * 0.5 - (op === 'coup' ? 0.15 : 0), 0.05, 0.95); };
 
   G.intelFound = (c) => {
     if (c.intel) return { ok: false, why: 'Teşkilat zaten kurulu' };

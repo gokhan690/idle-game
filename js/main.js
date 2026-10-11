@@ -241,6 +241,9 @@
       const bm = (R.battleMarks || []).find((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
       if (bm && bm.naval) { UI.panel = 'navy'; UI.sub = null; $('card').hidden = true; UI.render(true); const el = [...document.querySelectorAll('#sheet-body .sec-h')].find((h) => /Deniz muharebeleri/.test(h.textContent)); if (el) el.scrollIntoView(); return; }
       if (bm) { UI.panel = 'battle'; UI.sub = null; UI.battleN = bm.b.n; $('card').hidden = true; UI.render(true); return; }
+      // sınır çatışması işareti: karşı tarafın ülke sayfası
+      const bcm = (R.bcMarks || []).find((m) => Math.abs(x - m.x) < 16 && Math.abs(y - m.y) < 16);
+      if (bcm) { const o = bcm.x0.a === st.player ? bcm.x0.b : bcm.x0.a; UI.panel = 'dip'; UI.sub = 'c:' + o; $('card').hidden = true; UI.render(true); return; }
     }
     // filo seçimi ve hareketi
     if (cnt && cnt.fleet && cnt.tag === st.player) { R.sel.fleet = cnt.fleet; R.sel.units.clear(); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return; }
