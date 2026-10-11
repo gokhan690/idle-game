@@ -17,6 +17,7 @@
     conv: '<path d="M2 15h20l-2.8 5H4.8z"/><path d="M6 15V9.5h4.5V15zM11.5 15V7h5.5v8z" opacity="0.8"/><path d="M13.5 4.5h1.6V7h-1.6z"/>',
     div: '<path fill-rule="evenodd" d="M2.5 5.5h19v13h-19zM4.5 7.5v9h15v-9z"/><path d="M4.2 7.7l1.1-1.6 14.5 10.2-1.1 1.6zM18.7 6.1l1.1 1.6L5.3 17.9l-1.1-1.6z"/>',
     tension: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3.2 3 3.2 15 0 18M12 3c-3.2 3-3.2 15 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+    cp: '<path d="M12 2.5l2.5 5.3 5.8.7-4.3 4 1.1 5.7L12 15.4l-5.1 2.8 1.1-5.7-4.3-4 5.8-.7z"/><path d="M5 19.5l7 2.5 7-2.5v1.8l-7 2.5-7-2.5z" opacity="0.75"/>',
     war: '<path d="M4 3.5l10.5 10.5M20 3.5L9.5 14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12.5 17.2l4.5-4.5 2.6 2.6-4.5 4.5zM11.5 17.2L7 12.7l-2.6 2.6 4.5 4.5z"/>',
     // uyarı / menü / panel simgeleri
     focus: '<circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4.6" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="1.8"/>',
@@ -32,7 +33,7 @@
     hand: '<path d="M1.8 10.8l4-3.3 4.2 1.2 2-1 3 1 5.2 3.2-2.1 4.3-2-.6-2.1 2.6-2-1.1-1.6 1.6-1.8-1-2.9-1.4z"/><path d="M10 9.6l3 3M12 13.6l2 2M9.8 14.4l1.5 1.5" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="1.1"/>',
   };
   // madalyon renkleri (üst çubuk)
-  const MED = { pp: '#b8892a', stab: '#2f5f96', ws: '#9a3326', mp: '#6e5e46', civ: '#6d6e66', mil: '#5b6a2f', dock: '#2d5a78', steel: '#585f66', oil: '#2a2a28', fuel: '#4b6a2b', conv: '#6b5d40', div: '#4c5836', tension: '#7a2a20', war: '#8a2418' };
+  const MED = { pp: '#b8892a', stab: '#2f5f96', ws: '#9a3326', mp: '#6e5e46', civ: '#6d6e66', mil: '#5b6a2f', dock: '#2d5a78', steel: '#585f66', oil: '#2a2a28', fuel: '#4b6a2b', conv: '#6b5d40', div: '#4c5836', tension: '#7a2a20', war: '#8a2418', cp: '#7b5a2a' };
   const svg = (k) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${P[k] || ''}</svg>`;
   G.ICO = Object.fromEntries(Object.keys(P).map((k) => [k, svg(k)]));
   G.ico = (k, cls = '') => `<i class="hi ${cls}">${svg(k)}</i>`;

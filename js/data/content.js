@@ -190,20 +190,20 @@
 
   g.FOCUS_DAYS = 70;
 
-  // Yasalar: ws = gereken savaş desteği, war = 2 ise yalnızca savaşta
+  // Yasalar: ws = gereken savaş desteği, war = 2 ise yalnızca savaşta, ten = gereken dünya gerginliği (savaşta aranmaz), ideo = izin verilen ideolojiler
   g.LAWS = {
     mob: { n: 'Askerlik Yasası', opts: [
       { n: 'Gönüllü Ordu', d: '%2 nüfus askere alınabilir', mp: 0.02 },
       { n: 'Sınırlı Askerlik', d: '%3,5 nüfus', mp: 0.035, ws: 0.05 },
-      { n: 'Kapsamlı Askerlik', d: '%6 nüfus, fabrika verimi -%5', mp: 0.06, factory: -0.05, ws: 0.3 },
+      { n: 'Kapsamlı Askerlik', d: '%6 nüfus, fabrika verimi -%5', mp: 0.06, factory: -0.05, ws: 0.3, ten: 25 },
       { n: 'Hizmet Zorunluluğu', d: '%9 nüfus, fabrika verimi -%10', mp: 0.09, factory: -0.1, ws: 0.55, war: 2 },
       { n: 'Topyekûn Seferberlik', d: '%13 nüfus, fabrika verimi -%20', mp: 0.13, factory: -0.2, ws: 0.75, war: 2 },
     ] },
     eco: { n: 'Ekonomi Yasası', opts: [
       { n: 'Sivil Ekonomi', d: 'Tüketim malları %35', cg: 0.35 },
       { n: 'Erken Seferberlik', d: 'Tüketim malları %30, inşaat +%5', cg: 0.3, construct: 0.05, ws: 0.05 },
-      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25, inşaat +%10', cg: 0.25, construct: 0.1, ws: 0.15 },
-      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35 },
+      { n: 'Kısmi Seferberlik', d: 'Tüketim malları %25, inşaat +%10', cg: 0.25, construct: 0.1, ws: 0.15, ten: 20 },
+      { n: 'Savaş Ekonomisi', d: 'Tüketim malları %15, inşaat +%15', cg: 0.15, construct: 0.15, ws: 0.35, ten: 40 },
       { n: 'Topyekûn Savaş', d: 'Tüketim malları %8, inşaat +%20, istikrar -%10', cg: 0.08, construct: 0.2, stab: -0.1, ws: 0.7, war: 2 },
     ] },
     occ: { n: 'İşgal Yasası', opts: [
@@ -217,6 +217,12 @@
       { n: 'İhracat Odaklı', d: 'Fabrika +%5, araştırma +%2; kaynakların %50\'si satılabilir', factory: 0.05, research: 0.02, exp: 0.5 },
       { n: 'Sınırlı İhracat', d: 'Kaynakların %25\'i satılabilir', exp: 0.25 },
       { n: 'Kapalı Ekonomi', d: 'Hiç kaynak satılmaz, fabrika -%5', factory: -0.05, exp: 0, ws: 0.3 },
+    ] },
+    press: { n: 'Basın Yasası', opts: [
+      { n: 'Serbest Basın', d: 'İstikrar +%5, savaş desteği −%5, araştırma +%3', fx: { stab: 0.05, ws: -0.05, research: 0.03 }, ideo: ['dem', 'neu'] },
+      { n: 'Basın Denetimi', d: 'Dengeli: etkisi yok', fx: {} },
+      { n: 'Devlet Propagandası', d: 'Savaş desteği +%8, istikrar −%3', fx: { ws: 0.08, stab: -0.03 }, ws: 0.2 },
+      { n: 'Topyekûn Propaganda', d: 'Savaş desteği +%15, istikrar −%8, araştırma −%3', fx: { ws: 0.15, stab: -0.08, research: -0.03 }, war: 2, ideo: ['fas', 'com'] },
     ] },
   };
   g.LAW_COST = 150;

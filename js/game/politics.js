@@ -92,6 +92,9 @@
     const o = g.LAWS[k].opts[i];
     if (o.war === 2 && !c.enemies.length) return { ok: false, why: 'Yalnızca savaşta' };
     if ((o.ws || 0) > (c.ws ?? 0) + 1e-9) return { ok: false, why: `%${Math.round(o.ws * 100)} savaş desteği gerekir` };
+    // gerginlik koşulu (tarihî modda YZ ülkeleri tarihî dengeyi korumak için muaf)
+    if (o.ten && !c.enemies.length && G.st.tension < o.ten && !(G.st.opts.hist && c.tag !== G.st.player)) return { ok: false, why: `Dünya gerginliği en az %${o.ten} olmalı (ya da savaşta)` };
+    if (o.ideo && !o.ideo.includes(c.ideo)) return { ok: false, why: `Yalnızca ${o.ideo.map((x) => g.IDEOLOGIES[x].n.toLowerCase()).join(' ya da ')} hükümetler` };
     return { ok: true };
   };
 
