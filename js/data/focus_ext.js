@@ -61,7 +61,7 @@
     F('ger_heinkel', 'Heinkel Bombardıman Filosu', 13, 1, ['ger_stuka'], { addBombers: 120 }, '+120 bombardıman.'),
     F('ger_condor', 'Kondor Lejyonu', 12, 2, ['ger_bf109'], { air: 0.1, xpGain: 0.2 }, 'Hava +%10, tecrübe kazanımı +%20.', { req: 'year:1937' }),
     F('ger_me262', 'Jet Programı', 12, 3, ['ger_condor'], Object.assign(rb('air', 'air'), { air: 0.1 }), 'Jet uçaklarına araştırma bonusu.', { req: 'year:1943' }),
-    F('ger_bismarck', 'Bismarck Sınıfı', 15, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı.'),
+    F('ger_bismarck', 'Bismarck Sınıfı', 15, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı gemi.'),
     F('ger_uboat', 'Kurt Sürüleri', 15, 1, ['ger_bismarck'], { ships: { ss: 30 }, navy: 0.05 }, '+30 denizaltı.'),
     F('ger_atlantic', 'Atlantik Muharebesi', 15, 2, ['ger_uboat'], { navy: 0.1, ships: { ss: 20 } }, '+20 denizaltı, deniz +%10.', { req: 'war' }),
     F('ger_afrika', 'Afrika Kolordusu', 6, 4, ['ger_hg'], { units: { arm: 2, mot: 2 }, fn: ['general'] }, '+2 zırhlı, +2 motorize tümen, yeni komutan.', { req: 'war' }),
@@ -108,7 +108,7 @@
     F('eng_desert', 'Çöl Faresi', 10, 2, ['eng_anzac'], { units: { arm: 2 }, fn: ['general'] }, '+2 zırhlı tümen, yeni komutan.', { req: 'war' }),
     F('eng_mulberry', 'Mulberry Limanları', 9, 3, ['eng_commandos'], { invasion: 0.25, supply: 0.1 }, 'Çıkarma +%25, ikmal +%10.', { req: 'year:1943' }),
     F('eng_atlantic_charter', 'Atlantik Bildirgesi', 6, 3, ['eng_lendlease'], { ws: 0.1, fn: ['invite', ['USA']] }, 'ABD\'yi ittifaka davet et.', { req: 'year:1941' }),
-    F('eng_hood', 'Kraliyet Donanması Yenilemesi', 4, 3, ['eng_convoy'], { ships: { bb: 2, cv: 1 } }, '+2 zırhlı, +1 uçak gemisi.'),
+    F('eng_hood', 'Kraliyet Donanması Yenilemesi', 4, 3, ['eng_convoy'], { ships: { bb: 2, cv: 1 } }, '+2 zırhlı gemi, +1 uçak gemisi.'),
   ]);
 
   // ---------- Fransa ----------
@@ -117,7 +117,7 @@
     F('fra_rail', 'SNCF\'nin Kuruluşu', 8, 1, ['fra_matignon'], { addInfra: 6, supply: 0.05 }, '6 eyalette altyapı +1.'),
     F('fra_renault', 'Renault Fabrikaları', 9, 1, ['fra_matignon'], { addMil: 2, stock: { mot: 200 } }, '+2 askerî fabrika.'),
     F('fra_dewoitine', 'Dewoitine Avcıları', 9, 2, ['fra_renault'], { addPlanes: 100, air: 0.05 }, '+100 avcı.'),
-    F('fra_richelieu', 'Richelieu Sınıfı', 10, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı.'),
+    F('fra_richelieu', 'Richelieu Sınıfı', 10, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı gemi.'),
     F('fra_mers', 'Akdeniz Filosu', 10, 1, ['fra_richelieu'], { navy: 0.1, ships: { cr: 2 } }, '+2 kruvazör.'),
     F('fra_afrique', 'Afrika Ordusu', 6, 3, ['fra_colonial'], { units: { inf: 4 }, mp: 0.1 }, '+4 sömürge tümeni.', { req: 'war' }),
     F('fra_indochina', 'Çinhindi Savunması', 7, 3, ['fra_colonial'], { fn: ['fortRegion', 'indochina', 2] }, 'Çinhindi tahkimatı.'),
@@ -130,7 +130,7 @@
   add('ITA', [
     F('ita_autarky', 'Otarşi', 7, 0, [], { steel: 10, addCiv: 1 }, '+10 çelik.'),
     F('ita_fiat', 'Fiat ve Breda', 7, 1, ['ita_autarky'], { addMil: 3 }, '+3 askerî fabrika.'),
-    F('ita_litorio', 'Littorio Zırhlıları', 8, 1, ['ita_autarky'], { ships: { bb: 2 } }, '+2 zırhlı.'),
+    F('ita_litorio', 'Littorio Zırhlıları', 8, 1, ['ita_autarky'], { ships: { bb: 2 } }, '+2 zırhlı gemi.'),
     F('ita_macchi', 'Macchi Avcıları', 7, 2, ['ita_fiat'], { addPlanes: 100, air: 0.05 }, '+100 avcı.'),
     F('ita_alpini', 'Alpini', 0, 4, ['ita_balkans'], { tech: 'mtn1', units: { mtn: 3 } }, '+3 dağ tümeni.'),
     F('ita_africa', 'Doğu Afrika İmparatorluğu', 4, 3, ['ita_libya'], { units: { inf: 4 }, fn: ['fortRegion', 'eastafrica', 2] }, '+4 tümen, Doğu Afrika tahkimatı.'),
@@ -143,7 +143,7 @@
 
   // ---------- Japonya ----------
   add('JAP', [
-    F('jap_yamato', 'Yamato Sınıfı', 8, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı.'),
+    F('jap_yamato', 'Yamato Sınıfı', 8, 0, [], { ships: { bb: 2 }, navy: 0.05 }, '+2 zırhlı gemi.'),
     F('jap_kido', 'Kidō Butai', 8, 1, ['jap_yamato'], { ships: { cv: 2 }, addPlanes: 100 }, '+2 uçak gemisi, +100 avcı.'),
     F('jap_lance', 'Uzun Mızrak Torpidosu', 9, 1, ['jap_yamato'], { navy: 0.1, ships: { dd: 10 } }, '+10 muhrip.'),
     F('jap_midway', 'Pasifik Çevresi', 8, 2, ['jap_kido'], { invasion: 0.2, fn: ['fortRegion', 'pacific', 2] }, 'Ada üslerine tahkimat, çıkarma +%20.', { req: 'year:1941' }),

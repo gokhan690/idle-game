@@ -51,7 +51,7 @@
     if (G.dynClear) G.dynClear(); // önceki oyunun iç savaş ülkeleri
     G.TSRC = {}; G.TL = []; // gerginlik kaynakları ve zaman çizelgesi (kaydederken st'ye yazılır)
     const st = {
-      v: 4, day: 0, seed: (opts && opts.seed) || 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
+      v: G.SAVE_V, day: 0, seed: (opts && opts.seed) || 12345 + Math.floor(Math.random() * 1e6), player, opts: Object.assign({ hist: 1, diff: 1 }, opts || {}),
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {}, deals: [], embargo: {}, ops: [],
       log: [], nextId: 1, over: 0,
     };
@@ -211,9 +211,16 @@
   // ---------- Kayıt ----------
   const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu', '_sd', '_rf', '_rfDay']);
   G.serialize = () => JSON.stringify(G.st, (k, v) => (SKIP.has(k) ? undefined : v));
+  // Kayıt sürümü: kayıt biçimi bozulacak biçimde değişirse G.SAVE_V artırılır ve SAVE_MIGRATE[eski] eski kaydı bir üst sürüme taşır.
+  // Yeni alanlar tembel oluşturulduğundan çoğu değişiklik sürüm artırmayı gerektirmez (aşağıdaki varsayılanlar yeterli).
+  G.SAVE_V = 4;
+  G.SAVE_MIGRATE = {};
   G.deserialize = (s) => {
-    const st = JSON.parse(s);
-    if (!st || st.v !== 4) throw new Error('Kayıt sürümü uyumsuz');
+    let st; try { st = JSON.parse(s); } catch (e) { throw new Error('Dosya okunamadı: geçerli bir kayıt değil'); }
+    if (!st || typeof st !== 'object' || !st.C || !st.prov || st.v == null) throw new Error('Bu bir Demir Cephe kaydı değil');
+    while (st.v < G.SAVE_V && G.SAVE_MIGRATE[st.v]) st = G.SAVE_MIGRATE[st.v](st);
+    if (st.v > G.SAVE_V) throw new Error('Kayıt oyunun daha yeni bir sürümüyle yapılmış');
+    if (st.v !== G.SAVE_V) throw new Error('Kayıt sürümü çok eski');
     G.tickIt = null; // yarım kalmış gün eski oyuna aittir
     G.TSRC = st.tsrc || {}; G.TL = (st.tl || []).slice(); if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
     G.st = st;
