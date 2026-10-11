@@ -115,12 +115,55 @@
       ],
     },
   };
+  // ---------- Gemi tasarımcısı (HOI4 Man the Guns): gövde + modüller -> gemi gücü çarpanı ----------
+  // fp ateş gücü, ar dayanıklılık/zırh, aa uçaksavar, asw denizaltı savunması, sp hız
+  const SHIP_TIER = { dd: ['', '1936 Muhrip Gövdesi', '1940 Muhrip Gövdesi'], cr: ['', '1936 Kruvazör Gövdesi', '1940 Kruvazör Gövdesi'], bb: ['', '1936 Zırhlı Gövdesi', '1940 Zırhlı Gövdesi'], ss: ['', '1936 Denizaltı Gövdesi', '1940 Denizaltı Gövdesi'], cv: ['', 'Uçak Gemisi Gövdesi'] };
+  const SHIP_STATS = [['fp', 'Ateş gücü'], ['ar', 'Dayanıklılık'], ['aa', 'Uçaksavar'], ['asw', 'Denizaltı savunması'], ['sp', 'Hız']];
+  const shipSlots = (e) => {
+    const S = [];
+    if (e !== 'ss' && e !== 'cv') S.push({ k: 'main', n: 'Ana batarya', def: 'std', opts: [
+      { id: 'std', n: e === 'dd' ? 'Hafif toplar' : e === 'cr' ? 'Orta toplar' : 'Ağır toplar', fx: {} },
+      { id: 'big', n: e === 'bb' ? 'Süper ağır toplar' : 'Daha ağır toplar', fx: { fp: 0.22, sp: -0.04 }, cost: 0.15 },
+      { id: 'dual', n: 'Çift amaçlı toplar', fx: { fp: 0.06, aa: 0.3 }, cost: 0.1, req: 2 },
+    ] });
+    if (e === 'cv') S.push({ k: 'deck', n: 'Uçuş güvertesi', def: 'std', opts: [
+      { id: 'std', n: 'Standart güverte', fx: {} },
+      { id: 'big', n: 'Genişletilmiş hangar', fx: { fp: 0.25, ar: -0.05 }, cost: 0.15 },
+      { id: 'arm', n: 'Zırhlı güverte', fx: { ar: 0.25, fp: -0.05 }, cost: 0.12 },
+    ] });
+    if (e !== 'bb' && e !== 'cv') S.push({ k: 'torp', n: 'Torpidolar', def: e === 'ss' ? 'tube' : 'none', opts: [
+      ...(e === 'ss' ? [] : [{ id: 'none', n: 'Yok', fx: {} }]),
+      { id: 'tube', n: 'Torpido kovanları', fx: { fp: e === 'ss' ? 0 : 0.15 }, cost: e === 'ss' ? 0 : 0.05 },
+      { id: 'adv', n: 'Gelişmiş torpidolar', fx: { fp: 0.25 }, cost: 0.1, req: 2 },
+    ] });
+    if (e !== 'ss') S.push({ k: 'aaa', n: 'Uçaksavar', lvl: 3, per: { fx: { aa: 0.15 }, cost: 0.03 } });
+    if (e !== 'ss' && e !== 'dd') S.push({ k: 'arm', n: 'Zırh', lvl: 3, per: { fx: { ar: 0.1, sp: -0.03 }, cost: 0.05 } });
+    S.push({ k: 'eng', n: 'Makine dairesi', lvl: 3, per: { fx: { sp: 0.05 }, cost: 0.03 } });
+    S.push({ k: 'sp1', n: 'Özel donanım', def: 'none', opts: [
+      { id: 'none', n: 'Boş', fx: {} },
+      { id: 'sonar', n: 'Sonar', fx: { asw: 0.4 }, cost: 0.03 },
+      { id: 'radar', n: 'Radar', fx: { fp: 0.05, ar: 0.05, aa: 0.1 }, cost: 0.06, req: 2 },
+      ...(e === 'ss' ? [{ id: 'snork', n: 'Şnorkel', fx: { ar: 0.2, sp: 0.03 }, cost: 0.05, req: 2 }] : [{ id: 'mine', n: 'Mayın atar', fx: { ar: 0.05, asw: 0.15 }, cost: 0.03 }]),
+    ] });
+    return S;
+  };
+  for (const e of g.SHIPS) g.DESIGN[e] = { n: g.EQUIP[e].n, tierN: SHIP_TIER[e], stats: SHIP_STATS, slots: shipSlots(e), ship: 1 };
+  // gemi gücü çarpanı: standart tasarım tam 1
+  G.shipPow = (e, v) => e === 'ss' ? 0.6 * v.fp + 0.25 * v.ar + 0.15 * v.sp : e === 'dd' ? 0.4 * v.fp + 0.2 * v.ar + 0.1 * v.aa + 0.2 * v.asw + 0.1 * v.sp : 0.5 * v.fp + 0.3 * v.ar + 0.1 * v.aa + 0.05 * v.asw + 0.05 * v.sp;
+  // özel tasarımla üretilen gemi filonun ortalama kalitesini değiştirir (c.shq; yoksa 1)
+  G.shipQualityAdd = (c, e, d) => {
+    const pw = G.shipPow(e, G.designStats(e, d).v), n = Math.max(1, G.navyCount(c, e));
+    const q = c.shq || (c.shq = {}), cur = q[e] ?? 1;
+    q[e] = cur + (pw - cur) / n;
+  };
+  G.shipQ = (c, e) => (c.shq && c.shq[e]) || 1;
   G.DESIGNABLE = new Set(Object.keys(g.DESIGN));
 
   // ---------- Temel değerler ----------
   // Varsayılan tasarım eski seviye sistemini birebir verir (tank: 1+0.25(L-1); uçak: L).
   function base(e, L) {
     if (e === 'tank') return G.tankBase(L);
+    if (g.DESIGN[e] && g.DESIGN[e].ship) return { fp: 1, ar: 1, aa: 1, asw: 1, sp: 1 };
     const pl = { aa: 0.25 * L, ga: 0.25 * L, sb: 0, na: 0.2 * L, df: 1, rg: 1, rel: 0.9 };
     if (e === 'fig') { pl.aa = L; pl.rg = 1; }
     if (e === 'cas') { pl.ga = L; pl.na = L; pl.rg = 1.2; }
@@ -171,6 +214,7 @@
   // vektörden eşdeğer seviye (arayüz ve eski hesaplar için)
   G.vecLevel = (e, v) => {
     if (e === 'tank') return G.tankLevelOf(v.a);
+    if (g.DESIGN[e] && g.DESIGN[e].ship) return 1;
     return e === 'fig' ? v.aa : e === 'cas' ? v.ga : v.sb;
   };
   G.stockVec = (c, e) => {
@@ -189,7 +233,7 @@
   };
 
   // ---------- Tasarım kaydetme (tecrübe puanı) ----------
-  G.XP_KIND = { tank: 'axp', fig: 'fxp', cas: 'fxp', bom: 'fxp' };
+  G.XP_KIND = { tank: 'axp', fig: 'fxp', cas: 'fxp', bom: 'fxp', dd: 'nxp', cr: 'nxp', bb: 'nxp', ss: 'nxp', cv: 'nxp' };
   G.designCost = (e, d) => {
     const D = g.DESIGN[e]; let n = 0;
     for (const sl of D.slots) { if (sl.lvl) n += d.m[sl.k] | 0; else if ((d.m[sl.k] ?? sl.def) !== sl.def) n++; }
@@ -228,6 +272,8 @@
     let wings = 0; if (war) for (const w of c.wings || []) if (w.r >= 0 && w.n > 10) wings++;
     c.axp = Math.min(500, (c.axp ?? 30) + 0.06 + (c.mods.xpGain || 0) * 0.05 + Math.min(0.5, bat * 0.02));
     c.fxp = Math.min(500, (c.fxp ?? 30) + 0.05 + Math.min(0.4, wings * 0.03));
+    // deniz tecrübesi yalnızca kullanılmaya başlanınca birikir (oyuncu)
+    if (c.nxp != null) { let fl = 0; if (war) for (const f of c.fleets || []) if (f.mis !== 'hold') fl++; c.nxp = Math.min(500, c.nxp + 0.04 + Math.min(0.4, fl * 0.04)); }
   };
 
   // ---------- Yapay zekâ tasarımları (büyük güçler, ulusal tercihlere göre) ----------
@@ -239,7 +285,7 @@
     bom: (c, t) => ({ eng: c.tag === 'USA' || c.tag === 'ENG' ? '4' : '2', bay: c.tag === 'JAP' || c.tag === 'ITA' ? 'tor' : 'std', tur: 1, sp1: 'sight', sp2: 'none' }),
   };
   G.aiDesign = (c, e) => {
-    if (!c.major || !G.DESIGNABLE.has(e) || c.tag === G.st.player) return null;
+    if (!c.major || !G.DESIGNABLE.has(e) || !AI_PRESET[e] || c.tag === G.st.player) return null;
     const t = Math.floor(G.bestLevel(c, e));
     if (t < 2) return null;
     const id = 'ai' + e + t;

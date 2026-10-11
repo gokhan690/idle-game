@@ -269,7 +269,7 @@
   };
   G.shipsPower = (c, sh) => {
     const m = c.mods; let v = 0;
-    for (const e of g.SHIPS) v += (sh[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1);
+    for (const e of g.SHIPS) v += (sh[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1) * (c.shq && c.shq[e] ? c.shq[e] : 1);
     return v * (1 + (m.navy || 0));
   };
   G.navyPower = (c) => {

@@ -34,7 +34,7 @@
     if (f && e !== 'ss') f.sh[e] = (f.sh[e] || 0) + 1;
     else { const sf = (c.fleets || []).find((x) => x.sh.ss > 0 && e === 'ss'); if (sf) sf.sh.ss++; else c.ships[e] = (c.ships[e] || 0) + 1; }
   };
-  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3)) * G.fuelNavyMul(c);
+  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3) * (1 + (c.mods.cvAir || 0))) * G.fuelNavyMul(c);
   G.fleetShips = (f) => SH.reduce((a, e) => a + (f.sh[e] || 0), 0);
 
   // Bir bölgedeki deniz üstünlüğü (0..1): dost / (dost + düşman), komşu bölgeler yarım ağırlık
@@ -178,10 +178,10 @@
       c.raid = 0;
       if (!c.alive || !c.enemies.length) continue;
       let raid = 0, esc = 0;
-      for (const t of c.enemies) for (const f of st.C[t].fleets || []) if (f.mis === 'raid') raid += G.fleetPower(st.C[t], f) + (f.sh.ss || 0) * 2;
+      for (const t of c.enemies) for (const f of st.C[t].fleets || []) if (f.mis === 'raid') raid += (G.fleetPower(st.C[t], f) + (f.sh.ss || 0) * 2) * (1 + (st.C[t].mods.raid || 0));
       for (const f of c.fleets || []) if (f.mis === 'escort') esc += G.fleetPower(c, f) + (f.sh.dd || 0) * 2;
       if (raid > 0) {
-        c.raid = Math.min(0.7, raid / (raid + esc * 1.5 + 25));
+        c.raid = Math.min(0.7, raid / (raid + esc * 1.5 + 25)) * (1 - (c.mods.convDef || 0));
         c.ships.conv = Math.max(0, (c.ships.conv || 0) * (1 - 0.004 * c.raid));
       }
     }
