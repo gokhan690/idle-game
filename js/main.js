@@ -29,18 +29,30 @@
     const s = store.get(KEY(slot)); if (!s) return false;
     try { G.deserialize(s); afterLoad(); return true; } catch (e) { console.error(e); return false; }
   };
-  // dosyaya aktar: kayıt JSON dosyası olarak indirilir (başka cihaza taşımak ya da yedeklemek için)
-  G.exportSave = () => {
-    const st = G.st; if (!st) return false;
+  // dosyaya aktar: kayıt JSON dosyası olarak indirilir (başka cihaza taşımak ya da yedeklemek için).
+  // claude.ai içinde açıldıysa indirme platformun onaylı kaydetme penceresiyle yapılır; aksi hâlde normal indirme bağlantısı.
+  // Sonuç: { ok, why? } (Promise)
+  let dlNs;
+  const dlCap = () => { if (dlNs === undefined) dlNs = g.claude && typeof g.claude.use === 'function' ? g.claude.use('downloads').catch(() => null) : Promise.resolve(null); return dlNs; };
+  G.exportSave = async () => {
+    const st = G.st; if (!st) return { ok: false };
     prep();
     const d = G.dateOf(st.day), ds = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    const filename = `demir-cephe-${st.player}-${ds}.json`, blob = new Blob([G.serialize()], { type: 'application/json' });
+    const dl = await dlCap();
+    if (dl) {
+      try { await dl.save({ filename, data: blob }); return { ok: true }; } catch (e) {
+        const c = e && e.code;
+        return { ok: false, why: c === 'declined' ? 'İndirme iptal edildi.' : c === 'rate_limited' ? 'Bir indirme penceresi zaten açık.' : 'Bu görünümde dosya indirilemiyor.' };
+      }
+    }
     try {
-      const url = URL.createObjectURL(new Blob([G.serialize()], { type: 'application/json' }));
-      const a = document.createElement('a'); a.href = url; a.download = `demir-cephe-${st.player}-${ds}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      return true;
-    } catch (e) { console.error(e); return false; }
+      return { ok: true };
+    } catch (e) { console.error(e); return { ok: false }; }
   };
   // dosyadan yükle: bozuk ya da uyumsuz dosyada mevcut oyun korunur
   G.importSave = (text) => {
