@@ -208,6 +208,9 @@
       const ak = 1 + k * (gb.atk + gb.armAtk * t.mob);
       sa *= ak; ha *= ak; bt *= ak; df *= 1 + k * gb.def; spd *= 1 + k * gb.speed;
     }
+    // ordu emirleri (komuta gücü) ve ordu grubu mareşali
+    const am = u.army && G.armyMul ? G.armyMul(c, u, t) : null;
+    if (am) { sa *= am.atk; ha *= am.atk; bt *= am.atk; df *= am.def; spd *= am.spd; }
     u._sd = G.st.day;
     // tanksavar teknolojisi yalnızca tanksavar desteği olan tümenlerin delmesini tam artırır (HOI4: AT teçhizatı)
     return (u._s = { sa, ha, df, bt, atk: sa + ha, def: df, hd: t.hd, hp: t.hp, org, arm: ls.arm, prc: ls.prc + (m.prc || 0) * (t.atS ? 1 : 0.25) * (1 - t.mob * 0.6), spd, t, gb });
@@ -387,4 +390,5 @@
   G.XP_LV = [[0, 'Acemi'], [0.2, 'Eğitimli'], [0.4, 'Düzenli'], [0.6, 'Tecrübeli'], [0.8, 'Kıdemli']];
   G.xpName = (x) => { let n = G.XP_LV[0][1]; for (const [t, m] of G.XP_LV) if ((x ?? 0.25) >= t) n = m; return n; };
   G.xpMul = (x) => 0.9 + 0.4 * (x ?? 0.25);
+  G.xpIdx = (x) => { let n = 0; G.XP_LV.forEach(([t], i) => { if ((x ?? 0.25) >= t) n = i; }); return n; };
 })(window);

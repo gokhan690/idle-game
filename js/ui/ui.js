@@ -45,6 +45,7 @@
       ['stab', pct(c.stab ?? 0.5), (c.stab ?? 0.5) < 0.4 ? 'neg' : '', 'İstikrar', ''],
       ['ws', pct(c.ws ?? 0.2), '', 'Savaş desteği', ''],
       ['mp', G.fmtMP(c.mpAvail || 0), (c.mpAvail || 0) < 30 ? 'neg' : '', 'Kullanılabilir insan gücü', ''],
+      ['cp', int(G.cpEnsure(c).cp), '', 'Komuta gücü', `+${G.cpRate(c).toFixed(2)}/gün · en çok ${G.CP_MAX}. Ordu emirleri, mareşal terfisi ve komutan eğitimi için harcanır.`],
       ['civ', `${civUsed}/${s.civ}`, '', 'Sivil fabrikalar (kullanılan/toplam)', `${e.civFree || 0} inşaatta, kalanı tüketim malı ve ticarette`],
       ['mil', `${milA0}/${s.mil}`, s.mil - milA0 > 0 ? 'warn' : '', 'Askerî fabrikalar (atanan/toplam)', ''],
       ['dock', s.dock, '', 'Tersaneler', ''],
@@ -342,7 +343,7 @@
 
   function lawPicker(c, k) {
     const L = g.LAWS[k];
-    let html = `<p class="muted small" style="margin:0">Yasa değişikliği ${g.LAW_COST} siyasi güç ister. Seçenekler savaş desteğine (şu an ${pct(c.ws ?? 0)}) bağlıdır; bazıları yalnızca savaşta açılır.</p><div class="list">`;
+    let html = `<p class="muted small" style="margin:0">Yasa değişikliği ${g.LAW_COST} siyasi güç ister. Seçenekler savaş desteğine (şu an ${pct(c.ws ?? 0)}) ve dünya gerginliğine (şu an %${Math.round(G.st.tension)}) bağlıdır; bazıları yalnızca savaşta ya da belirli ideolojilerde açılır.</p><div class="list">`;
     L.opts.forEach((o, i) => {
       const cur = (c.laws[k] ?? 1) === i;
       const r = G.lawAllowed(c, k, i);
@@ -751,6 +752,8 @@
     if (UI.sub && UI.sub.startsWith('tpl:')) return templateDesigner(c, UI.sub.slice(4));
     if (UI.sub && UI.sub.startsWith('gen:')) return generalPicker(c, +UI.sub.slice(4));
     if (UI.sub === 'gens') return generalList(c);
+    if (UI.sub && UI.sub.startsWith('grp:')) return groupPicker(c, +UI.sub.slice(4));
+    if (UI.sub && UI.sub.startsWith('gtr:')) return traitPicker(c, +UI.sub.slice(4));
     if (UI.sub && UI.sub.startsWith('div:')) return divisionView(c, +UI.sub.slice(4));
     if (UI.sub && UI.sub.startsWith('divs:')) return armyDivisions(c, +UI.sub.slice(5));
     const mine = st.units.filter((u) => u.t === c.tag);
@@ -772,6 +775,7 @@
         <div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a.plan || 0) / mx, a.ord === 'atk' ? 'r' : 'g')}</div></div>
         <div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a.id}" data-v="${k}">${n}</button>`).join('')}</div>
         <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-act="armyvs" data-v="${a.id}">Cephe değiştir</button><button class="btn sm" data-act="armygoal" data-v="${a.id}">Taarruz oku çiz</button>${a.goal != null ? `<button class="btn sm" data-act="armygoalclr" data-v="${a.id}">Oku sil</button>` : ''}<button class="btn sm ${c.deployArmy === a.id ? 'pri' : ''}" data-act="armydeploy" data-v="${a.id}">Yeni tümenler buraya</button><button class="btn sm" data-act="armyadd" data-v="${a.id}" ${R.sel.units.size ? '' : 'disabled'}>Seçilileri ekle</button><button class="btn sm danger" data-act="armydel" data-v="${a.id}">Dağıt</button></div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${a.boost && a.boost.until > st.day ? `<span class="pill ally">${G.ORDERS[a.boost.k].n}: ${a.boost.until - st.day} gün</span>` : Object.entries(G.ORDERS).map(([k, O]) => `<button class="btn sm" data-act="armyorder" data-k="${a.id}" data-v="${k}" ${(c.cp || 0) >= O.cost ? '' : 'disabled'} title="${O.d}">${O.n} · ${O.cost} KG</button>`).join('')}<button class="btn sm ${a.drill ? 'pri' : ''}" data-act="drill" data-v="${a.id}" ${c.enemies.length && !a.drill ? 'disabled' : ''} title="Barışta tümenler Düzenli seviyesine kadar tecrübe kazanır; tümen başına günde 3 piyade teçhizatı">${a.drill ? 'Tatbikatı durdur' : 'Tatbikat'}</button><button class="btn sm" data-act="sub" data-v="grp:${a.id}">Ordu grubu: ${a.grp && G.genById(c, a.grp) ? esc(G.genById(c, a.grp).n) : 'yok'}</button></div>
         <div class="row" style="gap:6px"><div class="grow">${bar(str, 'g')}</div></div></div></div>`;
     }
     oh += `<p class="muted small" style="margin:0">HOI4'teki gibi: orduya bir <b>cephe</b> ver (“Cepheyi tut”), istersen <b>taarruz oku</b> çiz. Cephede beklerken <b>planlama</b> dolar; hazır olunca <b>Uygula</b> ile taarruz başlar ve plan bonusu saldırıya eklenir. Ordu başına en fazla ${G.ARMY_MAX} tümen.</p>`;
@@ -904,10 +908,26 @@
     let html = `<p class="muted small" style="margin:0">Komutanlar muharebede tecrübe kazanır, seviye atlar ve yeni özellikler edinir. Saldırı (S) ve savunma (Sv) muharebe gücünü, planlama (P) muharebenin ilk günlerini ve siperi, lojistik (L) ikmali etkiler.</p><div class="list">`;
     for (const gen of c.gens) {
       const a = (c.armies || []).find((x) => x.gen === gen.id);
-      html += `<div class="item"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div></div></div>`;
+      const grp = (c.armies || []).filter((x) => x.grp === gen.id);
+      html += `<div class="item"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'}${grp.length ? ` · ordu grubu: ${grp.map((x) => esc(x.n)).join(', ')}` : ''} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div><div class="btns" style="margin-top:4px">${gen.fm ? '' : `<button class="btn sm" data-act="genfm" data-v="${gen.id}" ${gen.lvl >= 3 && (c.cp || 0) >= 40 ? '' : 'disabled'}>Mareşal yap · 40 KG${gen.lvl < 3 ? ' (3. seviye gerekir)' : ''}</button>`}<button class="btn sm" data-act="sub" data-v="gtr:${gen.id}" ${gen.tr.length < 4 ? '' : 'disabled'}>Özellik eğitimi · 50 KG</button></div></div></div>`;
     }
-    html += `</div><button class="btn pri" data-act="newgen" ${c.pp >= 50 ? '' : 'disabled'}>Yeni komutan ata (50 SG)</button>`;
+    html += `</div><button class="btn pri" data-act="newgen" ${c.pp >= 50 ? '' : 'disabled'}>Yeni komutan ata (50 SG)</button><p class="muted small">Komuta gücü: ${int(c.cp || 0)}/${G.CP_MAX} (+${G.cpRate(c).toFixed(2)}/gün). Mareşaller ordu grubu yönetir: bağlı ordulara saldırı ve savunma becerisi başına +%2 verir ve komuta gücü kazancını artırır.</p>`;
     return { title: 'Komutanlar', html };
+  }
+  function groupPicker(c, armyId) {
+    const a = G.armyById(c, armyId); if (!a) { UI.sub = null; return PANELS.army(); }
+    const fms = c.gens.filter((x) => x.fm);
+    let html = `<p class="muted small" style="margin:0">${esc(a.n)} için ordu grubu mareşali seç. Bir mareşal en çok 4 ordu yönetir; bağlı ordular mareşalin saldırı ve savunma becerisinin her puanı için +%2 alır.</p><div class="list">`;
+    html += `<button class="item" data-act="setgrp" data-k="${a.id}" data-v="0"><div class="grow"><div class="t">Ordu grubu yok</div></div></button>`;
+    for (const fm of fms) { const n = (c.armies || []).filter((x) => x.grp === fm.id).length; html += `<button class="item ${a.grp === fm.id ? 'active' : ''}" data-act="setgrp" data-k="${a.id}" data-v="${fm.id}"><div class="grow"><div class="t">${genLine(fm)}</div>${genSkills(fm)}<div class="d">${n}/4 ordu</div></div></button>`; }
+    if (!fms.length) html += '<p class="muted">Mareşalin yok. Komutanlar listesinden bir generali mareşalliğe terfi ettir.</p>';
+    return { title: 'Ordu grubu', html: html + '</div>' };
+  }
+  function traitPicker(c, genId) {
+    const gen = G.genById(c, genId); if (!gen) { UI.sub = 'gens'; return generalList(c); }
+    let html = `<p class="muted small" style="margin:0">${esc(gen.n)} için eğitim seç (50 komuta gücü). Şu an ${int(c.cp || 0)} KG.</p><div class="list">`;
+    for (const [k, T] of Object.entries(g.GEN_TRAITS)) { if (k === 'brilliant' || gen.tr.includes(k)) continue; html += `<button class="item" data-act="gentr" data-k="${gen.id}" data-v="${k}" ${(c.cp || 0) >= 50 ? '' : 'disabled'}><div class="grow"><div class="t">${esc(T.n)}</div><div class="d">${esc(T.d)}</div></div></button>`; }
+    return { title: 'Komutan eğitimi', html: html + '</div>' };
   }
   function generalPicker(c, armyId) {
     const a = G.armyById(c, armyId);
@@ -1597,6 +1617,11 @@
   // muharebe ayrıntısı
   ACT.battle = (d) => { UI.panel = 'battle'; UI.battleN = +d.v; UI.sub = null; UI.render(true); };
   ACT.setgen = (d) => { const c = me(); for (const a of c.armies) if (a.gen === +d.v) a.gen = null; armyOf(d.k).gen = +d.v; UI.sub = null; UI.render(true); };
+  ACT.drill = (d) => { const r = G.drillToggle(me(), +d.v); UI.toast(r.ok ? (r.on ? 'Tatbikat başladı.' : 'Tatbikat durdu.') : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
+  ACT.armyorder = (d) => { const r = G.armyOrder(me(), +d.k, d.v); UI.toast(r.ok ? `${G.ORDERS[d.v].n} verildi.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.setgrp = (d) => { const r = G.setArmyGroup(me(), +d.k, +d.v); if (!r.ok && r.why) UI.toast(r.why, 'warn'); UI.sub = null; UI.render(true); };
+  ACT.genfm = (d) => { const r = G.promoteFM(me(), +d.v); UI.toast(r.ok ? 'Mareşalliğe terfi etti.' : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
+  ACT.gentr = (d) => { const r = G.trainGeneral(me(), +d.k, d.v); UI.toast(r.ok ? `Eğitim tamamlandı: ${g.GEN_TRAITS[d.v].n}` : r.why, r.ok ? 'good' : 'warn'); UI.sub = 'gens'; UI.render(true); UI.hud(); };
   ACT.newgen = () => { const c = me(); if (c.pp < 50) return; c.pp -= 50; const gen = G.newGeneral(c); UI.toast(`${gen.n} göreve başladı.`, 'good'); UI.render(); };
   ACT.tplnew = () => { const c = me(); const tpl = G.templatesOf(c); const id = 't' + G.st.nextId++; tpl[id] = { n: 'Yeni Tümen ' + (Object.keys(tpl).length - 5), b: { inf: 7, art: 2 }, s: {} }; G.invalidateTemplates(c); UI.sub = 'tpl:' + id; UI.render(true); };
   ACT.tplb = (d) => { const c = me(); const t = G.templatesOf(c)[d.k]; const n = (t.b[d.e] || 0) + +d.v; if (n <= 0) delete t.b[d.e]; else t.b[d.e] = n; if (!Object.keys(t.b).length) t.b.inf = 1; G.invalidateTemplates(c); UI.render(); };

@@ -245,6 +245,7 @@
     // süren kararların değiştiricileri (js/data/decisions.js)
     for (const x of Array.isArray(c.dec) ? c.dec : []) { const d = g.DEC_BY_ID && g.DEC_BY_ID[x.id]; if (d && d.mod) add(d.mod); }
     const lm = g.LAWS.mob.opts[c.laws.mob], le = g.LAWS.eco.opts[c.laws.eco], lt = g.LAWS.trade.opts[c.laws.trade ?? 1];
+    if (g.LAWS.press && c.laws.press != null) add(g.LAWS.press.opts[c.laws.press].fx); // basın yasası (varsayılan: denetim, etkisiz)
     m.factory = (m.factory || 0) + (lm.factory || 0) + (lt.factory || 0);
     m.research = (m.research || 0) + (lt.research || 0);
     m.expCap = lt.exp ?? 0.5;
