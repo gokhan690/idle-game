@@ -799,3 +799,10 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
 #mm-menu button b { font-size: 14px; }
 #mm-menu button small { font-size: 11px; color: #b9b29a; }
 #mm-menu button.on { border-color: var(--brass, #b8913a); background: rgba(214,170,76,0.18); }
+/* yardım: kategoriler, arama, açılır bölümler */
+.help-q { width: 100%; box-sizing: border-box; margin: 8px 0 4px; padding: 9px 11px; border-radius: 7px; border: 1px solid var(--rule, #4a503f); background: rgba(0,0,0,0.3); color: var(--paper, #f4efe0); font-size: 15px; }
+details.hsec { border: 1px solid var(--rule, #4a503f); border-radius: 6px; margin: 4px 0; background: rgba(255,255,255,0.025); }
+details.hsec > summary { cursor: pointer; padding: 9px 11px; font-weight: 700; list-style: none; }
+details.hsec > summary::after { content: '▾'; float: right; color: #b9b29a; }
+details.hsec[open] > summary::after { content: '▴'; }
+details.hsec > p { padding: 0 11px 10px; }

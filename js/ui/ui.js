@@ -1154,8 +1154,13 @@
   // Menü
   PANELS.menu = () => {
     const st = G.st;
-    if (UI.sub === 'log') return { title: 'Olay günlüğü', html: `<div class="list">${st.log.slice(0, 80).map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div></div>`).join('')}</div>` };
-    if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: HELP };
+    if (UI.sub === 'log') {
+      const f = UI.logf || 'all';
+      const L = st.log.filter((l) => f === 'all' || (f === 'mine' ? (l.t || []).includes(st.player) : UI.logCat(l) === f)).slice(0, 100);
+      const tabs = { all: 'Tümü', war: 'Savaş', pol: 'Siyaset', intel: 'İstihbarat', mine: 'Bizimle ilgili' };
+      return { title: 'Olay günlüğü', html: `<div class="tabs">${Object.entries(tabs).map(([k, n]) => `<button class="${f === k ? 'on' : ''}" data-act="logf" data-v="${k}">${n}</button>`).join('')}</div><div class="list">${L.map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div>${(l.t || []).slice(0, 2).map((t) => G.def(t) ? G.flag(t, 24, 16) : '').join('')}</div>`).join('') || '<p class="muted">Kayıt yok.</p>'}</div>` };
+    }
+    if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: helpHtml() };
     if (UI.sub === 'ach') return achView();
     if (UI.sub === 'tl') {
       const seen = new Set(), all = [];
@@ -1184,6 +1189,35 @@
     return { title: 'Menü', html };
   };
 
+  // yardım: kategorilere ayrılmış, aranabilir, açılır kapanır bölümler
+  const HELP_CAT = [
+    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
+    ['Siyaset', ['Siyaset', 'Ulusal ruhlar (buff ve debuff)', 'Odaklar ve tarihî olaylar', 'Odak ağacı dalları', 'Alternatif tarih yolları', 'İç savaş', 'Parti kampanyaları', 'Kararlar', 'Yasalar ve Ar-Ge', 'Seçimler', 'Güç dengesi', 'Değişen tarih', 'Tarihî dönüm noktaları', 'Dünya haberleri ve Türkiye']],
+    ['Ekonomi', ['Ekonomi', 'Yakıt', 'İkmal, altyapı ve hava', 'Demiryolları ve ikmal merkezleri', 'Tank ve uçak tasarımcısı', 'Özel projeler ve atom bombası']],
+    ['Kara kuvvetleri', ['Ordular, cepheler ve savaş planları', 'Savaş planı: aşamalı taarruz ve savunma hattı', 'Tümen seçimi ve hatta yayma', 'Komuta Gücü ve mareşaller', 'Muharebe', 'Muharebe taktikleri', 'Kara doktrinleri', 'Tümen tasarımcısı', 'Nehirler', 'İşgal: direniş ve uyum', 'Hava indirme']],
+    ['Hava ve deniz', ['Hava kuvvetleri', 'Deniz muharebesi', 'Gemi tasarımcısı ve deniz']],
+    ['Diplomasi ve istihbarat', ['Diplomasi', 'Ültimatom, sınır çatışması, savaşa çağrı', 'Gönüllüler', 'Kuklalar ve özerklik', 'Barış konferansı', 'İstihbarat teşkilatı']],
+  ];
+  let helpCache = null;
+  function helpHtml() {
+    if (!helpCache) {
+      const secs = []; const re = /<section class="sec"><h3 class="sec-h">([^<]*)<\/h3>([\s\S]*?)<\/section>/g; let m;
+      while ((m = re.exec(HELP))) secs.push({ t: m[1], h: m[2] });
+      const intro = (HELP.match(/^<div class="sec">[\s\S]*?<\/div>/) || [''])[0];
+      const used = new Set();
+      let h = `${intro}<input id="help-q" class="help-q" type="search" placeholder="Yardımda ara… (ör. ikmal, ültimatom, tasarım)" oninput="G.UI.helpFilter(this.value)">`;
+      const block = (n, list) => { const L = list.map((t) => secs.find((x) => x.t === t)).filter(Boolean); L.forEach((x) => used.add(x.t)); return L.length ? `<div class="hcat"><h3 class="sec-h">${n}</h3>${L.map((x) => `<details class="hsec"><summary>${x.t}</summary>${x.h}</details>`).join('')}</div>` : ''; };
+      for (const [n, list] of HELP_CAT) h += block(n, list);
+      h += block('Diğer', secs.filter((x) => !used.has(x.t)).map((x) => x.t));
+      helpCache = h;
+    }
+    return helpCache;
+  }
+  UI.helpFilter = (q) => {
+    q = (q || '').toLocaleLowerCase('tr').trim();
+    for (const d of document.querySelectorAll('details.hsec')) { const hit = !q || d.textContent.toLocaleLowerCase('tr').includes(q); d.style.display = hit ? '' : 'none'; d.open = !!q && hit; }
+    for (const c of document.querySelectorAll('.hcat')) c.style.display = [...c.querySelectorAll('details.hsec')].some((d) => d.style.display !== 'none') ? '' : 'none';
+  };
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Küçük devletlerde de birer alternatif yol var: Polonya (Ulusal Birlik Kampı), Macaristan (Habsburg Restorasyonu), Romanya (Köylü Partisi), Yunanistan (Megali İdea), Yugoslavya (Partizan Devrimi), Çin (Wang Jingwei), Bulgaristan (Büyük Bulgaristan), İsveç (Kalmar Birliği), Brezilya (Entegralist Darbe). Her yolun kendi olay zinciri vardır: odaklar ilerledikçe seçim pencereleri gelir, son odakta yola özel bir ulusal ruh kazanırsın. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
@@ -1843,10 +1877,19 @@
   };
 
   // günlükten bildirime
+  // günlük kategorileri (olay günlüğü sekmeleri)
+  const logCat = (l) => (/İstihbarat|casus|ajan|Karşı istihbarat/i.test(l.m) ? 'intel' : /savaş|teslim|muharebe|çatışma|ilhak|harekât|cephe|kuşat|işgal|çıkarma|tümen/i.test(l.m) ? 'war' : 'pol');
+  UI.logCat = logCat;
+  ACT.logf = (d) => { UI.logf = d.v; UI.render(); };
+  // bildirim kuralları: bizimle ilgili olanlar ve büyük güçleri ilgilendiren büyük olaylar; aynı gün aynı metin tekrar gösterilmez
+  let lastToast = new Set(), toastDay = -1;
   G.onLog = (l) => {
     const st = G.st; if (!st.player) return;
+    if (toastDay !== st.day) { toastDay = st.day; lastToast = new Set(); }
+    if (lastToast.has(l.m)) return;
     const mineRel = l.t.includes(st.player) || l.t.some((t) => G.sameFaction(t, st.player) || G.atWar(t, st.player));
-    if (l.k === 'major' || mineRel) UI.toast(l.m, l.k === 'major' ? 'major' : l.k);
+    const bigNews = l.k === 'major' && (l.t.length === 0 || l.t.some((t) => st.C[t]?.major));
+    if (bigNews || mineRel) { lastToast.add(l.m); UI.toast(l.m, l.k === 'major' ? 'major' : l.k); }
   };
   G.onCapitulate = (tag, winner, full, cf) => {
     const st = G.st;

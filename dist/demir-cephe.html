@@ -810,6 +810,13 @@ button.item:active { background: linear-gradient(180deg, #3d4436, #2d3228); }
 #mm-menu button b { font-size: 14px; }
 #mm-menu button small { font-size: 11px; color: #b9b29a; }
 #mm-menu button.on { border-color: var(--brass, #b8913a); background: rgba(214,170,76,0.18); }
+/* yardım: kategoriler, arama, açılır bölümler */
+.help-q { width: 100%; box-sizing: border-box; margin: 8px 0 4px; padding: 9px 11px; border-radius: 7px; border: 1px solid var(--rule, #4a503f); background: rgba(0,0,0,0.3); color: var(--paper, #f4efe0); font-size: 15px; }
+details.hsec { border: 1px solid var(--rule, #4a503f); border-radius: 6px; margin: 4px 0; background: rgba(255,255,255,0.025); }
+details.hsec > summary { cursor: pointer; padding: 9px 11px; font-weight: 700; list-style: none; }
+details.hsec > summary::after { content: '▾'; float: right; color: #b9b29a; }
+details.hsec[open] > summary::after { content: '▴'; }
+details.hsec > p { padding: 0 11px 10px; }
 </style>
 </head>
 <body>
@@ -9894,7 +9901,7 @@ window.RIVERS = [
     const flip = (u, loc) => { u.t = rt; u.auto = 1; u.army = 0; u.path = []; u.gar = 0; u.prog = 0; if (loc != null) u.loc = loc; };
     let n = 0; for (const u of mine) if (pick.has(u.loc)) { flip(u); n++; }
     for (let k = 0, i = 0; n < quota && i < mine.length; i++) { const u = mine[(i * 7) % mine.length]; if (u.t === tag) { flip(u, pl[k++ % pl.length]); n++; } }
-    const mil = Math.max(4, Math.round(mine.length * sh * 0.5));
+    const mil = Math.max(7, Math.round(mine.length * sh * 0.6)); // küçük ülkelerde de iç savaş birkaç ay sürsün
     for (let k = 0; k < mil; k++) st.units.push(G.makeUnit(rt, k % 4 === 3 ? 'art' : 'inf', pl[k % pl.length], 0.9));
     r.stock.inf += 2500; r.stock.art += 60;
     if (c.ships && r.ships) { for (const e of ['dd', 'cr', 'ss']) { const m = Math.floor((c.ships[e] || 0) * 0.3); c.ships[e] -= m; r.ships[e] = (r.ships[e] || 0) + m; } }
@@ -10371,7 +10378,7 @@ window.RIVERS = [
   G.intelMax = (c) => !c.intel ? 0 : 2 + (c.major ? 1 : 0) + (c.intel.up.school ? 2 : 0);
   G.intelCI = (tag) => { const x = G.st.C[tag]; if (!x) return 0; return (x.major ? 0.2 : 0.1) + (x.intel && x.intel.up.ci ? 0.4 : 0); };
   G.intelFree = (c) => { const I = c.intel; if (!I) return 0; return I.ag - Object.values(I.as).reduce((a, b) => a + b, 0); };
-  G.intelChance = (c, t, op) => { const I = c.intel, n = (I.net[t] || 0); return clamp(0.5 + n / 200 + (I.up.field ? 0.15 : 0) - G.intelCI(t) * 0.5 - (op === 'coup' ? 0.15 : 0), 0.05, 0.95); };
+  G.intelChance = (c, t, op) => { const I = c.intel, n = (I.net[t] || 0); return clamp(0.55 + n / 200 + (I.up.field ? 0.15 : 0) - G.intelCI(t) * 0.5 - (op === 'coup' ? 0.15 : 0), 0.05, 0.95); };
 
   G.intelFound = (c) => {
     if (c.intel) return { ok: false, why: 'Teşkilat zaten kurulu' };
@@ -10867,8 +10874,9 @@ window.RIVERS = [
       return { ok: true, pending: 1 };
     }
     const ratio = G.armyPower(a) / Math.max(1, G.ultDeter(a, t));
-    const need = (kind === 'annex' ? 3 : 1.6) + (st.C[t].ideo !== st.C[a].ideo && st.C[t].ideo === 'dem' ? 0.4 : 0);
-    const ok = ratio > need;
+    // ulusal onur: güç farkı büyük olsa da her ülke boyun eğmez (sabit tohumlu rastgelelik)
+    const need = (kind === 'annex' ? 3.5 : 2.4) + (st.C[t].ideo !== st.C[a].ideo && st.C[t].ideo === 'dem' ? 0.6 : 0) + (st.C[t].ideo === st.C[a].ideo ? -0.5 : 0);
+    const ok = ratio > need * (0.8 + G.rand() * 0.6);
     if (ok) accept(); else refuse();
     return { ok: true, accepted: ok, ratio };
   };
@@ -11537,23 +11545,37 @@ window.RIVERS = [
     }
     drawAirRegions(ctx, z);
     if (R.mode === 'sea') drawSeaMode(ctx, z);
+    if (R.mode === 'vp') drawVpMode(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
   // sınır çatışmaları: eyalette turuncu çerçeveli çapraz kılıç ve kalan gün
   function drawBorderConflicts(ctx) {
-    const st = G.st; if (!st.bc || !st.bc.length) return;
+    const st = G.st; R.bcMarks = []; if (!st.bc || !st.bc.length) return;
     ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const x of st.bc) {
       const s = visible(G.nodeX[x.prov], G.nodeY[x.prov], 30); if (!s) continue;
+      R.bcMarks.push({ x: s.x, y: s.y, x0: x });
       const pulse = 0.6 + 0.4 * Math.sin(R.t / 220);
       ctx.fillStyle = 'rgba(20,16,10,0.85)'; ctx.strokeStyle = `rgba(240,140,50,${pulse})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(s.x, s.y - 14); ctx.lineTo(s.x + 14, s.y); ctx.lineTo(s.x, s.y + 14); ctx.lineTo(s.x - 14, s.y); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = '#f2c46a'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(s.x - 6, s.y - 6); ctx.lineTo(s.x + 6, s.y + 6); ctx.moveTo(s.x + 6, s.y - 6); ctx.lineTo(s.x - 6, s.y + 6); ctx.stroke();
       ctx.fillStyle = '#f4efe0'; ctx.fillText(`${Math.max(0, x.e - st.day)}g`, s.x, s.y + 22);
     }
-    R.dirty = 1;
+  }
+  // zafer noktası modu: büyük şehirlerde VP sayısı
+  function drawVpMode(ctx, z) {
+    ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const min = z < 1.2 ? 15 : z < 2 ? 8 : 3;
+    for (let i = 0; i < NP; i++) {
+      const v = P[i].vp || 0; if (v < min) continue;
+      const s = visible(G.nodeX[i], G.nodeY[i], 20); if (!s) continue;
+      const w = v >= 10 ? 20 : 16;
+      ctx.fillStyle = 'rgba(20,16,10,0.85)'; ctx.fillRect(s.x - w / 2, s.y + 6, w, 13);
+      ctx.strokeStyle = '#e8c35a'; ctx.lineWidth = 1; ctx.strokeRect(s.x - w / 2, s.y + 6, w, 13);
+      ctx.fillStyle = '#f2d27a'; ctx.fillText(String(v), s.x, s.y + 12.5);
+    }
   }
   // deniz üstünlüğü haritası: her deniz bölgesinde oyuncunun (ve müttefiklerinin) üstünlüğü
   let seaCache = null;
@@ -11565,7 +11587,7 @@ window.RIVERS = [
       for (let s = 0; s < SEAS.length; s++) if (busy.has(NP + s)) v[s] = G.navalSupremacy(pl, NP + s);
       seaCache = { d: st.day, v };
     }
-    const r = Math.max(9, Math.min(32, 20 * z));
+    const r = Math.max(8, Math.min(22, 14 * z));
     ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let s = 0; s < SEAS.length; s++) {
       const sc = visible(SEAS[s].x, SEAS[s].y, r); if (!sc) continue;
@@ -11991,7 +12013,7 @@ window.RIVERS = [
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
     // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
-    const iu = gl.find((u) => u.inv); if (iu) { ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, y - 5, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, y - 4, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
+    const iu = gl.find((u) => u.inv); if (iu) { const yy = gl.some((u) => u.sr) ? y - 9 : y - 5; ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, yy, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, yy + 1, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
     let xs = 0; for (const u of gl) xs += u.xp ?? 0.25;
     const xl = G.xpIdx ? G.xpIdx(xs / gl.length) - 1 : 0;
@@ -13229,8 +13251,13 @@ window.RIVERS = [
   // Menü
   PANELS.menu = () => {
     const st = G.st;
-    if (UI.sub === 'log') return { title: 'Olay günlüğü', html: `<div class="list">${st.log.slice(0, 80).map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div></div>`).join('')}</div>` };
-    if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: HELP };
+    if (UI.sub === 'log') {
+      const f = UI.logf || 'all';
+      const L = st.log.filter((l) => f === 'all' || (f === 'mine' ? (l.t || []).includes(st.player) : UI.logCat(l) === f)).slice(0, 100);
+      const tabs = { all: 'Tümü', war: 'Savaş', pol: 'Siyaset', intel: 'İstihbarat', mine: 'Bizimle ilgili' };
+      return { title: 'Olay günlüğü', html: `<div class="tabs">${Object.entries(tabs).map(([k, n]) => `<button class="${f === k ? 'on' : ''}" data-act="logf" data-v="${k}">${n}</button>`).join('')}</div><div class="list">${L.map((l) => `<div class="item"><div class="grow"><div class="d">${G.fmtDate(l.d)}</div><div class="t" style="font-weight:500">${esc(l.m)}</div></div>${(l.t || []).slice(0, 2).map((t) => G.def(t) ? G.flag(t, 24, 16) : '').join('')}</div>`).join('') || '<p class="muted">Kayıt yok.</p>'}</div>` };
+    }
+    if (UI.sub === 'help') return { title: 'Nasıl oynanır', html: helpHtml() };
     if (UI.sub === 'ach') return achView();
     if (UI.sub === 'tl') {
       const seen = new Set(), all = [];
@@ -13259,6 +13286,35 @@ window.RIVERS = [
     return { title: 'Menü', html };
   };
 
+  // yardım: kategorilere ayrılmış, aranabilir, açılır kapanır bölümler
+  const HELP_CAT = [
+    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
+    ['Siyaset', ['Siyaset', 'Ulusal ruhlar (buff ve debuff)', 'Odaklar ve tarihî olaylar', 'Odak ağacı dalları', 'Alternatif tarih yolları', 'İç savaş', 'Parti kampanyaları', 'Kararlar', 'Yasalar ve Ar-Ge', 'Seçimler', 'Güç dengesi', 'Değişen tarih', 'Tarihî dönüm noktaları', 'Dünya haberleri ve Türkiye']],
+    ['Ekonomi', ['Ekonomi', 'Yakıt', 'İkmal, altyapı ve hava', 'Demiryolları ve ikmal merkezleri', 'Tank ve uçak tasarımcısı', 'Özel projeler ve atom bombası']],
+    ['Kara kuvvetleri', ['Ordular, cepheler ve savaş planları', 'Savaş planı: aşamalı taarruz ve savunma hattı', 'Tümen seçimi ve hatta yayma', 'Komuta Gücü ve mareşaller', 'Muharebe', 'Muharebe taktikleri', 'Kara doktrinleri', 'Tümen tasarımcısı', 'Nehirler', 'İşgal: direniş ve uyum', 'Hava indirme']],
+    ['Hava ve deniz', ['Hava kuvvetleri', 'Deniz muharebesi', 'Gemi tasarımcısı ve deniz']],
+    ['Diplomasi ve istihbarat', ['Diplomasi', 'Ültimatom, sınır çatışması, savaşa çağrı', 'Gönüllüler', 'Kuklalar ve özerklik', 'Barış konferansı', 'İstihbarat teşkilatı']],
+  ];
+  let helpCache = null;
+  function helpHtml() {
+    if (!helpCache) {
+      const secs = []; const re = /<section class="sec"><h3 class="sec-h">([^<]*)<\/h3>([\s\S]*?)<\/section>/g; let m;
+      while ((m = re.exec(HELP))) secs.push({ t: m[1], h: m[2] });
+      const intro = (HELP.match(/^<div class="sec">[\s\S]*?<\/div>/) || [''])[0];
+      const used = new Set();
+      let h = `${intro}<input id="help-q" class="help-q" type="search" placeholder="Yardımda ara… (ör. ikmal, ültimatom, tasarım)" oninput="G.UI.helpFilter(this.value)">`;
+      const block = (n, list) => { const L = list.map((t) => secs.find((x) => x.t === t)).filter(Boolean); L.forEach((x) => used.add(x.t)); return L.length ? `<div class="hcat"><h3 class="sec-h">${n}</h3>${L.map((x) => `<details class="hsec"><summary>${x.t}</summary>${x.h}</details>`).join('')}</div>` : ''; };
+      for (const [n, list] of HELP_CAT) h += block(n, list);
+      h += block('Diğer', secs.filter((x) => !used.has(x.t)).map((x) => x.t));
+      helpCache = h;
+    }
+    return helpCache;
+  }
+  UI.helpFilter = (q) => {
+    q = (q || '').toLocaleLowerCase('tr').trim();
+    for (const d of document.querySelectorAll('details.hsec')) { const hit = !q || d.textContent.toLocaleLowerCase('tr').includes(q); d.style.display = hit ? '' : 'none'; d.open = !!q && hit; }
+    for (const c of document.querySelectorAll('.hcat')) c.style.display = [...c.querySelectorAll('details.hsec')].some((d) => d.style.display !== 'none') ? '' : 'none';
+  };
   const HELP = `<div class="sec"><p style="margin:0">Amaç: 1 Ocak 1936'dan itibaren ülkeni büyük bir savaşa hazırla, ittifaklar kur ve zafer puanı taşıyan şehirleri ele geçir.</p></div>
   <section class="sec"><h3 class="sec-h">Üst çubuk ve uyarılar</h3><p class="small" style="margin:0">HOI4'teki gibi: solda bayrak (siyaset paneli), ortada simgeli kaynaklar (siyasi güç, istikrar, savaş desteği, insan gücü, sivil/askerî fabrika, tersane, çelik, petrol, yakıt, konvoy, tümen, dünya gerginliği). Bir simgeye dokununca açıklaması çıkar. Sağda saatli tarih ve duraklat düğmesi; altındaki beş çubuk oyun hızıdır, birine dokununca o hıza geçer. Bayrağın yanındaki yuvarlak simgeler uyarılardır (kırmızı halka acil): dokununca ilgili panel açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Alternatif tarih yolları</h3><p class="small" style="margin:0">HOI4'teki gibi büyük ülkelerin odak ağaçlarında tarihî yolun yanında alternatif tarih dalları vardır (altın kesikli çerçeveli, "Alternatif tarih" yazan odaklar). Örnek: Almanya'da Kayzer'in dönüşü ya da Spartakist Kızıl Almanya; ABD'de Huey Long'un "Amerika Önce"si ya da Sosyalist Amerika; Fransa'da Halk Cephesi Devrimi ya da Action Française monarşisi; Türkiye'de Osmanlı Restorasyonu ya da Turan Ülküsü; İngiltere'de İşçi Devrimi; Sovyetlerde Troçki ya da Buharin; İtalya'da Sosyalist İtalya; Japonya'da Sivil Hükümet. Küçük devletlerde de birer alternatif yol var: Polonya (Ulusal Birlik Kampı), Macaristan (Habsburg Restorasyonu), Romanya (Köylü Partisi), Yunanistan (Megali İdea), Yugoslavya (Partizan Devrimi), Çin (Wang Jingwei), Bulgaristan (Büyük Bulgaristan), İsveç (Kalmar Birliği), Brezilya (Entegralist Darbe). Her yolun kendi olay zinciri vardır: odaklar ilerledikçe seçim pencereleri gelir, son odakta yola özel bir ulusal ruh kazanırsın. Her yol 10 odaktan oluşur: iki yan dal birleşir, sonra üç kola ayrılır ve büyük bir final odağında toplanır. Bir alternatif dalı başlatınca tarihî siyasi yol kapanır ve HOI4'teki gibi <b>kendi ülkenin tarihî olayları artık gerçekleşmez</b>; dünyanın geri kalanı tarihî akışını sürdürür. Yapay zekâ ülkeleri tarihî yolu izler; alternatifleri yalnızca sen seçersin.</p></section>
@@ -13918,10 +13974,19 @@ window.RIVERS = [
   };
 
   // günlükten bildirime
+  // günlük kategorileri (olay günlüğü sekmeleri)
+  const logCat = (l) => (/İstihbarat|casus|ajan|Karşı istihbarat/i.test(l.m) ? 'intel' : /savaş|teslim|muharebe|çatışma|ilhak|harekât|cephe|kuşat|işgal|çıkarma|tümen/i.test(l.m) ? 'war' : 'pol');
+  UI.logCat = logCat;
+  ACT.logf = (d) => { UI.logf = d.v; UI.render(); };
+  // bildirim kuralları: bizimle ilgili olanlar ve büyük güçleri ilgilendiren büyük olaylar; aynı gün aynı metin tekrar gösterilmez
+  let lastToast = new Set(), toastDay = -1;
   G.onLog = (l) => {
     const st = G.st; if (!st.player) return;
+    if (toastDay !== st.day) { toastDay = st.day; lastToast = new Set(); }
+    if (lastToast.has(l.m)) return;
     const mineRel = l.t.includes(st.player) || l.t.some((t) => G.sameFaction(t, st.player) || G.atWar(t, st.player));
-    if (l.k === 'major' || mineRel) UI.toast(l.m, l.k === 'major' ? 'major' : l.k);
+    const bigNews = l.k === 'major' && (l.t.length === 0 || l.t.some((t) => st.C[t]?.major));
+    if (bigNews || mineRel) { lastToast.add(l.m); UI.toast(l.m, l.k === 'major' ? 'major' : l.k); }
   };
   G.onCapitulate = (tag, winner, full, cf) => {
     const st = G.st;
@@ -14096,10 +14161,13 @@ window.RIVERS = [
     { t: null, h: 'Demir Cephe\'ye hoş geldin', d: 'Bu kısa rehber oyunun temellerini gösterir. İstediğin an "Geç" ile kapatabilirsin; Menü\'den yeniden açabilirsin.' },
     { t: '#btn-pause', h: 'Zaman', d: '▶ ile zamanı başlat ya da duraklat; tarihin altındaki beş çubuk oyun hızıdır. Üst çubuktaki simgelere dokununca açıklamaları çıkar. Oyun duraklatılmışken de bütün emirleri verebilirsin.' },
     { t: '#hud-alerts', h: 'Uyarılar', d: 'Boşta kalan işleri gösterir: odak seçilmedi, boş araştırma yuvası, inşaat kuyruğu boş, emirsiz tümenler. Dokununca ilgili panel açılır.' },
-    { t: '#nav [data-p=pol]', h: 'Siyaset ve odak ağacı', d: 'Ulusal odak ağacından ülkenin yolunu seç. Odaklar fabrika, teknoloji, ittifak ve savaş gerekçesi verir. Yasalar, danışmanlar ve güç dengesi de burada.' },
+    { t: '#nav [data-p=pol]', h: 'Siyaset ve odak ağacı', d: 'Ulusal odak ağacından ülkenin yolunu seç. Altın kesikli çerçeveli odaklar alternatif tarih yollarıdır (iç savaş çıkabilir). Yasalar, danışmanlar, kararlar (parti kampanyaları, Ar-Ge) ve güç dengesi de burada.' },
     { t: '#nav [data-p=res]', h: 'Bilim', d: 'Araştırma yuvalarını hep dolu tut. Boş yuvaya dokununca seçilebilir teknolojiler yanar; Projeler sekmesinde özel projeler var.' },
     { t: '#nav [data-p=con]', h: 'İnşaat ve üretim', d: 'Sivil fabrikalar inşaat yapar, askerî fabrikalar teçhizat üretir. İlk yıllarda sivil fabrika kur, savaş yaklaşınca askerî fabrikaya geç.' },
     { t: '#nav [data-p=army]', h: 'Ordu', d: 'Tümen eğit, ordulara ayır. Orduya "Cepheyi tut" de, plan dolunca "Uygula ▶" ile taarruz et. Ok çizip aşama ekleyebilir, savunma hattı çizebilirsin.' },
+    { t: '#hud-res .res:nth-child(5)', h: 'Komuta Gücü', d: 'Yıldız simgesi Komuta Gücüdür. Ordu panelinde orduya Taarruz ya da Savunma Emri vermek, generali mareşal yapmak ve komutan eğitmek için harcanır.' },
+    { t: '#nav [data-p=dip]', h: 'Diplomasi ve istihbarat', d: 'İttifak kur, ülkelere ültimatom ver, sınır çatışması başlat, gönüllü gönder. Üstte dünya gerginliği ve savaş durumu; aşağıda istihbarat teşkilatını kurup casus ağı örebilirsin.' },
+    { t: '#btn-mapmode', h: 'Harita modları', d: 'Bu düğme harita modu menüsünü açar: ikmal, kaynak, ideoloji, savaş hedefleri, deniz üstünlüğü ve daha fazlası.' },
     { t: '#btn-box', h: 'Harita ve seçim', d: 'Tümene dokun → seç, hedef eyalete dokun → yürür ya da saldırır. Bu düğme tüm tümenleri, bir bölgeyi ya da bir alanı seçmeni sağlar. İki parmakla yakınlaştır.' },
     { t: '#btn-menu', h: 'Menü', d: 'Kaydet, ayarlar (müzik, ses efektleri, haberler) ve ayrıntılı "Nasıl oynanır" rehberi burada. İyi oyunlar!' },
   ];
@@ -14557,6 +14625,9 @@ window.RIVERS = [
       const bm = (R.battleMarks || []).find((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
       if (bm && bm.naval) { UI.panel = 'navy'; UI.sub = null; $('card').hidden = true; UI.render(true); const el = [...document.querySelectorAll('#sheet-body .sec-h')].find((h) => /Deniz muharebeleri/.test(h.textContent)); if (el) el.scrollIntoView(); return; }
       if (bm) { UI.panel = 'battle'; UI.sub = null; UI.battleN = bm.b.n; $('card').hidden = true; UI.render(true); return; }
+      // sınır çatışması işareti: karşı tarafın ülke sayfası
+      const bcm = (R.bcMarks || []).find((m) => Math.abs(x - m.x) < 16 && Math.abs(y - m.y) < 16);
+      if (bcm) { const o = bcm.x0.a === st.player ? bcm.x0.b : bcm.x0.a; UI.panel = 'dip'; UI.sub = 'c:' + o; $('card').hidden = true; UI.render(true); return; }
     }
     // filo seçimi ve hareketi
     if (cnt && cnt.fleet && cnt.tag === st.player) { R.sel.fleet = cnt.fleet; R.sel.units.clear(); UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1; return; }

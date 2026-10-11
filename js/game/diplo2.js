@@ -66,8 +66,9 @@
       return { ok: true, pending: 1 };
     }
     const ratio = G.armyPower(a) / Math.max(1, G.ultDeter(a, t));
-    const need = (kind === 'annex' ? 3 : 1.6) + (st.C[t].ideo !== st.C[a].ideo && st.C[t].ideo === 'dem' ? 0.4 : 0);
-    const ok = ratio > need;
+    // ulusal onur: güç farkı büyük olsa da her ülke boyun eğmez (sabit tohumlu rastgelelik)
+    const need = (kind === 'annex' ? 3.5 : 2.4) + (st.C[t].ideo !== st.C[a].ideo && st.C[t].ideo === 'dem' ? 0.6 : 0) + (st.C[t].ideo === st.C[a].ideo ? -0.5 : 0);
+    const ok = ratio > need * (0.8 + G.rand() * 0.6);
     if (ok) accept(); else refuse();
     return { ok: true, accepted: ok, ratio };
   };
