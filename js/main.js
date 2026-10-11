@@ -279,7 +279,7 @@
 
   function order(units, target) {
     const st = G.st;
-    let ok = 0, fail = 0, naval = 0, blocked = '';
+    let ok = 0, fail = 0, naval = 0, blocked = '', inv = 0, invN = 0, invSup = 1;
     const c = st.C[st.player];
     for (const u of units) {
       const s = G.unitStats(u);
@@ -294,15 +294,16 @@
           const freeConv = (c.ships.conv || 0) - G.convoyNeed(u.t) - naval * 5;
           if (freeConv < 5) { blocked = 'Yeterli konvoy yok: deniz yoluyla taşıma için tümen başına 5 konvoy gerekir.'; path = null; }
           else if (hostileLanding && lastSea != null && G.navalSupremacy(u.t, lastSea) < 0.35) { blocked = 'Çıkarma bölgesinde düşman donanması üstün: önce deniz üstünlüğü kur.'; path = null; }
-          else naval++;
+          else { naval++; if (hostileLanding) { u.inv = { p: 0, n: G.invPrep(c, u), at: landing }; inv++; invN = Math.max(invN, u.inv.n); if (lastSea != null) invSup = Math.min(invSup, G.navalSupremacy(u.t, lastSea)); } }
         }
       }
-      if (path && path.length) { u.path = path; u.prog = 0; u.auto = 0; ok++; } else fail++;
+      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; ok++; } else fail++;
     }
     if (target < NP && !G.canEnter(st.player, target)) UI.toast(`${G.cname(st.prov[target].c)} topraklarına giremezsin: savaş ilan et veya geçiş izni al.`, 'warn');
     else if (blocked) UI.toast(blocked, 'warn');
     else if (!ok) UI.toast('Bu hedefe ulaşılabilecek bir yol yok.', 'warn');
     else if (fail) UI.toast(`${ok} tümen yola çıktı, ${fail} tümen hedefe ulaşamıyor.`, 'warn');
+    else if (inv) UI.toast(`${inv} tümen çıkarmaya hazırlanıyor: ${invN} gün hazırlık, sonra denize açılır. Çıkarma bölgesinde deniz üstünlüğü %${Math.round(invSup * 100)}${invSup < 0.5 ? ' — düşük, kayıp riski var' : ''}.`, invSup < 0.5 ? 'warn' : 'good');
     else if (naval) UI.toast(`${ok} tümen deniz yoluyla gönderildi.`);
     if (ok && st.paused) UI.toast('Oyun duraklatıldı: emirler zaman başlayınca uygulanır.');
     R.dirty = 1; UI.renderSel();

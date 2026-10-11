@@ -376,14 +376,15 @@
     if (tab === 'proj') return { title: 'Araştırma', html: html + projHtml(c) };
     const yr = G.year(G.st.day);
     let lh = '<div class="list">';
-    if (tab === 'doc') lh += `<p class="muted small" style="margin:0">HOI4'teki gibi dört kara doktrini dalından yalnızca birini izleyebilirsin: ${Object.values(g.DOC_TREES).join(', ')}. İlk araştırma dalı belirler.${G.docTree(c) ? ` Seçilen dal: <b>${g.DOC_TREES[G.docTree(c)]}</b>.` : ''}</p>`;
-    for (const t of g.TECHS.filter((x) => x.cat === tab).sort((a, b) => (G.docTreeOf(a.id) || 'z').localeCompare(G.docTreeOf(b.id) || 'z') || a.year - b.year)) {
+    if (tab === 'doc') lh += `<p class="muted small" style="margin:0">HOI4'teki gibi dört kara doktrini dalından yalnızca birini izleyebilirsin: ${Object.values(g.DOC_TREES).join(', ')}. İlk araştırma dalı belirler.${G.docTree(c) ? ` Seçilen dal: <b>${g.DOC_TREES[G.docTree(c)]}</b>.` : ''} Deniz doktrinlerinde de üç daldan biri seçilir: ${Object.values(g.NAV_DOC_TREES).join(', ')}.${G.navDocTree(c) ? ` Seçilen: <b>${g.NAV_DOC_TREES[G.navDocTree(c)]}</b>.` : ''}</p>`;
+    for (const t of g.TECHS.filter((x) => x.cat === tab).sort((a, b) => ((G.docTreeOf(a.id) || (G.navDocOf(a.id) ? 'y' + G.navDocOf(a.id) : 'z')).localeCompare(G.docTreeOf(b.id) || (G.navDocOf(b.id) ? 'y' + G.navDocOf(b.id) : 'z'))) || a.year - b.year)) {
       const done = c.tech[t.id], active = c.res.some((r) => r.id === t.id), avail = G.techAvailable(c, t.id);
       const cost = G.techCost(c, t.id);
       const ahead = t.year > yr ? ` · <span class="warn">${t.year - yr} yıl erken</span>` : '';
       const cls = done ? 'done' : active ? 'active' : avail ? '' : 'locked';
       const tr = G.docTreeOf(t.id), curTr = G.docTree(c);
-      const pre = !done && !avail && !active ? (tr && curTr && curTr !== tr ? `<span class="warn">Başka bir doktrin dalı seçildi (${g.DOC_TREES[curTr]})</span>` : `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}`) : esc(t.d || fxText(t.fx));
+      const ntr = G.navDocOf(t.id), curN = G.navDocTree(c);
+      const pre = !done && !avail && !active ? (ntr && curN && curN !== ntr ? `<span class="warn">Başka bir deniz doktrini seçildi (${g.NAV_DOC_TREES[curN]})</span>` : tr && curTr && curTr !== tr ? `<span class="warn">Başka bir doktrin dalı seçildi (${g.DOC_TREES[curTr]})</span>` : `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}`) : esc(t.d || fxText(t.fx));
       const bon = (c.rb || []).find((x) => x[0] === t.cat);
       lh += `<button class="item ${cls}${avail && !active && glow ? ' glow' : ''}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
     }
@@ -451,8 +452,9 @@
 
   // Üretim
   // ---------- Tasarım bürosu (tank ve uçak tasarımcısı) ----------
-  const XPN = { axp: 'Kara tecrübesi', fxp: 'Hava tecrübesi' };
+  const XPN = { axp: 'Kara tecrübesi', fxp: 'Hava tecrübesi', nxp: 'Deniz tecrübesi' };
   const STAT_SHOW = {
+    fp: (v) => '%' + Math.round(v * 100), ar: (v) => '%' + Math.round(v * 100), asw: (v) => '%' + Math.round(v * 100), sp: (v) => '%' + Math.round(v * 100),
     a: (v) => r1(v * 13), d: (v) => r1(v * 30), r: (v) => r1(v * 10), p: (v) => `${r1(v * 5)} / ${Math.round(v * 15)}`, s: (v) => Math.round(v * 9 * 4) + ' km/s', rel: (v) => '%' + Math.round(v * 100),
     aa: (v) => r1(v * 10), df: (v) => r1(v * 10), ga: (v) => r1(v * 10), sb: (v) => r1(v * 10), na: (v) => r1(v * 10), rg: (v) => Math.round(v * 500) + ' km',
   };
@@ -467,6 +469,7 @@
     const xk = G.XP_KIND[e], cost = G.designCost(e, dz), err = G.designValid(c, e, dz);
     const pv = G.designPreview(e, dz), ref = G.designStats(e, G.defaultDesign(e, dz.t));
     let html = `<div class="row" style="justify-content:space-between;align-items:center"><span class="small">${XPN[xk]}: <b>${Math.floor(c[xk] ?? 30)}</b></span><span class="small">Kaydetme: <b class="${(c[xk] ?? 30) >= cost ? '' : 'bad'}">${cost} tecrübe</b></span></div>`;
+    if (D.ship) html += `<p class="muted small" style="margin:0">Gemi gücü çarpanı: <b>×${G.shipPow(e, pv.v).toFixed(2)}</b>. Bu tasarımla üretilen gemiler filodaki ${esc(D.n.toLowerCase())} ortalama gücünü değiştirir (mevcut ortalama ×${G.shipQ(c, e).toFixed(2)}).</p>`;
     html += sec(D.n === 'Tank' ? 'Şasi' : 'Gövde', `<div class="seg sm wrap">${D.tierN.slice(1).map((n, i) => `<button class="${dz.t === i + 1 ? 'on' : ''}" data-act="dztier" data-v="${i + 1}" ${i + 1 > best ? 'disabled' : ''}>${esc(n)}</button>`).join('')}</div>`);
     let mh = '';
     for (const sl of D.slots) {
@@ -534,7 +537,7 @@
     const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Sv ' + r1(G.lvl(c, k))}</span></div>`).join('');
     // tasarım bürosu
     const cus = (c.designs || []).filter((d) => !d.id.startsWith('ai'));
-    let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span></div>`;
+    let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span><span class="small">${XPN.nxp}: <b>${Math.floor(c.nxp ?? 30)}</b></span></div>`;
     dh += `<div class="btns">${[...G.DESIGNABLE].filter((k) => m.unlockEq[k] || !g.EQUIP[k].req || c.tech[g.EQUIP[k].req]).map((k) => `<button class="btn sm" data-act="dznew" data-v="${k}">+ ${g.EQUIP[k].s} tasarla</button>`).join('')}</div>`;
     if (cus.length) dh += `<div class="list">${cus.map((d) => { const st0 = G.designStats(d.e, d); return `<div class="item"><div class="grow"><div class="t">${esc(d.n)} <span class="muted small">${esc(g.DESIGN[d.e].tierN[d.t])}</span></div>${statTable(d.e, st0, G.designStats(d.e, G.defaultDesign(d.e, d.t)))}</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="dzcopy" data-v="${d.id}">Kopyala</button><button class="btn sm danger" data-act="dzdel" data-v="${d.id}">Sil</button></div></div>`; }).join('')}</div>`;
     else dh += '<p class="muted small" style="margin:0">Tasarım yok. Şasi/gövde ve modülleri seçip kendi tankını ve uçağını tasarla; sonra üretim hattında “Tasarım ▾” ile üretime al. Tasarım kaydetmek tecrübe puanı harcar (savaşta ve görevlerde kazanılır).</p>';
@@ -1684,8 +1687,8 @@
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   ACT.setmode = (d) => { R.setMode(d.v); if (d.v === 'sup') G.computeSupplyFor(me()); UI.render(); UI.hud(); };
   ACT.wxtoggle = () => { R.showWeather = !R.showWeather; R.dirty = 1; UI.render(); };
-  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava', occ: 'Direniş' };
-  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air', 'occ']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
+  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava', sea: 'Deniz', occ: 'Direniş' };
+  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air', 'sea', 'occ']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
   ACT.auto = (d) => { const r = G.autoAct(d.k, d.v); if (!r.ok) UI.toast('Bu eylem şu an yapılamaz.', 'bad'); UI.render(true); UI.hud(); };
   ACT.tutorial = () => { UI.close(); if (UI.startTutorial) UI.startTutorial(); };
   ACT.sound = (d) => { if (G.Audio) G.Audio.toggle(d.v); UI.render(); };

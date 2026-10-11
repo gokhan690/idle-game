@@ -96,6 +96,8 @@
   g.TECH_CATS = { inf: 'Piyade', art: 'Topçu', arm: 'Zırh', air: 'Hava', nav: 'Deniz', ind: 'Sanayi', elec: 'Elektronik', doc: 'Doktrin' };
   // kara doktrini dalları (yalnızca biri)
   g.DOC_TREES = { m: 'Mobil Savaş', f: 'Üstün Ateş Gücü', g: 'Büyük Savaş Planı', a: 'Kitle Saldırısı' };
+  // deniz doktrini dalları (yalnızca biri)
+  g.NAV_DOC_TREES = { f: 'Filo Savaşı', c: 'Taşıyıcı Gücü', t: 'Ticaret Akını' };
   g.TECHS = [
     T('inf1', 'Piyade Teçhizatı I', 'inf', 1936, [], { eq_inf: 1 }, 'Temel tüfek ve makineli tüfekler.'),
     T('sup1', 'Destek Bölükleri', 'inf', 1936, [], { org: 0.05, landDef: 0.05 }, 'İstihkâm ve keşif bölükleri: +%5 savunma ve moral.'),
@@ -164,6 +166,16 @@
     T('da4', 'Kitle Saldırısı: Muhafız Tümenleri', 'doc', 1942, ['da3'], { landAtk: 0.1, org: 0.05 }, 'Saldırı +%10, moral +%5.'),
     T('doc_air', 'Hava Üstünlüğü Doktrini', 'doc', 1937, [], { air: 0.25 }, 'Hava gücü +%25.'),
     T('doc_nav', 'Deniz Doktrini', 'doc', 1937, [], { navy: 0.2, invasion: 0.25 }, 'Deniz gücü +%20, çıkarma cezası azalır.'),
+    // Deniz doktrinleri (HOI4): üç daldan yalnızca biri
+    T('nf1', 'Filo Savaşı: Savaş Hattı', 'doc', 1936, [], { navy: 0.08 }, 'Deniz gücü +%8 (zırhlı ve kruvazör ağırlıklı filolar).'),
+    T('nf2', 'Filo Savaşı: Ağır Gemi Taktikleri', 'doc', 1939, ['nf1'], { navy: 0.1 }, 'Deniz gücü +%10.'),
+    T('nf3', 'Filo Savaşı: Karar Muharebesi', 'doc', 1942, ['nf2'], { navy: 0.12, invasion: 0.1 }, 'Deniz gücü +%12, çıkarma desteği.'),
+    T('nc1', 'Taşıyıcı Gücü: Deniz Havacılığı', 'doc', 1936, [], { navy: 0.05, cvAir: 0.3 }, 'Uçak gemisi etkisi +%30, deniz gücü +%5.'),
+    T('nc2', 'Taşıyıcı Gücü: Görev Grupları', 'doc', 1939, ['nc1'], { navy: 0.06, cvAir: 0.4, air: 0.05 }, 'Uçak gemisi etkisi +%40, hava +%5.'),
+    T('nc3', 'Taşıyıcı Gücü: Deniz Hava Üstünlüğü', 'doc', 1942, ['nc2'], { navy: 0.08, cvAir: 0.5 }, 'Uçak gemisi etkisi +%50.'),
+    T('nt1', 'Ticaret Akını: Kurt Sürüleri', 'doc', 1936, [], { raid: 0.25 }, 'Konvoy akını gücü +%25.'),
+    T('nt2', 'Ticaret Akını: Konvoy Avcıları', 'doc', 1939, ['nt1'], { raid: 0.3, navy: 0.04 }, 'Konvoy akını +%30, deniz gücü +%4.'),
+    T('nt3', 'Ticaret Akını: Atlantik Muharebesi', 'doc', 1942, ['nt2'], { raid: 0.35, convDef: 0.25 }, 'Konvoy akını +%35, kendi konvoy kayıpları −%25.'),
     // Ek HOI4 teknolojileri
     T('sup3', 'Gelişmiş Destek Bölükleri', 'inf', 1942, ['sup2'], { org: 0.05, landDef: 0.05 }, 'Moral ve savunma +%5.'),
     T('inf4', 'Piyade Teçhizatı IV', 'inf', 1944, ['inf3'], { eq_inf: 4 }, 'Modern piyade teçhizatı.'),

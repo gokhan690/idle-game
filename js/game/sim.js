@@ -103,8 +103,10 @@
       const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb);
       if (e.convoy) { c.ships.conv = (c.ships.conv || 0) + ic / e.cost; continue; }
       if (e.ship) {
+        // özel gemi tasarımı: maliyet çarpanı ve filo kalitesi (standart tasarım eski hesabı korur)
+        const sd = l.d && !String(l.d).startsWith('std') ? G.designById(c, l.e, l.d) : null, cost = e.cost * (sd ? G.designStats(l.e, sd).cm : 1);
         l.acc = (l.acc || 0) + ic;
-        while (l.acc >= e.cost) { l.acc -= e.cost; G.addShip(c, l.e); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
+        while (l.acc >= cost) { l.acc -= cost; G.addShip(c, l.e); if (sd) G.shipQualityAdd(c, l.e, sd); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi${sd ? ` (${sd.n})` : ''}.`, [c.tag], 'good'); }
       } else {
         const D = G.lineDesign(c, l);
         const add = ic / (e.cost * (D ? G.designStats(l.e, D).cm : 1)), old = c.stock[l.e] || 0, lv = l.lv || G.bestLevel(c, l.e);
@@ -184,11 +186,14 @@
   };
   // Kara doktrini dalları: dm/df/dg/da — yalnızca bir dal (HOI4)
   G.docTreeOf = (id) => (/^d[mfga][1-4]$/.test(id) ? id[1] : null);
+  G.navDocOf = (id) => (/^n[fct][1-3]$/.test(id) ? id[1] : null);
+  G.navDocTree = (c) => { for (const id of Object.keys(c.tech)) { const t = G.navDocOf(id); if (t) return t; } for (const r of c.res || []) { const t = G.navDocOf(r.id); if (t) return t; } return null; };
   G.docTree = (c) => { for (const id of Object.keys(c.tech)) { const t = G.docTreeOf(id); if (t) return t; } for (const r of c.res || []) { const t = G.docTreeOf(r.id); if (t) return t; } return null; };
   G.docPref = (c) => ({ GER: 'm', SOV: 'a', CHI: 'a', PRC: 'a', ENG: 'g', FRA: 'g', JAP: 'g', USA: 'f', ITA: 'f', TUR: 'g' })[c.tag] || ({ fas: 'm', com: 'a', dem: 'f' })[c.ideo] || 'g';
   G.techAvailable = (c, id) => {
     const t = g.TECH_BY_ID[id]; if (!t) return false;
     const tr = G.docTreeOf(id); if (tr) { const cur = G.docTree(c); if (cur && cur !== tr) return false; }
+    const nt = G.navDocOf(id); if (nt) { const cur = G.navDocTree(c); if (cur && cur !== nt) return false; }
     return !c.tech[id] && t.pre.every((p) => c.tech[p]) && !c.res.some((r) => r.id === id);
   };
 
@@ -252,6 +257,8 @@
           continue;
         }
       }
+      // deniz çıkarması hazırlığı (HOI4): limanda planlama süresi dolmadan denize açılmaz
+      if (u.inv) { if (u.loc >= NP) delete u.inv; else if (n >= NP && u.inv.p < u.inv.n) { u.inv.p++; continue; } }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
       u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : G.fuelMul(u));

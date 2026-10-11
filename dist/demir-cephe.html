@@ -1083,6 +1083,8 @@ window.IDEOLOGIES = {
   g.TECH_CATS = { inf: 'Piyade', art: 'Topçu', arm: 'Zırh', air: 'Hava', nav: 'Deniz', ind: 'Sanayi', elec: 'Elektronik', doc: 'Doktrin' };
   // kara doktrini dalları (yalnızca biri)
   g.DOC_TREES = { m: 'Mobil Savaş', f: 'Üstün Ateş Gücü', g: 'Büyük Savaş Planı', a: 'Kitle Saldırısı' };
+  // deniz doktrini dalları (yalnızca biri)
+  g.NAV_DOC_TREES = { f: 'Filo Savaşı', c: 'Taşıyıcı Gücü', t: 'Ticaret Akını' };
   g.TECHS = [
     T('inf1', 'Piyade Teçhizatı I', 'inf', 1936, [], { eq_inf: 1 }, 'Temel tüfek ve makineli tüfekler.'),
     T('sup1', 'Destek Bölükleri', 'inf', 1936, [], { org: 0.05, landDef: 0.05 }, 'İstihkâm ve keşif bölükleri: +%5 savunma ve moral.'),
@@ -1151,6 +1153,16 @@ window.IDEOLOGIES = {
     T('da4', 'Kitle Saldırısı: Muhafız Tümenleri', 'doc', 1942, ['da3'], { landAtk: 0.1, org: 0.05 }, 'Saldırı +%10, moral +%5.'),
     T('doc_air', 'Hava Üstünlüğü Doktrini', 'doc', 1937, [], { air: 0.25 }, 'Hava gücü +%25.'),
     T('doc_nav', 'Deniz Doktrini', 'doc', 1937, [], { navy: 0.2, invasion: 0.25 }, 'Deniz gücü +%20, çıkarma cezası azalır.'),
+    // Deniz doktrinleri (HOI4): üç daldan yalnızca biri
+    T('nf1', 'Filo Savaşı: Savaş Hattı', 'doc', 1936, [], { navy: 0.08 }, 'Deniz gücü +%8 (zırhlı ve kruvazör ağırlıklı filolar).'),
+    T('nf2', 'Filo Savaşı: Ağır Gemi Taktikleri', 'doc', 1939, ['nf1'], { navy: 0.1 }, 'Deniz gücü +%10.'),
+    T('nf3', 'Filo Savaşı: Karar Muharebesi', 'doc', 1942, ['nf2'], { navy: 0.12, invasion: 0.1 }, 'Deniz gücü +%12, çıkarma desteği.'),
+    T('nc1', 'Taşıyıcı Gücü: Deniz Havacılığı', 'doc', 1936, [], { navy: 0.05, cvAir: 0.3 }, 'Uçak gemisi etkisi +%30, deniz gücü +%5.'),
+    T('nc2', 'Taşıyıcı Gücü: Görev Grupları', 'doc', 1939, ['nc1'], { navy: 0.06, cvAir: 0.4, air: 0.05 }, 'Uçak gemisi etkisi +%40, hava +%5.'),
+    T('nc3', 'Taşıyıcı Gücü: Deniz Hava Üstünlüğü', 'doc', 1942, ['nc2'], { navy: 0.08, cvAir: 0.5 }, 'Uçak gemisi etkisi +%50.'),
+    T('nt1', 'Ticaret Akını: Kurt Sürüleri', 'doc', 1936, [], { raid: 0.25 }, 'Konvoy akını gücü +%25.'),
+    T('nt2', 'Ticaret Akını: Konvoy Avcıları', 'doc', 1939, ['nt1'], { raid: 0.3, navy: 0.04 }, 'Konvoy akını +%30, deniz gücü +%4.'),
+    T('nt3', 'Ticaret Akını: Atlantik Muharebesi', 'doc', 1942, ['nt2'], { raid: 0.35, convDef: 0.25 }, 'Konvoy akını +%35, kendi konvoy kayıpları −%25.'),
     // Ek HOI4 teknolojileri
     T('sup3', 'Gelişmiş Destek Bölükleri', 'inf', 1942, ['sup2'], { org: 0.05, landDef: 0.05 }, 'Moral ve savunma +%5.'),
     T('inf4', 'Piyade Teçhizatı IV', 'inf', 1944, ['inf3'], { eq_inf: 4 }, 'Modern piyade teçhizatı.'),
@@ -3019,7 +3031,7 @@ window.RIVERS = [
   };
   G.shipsPower = (c, sh) => {
     const m = c.mods; let v = 0;
-    for (const e of g.SHIPS) v += (sh[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1);
+    for (const e of g.SHIPS) v += (sh[e] || 0) * g.EQUIP[e].str * (m['eq_' + e] || 1) * (c.shq && c.shq[e] ? c.shq[e] : 1);
     return v * (1 + (m.navy || 0));
   };
   G.navyPower = (c) => {
@@ -3375,7 +3387,7 @@ window.RIVERS = [
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
     if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
-    if (G.cpEnsure && st.C[st.player]) G.cpEnsure(st.C[st.player]); // komuta gücü
+    if (G.cpEnsure && st.C[st.player]) { G.cpEnsure(st.C[st.player]); st.C[st.player].nxp = 30; } // komuta gücü, deniz tecrübesi
     if (G.scoreStart) G.scoreStart(); // oyun sonu karşılaştırması için başlangıç değerleri
     if (G.altSetup) G.altSetup(); // alternatif dünya: hangi YZ ülkeleri alternatif yola girecek
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');
@@ -3591,8 +3603,10 @@ window.RIVERS = [
       const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb);
       if (e.convoy) { c.ships.conv = (c.ships.conv || 0) + ic / e.cost; continue; }
       if (e.ship) {
+        // özel gemi tasarımı: maliyet çarpanı ve filo kalitesi (standart tasarım eski hesabı korur)
+        const sd = l.d && !String(l.d).startsWith('std') ? G.designById(c, l.e, l.d) : null, cost = e.cost * (sd ? G.designStats(l.e, sd).cm : 1);
         l.acc = (l.acc || 0) + ic;
-        while (l.acc >= e.cost) { l.acc -= e.cost; G.addShip(c, l.e); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi.`, [c.tag], 'good'); }
+        while (l.acc >= cost) { l.acc -= cost; G.addShip(c, l.e); if (sd) G.shipQualityAdd(c, l.e, sd); if (c.tag === st.player) G.log(`Yeni ${e.n} denize indirildi${sd ? ` (${sd.n})` : ''}.`, [c.tag], 'good'); }
       } else {
         const D = G.lineDesign(c, l);
         const add = ic / (e.cost * (D ? G.designStats(l.e, D).cm : 1)), old = c.stock[l.e] || 0, lv = l.lv || G.bestLevel(c, l.e);
@@ -3672,11 +3686,14 @@ window.RIVERS = [
   };
   // Kara doktrini dalları: dm/df/dg/da — yalnızca bir dal (HOI4)
   G.docTreeOf = (id) => (/^d[mfga][1-4]$/.test(id) ? id[1] : null);
+  G.navDocOf = (id) => (/^n[fct][1-3]$/.test(id) ? id[1] : null);
+  G.navDocTree = (c) => { for (const id of Object.keys(c.tech)) { const t = G.navDocOf(id); if (t) return t; } for (const r of c.res || []) { const t = G.navDocOf(r.id); if (t) return t; } return null; };
   G.docTree = (c) => { for (const id of Object.keys(c.tech)) { const t = G.docTreeOf(id); if (t) return t; } for (const r of c.res || []) { const t = G.docTreeOf(r.id); if (t) return t; } return null; };
   G.docPref = (c) => ({ GER: 'm', SOV: 'a', CHI: 'a', PRC: 'a', ENG: 'g', FRA: 'g', JAP: 'g', USA: 'f', ITA: 'f', TUR: 'g' })[c.tag] || ({ fas: 'm', com: 'a', dem: 'f' })[c.ideo] || 'g';
   G.techAvailable = (c, id) => {
     const t = g.TECH_BY_ID[id]; if (!t) return false;
     const tr = G.docTreeOf(id); if (tr) { const cur = G.docTree(c); if (cur && cur !== tr) return false; }
+    const nt = G.navDocOf(id); if (nt) { const cur = G.navDocTree(c); if (cur && cur !== nt) return false; }
     return !c.tech[id] && t.pre.every((p) => c.tech[p]) && !c.res.some((r) => r.id === id);
   };
 
@@ -3740,6 +3757,8 @@ window.RIVERS = [
           continue;
         }
       }
+      // deniz çıkarması hazırlığı (HOI4): limanda planlama süresi dolmadan denize açılmaz
+      if (u.inv) { if (u.loc >= NP) delete u.inv; else if (n >= NP && u.inv.p < u.inv.n) { u.inv.p++; continue; } }
       // hareket
       const seaLeg = n >= NP || u.loc >= NP;
       u.prog += seaLeg ? G.SEA_SPEED : stats.spd * (u.sr ? 4 : G.fuelMul(u));
@@ -6317,7 +6336,7 @@ window.RIVERS = [
     if (f && e !== 'ss') f.sh[e] = (f.sh[e] || 0) + 1;
     else { const sf = (c.fleets || []).find((x) => x.sh.ss > 0 && e === 'ss'); if (sf) sf.sh.ss++; else c.ships[e] = (c.ships[e] || 0) + 1; }
   };
-  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3)) * G.fuelNavyMul(c);
+  G.fleetPower = (c, f) => G.shipsPower(c, f.sh) * (1 + 0.15 * (f.sh.cv || 0) * (G.planes(c, 'fig') > 50 ? 1 : 0.3) * (1 + (c.mods.cvAir || 0))) * G.fuelNavyMul(c);
   G.fleetShips = (f) => SH.reduce((a, e) => a + (f.sh[e] || 0), 0);
 
   // Bir bölgedeki deniz üstünlüğü (0..1): dost / (dost + düşman), komşu bölgeler yarım ağırlık
@@ -6461,10 +6480,10 @@ window.RIVERS = [
       c.raid = 0;
       if (!c.alive || !c.enemies.length) continue;
       let raid = 0, esc = 0;
-      for (const t of c.enemies) for (const f of st.C[t].fleets || []) if (f.mis === 'raid') raid += G.fleetPower(st.C[t], f) + (f.sh.ss || 0) * 2;
+      for (const t of c.enemies) for (const f of st.C[t].fleets || []) if (f.mis === 'raid') raid += (G.fleetPower(st.C[t], f) + (f.sh.ss || 0) * 2) * (1 + (st.C[t].mods.raid || 0));
       for (const f of c.fleets || []) if (f.mis === 'escort') esc += G.fleetPower(c, f) + (f.sh.dd || 0) * 2;
       if (raid > 0) {
-        c.raid = Math.min(0.7, raid / (raid + esc * 1.5 + 25));
+        c.raid = Math.min(0.7, raid / (raid + esc * 1.5 + 25)) * (1 - (c.mods.convDef || 0));
         c.ships.conv = Math.max(0, (c.ships.conv || 0) * (1 - 0.004 * c.raid));
       }
     }
@@ -7593,12 +7612,55 @@ window.RIVERS = [
       ],
     },
   };
+  // ---------- Gemi tasarımcısı (HOI4 Man the Guns): gövde + modüller -> gemi gücü çarpanı ----------
+  // fp ateş gücü, ar dayanıklılık/zırh, aa uçaksavar, asw denizaltı savunması, sp hız
+  const SHIP_TIER = { dd: ['', '1936 Muhrip Gövdesi', '1940 Muhrip Gövdesi'], cr: ['', '1936 Kruvazör Gövdesi', '1940 Kruvazör Gövdesi'], bb: ['', '1936 Zırhlı Gövdesi', '1940 Zırhlı Gövdesi'], ss: ['', '1936 Denizaltı Gövdesi', '1940 Denizaltı Gövdesi'], cv: ['', 'Uçak Gemisi Gövdesi'] };
+  const SHIP_STATS = [['fp', 'Ateş gücü'], ['ar', 'Dayanıklılık'], ['aa', 'Uçaksavar'], ['asw', 'Denizaltı savunması'], ['sp', 'Hız']];
+  const shipSlots = (e) => {
+    const S = [];
+    if (e !== 'ss' && e !== 'cv') S.push({ k: 'main', n: 'Ana batarya', def: 'std', opts: [
+      { id: 'std', n: e === 'dd' ? 'Hafif toplar' : e === 'cr' ? 'Orta toplar' : 'Ağır toplar', fx: {} },
+      { id: 'big', n: e === 'bb' ? 'Süper ağır toplar' : 'Daha ağır toplar', fx: { fp: 0.22, sp: -0.04 }, cost: 0.15 },
+      { id: 'dual', n: 'Çift amaçlı toplar', fx: { fp: 0.06, aa: 0.3 }, cost: 0.1, req: 2 },
+    ] });
+    if (e === 'cv') S.push({ k: 'deck', n: 'Uçuş güvertesi', def: 'std', opts: [
+      { id: 'std', n: 'Standart güverte', fx: {} },
+      { id: 'big', n: 'Genişletilmiş hangar', fx: { fp: 0.25, ar: -0.05 }, cost: 0.15 },
+      { id: 'arm', n: 'Zırhlı güverte', fx: { ar: 0.25, fp: -0.05 }, cost: 0.12 },
+    ] });
+    if (e !== 'bb' && e !== 'cv') S.push({ k: 'torp', n: 'Torpidolar', def: e === 'ss' ? 'tube' : 'none', opts: [
+      ...(e === 'ss' ? [] : [{ id: 'none', n: 'Yok', fx: {} }]),
+      { id: 'tube', n: 'Torpido kovanları', fx: { fp: e === 'ss' ? 0 : 0.15 }, cost: e === 'ss' ? 0 : 0.05 },
+      { id: 'adv', n: 'Gelişmiş torpidolar', fx: { fp: 0.25 }, cost: 0.1, req: 2 },
+    ] });
+    if (e !== 'ss') S.push({ k: 'aaa', n: 'Uçaksavar', lvl: 3, per: { fx: { aa: 0.15 }, cost: 0.03 } });
+    if (e !== 'ss' && e !== 'dd') S.push({ k: 'arm', n: 'Zırh', lvl: 3, per: { fx: { ar: 0.1, sp: -0.03 }, cost: 0.05 } });
+    S.push({ k: 'eng', n: 'Makine dairesi', lvl: 3, per: { fx: { sp: 0.05 }, cost: 0.03 } });
+    S.push({ k: 'sp1', n: 'Özel donanım', def: 'none', opts: [
+      { id: 'none', n: 'Boş', fx: {} },
+      { id: 'sonar', n: 'Sonar', fx: { asw: 0.4 }, cost: 0.03 },
+      { id: 'radar', n: 'Radar', fx: { fp: 0.05, ar: 0.05, aa: 0.1 }, cost: 0.06, req: 2 },
+      ...(e === 'ss' ? [{ id: 'snork', n: 'Şnorkel', fx: { ar: 0.2, sp: 0.03 }, cost: 0.05, req: 2 }] : [{ id: 'mine', n: 'Mayın atar', fx: { ar: 0.05, asw: 0.15 }, cost: 0.03 }]),
+    ] });
+    return S;
+  };
+  for (const e of g.SHIPS) g.DESIGN[e] = { n: g.EQUIP[e].n, tierN: SHIP_TIER[e], stats: SHIP_STATS, slots: shipSlots(e), ship: 1 };
+  // gemi gücü çarpanı: standart tasarım tam 1
+  G.shipPow = (e, v) => e === 'ss' ? 0.6 * v.fp + 0.25 * v.ar + 0.15 * v.sp : e === 'dd' ? 0.4 * v.fp + 0.2 * v.ar + 0.1 * v.aa + 0.2 * v.asw + 0.1 * v.sp : 0.5 * v.fp + 0.3 * v.ar + 0.1 * v.aa + 0.05 * v.asw + 0.05 * v.sp;
+  // özel tasarımla üretilen gemi filonun ortalama kalitesini değiştirir (c.shq; yoksa 1)
+  G.shipQualityAdd = (c, e, d) => {
+    const pw = G.shipPow(e, G.designStats(e, d).v), n = Math.max(1, G.navyCount(c, e));
+    const q = c.shq || (c.shq = {}), cur = q[e] ?? 1;
+    q[e] = cur + (pw - cur) / n;
+  };
+  G.shipQ = (c, e) => (c.shq && c.shq[e]) || 1;
   G.DESIGNABLE = new Set(Object.keys(g.DESIGN));
 
   // ---------- Temel değerler ----------
   // Varsayılan tasarım eski seviye sistemini birebir verir (tank: 1+0.25(L-1); uçak: L).
   function base(e, L) {
     if (e === 'tank') return G.tankBase(L);
+    if (g.DESIGN[e] && g.DESIGN[e].ship) return { fp: 1, ar: 1, aa: 1, asw: 1, sp: 1 };
     const pl = { aa: 0.25 * L, ga: 0.25 * L, sb: 0, na: 0.2 * L, df: 1, rg: 1, rel: 0.9 };
     if (e === 'fig') { pl.aa = L; pl.rg = 1; }
     if (e === 'cas') { pl.ga = L; pl.na = L; pl.rg = 1.2; }
@@ -7649,6 +7711,7 @@ window.RIVERS = [
   // vektörden eşdeğer seviye (arayüz ve eski hesaplar için)
   G.vecLevel = (e, v) => {
     if (e === 'tank') return G.tankLevelOf(v.a);
+    if (g.DESIGN[e] && g.DESIGN[e].ship) return 1;
     return e === 'fig' ? v.aa : e === 'cas' ? v.ga : v.sb;
   };
   G.stockVec = (c, e) => {
@@ -7667,7 +7730,7 @@ window.RIVERS = [
   };
 
   // ---------- Tasarım kaydetme (tecrübe puanı) ----------
-  G.XP_KIND = { tank: 'axp', fig: 'fxp', cas: 'fxp', bom: 'fxp' };
+  G.XP_KIND = { tank: 'axp', fig: 'fxp', cas: 'fxp', bom: 'fxp', dd: 'nxp', cr: 'nxp', bb: 'nxp', ss: 'nxp', cv: 'nxp' };
   G.designCost = (e, d) => {
     const D = g.DESIGN[e]; let n = 0;
     for (const sl of D.slots) { if (sl.lvl) n += d.m[sl.k] | 0; else if ((d.m[sl.k] ?? sl.def) !== sl.def) n++; }
@@ -7706,6 +7769,8 @@ window.RIVERS = [
     let wings = 0; if (war) for (const w of c.wings || []) if (w.r >= 0 && w.n > 10) wings++;
     c.axp = Math.min(500, (c.axp ?? 30) + 0.06 + (c.mods.xpGain || 0) * 0.05 + Math.min(0.5, bat * 0.02));
     c.fxp = Math.min(500, (c.fxp ?? 30) + 0.05 + Math.min(0.4, wings * 0.03));
+    // deniz tecrübesi yalnızca kullanılmaya başlanınca birikir (oyuncu)
+    if (c.nxp != null) { let fl = 0; if (war) for (const f of c.fleets || []) if (f.mis !== 'hold') fl++; c.nxp = Math.min(500, c.nxp + 0.04 + Math.min(0.4, fl * 0.04)); }
   };
 
   // ---------- Yapay zekâ tasarımları (büyük güçler, ulusal tercihlere göre) ----------
@@ -7717,7 +7782,7 @@ window.RIVERS = [
     bom: (c, t) => ({ eng: c.tag === 'USA' || c.tag === 'ENG' ? '4' : '2', bay: c.tag === 'JAP' || c.tag === 'ITA' ? 'tor' : 'std', tur: 1, sp1: 'sight', sp2: 'none' }),
   };
   G.aiDesign = (c, e) => {
-    if (!c.major || !G.DESIGNABLE.has(e) || c.tag === G.st.player) return null;
+    if (!c.major || !G.DESIGNABLE.has(e) || !AI_PRESET[e] || c.tag === G.st.player) return null;
     const t = Math.floor(G.bestLevel(c, e));
     if (t < 2) return null;
     const id = 'ai' + e + t;
@@ -10474,6 +10539,8 @@ window.RIVERS = [
     if (c.enemies.length) return { ok: false, why: 'Savaşta tatbikat yapılamaz' };
     a.drill = 1; return { ok: true, on: 1 };
   };
+  // deniz çıkarması hazırlık süresi (gün): deniz piyadesi ve çıkarma doktrinleri kısaltır
+  G.invPrep = (c, u) => { const t = G.T(u.t, u.u); return Math.max(4, Math.round(14 - (t.amph || 0) * 8 - (c.mods.invasion || 0) * 12)); };
   // ordu emirleri: KG harcayarak süreli bonus
   G.ORDERS = {
     atk: { n: 'Taarruz Emri', d: '15 gün saldırı ve atılım +%10', cost: 30, days: 15 },
@@ -10750,6 +10817,7 @@ window.RIVERS = [
         if (contested) { const v = G.airSup(pl, r); return 'airs' + Math.min(4, Math.floor(v * 5)); }
         return 'airn' + (r % 6);
       }
+      if (R.mode === 'sea') return 'nosup:' + pr.c;
       if (R.mode === 'occ') return pr.rs == null ? 'nooc:' + pr.c : 'occ' + Math.min(5, Math.floor(pr.rs * 7));
       if (R.mode === 'sup') {
         const pl = st.player, av = G.supAvail[pl];
@@ -11003,6 +11071,7 @@ window.RIVERS = [
         else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
         else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
         else if (R.mode === 'peace') { const t = k.slice(3); col = k.startsWith('pk:') ? R.ccolor(t) : k.startsWith('pu:') ? mix(R.ccolor(t), '#d8d2bc', 0.35) : mix(R.ccolor(t), '#33362f', 0.78); }
+        else if (R.mode === 'sea') col = mix(R.ccolor(k.slice(6)), '#3a3d36', 0.6);
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else if (R.mode === 'occ') { col = k.startsWith('nooc:') ? mix(R.ccolor(k.slice(5)), '#3a3d36', 0.7) : SUP_COLORS[5 - +k.slice(3)]; }
         else col = R.ccolor(k);
@@ -11126,10 +11195,31 @@ window.RIVERS = [
       drawArmyTags(ctx, z);
     }
     drawAirRegions(ctx, z);
+    if (R.mode === 'sea') drawSeaMode(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
+  // deniz üstünlüğü haritası: her deniz bölgesinde oyuncunun (ve müttefiklerinin) üstünlüğü
+  let seaCache = null;
+  function drawSeaMode(ctx, z) {
+    const st = G.st, pl = st.player; if (!pl || !G.navalSupremacy) return;
+    if (!seaCache || seaCache.d !== st.day) {
+      const v = new Float32Array(SEAS.length).fill(-1);
+      const busy = new Set(); for (const c of Object.values(st.C)) if (c.alive && c.fleets && (c.tag === pl || G.sameFaction(c.tag, pl) || G.atWar(pl, c.tag))) for (const f of c.fleets) { busy.add(f.loc); for (const [n] of G.adj[f.loc]) busy.add(n); }
+      for (let s = 0; s < SEAS.length; s++) if (busy.has(NP + s)) v[s] = G.navalSupremacy(pl, NP + s);
+      seaCache = { d: st.day, v };
+    }
+    const r = Math.max(9, Math.min(32, 20 * z));
+    ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let s = 0; s < SEAS.length; s++) {
+      const sc = visible(SEAS[s].x, SEAS[s].y, r); if (!sc) continue;
+      const v = seaCache.v[s];
+      ctx.fillStyle = v < 0 ? 'rgba(120,140,160,0.18)' : v > 0.6 ? 'rgba(90,190,110,0.45)' : v > 0.4 ? 'rgba(230,190,80,0.45)' : 'rgba(220,80,60,0.5)';
+      ctx.beginPath(); ctx.arc(sc.x, sc.y, r, 0, Math.PI * 2); ctx.fill();
+      if (v >= 0) { ctx.fillStyle = '#f4efe0'; ctx.fillText('%' + Math.round(v * 100), sc.x, sc.y); }
+    }
+  }
   function visible(x, y, pad) { const s = R.toScreen(x, y); return s.x > -pad && s.y > -pad && s.x < R.w + pad && s.y < R.h + pad ? s : null; }
 
   function drawLabels(ctx, z) {
@@ -11545,6 +11635,8 @@ window.RIVERS = [
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
+    const iu = gl.find((u) => u.inv); if (iu) { ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, y - 5, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, y - 4, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
     let xs = 0; for (const u of gl) xs += u.xp ?? 0.25;
     const xl = G.xpIdx ? G.xpIdx(xs / gl.length) - 1 : 0;
@@ -12004,14 +12096,15 @@ window.RIVERS = [
     if (tab === 'proj') return { title: 'Araştırma', html: html + projHtml(c) };
     const yr = G.year(G.st.day);
     let lh = '<div class="list">';
-    if (tab === 'doc') lh += `<p class="muted small" style="margin:0">HOI4'teki gibi dört kara doktrini dalından yalnızca birini izleyebilirsin: ${Object.values(g.DOC_TREES).join(', ')}. İlk araştırma dalı belirler.${G.docTree(c) ? ` Seçilen dal: <b>${g.DOC_TREES[G.docTree(c)]}</b>.` : ''}</p>`;
-    for (const t of g.TECHS.filter((x) => x.cat === tab).sort((a, b) => (G.docTreeOf(a.id) || 'z').localeCompare(G.docTreeOf(b.id) || 'z') || a.year - b.year)) {
+    if (tab === 'doc') lh += `<p class="muted small" style="margin:0">HOI4'teki gibi dört kara doktrini dalından yalnızca birini izleyebilirsin: ${Object.values(g.DOC_TREES).join(', ')}. İlk araştırma dalı belirler.${G.docTree(c) ? ` Seçilen dal: <b>${g.DOC_TREES[G.docTree(c)]}</b>.` : ''} Deniz doktrinlerinde de üç daldan biri seçilir: ${Object.values(g.NAV_DOC_TREES).join(', ')}.${G.navDocTree(c) ? ` Seçilen: <b>${g.NAV_DOC_TREES[G.navDocTree(c)]}</b>.` : ''}</p>`;
+    for (const t of g.TECHS.filter((x) => x.cat === tab).sort((a, b) => ((G.docTreeOf(a.id) || (G.navDocOf(a.id) ? 'y' + G.navDocOf(a.id) : 'z')).localeCompare(G.docTreeOf(b.id) || (G.navDocOf(b.id) ? 'y' + G.navDocOf(b.id) : 'z'))) || a.year - b.year)) {
       const done = c.tech[t.id], active = c.res.some((r) => r.id === t.id), avail = G.techAvailable(c, t.id);
       const cost = G.techCost(c, t.id);
       const ahead = t.year > yr ? ` · <span class="warn">${t.year - yr} yıl erken</span>` : '';
       const cls = done ? 'done' : active ? 'active' : avail ? '' : 'locked';
       const tr = G.docTreeOf(t.id), curTr = G.docTree(c);
-      const pre = !done && !avail && !active ? (tr && curTr && curTr !== tr ? `<span class="warn">Başka bir doktrin dalı seçildi (${g.DOC_TREES[curTr]})</span>` : `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}`) : esc(t.d || fxText(t.fx));
+      const ntr = G.navDocOf(t.id), curN = G.navDocTree(c);
+      const pre = !done && !avail && !active ? (ntr && curN && curN !== ntr ? `<span class="warn">Başka bir deniz doktrini seçildi (${g.NAV_DOC_TREES[curN]})</span>` : tr && curTr && curTr !== tr ? `<span class="warn">Başka bir doktrin dalı seçildi (${g.DOC_TREES[curTr]})</span>` : `Önce: ${t.pre.map((p) => g.TECH_BY_ID[p].n).join(', ')}`) : esc(t.d || fxText(t.fx));
       const bon = (c.rb || []).find((x) => x[0] === t.cat);
       lh += `<button class="item ${cls}${avail && !active && glow ? ' glow' : ''}" data-act="research" data-v="${t.id}" ${avail ? '' : 'disabled'}><div class="grow"><div class="t">${done ? '✓ ' : ''}${esc(t.n)} <span class="muted small">${t.year}</span></div><div class="d">${pre}</div><div class="d">${done ? 'Tamamlandı' : active ? 'Araştırılıyor' : `~${Math.ceil(cost / (G.resSpeed(c, t.id) * (1 + (bon ? bon[1] : 0))))} gün`}${bon && avail ? ` · <span class="good">bonus +%${Math.round(bon[1] * 100)}</span>` : ''}${ahead}</div></div></button>`;
     }
@@ -12079,8 +12172,9 @@ window.RIVERS = [
 
   // Üretim
   // ---------- Tasarım bürosu (tank ve uçak tasarımcısı) ----------
-  const XPN = { axp: 'Kara tecrübesi', fxp: 'Hava tecrübesi' };
+  const XPN = { axp: 'Kara tecrübesi', fxp: 'Hava tecrübesi', nxp: 'Deniz tecrübesi' };
   const STAT_SHOW = {
+    fp: (v) => '%' + Math.round(v * 100), ar: (v) => '%' + Math.round(v * 100), asw: (v) => '%' + Math.round(v * 100), sp: (v) => '%' + Math.round(v * 100),
     a: (v) => r1(v * 13), d: (v) => r1(v * 30), r: (v) => r1(v * 10), p: (v) => `${r1(v * 5)} / ${Math.round(v * 15)}`, s: (v) => Math.round(v * 9 * 4) + ' km/s', rel: (v) => '%' + Math.round(v * 100),
     aa: (v) => r1(v * 10), df: (v) => r1(v * 10), ga: (v) => r1(v * 10), sb: (v) => r1(v * 10), na: (v) => r1(v * 10), rg: (v) => Math.round(v * 500) + ' km',
   };
@@ -12095,6 +12189,7 @@ window.RIVERS = [
     const xk = G.XP_KIND[e], cost = G.designCost(e, dz), err = G.designValid(c, e, dz);
     const pv = G.designPreview(e, dz), ref = G.designStats(e, G.defaultDesign(e, dz.t));
     let html = `<div class="row" style="justify-content:space-between;align-items:center"><span class="small">${XPN[xk]}: <b>${Math.floor(c[xk] ?? 30)}</b></span><span class="small">Kaydetme: <b class="${(c[xk] ?? 30) >= cost ? '' : 'bad'}">${cost} tecrübe</b></span></div>`;
+    if (D.ship) html += `<p class="muted small" style="margin:0">Gemi gücü çarpanı: <b>×${G.shipPow(e, pv.v).toFixed(2)}</b>. Bu tasarımla üretilen gemiler filodaki ${esc(D.n.toLowerCase())} ortalama gücünü değiştirir (mevcut ortalama ×${G.shipQ(c, e).toFixed(2)}).</p>`;
     html += sec(D.n === 'Tank' ? 'Şasi' : 'Gövde', `<div class="seg sm wrap">${D.tierN.slice(1).map((n, i) => `<button class="${dz.t === i + 1 ? 'on' : ''}" data-act="dztier" data-v="${i + 1}" ${i + 1 > best ? 'disabled' : ''}>${esc(n)}</button>`).join('')}</div>`);
     let mh = '';
     for (const sl of D.slots) {
@@ -12162,7 +12257,7 @@ window.RIVERS = [
     const rows = ['inf', 'sup', 'art', 'at', 'aa', 'mot', 'tank', 'fig', 'cas', 'bom'].map((k) => `<div><small>${g.EQUIP[k].s}</small><b>${int(c.stock[k] || 0)}</b><span class="muted small">${(g.MODEL_N[k] || [])[Math.round(G.lvl(c, k))] || 'Sv ' + r1(G.lvl(c, k))}</span></div>`).join('');
     // tasarım bürosu
     const cus = (c.designs || []).filter((d) => !d.id.startsWith('ai'));
-    let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span></div>`;
+    let dh = `<div class="row" style="gap:12px"><span class="small">${XPN.axp}: <b>${Math.floor(c.axp ?? 30)}</b></span><span class="small">${XPN.fxp}: <b>${Math.floor(c.fxp ?? 30)}</b></span><span class="small">${XPN.nxp}: <b>${Math.floor(c.nxp ?? 30)}</b></span></div>`;
     dh += `<div class="btns">${[...G.DESIGNABLE].filter((k) => m.unlockEq[k] || !g.EQUIP[k].req || c.tech[g.EQUIP[k].req]).map((k) => `<button class="btn sm" data-act="dznew" data-v="${k}">+ ${g.EQUIP[k].s} tasarla</button>`).join('')}</div>`;
     if (cus.length) dh += `<div class="list">${cus.map((d) => { const st0 = G.designStats(d.e, d); return `<div class="item"><div class="grow"><div class="t">${esc(d.n)} <span class="muted small">${esc(g.DESIGN[d.e].tierN[d.t])}</span></div>${statTable(d.e, st0, G.designStats(d.e, G.defaultDesign(d.e, d.t)))}</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="dzcopy" data-v="${d.id}">Kopyala</button><button class="btn sm danger" data-act="dzdel" data-v="${d.id}">Sil</button></div></div>`; }).join('')}</div>`;
     else dh += '<p class="muted small" style="margin:0">Tasarım yok. Şasi/gövde ve modülleri seçip kendi tankını ve uçağını tasarla; sonra üretim hattında “Tasarım ▾” ile üretime al. Tasarım kaydetmek tecrübe puanı harcar (savaşta ve görevlerde kazanılır).</p>';
@@ -13312,8 +13407,8 @@ window.RIVERS = [
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   ACT.setmode = (d) => { R.setMode(d.v); if (d.v === 'sup') G.computeSupplyFor(me()); UI.render(); UI.hud(); };
   ACT.wxtoggle = () => { R.showWeather = !R.showWeather; R.dirty = 1; UI.render(); };
-  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava', occ: 'Direniş' };
-  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air', 'occ']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
+  UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', fac: 'İttifaklar', sup: 'İkmal', air: 'Hava', sea: 'Deniz', occ: 'Direniş' };
+  ACT.mapmode = () => { const order = ['pol', 'terrain', 'ind', 'fac', 'sup', 'air', 'sea', 'occ']; R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
   ACT.auto = (d) => { const r = G.autoAct(d.k, d.v); if (!r.ok) UI.toast('Bu eylem şu an yapılamaz.', 'bad'); UI.render(true); UI.hud(); };
   ACT.tutorial = () => { UI.close(); if (UI.startTutorial) UI.startTutorial(); };
   ACT.sound = (d) => { if (G.Audio) G.Audio.toggle(d.v); UI.render(); };
@@ -14091,7 +14186,7 @@ window.RIVERS = [
 
   function order(units, target) {
     const st = G.st;
-    let ok = 0, fail = 0, naval = 0, blocked = '';
+    let ok = 0, fail = 0, naval = 0, blocked = '', inv = 0, invN = 0, invSup = 1;
     const c = st.C[st.player];
     for (const u of units) {
       const s = G.unitStats(u);
@@ -14106,15 +14201,16 @@ window.RIVERS = [
           const freeConv = (c.ships.conv || 0) - G.convoyNeed(u.t) - naval * 5;
           if (freeConv < 5) { blocked = 'Yeterli konvoy yok: deniz yoluyla taşıma için tümen başına 5 konvoy gerekir.'; path = null; }
           else if (hostileLanding && lastSea != null && G.navalSupremacy(u.t, lastSea) < 0.35) { blocked = 'Çıkarma bölgesinde düşman donanması üstün: önce deniz üstünlüğü kur.'; path = null; }
-          else naval++;
+          else { naval++; if (hostileLanding) { u.inv = { p: 0, n: G.invPrep(c, u), at: landing }; inv++; invN = Math.max(invN, u.inv.n); if (lastSea != null) invSup = Math.min(invSup, G.navalSupremacy(u.t, lastSea)); } }
         }
       }
-      if (path && path.length) { u.path = path; u.prog = 0; u.auto = 0; ok++; } else fail++;
+      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; ok++; } else fail++;
     }
     if (target < NP && !G.canEnter(st.player, target)) UI.toast(`${G.cname(st.prov[target].c)} topraklarına giremezsin: savaş ilan et veya geçiş izni al.`, 'warn');
     else if (blocked) UI.toast(blocked, 'warn');
     else if (!ok) UI.toast('Bu hedefe ulaşılabilecek bir yol yok.', 'warn');
     else if (fail) UI.toast(`${ok} tümen yola çıktı, ${fail} tümen hedefe ulaşamıyor.`, 'warn');
+    else if (inv) UI.toast(`${inv} tümen çıkarmaya hazırlanıyor: ${invN} gün hazırlık, sonra denize açılır. Çıkarma bölgesinde deniz üstünlüğü %${Math.round(invSup * 100)}${invSup < 0.5 ? ' — düşük, kayıp riski var' : ''}.`, invSup < 0.5 ? 'warn' : 'good');
     else if (naval) UI.toast(`${ok} tümen deniz yoluyla gönderildi.`);
     if (ok && st.paused) UI.toast('Oyun duraklatıldı: emirler zaman başlayınca uygulanır.');
     R.dirty = 1; UI.renderSel();

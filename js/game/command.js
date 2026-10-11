@@ -36,6 +36,8 @@
     if (c.enemies.length) return { ok: false, why: 'Savaşta tatbikat yapılamaz' };
     a.drill = 1; return { ok: true, on: 1 };
   };
+  // deniz çıkarması hazırlık süresi (gün): deniz piyadesi ve çıkarma doktrinleri kısaltır
+  G.invPrep = (c, u) => { const t = G.T(u.t, u.u); return Math.max(4, Math.round(14 - (t.amph || 0) * 8 - (c.mods.invasion || 0) * 12)); };
   // ordu emirleri: KG harcayarak süreli bonus
   G.ORDERS = {
     atk: { n: 'Taarruz Emri', d: '15 gün saldırı ve atılım +%10', cost: 30, days: 15 },

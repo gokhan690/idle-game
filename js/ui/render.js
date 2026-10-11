@@ -84,6 +84,7 @@
         if (contested) { const v = G.airSup(pl, r); return 'airs' + Math.min(4, Math.floor(v * 5)); }
         return 'airn' + (r % 6);
       }
+      if (R.mode === 'sea') return 'nosup:' + pr.c;
       if (R.mode === 'occ') return pr.rs == null ? 'nooc:' + pr.c : 'occ' + Math.min(5, Math.floor(pr.rs * 7));
       if (R.mode === 'sup') {
         const pl = st.player, av = G.supAvail[pl];
@@ -337,6 +338,7 @@
         else if (R.mode === 'fac') { if (k.startsWith('fac:')) col = st.factions[k.slice(4)]?.c || '#777'; else col = mix(R.ccolor(k.slice(6)), '#808070', 0.75); }
         else if (R.mode === 'air') col = k.startsWith('airs') ? AIRS_COLORS[+k.slice(4)] : AIRN_COLORS[+k.slice(4)];
         else if (R.mode === 'peace') { const t = k.slice(3); col = k.startsWith('pk:') ? R.ccolor(t) : k.startsWith('pu:') ? mix(R.ccolor(t), '#d8d2bc', 0.35) : mix(R.ccolor(t), '#33362f', 0.78); }
+        else if (R.mode === 'sea') col = mix(R.ccolor(k.slice(6)), '#3a3d36', 0.6);
         else if (R.mode === 'sup') { col = k.startsWith('nosup:') ? mix(R.ccolor(k.slice(6)), '#3a3d36', 0.75) : SUP_COLORS[+k.slice(3)]; }
         else if (R.mode === 'occ') { col = k.startsWith('nooc:') ? mix(R.ccolor(k.slice(5)), '#3a3d36', 0.7) : SUP_COLORS[5 - +k.slice(3)]; }
         else col = R.ccolor(k);
@@ -460,10 +462,31 @@
       drawArmyTags(ctx, z);
     }
     drawAirRegions(ctx, z);
+    if (R.mode === 'sea') drawSeaMode(ctx, z);
     if (R.box) { ctx.strokeStyle = '#f2d27a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; const b = R.box; ctx.strokeRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); ctx.setLineDash([]); ctx.fillStyle = 'rgba(242,210,122,0.08)'; ctx.fillRect(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1), Math.abs(b.x1 - b.x0), Math.abs(b.y1 - b.y0)); }
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
+  // deniz üstünlüğü haritası: her deniz bölgesinde oyuncunun (ve müttefiklerinin) üstünlüğü
+  let seaCache = null;
+  function drawSeaMode(ctx, z) {
+    const st = G.st, pl = st.player; if (!pl || !G.navalSupremacy) return;
+    if (!seaCache || seaCache.d !== st.day) {
+      const v = new Float32Array(SEAS.length).fill(-1);
+      const busy = new Set(); for (const c of Object.values(st.C)) if (c.alive && c.fleets && (c.tag === pl || G.sameFaction(c.tag, pl) || G.atWar(pl, c.tag))) for (const f of c.fleets) { busy.add(f.loc); for (const [n] of G.adj[f.loc]) busy.add(n); }
+      for (let s = 0; s < SEAS.length; s++) if (busy.has(NP + s)) v[s] = G.navalSupremacy(pl, NP + s);
+      seaCache = { d: st.day, v };
+    }
+    const r = Math.max(9, Math.min(32, 20 * z));
+    ctx.font = '700 11px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let s = 0; s < SEAS.length; s++) {
+      const sc = visible(SEAS[s].x, SEAS[s].y, r); if (!sc) continue;
+      const v = seaCache.v[s];
+      ctx.fillStyle = v < 0 ? 'rgba(120,140,160,0.18)' : v > 0.6 ? 'rgba(90,190,110,0.45)' : v > 0.4 ? 'rgba(230,190,80,0.45)' : 'rgba(220,80,60,0.5)';
+      ctx.beginPath(); ctx.arc(sc.x, sc.y, r, 0, Math.PI * 2); ctx.fill();
+      if (v >= 0) { ctx.fillStyle = '#f4efe0'; ctx.fillText('%' + Math.round(v * 100), sc.x, sc.y); }
+    }
+  }
   function visible(x, y, pad) { const s = R.toScreen(x, y); return s.x > -pad && s.y > -pad && s.x < R.w + pad && s.y < R.h + pad ? s : null; }
 
   function drawLabels(ctx, z) {
@@ -879,6 +902,8 @@
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
+    const iu = gl.find((u) => u.inv); if (iu) { ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, y - 5, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, y - 4, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
     let xs = 0; for (const u of gl) xs += u.xp ?? 0.25;
     const xl = G.xpIdx ? G.xpIdx(xs / gl.length) - 1 : 0;
