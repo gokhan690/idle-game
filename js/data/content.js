@@ -69,6 +69,9 @@
     mot: { n: 'Motorize Piyade', s: 'MOT', w: 2, sa: 6, ha: 1, df: 22, bt: 3, hd: 0.1, ap: 0, pc: 4, hp: 25, org: 60, spd: 10, mp: 1.5, eq: { inf: 150, mot: 60 }, kind: 'inf', mob: 1, req: 'mot1' },
     arm: { n: 'Tank', s: 'TNK', w: 2, sa: 18, ha: 6, df: 4, bt: 36, hd: 0.8, ap: 10, pc: 15, hp: 2, org: 10, spd: 9, mp: 0.6, eq: { tank: 40 }, kind: 'tank', mob: 1, req: 'tank1' },
     mar: { n: 'Deniz Piyadesi', s: 'DNZ', w: 2, sa: 6, ha: 1, df: 20, bt: 3, hd: 0, ap: 0, pc: 4, hp: 25, org: 65, spd: 4, mp: 1.4, eq: { inf: 160 }, kind: 'inf', amph: 1, req: 'mar1' },
+    mech: { n: 'Mekanize Piyade', s: 'MEK', w: 2, sa: 8, ha: 2, df: 28, bt: 6, hd: 0.35, ap: 4, pc: 6, hp: 22, org: 60, spd: 10, mp: 1.4, eq: { inf: 140, mot: 90 }, kind: 'inf', mob: 1, req: 'mech1' },
+    td: { n: 'Tank Avcısı', s: 'TAV', w: 2, sa: 4, ha: 22, df: 8, bt: 10, hd: 0.75, ap: 12, pc: 24, hp: 3, org: 10, spd: 8, mp: 0.5, eq: { tank: 30, at: 10 }, kind: 'tank', mob: 1, req: 'td1' },
+    spa: { n: 'Kundağı Motorlu Topçu', s: 'KMT', w: 3, sa: 30, ha: 3, df: 10, bt: 6, hd: 0.6, ap: 4, pc: 6, hp: 3, org: 10, spd: 9, mp: 0.5, eq: { tank: 12, art: 18 }, kind: 'art', mob: 1, req: 'spg1' },
     para: { n: 'Paraşütçü', s: 'PRŞ', w: 2, sa: 6, ha: 1, df: 19, bt: 3, hd: 0, ap: 0, pc: 4, hp: 22, org: 70, spd: 4, mp: 1.3, eq: { inf: 170 }, kind: 'inf', para: 1, req: 'para1' },
   };
   g.SUPPORTS = {
@@ -114,6 +117,10 @@
     T('aa1', 'Uçaksavar', 'art', 1938, ['art1'], { aa: 0.3 }, 'Düşman hava üstünlüğü etkisi -%30.'),
     T('art3', 'Topçu III', 'art', 1942, ['art2'], { eq_art: 3 }, 'Roketatarlar ve ağır topçu.'),
     T('at2', 'Gelişmiş Tanksavar', 'art', 1942, ['at1'], { prc: 20 }, 'Zırh delme +20.'),
+    // geç dönem (yalnızca oyuncu ve tarihî olmayan modlarda YZ araştırır; tarihî akışı değiştirmez)
+    T('mech1', 'Mekanize Piyade', 'inf', 1940, ['mot1', 'tank1'], { unlock: 'mech' }, 'Yarı paletli mekanize piyade taburu: motorize kadar hızlı, daha sert ve dayanıklı.'),
+    T('td1', 'Tank Avcısı', 'arm', 1941, ['tank2', 'at1'], { unlock: 'td' }, 'Tank avcısı taburu: yüksek sert saldırı ve zırh delme, düşük moral.'),
+    T('spg1', 'Kundağı Motorlu Topçu', 'art', 1941, ['art2', 'tank2'], { unlock: 'spa' }, 'Kundağı motorlu topçu taburu: zırhlı tümenlerle aynı hızda ateş desteği.'),
     T('tank1', 'Hafif Tank', 'arm', 1936, [], { unlock: 'arm', eq_tank: 1 }, 'Zırhlı tümenleri açar.'),
     T('tank2', 'Orta Tank', 'arm', 1939, ['tank1'], { eq_tank: 2 }, 'Zırhlı tümen gücü +%25.'),
     T('tank3', 'Ağır Tank', 'arm', 1941, ['tank2'], { eq_tank: 3 }, 'Zırhlı tümen gücü +%25.'),
@@ -126,6 +133,7 @@
     T('bom2', 'Bombardıman II', 'air', 1940, ['bom1'], { eq_bom: 2 }, ''),
     T('fig3', 'Avcı Uçağı III', 'air', 1943, ['fig2'], { eq_fig: 3 }, ''),
     T('jet', 'Jet Motoru', 'air', 1944, ['fig3'], { eq_fig: 4 }, ''),
+    T('jet2', 'Jet Avcısı', 'air', 1945, ['jet'], { air: 0.1 }, 'Hava gücü +%10.'),
     T('dd1', 'Muhrip I', 'nav', 1936, [], { eq_dd: 1 }, ''),
     T('ss1', 'Denizaltı I', 'nav', 1936, [], { eq_ss: 1 }, ''),
     T('bb1', 'Zırhlı Gemi I', 'nav', 1936, [], { eq_bb: 1, eq_cr: 1 }, ''),
@@ -134,6 +142,8 @@
     T('ss2', 'Denizaltı II', 'nav', 1940, ['ss1'], { eq_ss: 2 }, ''),
     T('bb2', 'Zırhlı Gemi II', 'nav', 1940, ['bb1'], { eq_bb: 2, eq_cr: 2 }, ''),
     T('radar', 'Radar', 'elec', 1941, ['radio1'], { navy: 0.15, air: 0.1 }, 'Deniz gücü +%15, hava +%10.'),
+    T('radar2', 'Gelişmiş Radar', 'elec', 1943, ['radar'], { navy: 0.05, air: 0.05 }, 'Deniz gücü +%5, hava +%5.'),
+    T('v2', 'Roket Programı', 'elec', 1944, ['comp'], { air: 0.05, ws: 0.05 }, 'V-2 roketleri: hava +%5, savaş desteği +%5.'),
     T('ind1', 'Sanayi Teknikleri I', 'ind', 1936, [], { factory: 0.1 }, 'Fabrika verimi +%10.'),
     T('con1', 'İnşaat Teknikleri I', 'ind', 1936, [], { construct: 0.1 }, 'İnşaat hızı +%10.'),
     T('eff1', 'Üretim Verimliliği I', 'ind', 1937, ['ind1'], { effCap: 0.1 }, 'Üretim verim tavanı +%10.'),
