@@ -15,6 +15,9 @@
   try { Object.assign(UI.settings, JSON.parse(localStorage.getItem('dc_settings') || '{}')); } catch (e) { /* */ }
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
+  // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
+  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  UI.applyMapSettings();
 
   // ---------- Bildirim ----------
   UI.toast = (msg, kind = 'info') => {

@@ -166,7 +166,7 @@
 
   // ---------- Kamera ----------
   R.resize = () => {
-    const cv = R.cv; R.dpr = Math.min(2, g.devicePixelRatio || 1);
+    const cv = R.cv; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
     R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
@@ -917,21 +917,27 @@
   }
   R.drawNato = drawNato;
   function drawCounter(ctx, x, y, gl, tag, opts) {
-    const st = G.st, w = 40, h = 22;
+    const st = G.st, w = 46, h = 25;
     const col = R.ccolor(tag);
     const light = luminance(col) > 0.55, ink = light ? '#14160f' : '#f4efe0';
     const kinds = {}; for (const u of gl) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
     const kind = Object.entries(kinds).sort((a, b) => b[1] - a[1])[0][0];
     let org = 0, os = 0, str = 0, fighting = false, moving = false;
     for (const u of gl) { const sOrg = (u._s && u._s.org) || 60; org += Math.max(0, u.org); os += sOrg; str += u.str; if (G.inBattle && G.inBattle.has(u)) fighting = true; if (u.path.length) moving = true; }
-    ctx.fillStyle = 'rgba(8,10,8,0.55)'; ctx.fillRect(x + 1.5, y + 2, w, h);
+    ctx.fillStyle = 'rgba(8,10,8,0.6)'; ctx.fillRect(x + 2, y + 2.5, w, h);
     ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + h - 5, w, 5);
-    drawNato(ctx, kind, x + 4, y + 3, 15, 10, ink);
-    ctx.fillStyle = ink; ctx.font = '700 12px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(gl.length), x + 30, y + 8.5);
-    ctx.fillStyle = '#7fb069'; ctx.fillRect(x + 1, y + h - 5, (w - 2) * Math.max(0, Math.min(1, org / os)), 2);
-    ctx.fillStyle = '#e0c45a'; ctx.fillRect(x + 1, y + h - 2.5, (w - 2) * Math.min(1, str / gl.length), 2);
+    // kabartma: üstte ışık, altta gölge şeridi
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x, y, w, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.34)'; ctx.fillRect(x, y + h - 6, w, 6);
+    // resimli sayaç: ülke üniformalı siluet; yüklenmemişse NATO simgesi
+    const sp = R.ctrArt && G.art && G.art.sprite ? G.art.sprite(G.art.kindOf(gl[0]), tag) : null;
+    if (sp) { ctx.fillStyle = 'rgba(244,239,224,0.22)'; ctx.fillRect(x + 2, y + 2, 26, 16); ctx.drawImage(sp, x + 2, y + 2, 26, 16); }
+    else drawNato(ctx, kind, x + 4, y + 3.5, 18, 11.5, ink);
+    ctx.fillStyle = ink; ctx.font = '800 13.5px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(gl.length), x + 37, y + 9.5);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 1, y + h - 5.5, w - 2, 5);
+    ctx.fillStyle = '#86c06e'; ctx.fillRect(x + 1, y + h - 5.5, (w - 2) * Math.max(0, Math.min(1, org / os)), 2.4);
+    ctx.fillStyle = '#e6c75a'; ctx.fillRect(x + 1, y + h - 2.6, (w - 2) * Math.min(1, str / gl.length), 2.2);
     const sel = opts.sel;
     ctx.strokeStyle = sel ? '#f2d27a' : fighting ? (Math.sin(R.t / 140) > 0 ? '#ff6a50' : '#8a2a1e') : opts.enemy ? '#d4553f' : 'rgba(10,10,8,0.9)';
     ctx.lineWidth = sel ? 2.6 : fighting ? 2 : 1.3;
@@ -945,7 +951,7 @@
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
     let xs = 0; for (const u of gl) xs += u.xp ?? 0.25;
     const xl = G.xpIdx ? G.xpIdx(xs / gl.length) - 1 : 0;
-    if (xl > 0) { ctx.fillStyle = '#e8c35a'; for (let k = 0; k < xl; k++) { const cx = x + 23 + k * 5; ctx.beginPath(); ctx.moveTo(cx, y + 13); ctx.lineTo(cx + 2, y + 15.5); ctx.lineTo(cx + 4, y + 13); ctx.lineTo(cx + 4, y + 14.5); ctx.lineTo(cx + 2, y + 17); ctx.lineTo(cx, y + 14.5); ctx.closePath(); ctx.fill(); } }
+    if (xl > 0) { ctx.fillStyle = '#e8c35a'; for (let k = 0; k < xl; k++) { const cx = x + 30 + k * 5; ctx.beginPath(); ctx.moveTo(cx, y + 14); ctx.lineTo(cx + 2, y + 16.5); ctx.lineTo(cx + 4, y + 14); ctx.lineTo(cx + 4, y + 15.5); ctx.lineTo(cx + 2, y + 18); ctx.lineTo(cx, y + 14.5); ctx.closePath(); ctx.fill(); } }
     const vu = gl.find((u) => u.vol); if (vu) { ctx.fillStyle = R.ccolor(vu.vol); ctx.fillRect(x, y + h - 5, 5, 5); ctx.strokeStyle = 'rgba(10,10,8,0.9)'; ctx.lineWidth = 1; ctx.strokeRect(x, y + h - 5, 5, 5); } // gönüllü: gönderenin renginde köşe işareti
     return { w, h };
   }
@@ -982,7 +988,7 @@
     let draw = items;
     if (merge) {
       // ızgara üzerinde açgözlü kümeleme: aynı anahtarlı ve yakın sayaçlar birleşir
-      const CW = 46, CH = 28, grid = new Map(), out = [];
+      const CW = 50, CH = 30, grid = new Map(), out = [];
       items.sort((a, b) => b.gl.length - a.gl.length);
       for (const it of items) {
         const cx = Math.floor(it.x / CW), cy = Math.floor(it.y / CH);
@@ -1003,7 +1009,7 @@
     for (const it of draw) {
       const sk = Math.round(it.x / 8) + ',' + Math.round(it.y / 8);
       const k = stackAt.get(sk) || 0; stackAt.set(sk, k + 1);
-      const x = it.x - 20 + k * 6, y = it.y - 1 + k * 23;
+      const x = it.x - 23 + k * 6, y = it.y - 1 + k * 26;
       const sel = it.gl.some((u) => R.sel.units.has(u.id));
       const ac = it.tag === st.player ? it.gl.find((u) => u.army && armyCol.has(u.army)) : null;
       const { w, h } = drawCounter(ctx, x, y, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });

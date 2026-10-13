@@ -68,6 +68,7 @@
   // ---------- Oyun döngüsü ----------
   const SPEEDS = [0, 0.6, 1.25, 2.5, 5, 12]; // gün/saniye (HOI4 temposu)
   let last = performance.now(), acc = 0, hudT = 0, panelT = 0, lastMonth = -1;
+  let drawN = 0, drawAvg = 0;
   // Benzetim kare başına bütçeyle parça parça ilerler (G.tickSlice): uzun bir gün ekranı dondurmaz,
   // cihaz yetişemezse oyun hızı kendiliğinden düşer ama harita akıcı kalır.
   let lastDraw = 0, mapTouch = 0;
@@ -112,7 +113,11 @@
     if (lowQ !== R.lowQ) { R.lowQ = lowQ; R.dirty = 1; }
     // yalnızca muharebe canlandırması için çiziliyorsa ~25 kare/sn yeter
     const need = R.dirty || R.mapDirty || G.mapDirty;
-    if (need || (G.battles && G.battles.length && now - lastDraw > 40)) { R.draw(); lastDraw = now; }
+    if (need || (G.battles && G.battles.length && now - lastDraw > 40)) {
+      const t0 = performance.now(); R.draw(); lastDraw = now;
+      // 3× çözünürlükte çizim sürekli yavaşsa (ortalama > 22 ms) 2×'e düş
+      if (R.dpr > 2) { const dt = performance.now() - t0; drawN++; if (drawN > 40) { drawAvg = drawAvg * 0.92 + dt * 0.08; if (drawAvg > 22 && drawN > 80) { R.dprCap = 2; R.dprAuto = 1; R.resize(); } } else drawAvg = dt; }
+    }
     requestAnimationFrame(frame);
   }
 

@@ -313,16 +313,40 @@
     return svg(W, H, s, 'art vehart');
   });
 
+  // sivil devlet adamı portresi (demokrat ve tarafsız liderler): takım elbise, kravat, şapkasız
+  const civPortrait = (s, gen, tag, h, sk, skd, hair, age, fat, must, glasses, W, H, id) => {
+    const suit = ['#2b2b30', '#3a3530', '#2e3440'][h % 3], tie = (g.COUNTRY_DEFS[tag] || {}).c || '#6b2a24';
+    s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${suit}" stroke="${OUT}" stroke-width="1"/>`;
+    s += `<path d="M48 100L60 128L72 100Z" fill="#f2efe6" stroke="${OUT}" stroke-width="0.7"/><path d="M57 104L60 101L63 104L62 126L60 130L58 126Z" fill="${shade(tie, -0.1)}" stroke="${OUT}" stroke-width="0.5"/>`;
+    s += `<path d="M48 100L56 122L44 112Z M72 100L64 122L76 112Z" fill="${shade(suit, 0.12)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    s += `<path d="M50 84h20v18H50z" fill="${skd}"/>`;
+    const fw = 22 + fat, cx = 60, cy = 66, ey = cy - 2, bald = (h >> 15) % 3 === 0, hc = age === 2 ? '#c9c4bb' : hair;
+    s += `<path d="M${cx - fw} ${cy - 6}Q${cx - fw} ${cy + 26} ${cx} ${cy + 30}Q${cx + fw} ${cy + 26} ${cx + fw} ${cy - 6}Q${cx + fw} ${cy - 30} ${cx} ${cy - 30}Q${cx - fw} ${cy - 30} ${cx - fw} ${cy - 6}Z" fill="url(#${id}f)" stroke="${OUT}" stroke-width="1"/>`;
+    s += `<ellipse cx="${cx - fw}" cy="${cy}" rx="3.4" ry="6" fill="${skd}" stroke="${OUT}" stroke-width="0.7"/><ellipse cx="${cx + fw}" cy="${cy}" rx="3.4" ry="6" fill="${skd}" stroke="${OUT}" stroke-width="0.7"/>`;
+    s += bald ? `<path d="M${cx - fw} ${cy - 4}Q${cx - fw} ${cy - 18} ${cx - fw + 6} ${cy - 20}L${cx - fw + 4} ${cy - 4}Z M${cx + fw} ${cy - 4}Q${cx + fw} ${cy - 18} ${cx + fw - 6} ${cy - 20}L${cx + fw - 4} ${cy - 4}Z" fill="${hc}"/>`
+      : `<path d="M${cx - fw - 1} ${cy - 2}Q${cx - fw - 3} ${cy - 34} ${cx} ${cy - 34}Q${cx + fw + 3} ${cy - 34} ${cx + fw + 1} ${cy - 2}Q${cx + fw - 2} ${cy - 22} ${cx + 6} ${cy - 24}Q${cx - 10} ${cy - 18} ${cx - fw + 2} ${cy - 8}Z" fill="${hc}" stroke="${OUT}" stroke-width="0.7"/>`;
+    s += `<path d="M${cx - 14} ${ey - 7}q6-3 11 0M${cx + 3} ${ey - 7}q6-3 11 0" stroke="${hc}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    s += `<ellipse cx="${cx - 8.5}" cy="${ey}" rx="3.4" ry="2" fill="#f4f1ea"/><ellipse cx="${cx + 8.5}" cy="${ey}" rx="3.4" ry="2" fill="#f4f1ea"/><circle cx="${cx - 8}" cy="${ey}" r="1.5" fill="#2a2a30"/><circle cx="${cx + 9}" cy="${ey}" r="1.5" fill="#2a2a30"/>`;
+    s += `<path d="M${cx} ${ey + 1}L${cx - 3} ${ey + 11}Q${cx} ${ey + 13} ${cx + 3} ${ey + 11}" stroke="${shade(skd, -0.15)}" stroke-width="1.2" fill="none"/>`;
+    if (must === 1) s += `<path d="M${cx - 9} ${ey + 16}Q${cx} ${ey + 12} ${cx + 9} ${ey + 16}Q${cx} ${ey + 16.6} ${cx - 9} ${ey + 16}Z" fill="${hc}"/>`;
+    s += `<path d="M${cx - 6} ${ey + 19}q6 2.4 12 0" stroke="#7a4b3a" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    if (glasses) s += `<g fill="none" stroke="#2b2b2b" stroke-width="1"><circle cx="${cx - 8.5}" cy="${ey}" r="5"/><circle cx="${cx + 8.5}" cy="${ey}" r="5"/><path d="M${cx - 3.5} ${ey}h7"/></g>`;
+    s += `<rect width="${W}" height="${H}" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="3"/>`;
+    return svg(W, H, s, 'art portrait');
+  };
+  // ülke liderinin portresi: faşist ve komünist liderler üniformalı, diğerleri sivil
+  G.art.leader = (tag, name, ideo) => G.art.portrait({ id: 0, n: name, lvl: ideo === 'fas' || ideo === 'com' ? 4 : 1, fm: ideo === 'fas' || ideo === 'com', civ: !(ideo === 'fas' || ideo === 'com') }, tag);
   // ---------- Komutan portresi ----------
   // gen: {id, n, lvl, fm, tr}; belirlenimli (kimlikten hash), oyun rastgeleliğine dokunmaz
   const CAP_C = { schirm: 1, service: 1, kepi: 1, jap: 1, rogat: 1 };
-  G.art.portrait = (gen, tag, y = yearNow()) => memo(`p|${tag}|${gen.id}|${gen.n}|${gen.lvl | 0}|${gen.fm ? 1 : 0}`, () => {
+  G.art.portrait = (gen, tag, y = yearNow()) => memo(`p|${tag}|${gen.id}|${gen.n}|${gen.lvl | 0}|${gen.fm ? 1 : 0}|${gen.civ ? 1 : 0}`, () => {
     const n = nat(tag), h = hash(tag + '|' + gen.n + '|' + gen.id), id = 'pt' + ++uid;
     const W = 120, H = 150, sk = skinOf(n, h), skd = shade(sk, -0.18), hair = ['#2a2018', '#4a3826', '#7a6a58', '#b8b0a4', '#1c1612'][(h >> 3) % 5];
     const age = (h >> 6) % 3, fat = ((h >> 9) % 3) * 2, must = (h >> 11) % 4, glasses = (h >> 13) % 5 === 0, u = n.u, ud = shade(u, -0.2);
     const capT = CAP_C[n.cap] ? n.cap : 'schirm', cc = n.cc || ud, band = n.band || shade(cc, -0.25), gold = gen.fm ? '#e2c25a' : n.trim || '#c9b45e';
     let s = `<defs><radialGradient id="${id}b" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="${shade(u, 0.45)}"/><stop offset="1" stop-color="${shade(u, -0.45)}"/></radialGradient><linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${sk}"/><stop offset="1" stop-color="${skd}"/></linearGradient></defs>`;
     s += `<rect width="${W}" height="${H}" fill="url(#${id}b)"/>`;
+    if (gen.civ) return civPortrait(s, gen, tag, h, sk, skd, hair, age, fat, must, glasses, W, H, id);
     // omuzlar ve üniforma
     s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${u}" stroke="${OUT}" stroke-width="1"/>`;
     s += `<path d="M50 100L60 124L70 100Z" fill="${shade(u, 0.1)}" stroke="${OUT}" stroke-width="0.8"/><path d="M52 101L60 118L68 101" fill="#ece6d6"/><path d="M57 104L60 122L63 104Z" fill="#3a3530"/>`;
@@ -384,8 +408,9 @@
     return best;
   };
   G.art.kindOf = (u) => {
+    const t = G.T(u.t, u.u); if (t._ak) return t._ak; // şablon değişince G.T önbelleği yenilenir
     const c = G.st.C[u.t]; const src = (c && G.templatesOf(c)[u.u]) || g.DEFAULT_TEMPLATES[u.u] || g.DEFAULT_TEMPLATES.inf;
-    return G.art.kindOfB(src.b);
+    return (t._ak = G.art.kindOfB(src.b));
   };
   // ülkenin en iyi tank seviyesi (tasarım bürosu seviyesi; yoksa teknolojiden)
   G.art.tankLvl = (c) => { try { return Math.max(1, Math.min(4, Math.floor(G.bestLevel ? G.bestLevel(c, 'tank') : 1))); } catch (e) { return 1; } };
@@ -451,5 +476,22 @@
   G.art.tplOf = (c, tpl) => { const k = G.art.kindOfB(tpl.b); return G.art.unit(k, c.tag, yearNow(), k === 'arm' ? G.art.tankLvl(c) : 1); };
   G.art.genImg = (gen, tag, cls = 'portrait-s') => G.art.img(G.art.portrait(gen, tag), cls);
   G.art.eqImg = (e, lvl, tag, cls = 'vehthumb') => G.art.img(G.art.vehicle(e, Math.max(1, Math.floor(lvl || 1)), tag), cls);
+  // harita sayacı silueti (resimli sayaç): 52x32, saydam zemin; Image önbellekte, yüklenince harita yeniden çizilir
+  const sprites = new Map();
+  const spriteSvg = (kind, tag, y) => {
+    let b = '';
+    if (kind === 'arm') { const t = tank(tag, G.art.tankLvl(G.st.C[tag]), y), sc = Math.min(50 / t.w, 30 / t.h); b = put(t.svg, (52 - t.w * sc) / 2, 31 - t.h * sc, sc); }
+    else if (kind === 'mot' || kind === 'mech') b = put(truck(tag, kind === 'mech'), 3, 2, 0.7);
+    else if (kind === 'cav') b = put(horse(tag, y, 0), 6, 2, 0.47);
+    else if (kind === 'art') b = put(gun(tag, 'art'), 3, 4, 0.68);
+    else b = put(soldier(tag, y, 'adv', 0), 4, 1, 0.47) + put(soldier(tag, y, 'adv', 1), 24, 1, 0.47);
+    return `<svg viewBox="0 0 52 32" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
+  };
+  G.art.sprite = (kind, tag) => {
+    const y = yearNow(), k = kind + '|' + tag + '|' + (y >= 1942 ? 1942 : 1936) + '|' + (kind === 'arm' ? G.art.tankLvl(G.st.C[tag]) : 0);
+    let im = sprites.get(k);
+    if (!im) { im = new Image(); im.onload = () => { if (G.R) G.R.dirty = 1; }; im.src = G.art.url(spriteSvg(kind, tag, y)); sprites.set(k, im); }
+    return im.complete && im.naturalWidth ? im : null;
+  };
   G.art.clear = () => cache.clear();
 })(window);
