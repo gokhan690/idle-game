@@ -85,4 +85,6 @@
     }
     return `<svg class="${cls}" width="${w}" height="${hh}" viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true">${body}</svg>`;
   };
+  // başka bir SVG çiziminin içine bayrak (olay ve muharebe resimleri)
+  G.flagAt = (tag, x, y, w, hh) => `<svg x="${x}" y="${y}" width="${w}" height="${hh}" viewBox="0 0 30 20" preserveAspectRatio="none">${F[tag] || `<rect width="30" height="20" fill="${(g.COUNTRY_DEFS[tag] || {}).c || '#777777'}"/>`}</svg>`;
 })(window);

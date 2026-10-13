@@ -444,7 +444,11 @@
     if (b.hmA && b.hmA !== 1) mods.push(['Tarihî akış dengesi (saldıran)', `${b.hmA > 1 ? '+' : '−'}%${Math.round(Math.abs(b.hmA - 1) * 100)}`]);
     if (b.hmD && b.hmD !== 1) mods.push(['Tarihî akış dengesi (savunan)', `${b.hmD > 1 ? '+' : '−'}%${Math.round(Math.abs(b.hmD - 1) * 100)}`]);
     if (G.wx.snow[n] > 0.3 || G.wx.mud[n] > 0.3) mods.push([`Hava: ${G.weatherName(n)}`, `saldırı −%${Math.round((1 - G.wxAtk(n)) * 100)}`]);
-    let html = `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
+    // muharebe sahnesi: iki tarafın baskın tümen türü, arazi ve nehir
+    const domK = (L) => { const k = {}; for (const u of L) { const x = G.art.kindOf(u); k[x] = (k[x] || 0) + 1; } return Object.entries(k).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || 'inf'; };
+    const aK = domK(b.A.length ? b.A : b.atts), dK = domK(b.D.length ? b.D : b.defs);
+    let html = G.art.img(G.art.battle(b.att, aK, aK === 'arm' ? G.art.tankLvl(st.C[b.att]) : 1, b.def, dK, dK === 'arm' ? G.art.tankLvl(st.C[b.def]) : 1, te.id, b.riv > 0.004), 'artbanner');
+    html += `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
     html += `<div class="row" style="gap:8px;align-items:center"><b class="${neutral ? 'warn' : adv > 0.55 ? 'good' : adv < 0.45 ? 'bad' : 'warn'}">${neutral ? (adv > 0.6 ? 'Saldıran önde' : adv < 0.4 ? 'Savunan önde' : 'Denge') : adv > 0.6 ? 'Kazanıyoruz' : adv < 0.4 ? 'Kaybediyoruz' : 'Denge'}</b><div class="grow">${bar(adv, adv > 0.55 ? 'g' : adv < 0.45 ? 'r' : '')}</div><span class="small">%${Math.round(adv * 100)}</span></div>`;
     html += `<div class="bgrid">${side(b.att, b.atts, b.A, true)}${side(b.def, b.defs, b.D, false)}</div>`;
     if (b.tac && b.tac.ta) {

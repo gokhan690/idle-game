@@ -11045,6 +11045,8 @@ window.RIVERS = [
     }
     return `<svg class="${cls}" width="${w}" height="${hh}" viewBox="0 0 30 20" preserveAspectRatio="none" aria-hidden="true">${body}</svg>`;
   };
+  // başka bir SVG çiziminin içine bayrak (olay ve muharebe resimleri)
+  G.flagAt = (tag, x, y, w, hh) => `<svg x="${x}" y="${y}" width="${w}" height="${hh}" viewBox="0 0 30 20" preserveAspectRatio="none">${F[tag] || `<rect width="30" height="20" fill="${(g.COUNTRY_DEFS[tag] || {}).c || '#777777'}"/>`}</svg>`;
 })(window);
 
 /* js/ui/icons.js */
@@ -11482,6 +11484,55 @@ window.RIVERS = [
   };
   // ülkenin en iyi tank seviyesi (tasarım bürosu seviyesi; yoksa teknolojiden)
   G.art.tankLvl = (c) => { try { return Math.max(1, Math.min(4, Math.floor(G.bestLevel ? G.bestLevel(c, 'tank') : 1))); } catch (e) { return 1; } };
+  // ---------- Arazi katmanları (muharebe ve olay sahneleri) ----------
+  const tree = (x, y, h, c) => `<path d="M${x} ${y}l${-h * 0.32} 0l${h * 0.22} ${-h * 0.36}l${-h * 0.14} 0l${h * 0.24} ${-h * 0.34}l${-h * 0.1} 0l${h * 0.1} ${-h * 0.3}l${h * 0.1} ${h * 0.3}l${-h * 0.1} 0l${h * 0.24} ${h * 0.34}l${-h * 0.14} 0l${h * 0.22} ${h * 0.36}z" fill="${c}"/><rect x="${x - 1}" y="${y}" width="2" height="${h * 0.12}" fill="#3a2a1a"/>`;
+  const palm = (x, y, h, c) => `<path d="M${x} ${y}q${h * 0.08} ${-h * 0.5} ${h * 0.02} ${-h}" stroke="#5a4428" stroke-width="${h * 0.06}" fill="none"/><g fill="${c}"><path d="M${x + h * 0.02} ${y - h}q${-h * 0.4} ${-h * 0.1} ${-h * 0.55} ${h * 0.25}q${h * 0.3} ${-h * 0.18} ${h * 0.55} ${-h * 0.25}z"/><path d="M${x + h * 0.02} ${y - h}q${h * 0.4} ${-h * 0.12} ${h * 0.55} ${h * 0.25}q${-h * 0.3} ${-h * 0.18} ${-h * 0.55} ${-h * 0.25}z"/><path d="M${x + h * 0.02} ${y - h}q${-h * 0.1} ${-h * 0.35} ${h * 0.3} ${-h * 0.3}q${-h * 0.25} ${h * 0.02} ${-h * 0.3} ${h * 0.3}z"/></g>`;
+  const ruin = (x, y, w, h, c) => { let win = ''; for (let i = 0; i < 3; i++) for (let j = 0; j < Math.floor(h / 14); j++) if ((i + j * 3 + x) % 4) win += `<rect x="${x + 4 + i * (w - 8) / 3}" y="${y - h + 6 + j * 14}" width="${(w - 8) / 3 - 4}" height="7" fill="#1e1b16" opacity="0.8"/>`; return `<path d="M${x} ${y}V${y - h + 6}l${w * 0.3} -6l${w * 0.15} 10l${w * 0.25} -4V${y - h * 0.55}l${w * 0.3} 6V${y}z" fill="${c}" stroke="${OUT}" stroke-width="0.6"/>${win}`; };
+  const TER_PAL = { plains: 'day', forest: 'day', hills: 'day', mountain: 'day', desert: 'desert', marsh: 'day', jungle: 'day', urban: 'dusk' };
+  const terrain = (te, W, H, seed) => {
+    const hy = H * 0.62; let s = '';
+    if (te === 'forest') { for (let i = 0; i < 26; i++) { const x = (i * 53 + seed) % (W + 20) - 10, yy = hy + 4 + ((i * 17) % 10); s += tree(x, yy, 22 + ((i * 7) % 12), i % 3 ? '#3f5a34' : '#34502c'); } }
+    else if (te === 'jungle') { for (let i = 0; i < 16; i++) { const x = (i * 61 + seed) % (W + 20) - 10; s += palm(x, hy + 8 + ((i * 13) % 10), 30 + ((i * 7) % 14), i % 2 ? '#2f5a2c' : '#3b6a33'); } }
+    else if (te === 'mountain') s += `<path d="M0 ${hy}L50 ${hy - 50}L90 ${hy - 20}L140 ${hy - 70}L200 ${hy - 14}L250 ${hy - 56}L${W} ${hy - 10}V${hy + 10}H0Z" fill="#8a8e8c"/><path d="M140 ${hy - 70}l14 16l-8-2l-6 6l-8-8l-8 2z M250 ${hy - 56}l12 14l-7-1l-5 5l-7-7l-6 2z M50 ${hy - 50}l10 12l-6-1l-4 4l-6-6l-5 2z" fill="#eef1f2"/>`;
+    else if (te === 'hills') s += `<path d="M0 ${hy + 4}Q60 ${hy - 30} 120 ${hy}T240 ${hy - 4}T${W + 40} ${hy}V${hy + 20}H0Z" fill="#7d7c56" opacity="0.9"/>`;
+    else if (te === 'desert') s += `<path d="M0 ${hy + 10}Q80 ${hy - 6} 160 ${hy + 8}T${W} ${hy + 4}V${H}H0Z" fill="#d9bd85" opacity="0.8"/><path d="M40 ${hy + 30}q30-8 60 0M200 ${hy + 26}q30-8 60 0" stroke="#b8975e" stroke-width="1.2" fill="none"/>`;
+    else if (te === 'marsh') { s += `<g fill="#5f7f80" opacity="0.85"><ellipse cx="80" cy="${hy + 30}" rx="50" ry="6"/><ellipse cx="230" cy="${hy + 24}" rx="40" ry="5"/></g>`; let r = ''; for (let i = 0; i < 30; i++) { const x = (i * 37 + seed) % W; r += `M${x} ${hy + 28 + (i % 5)}l${(i % 3) - 1} -10`; } s += `<path d="${r}" stroke="#4d5a34" stroke-width="1"/>`; }
+    else if (te === 'urban') { const xs = [0, 46, 98, 170, 222, 268]; xs.forEach((x, i) => { s += ruin(x, hy + 6, 40 + (i % 2) * 10, 40 + ((i * 17) % 30), i % 2 ? '#6b6158' : '#5b524a'); }); s += `<path d="M0 ${hy + 6}h${W}v6H0z" fill="#4a443c"/>`; }
+    return s;
+  };
+  const riverBand = (W, H) => `<path d="M0 ${H * 0.74}C${W * 0.3} ${H * 0.7} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.73}V${H * 0.84}C${W * 0.6} ${H * 0.9} ${W * 0.3} ${H * 0.8} 0 ${H * 0.85}Z" fill="#5f7f8f"/><path d="M20 ${H * 0.79}q30-3 60 0M150 ${H * 0.8}q30-3 60 0" stroke="#a9c0c8" stroke-width="1" fill="none"/>`;
+  const blast = (x, y, s) => `<g opacity="0.9"><circle cx="${x}" cy="${y}" r="${9 * s}" fill="#ffcc66" style="filter:blur(${2 * s}px)"/><circle cx="${x}" cy="${y}" r="${4.5 * s}" fill="#fff4d0"/></g>${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}`;
+  // bir tarafın kuvveti (sağa bakan, 0..160 bölgesi); savunan aynalanır
+  const force = (tag, kind, lvl, y, H, def) => {
+    const sol = (x, yy, sc, pose, k) => put(soldier(tag, y, pose, k), x, yy, sc);
+    const gy = H - 10;
+    switch (kind) {
+      case 'arm': { const t = tank(tag, lvl, y), sc = Math.min(1.2, 120 / t.w); return put(t.svg, 30, gy - t.h * sc, sc) + sol(4, gy - 64 * 0.8, 0.8, 'adv', 1); }
+      case 'mot': case 'mech': return put(truck(tag, kind === 'mech'), 6, gy - 42 * 1.3, 1.3) + sol(96, gy - 64 * 0.95, 0.95, 'adv', 0) + sol(126, gy - 64 * 0.82, 0.82, 'adv', 2);
+      case 'cav': return put(horse(tag, y, 1), 4, gy - 64 * 0.9, 0.9) + put(horse(tag, y, 0), 64, gy - 64 * 1.05, 1.05);
+      case 'art': return put(gun(tag, 'art'), 50, gy - 44 * 1.6, 1.6) + sol(14, gy - 64 * 0.9, 0.9, 'kneel', 0) + blast(150, gy - 74, 0.7);
+      default:
+        if (def) return `<path d="M110 ${gy}q10-12 22-12h28v12z" fill="#7a6a48" stroke="${OUT}" stroke-width="0.6"/><g fill="#a08a5c" stroke="${OUT}" stroke-width="0.6">${[0, 1, 2, 3].map((i) => `<rect x="${116 + i * 11}" y="${gy - 14}" width="11" height="6" rx="2.5"/><rect x="${121 + i * 11 - 6}" y="${gy - 20}" width="11" height="6" rx="2.5"/>`).join('')}</g>` + sol(96, gy - 64 * 1.05, 1.05, 'kneel', 0) + sol(60, gy - 64 * 0.95, 0.95, 'kneel', 1) + sol(20, gy - 64 * 0.85, 0.85, 'adv', 2);
+        return sol(100, gy - 64 * 1.1, 1.1, 'adv', 0) + sol(56, gy - 64 * 1.0, 1.0, 'adv', 1) + sol(14, gy - 64 * 0.9, 0.9, 'kneel', 2);
+    }
+  };
+  // muharebe sahnesi: solda saldıran, sağda (aynalı) savunan; arazi ve nehir arka planda
+  G.art.battle = (aTag, aKind, aLvl, dTag, dKind, dLvl, te, river, y = yearNow()) => memo(`b|${aTag}|${aKind}|${aLvl}|${dTag}|${dKind}|${dLvl}|${te}|${river ? 1 : 0}|${y >= 1942 ? 1942 : y >= 1940 ? 1940 : 1936}`, () => {
+    const W = 320, H = 150, id = 'bt' + ++uid, sd = hash(aTag + dTag + te);
+    const pal = PAL[TER_PAL[te] || 'day'];
+    let s = ground(W, H, pal, id) + terrain(te, W, H, sd % 97);
+    if (river) s += riverBand(W, H);
+    s += smoke(150, 70, 1.3, '#bdb4a2', 0.55) + smoke(200, 64, 0.9, '#cfc6b2', 0.45);
+    s += `<path d="M120 96L190 84M128 104L200 96M200 90L140 100" stroke="#ffe08a" stroke-width="0.9" opacity="0.8" stroke-dasharray="6 9"/>`;
+    s += blast(160, 98, 0.9) + blast(222, 108, 0.6);
+    s += `<g>${force(aTag, aKind, aLvl, y, H, false)}</g>`;
+    s += `<g transform="translate(${W} 0) scale(-1 1)">${force(dTag, dKind, dLvl, y, H, true)}</g>`;
+    s += grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
+    return svg(W, H, s, 'art battleart');
+  });
+  // olay sahneleri için parçalar (eventart.js kullanır)
+  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, next: () => ++uid };
+
   // <img> olarak kullanım: aynı resim sayfada çok kez geçse de SVG metni bir kez çözülür (blob adresi önbellekte)
   const urls = new Map();
   G.art.url = (svgStr) => {
@@ -13447,7 +13498,11 @@ window.RIVERS = [
     if (b.hmA && b.hmA !== 1) mods.push(['Tarihî akış dengesi (saldıran)', `${b.hmA > 1 ? '+' : '−'}%${Math.round(Math.abs(b.hmA - 1) * 100)}`]);
     if (b.hmD && b.hmD !== 1) mods.push(['Tarihî akış dengesi (savunan)', `${b.hmD > 1 ? '+' : '−'}%${Math.round(Math.abs(b.hmD - 1) * 100)}`]);
     if (G.wx.snow[n] > 0.3 || G.wx.mud[n] > 0.3) mods.push([`Hava: ${G.weatherName(n)}`, `saldırı −%${Math.round((1 - G.wxAtk(n)) * 100)}`]);
-    let html = `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
+    // muharebe sahnesi: iki tarafın baskın tümen türü, arazi ve nehir
+    const domK = (L) => { const k = {}; for (const u of L) { const x = G.art.kindOf(u); k[x] = (k[x] || 0) + 1; } return Object.entries(k).sort((a2, b2) => b2[1] - a2[1])[0]?.[0] || 'inf'; };
+    const aK = domK(b.A.length ? b.A : b.atts), dK = domK(b.D.length ? b.D : b.defs);
+    let html = G.art.img(G.art.battle(b.att, aK, aK === 'arm' ? G.art.tankLvl(st.C[b.att]) : 1, b.def, dK, dK === 'arm' ? G.art.tankLvl(st.C[b.def]) : 1, te.id, b.riv > 0.004), 'artbanner');
+    html += `<div class="small muted">${esc(G.pname(n))} · ${te.n} · cephe genişliği ${b.width}</div>`;
     html += `<div class="row" style="gap:8px;align-items:center"><b class="${neutral ? 'warn' : adv > 0.55 ? 'good' : adv < 0.45 ? 'bad' : 'warn'}">${neutral ? (adv > 0.6 ? 'Saldıran önde' : adv < 0.4 ? 'Savunan önde' : 'Denge') : adv > 0.6 ? 'Kazanıyoruz' : adv < 0.4 ? 'Kaybediyoruz' : 'Denge'}</b><div class="grow">${bar(adv, adv > 0.55 ? 'g' : adv < 0.45 ? 'r' : '')}</div><span class="small">%${Math.round(adv * 100)}</span></div>`;
     html += `<div class="bgrid">${side(b.att, b.atts, b.A, true)}${side(b.def, b.defs, b.D, false)}</div>`;
     if (b.tac && b.tac.ta) {
@@ -14750,7 +14805,9 @@ window.RIVERS = [
 })(window);
 
 /* js/ui/eventart.js */
-// HOI4 olay penceresi resimleri: olayın konusuna göre sepya tonlu, gren dokulu "arşiv fotoğrafı" sahneleri (satır içi SVG).
+// HOI4 olay penceresi resimleri: olayın konusuna ve geçtiği ülkelere göre çizilen sahneler (askerî çizim kitiyle).
+// Ülkeler olay metninden bulunur (ör. "Almanya" → Alman askerleri); bulunamazsa oyuncunun ülkesi kullanılır.
+// Arşiv fotoğrafı havası: hafif sepya, film greni ve kenar kararması.
 (function (g) {
   const G = g.G;
   let uid = 0;
@@ -14767,35 +14824,141 @@ window.RIVERS = [
   G.eventKind = (p) => {
     if (p.art) return p.art;
     const t = ((p.title || '') + ' ' + (p.text || '')).toLocaleLowerCase('tr');
+    // antlaşma ve paktlar önce: "saldırmazlık paktı" savaş sahnesi olmasın
+    if (/pakt|antlaşma|konferans|görüşme/.test(t) && !/teslim|mütareke/.test(t)) return 'diplomacy';
     for (const [k, re] of KINDS) if (re.test(t)) return k;
     return 'city';
   };
-  const hills = (y, c) => `<path d="M0 ${y} C40 ${y - 14} 80 ${y - 6} 120 ${y - 12} S200 ${y - 4} 240 ${y - 14} S300 ${y - 8} 320 ${y - 10} V140 H0z" fill="${c}"/>`;
-  const smoke = (x, y, s) => `<g fill="#cdbb98" opacity="0.55"><circle cx="${x}" cy="${y}" r="${7 * s}"/><circle cx="${x + 8 * s}" cy="${y - 10 * s}" r="${9 * s}"/><circle cx="${x + 2 * s}" cy="${y - 22 * s}" r="${11 * s}"/><circle cx="${x + 14 * s}" cy="${y - 32 * s}" r="${13 * s}"/></g>`;
-  const tank = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 14h46l-4 8H4z"/><path d="M6 6h30l4 8H2z"/><path d="M14 0h14v6H14z"/><path d="M28 2h22v3H28z"/><g fill="#2a2117">${[6, 14, 22, 30, 38].map((cx) => `<circle cx="${cx}" cy="18" r="3"/>`).join('')}</g></g>`;
-  const soldier = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><circle cx="5" cy="3" r="3"/><path d="M1 2h8l-1 -2H2z"/><path d="M2 6h6l1 10H1z"/><path d="M2 16h2l-1 9H1zM6 16h2l1 9H7z"/><path d="M8 7l9-7 1 1-9 8z"/></g>`;
-  const plane = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 6l30-2 4 2-4 2-30-2z"/><path d="M12 5l6-9h3l-3 10zM12 7l6 9h3l-3-10z"/><path d="M0 6l-3-4h2l4 4z"/></g>`;
-  const ship = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}"><path d="M0 20h120l-10 10H8z"/><path d="M20 12h70v8H20z"/><path d="M40 4h26v8H40z"/><path d="M50 -6h6v10h-6zM60 -2h5v6h-5z"/><path d="M70 14h26v2H70zM8 15h20v2H8z"/></g>`;
-  const crowd = (y, n, c) => { let o = ''; for (let i = 0; i < n; i++) { const x = (i * 337) % 330 - 5, yy = y + ((i * 53) % 18); o += `<circle cx="${x}" cy="${yy}" r="5"/><path d="M${x - 6} ${yy + 4}h12v20h-12z"/>`; } return `<g fill="${c}">${o}</g>`; };
-  const SCENES = {
-    war: () => `${hills(96, '#8a7556')}${smoke(70, 80, 1.2)}${smoke(250, 70, 0.9)}${hills(116, '#5e4d36')}${tank(150, 92, 1.4, '#2f2519')}${tank(40, 104, 1, '#3a2e1f')}${soldier(230, 98, 1.2, '#2f2519')}${soldier(256, 101, 1.15, '#2f2519')}${soldier(280, 99, 1.2, '#2f2519')}`,
-    navy: () => `<rect y="88" width="320" height="52" fill="#6f6048"/><path d="M0 92h320M0 104h320M0 120h320" stroke="#8c7a5c" stroke-width="1.5" opacity="0.6"/>${smoke(150, 60, 1)}${ship(90, 66, 1.4, '#2c2318')}${ship(16, 80, 0.55, '#4a3c29')}${ship(250, 78, 0.5, '#4a3c29')}`,
-    air: () => `<g fill="#e3d4b3" opacity="0.6"><ellipse cx="60" cy="40" rx="50" ry="12"/><ellipse cx="250" cy="70" rx="70" ry="14"/></g>${plane(70, 50, 2.4, '#2c2318')}${plane(150, 30, 1.7, '#3a2e1f')}${plane(220, 58, 1.9, '#3a2e1f')}${plane(30, 90, 1.2, '#4a3c29')}${hills(128, '#5e4d36')}`,
-    politics: () => `<rect x="0" y="0" width="320" height="140" fill="#a99372"/><g fill="#5a4630"><rect x="40" y="10" width="26" height="70"/><rect x="254" y="10" width="26" height="70"/></g><path d="M40 10h26v70l-13-8-13 8z" fill="#7a2c20"/><path d="M254 10h26v70l-13-8-13 8z" fill="#7a2c20"/><rect x="130" y="56" width="60" height="40" fill="#3e3122"/><circle cx="160" cy="40" r="9" fill="#2c2318"/><path d="M148 50h24l4 12h-32z" fill="#2c2318"/>${crowd(100, 34, '#2c2318')}`,
-    diplomacy: () => `<rect width="320" height="140" fill="#b09a78"/><rect x="40" y="18" width="240" height="56" fill="#8e7a5a"/><path d="M60 18v56M100 18v56M220 18v56M260 18v56" stroke="#76644a" stroke-width="4"/><path d="M20 92h280l-10 14H30z" fill="#4a3a28"/><path d="M110 88l40-6 4 6zM170 84l36 4-4 4z" fill="#efe3c6"/><g fill="#2c2318"><circle cx="70" cy="60" r="10"/><path d="M56 70h28l6 22H50z"/><circle cx="250" cy="60" r="10"/><path d="M236 70h28l6 22h-40z"/></g><path d="M160 30v40" stroke="#3e3122" stroke-width="2"/><path d="M160 30h18v10h-18z" fill="#7a2c20"/>`,
-    industry: () => `<rect width="320" height="140" fill="#a39073"/>${smoke(70, 30, 1.1)}${smoke(130, 20, 1.3)}${smoke(210, 34, 1)}<g fill="#3a2e1f"><rect x="62" y="30" width="12" height="70"/><rect x="122" y="20" width="14" height="80"/><rect x="202" y="34" width="12" height="66"/><path d="M20 140V92l40-20v20l40-20v20l40-20v20l40-20v20l40-20v20l40-20v20l40-20v68z"/></g><g fill="#d9b25c" opacity="0.8">${[40, 80, 120, 160, 200, 240, 280].map((x) => `<rect x="${x}" y="112" width="8" height="8"/>`).join('')}</g>`,
-    science: () => `<rect width="320" height="140" fill="#9c8a6c"/><circle cx="160" cy="62" r="40" fill="none" stroke="#3a2e1f" stroke-width="3"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5" transform="rotate(60 160 62)"/><ellipse cx="160" cy="62" rx="56" ry="18" fill="none" stroke="#3a2e1f" stroke-width="2.5" transform="rotate(-60 160 62)"/><circle cx="160" cy="62" r="7" fill="#7a2c20"/><path d="M0 116h320v24H0z" fill="#4a3c29"/><g fill="#2c2318"><rect x="30" y="86" width="40" height="30"/><rect x="250" y="80" width="44" height="36"/></g>`,
-    surrender: () => `<rect width="320" height="140" fill="#b3a07e"/>${hills(110, '#6d5a40')}<path d="M150 20v100" stroke="#2c2318" stroke-width="3"/><path d="M152 22c20 6 34-4 54 4v34c-20-8-34 2-54-4z" fill="#efe6cf"/>${crowd(112, 22, '#2c2318')}`,
-    city: () => `<rect width="320" height="140" fill="#ae9a78"/><g fill="#4a3c29"><rect x="10" y="60" width="40" height="80"/><rect x="56" y="40" width="30" height="100"/><rect x="92" y="70" width="44" height="70"/><path d="M150 140V64a20 20 0 0 1 40 0v76z"/><rect x="167" y="30" width="6" height="16"/><rect x="200" y="50" width="34" height="90"/><rect x="240" y="76" width="30" height="64"/><rect x="276" y="56" width="40" height="84"/></g><g fill="#d9c08a" opacity="0.6">${[20, 64, 104, 210, 286].map((x) => `<rect x="${x}" y="84" width="6" height="8"/><rect x="${x + 12}" y="100" width="6" height="8"/>`).join('')}</g>`,
+
+  // ---------- olay metnindeki ülkeler ----------
+  const ALIAS = [['sovyet', 'SOV'], ['alman', 'GER'], ['ingiliz', 'ENG'], ['britanya', 'ENG'], ['fransız', 'FRA'], ['italyan', 'ITA'], ['japon', 'JAP'], ['amerika', 'USA'], ['türk', 'TUR'], ['leh', 'POL'], ['çinli', 'CHI'], ['macar', 'HUN'], ['romen', 'ROM'], ['yunan', 'GRE'], ['fin', 'FIN']];
+  let NAMES = null;
+  const isL = (ch) => !!ch && /[a-zçğıöşüâîû]/i.test(ch);
+  const tagsIn = (txt) => {
+    if (!NAMES) {
+      NAMES = Object.keys(g.COUNTRY_DEFS || {}).map((t) => [(g.COUNTRY_DEFS[t].n || '').toLocaleLowerCase('tr'), t]).filter((x) => x[0].length > 2).concat(ALIAS);
+      NAMES.sort((a, b) => b[0].length - a[0].length);
+    }
+    const found = [];
+    for (const [n, t] of NAMES) {
+      let i = txt.indexOf(n);
+      while (i >= 0 && isL(txt[i - 1])) i = txt.indexOf(n, i + 1);
+      if (i >= 0 && !found.some((f) => f.t === t) && (!G.st || !G.st.C[t] || true)) found.push({ i, t });
+    }
+    return found.sort((a, b) => a.i - b.i).map((f) => f.t);
   };
+
+  // ---------- sahneler ----------
+  const W = 320, H = 140;
+  const scene = (k, A, B, v, y) => {
+    const K = G.art.kit, { put, soldier, tank, truck, gun, plane, ship, smoke, grass, ground, vignette, PAL, shade, terrain, ruin, blast, insignia, OUT } = K;
+    const id = 'ev' + K.next(), sol = (tag, x, yy, sc, pose, kk, flip) => put(soldier(tag, y, pose, kk), x, yy, sc, flip);
+    const flag = (tag, x, yy, w = 30, h = 20) => (G.flagAt ? G.flagAt(tag, x, yy, w, h) : '');
+    const pole = (tag, x, yy, h) => `<path d="M${x} ${yy}v${-h}" stroke="#2a241c" stroke-width="2"/>${flag(tag, x + 1, yy - h, 26, 17)}`;
+    const major = (t) => !!(G.st && G.st.C[t] && G.st.C[t].major);
+    let s = '';
+    switch (k) {
+      case 'war': {
+        const te = ['plains', 'forest', 'urban'][v % 3];
+        s += ground(W, H, PAL[te === 'urban' ? 'dusk' : 'day'], id) + terrain(te, W, H, v);
+        s += smoke(150, 66, 1.2, '#b5ab98', 0.6) + blast(168, 92, 0.9);
+        const gy = H - 8;
+        if (major(A) && y >= 1939 && v % 2 === 0) { const t = tank(A, y >= 1942 ? 3 : 2, y), sc = 1.15; s += put(t.svg, 26, gy - t.h * sc, sc) + sol(A, 6, gy - 58, 0.9, 'adv', 1); }
+        else s += sol(A, 104, gy - 70, 1.1, 'adv', 0) + sol(A, 58, gy - 64, 1.0, 'adv', 1) + sol(A, 14, gy - 58, 0.9, 'kneel', 2);
+        if (B) s += `<g transform="translate(${W} 0) scale(-1 1)">${sol(B, 96, gy - 66, 1.05, 'kneel', 0)}${sol(B, 56, gy - 60, 0.95, 'adv', 1)}</g>`;
+        else s += smoke(250, 80, 1, '#8a8070', 0.55) + blast(262, 104, 0.6);
+        s += grass(W, H - 12, '#2e2e20', v);
+        break;
+      }
+      case 'navy': {
+        s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fa2ab"/><stop offset="1" stop-color="#ded5bd"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
+        s += smoke(220, 40, 1.1, '#6f6a62', 0.6) + `<rect y="78" width="${W}" height="${H}" fill="#56717e"/><path d="M0 84q20-3 40 0t40 0t40 0t40 0t40 0t40 0t40 0t40 0M0 100q25-3 50 0t50 0t50 0t50 0t50 0t50 0t50 0" stroke="#a6bcc5" stroke-width="1" fill="none"/>`;
+        s += put(ship(A, v % 2 ? 'cr' : 'bb'), 30, 44, 1.25) + put(ship(A, 'dd'), 220, 62, 0.62) + put(ship(B || A, v % 2 ? 'conv' : 'dd'), 250, 52, 0.45);
+        s += `<g fill="#e8eef0" opacity="0.85"><path d="M150 84q4-22 8 0z"/><path d="M196 86q3-14 6 0z"/></g>`;
+        const p = plane(B || A, 'cas', 2, y); s += put(p.svg, 210, 14, 0.9) + put(p.svg, 248, 26, 0.7);
+        break;
+      }
+      case 'air': {
+        s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e93a4"/><stop offset="1" stop-color="#e2d7bb"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
+        s += `<g fill="#f2eee4" opacity="0.65"><ellipse cx="60" cy="50" rx="60" ry="12"/><ellipse cx="250" cy="34" rx="70" ry="10"/></g>`;
+        const bom = plane(A, 'bom', 2, y), fig = plane(A, 'fig', y >= 1944 ? 3 : 2, y);
+        s += put(bom.svg, 40, 30, 1.05) + put(bom.svg, 130, 46, 0.85) + put(bom.svg, 200, 24, 0.7) + put(fig.svg, 230, 70, 0.75) + put(fig.svg, 20, 76, 0.6);
+        s += `<g fill="#2e2a24" opacity="0.7">${[[110, 20], [180, 70], [70, 90], [260, 50]].map(([x, yy]) => `<circle cx="${x}" cy="${yy}" r="4"/><circle cx="${x + 4}" cy="${yy - 2}" r="3"/>`).join('')}</g>`;
+        s += `<path d="M0 120Q80 112 160 118T${W} 114V${H}H0Z" fill="#5a5a40"/>` + smoke(90, 118, 0.9, '#5d564c', 0.65) + smoke(210, 116, 0.7, '#5d564c', 0.55);
+        break;
+      }
+      case 'surrender': {
+        s += ground(W, H, PAL.dusk, id) + terrain('urban', W, H, v);
+        s += pole(A, 168, 84, 56) + `<path d="M60 84v-46" stroke="#2a241c" stroke-width="2"/><path d="M61 38c12 4 20-2 32 3v20c-12-5-20 1-32-3z" fill="#efeadb" stroke="${OUT}" stroke-width="0.5"/>`;
+        const gy = H - 8;
+        s += sol(A, 190, gy - 64, 1.0, 'stand', 0) + sol(A, 226, gy - 60, 0.94, 'stand', 1) + sol(A, 262, gy - 56, 0.88, 'stand', 2);
+        if (B) s += sol(B, 20, gy - 56, 0.88, 'march', 1) + sol(B, 54, gy - 58, 0.9, 'march', 2);
+        break;
+      }
+      case 'diplomacy': {
+        s += `<defs><linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdbb94"/><stop offset="1" stop-color="#8f7b58"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}w)"/>`;
+        s += `<g fill="#7a6648">${[30, 100, 210, 280].map((x) => `<rect x="${x}" y="0" width="14" height="96"/><rect x="${x - 4}" y="0" width="22" height="8"/>`).join('')}</g>`;
+        s += `<path d="M120 4h80v58l-40 10-40-10z" fill="#6b2a24" opacity="0.9"/>`;
+        s += flag(A, 52, 20, 36, 24) + flag(B || A, 232, 20, 36, 24);
+        s += `<path d="M14 100h292l-12 16H26z" fill="#4a3826" stroke="${OUT}" stroke-width="0.8"/><path d="M90 98l26-3 3 3zM180 96l30 2-2 3z" fill="#ece6d4"/><path d="M150 98v-5h3v5zM166 98v-7h2v7z" fill="#2a241c"/>`;
+        const suit = (x, c) => `<g transform="translate(${x} 34)"><circle cx="0" cy="8" r="7" fill="#d9a77f" stroke="${OUT}" stroke-width="0.6"/><path d="M-7 4q7-8 14 0" fill="#3a3028"/><path d="M-12 18q12-6 24 0l2 46h-28z" fill="${c}" stroke="${OUT}" stroke-width="0.7"/><path d="M-2 18l2 10 2-10z" fill="#ece6d4"/></g>`;
+        s += suit(132, '#2e2e34') + suit(188, '#3a3a2e') + `<path d="M140 62q20-4 40 0" stroke="#d9a77f" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+        break;
+      }
+      case 'politics': {
+        const n = G.art.kit.nat(A), c = (g.COUNTRY_DEFS[A] || {}).c || '#8a2a24', bc = shade(c, -0.25);
+        s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a8a90"/><stop offset="1" stop-color="#d9cdb0"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
+        s += `<path d="M0 64h${W}v76H0z" fill="#9a8a70"/><g fill="#7f6f56">${[0, 1, 2, 3, 4, 5, 6].map((i) => `<rect x="${i * 48}" y="20" width="18" height="50"/>`).join('')}</g>`;
+        for (const x of [40, 140, 240]) s += `<rect x="${x}" y="8" width="40" height="78" fill="${bc}" stroke="${OUT}" stroke-width="0.6"/>${flag(A, x + 6, 14, 28, 19)}${insignia(A, x + 20, 58, 10)}`;
+        s += `<path d="M120 92h80v22h-80z" fill="#5a4630" stroke="${OUT}" stroke-width="0.8"/>${flag(A, 146, 96, 28, 14)}`;
+        s += `<g transform="translate(160 64)"><circle cx="0" cy="6" r="6.5" fill="#d9a77f" stroke="${OUT}" stroke-width="0.6"/><path d="M-11 16q11-6 22 0l2 14h-26z" fill="${n.u}" stroke="${OUT}" stroke-width="0.7"/><path d="M8 18l10-12" stroke="${n.u}" stroke-width="4" stroke-linecap="round"/></g>`;
+        let crowd = ''; for (let i = 0; i < 40; i++) { const x = (i * 83) % (W + 10) - 5, yy = 116 + ((i * 53) % 22); crowd += `<circle cx="${x}" cy="${yy}" r="5"/><path d="M${x - 7} ${yy + 4}h14v14h-14z"/>`; if (i % 5 === 0) crowd += `<path d="M${x + 4} ${yy}l4-12" stroke="#2a241c" stroke-width="2"/>`; }
+        s += `<g fill="#2e2a24">${crowd}</g>`;
+        break;
+      }
+      case 'industry': {
+        s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a958a"/><stop offset="1" stop-color="#d8cbb0"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
+        s += smoke(70, 26, 1.1, '#6e685e', 0.6) + smoke(130, 14, 1.3, '#6e685e', 0.6) + smoke(214, 28, 1, '#6e685e', 0.55);
+        s += `<g fill="#5a4e40" stroke="${OUT}" stroke-width="0.6"><rect x="64" y="26" width="12" height="60"/><rect x="124" y="14" width="14" height="70"/><rect x="208" y="28" width="12" height="58"/><path d="M0 ${H}V70l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16V${H}z"/></g>`;
+        s += `<g fill="#e9c46a" opacity="0.85">${[20, 60, 100, 140, 180, 220, 260, 300].map((x) => `<rect x="${x}" y="88" width="14" height="10"/>`).join('')}</g>`;
+        const t = tank(A, y >= 1942 ? 3 : 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + put(t.svg, 160, H - 10 - t.h * 0.9, 0.9) + put(truck(A, 0), 30, H - 10 - 42 * 1.05, 1.05);
+        break;
+      }
+      case 'science': {
+        s += `<defs><radialGradient id="${id}g" cx="0.5" cy="0.45" r="0.6"><stop offset="0" stop-color="#f4ead0"/><stop offset="1" stop-color="#6e6a5c"/></radialGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}g)"/>`;
+        if (v % 3 === 0) s += `<g fill="none" stroke="#2e2a24" stroke-width="2.4"><ellipse cx="160" cy="64" rx="60" ry="18"/><ellipse cx="160" cy="64" rx="60" ry="18" transform="rotate(60 160 64)"/><ellipse cx="160" cy="64" rx="60" ry="18" transform="rotate(-60 160 64)"/></g><circle cx="160" cy="64" r="10" fill="#c4161c"/>`;
+        else if (v % 3 === 1) s += `<path d="M150 116V40l10-26 10 26v76z" fill="#d9d3c4" stroke="${OUT}" stroke-width="0.9"/><path d="M150 100l-12 16h12zM170 100l12 16h-12z" fill="#2e2a24"/><path d="M120 116V20M200 116V20M120 40h80M120 70h80M120 100h80" stroke="#5a5040" stroke-width="2"/>${smoke(160, 128, 1.2, '#e9e1cc', 0.8)}`;
+        else s += `<path d="M120 116l40-50 40 50z" fill="#5a5040"/><path d="M110 50q50-50 100 0q-50 20-100 0z" fill="#c9c4b6" stroke="${OUT}" stroke-width="0.9"/><path d="M160 50v-34" stroke="#2e2a24" stroke-width="2"/><g fill="none" stroke="#2e2a24" stroke-width="1.2" opacity="0.6"><path d="M180 20q10 10 0 20M190 14q16 16 0 32M200 8q22 22 0 44"/></g>`;
+        s += `<path d="M0 116h${W}v24H0z" fill="#4a4236"/>` + put(soldier(A, y, 'stand', 0), 40, 60, 0.85) + `<g transform="translate(270 70)"><circle cx="0" cy="6" r="6" fill="#d9a77f"/><path d="M-10 14h20l3 34h-26z" fill="#ece6d4" stroke="${OUT}" stroke-width="0.6"/></g>`;
+        break;
+      }
+      default: {
+        s += ground(W, H, PAL.day, id) + terrain('urban', W, H, v) + pole(A, 150, 84, 60);
+        s += `<path d="M0 ${H - 20}h${W}v20H0z" fill="#6a5e4c"/>`;
+        let crowd = ''; for (let i = 0; i < 30; i++) { const x = (i * 83) % (W + 10) - 5, yy = 116 + ((i * 53) % 14), c = ['#3a3028', '#4a3e30', '#2e2a24', '#5a4a38'][i % 4]; crowd += `<g fill="${c}"><circle cx="${x}" cy="${yy}" r="4.5" fill="#c9946c"/><path d="M${x - 5} ${yy - 2}h10l-1-3h-8z"/><path d="M${x - 6} ${yy + 4}h12v14h-12z"/></g>`; if (i % 4 === 0) crowd += `<path d="M${x + 5} ${yy + 2}l5-10" stroke="#c9946c" stroke-width="2.4" stroke-linecap="round"/>`; }
+        s += crowd;
+      }
+    }
+    return s;
+  };
+
   G.eventArt = (p) => {
-    const k = G.eventKind(p), id = 'ea' + uid++;
-    return `<svg class="ev-art" viewBox="0 0 320 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8c7a2"/><stop offset="1" stop-color="#a48f6a"/></linearGradient>
-<radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.75"/></radialGradient>
-<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${uid % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.35 0"/></filter></defs>
-<rect width="320" height="140" fill="url(#${id}s)"/>${(SCENES[k] || SCENES.city)()}
-<rect width="320" height="140" filter="url(#${id}n)"/><rect width="320" height="140" fill="url(#${id}v)"/></svg>`;
+    const k = G.eventKind(p), txt = ((p.title || '') + ' ' + (p.text || '')).toLocaleLowerCase('tr');
+    const st = G.st, y = st ? G.dateOf(st.day).getUTCFullYear() : 1936;
+    let tags = tagsIn(txt);
+    // teslimiyette başlıkta adı geçen ülke yenilendir: galip sahnenin sahibi olur
+    if (k === 'surrender') { const lt = tagsIn((p.title || '').toLocaleLowerCase('tr'))[0]; if (lt && tags.length > 1) tags = tags.filter((t) => t !== lt).concat([lt]); }
+    const A = tags[0] || (st && st.player) || 'GER';
+    let B = tags[1] || null;
+    if (!B && k === 'war' && st && st.C[A] && st.C[A].enemies && st.C[A].enemies[0]) B = st.C[A].enemies[0];
+    let v = 0; const tt = p.title || ''; for (let i = 0; i < tt.length; i++) v = (v * 31 + tt.charCodeAt(i)) >>> 0;
+    if (!G.art || !G.art.kit) return '';
+    const id = 'eg' + uid++;
+    return `<svg class="ev-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<defs><radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.7"/></radialGradient>
+<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${v % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.3 0"/></filter></defs>
+${scene(k, A, B, v, y)}
+<rect width="${W}" height="${H}" fill="#7a5a2a" opacity="0.16"/><rect width="${W}" height="${H}" filter="url(#${id}n)"/><rect width="${W}" height="${H}" fill="url(#${id}v)"/></svg>`;
   };
 })(window);
 
