@@ -389,6 +389,55 @@
   };
   // ülkenin en iyi tank seviyesi (tasarım bürosu seviyesi; yoksa teknolojiden)
   G.art.tankLvl = (c) => { try { return Math.max(1, Math.min(4, Math.floor(G.bestLevel ? G.bestLevel(c, 'tank') : 1))); } catch (e) { return 1; } };
+  // ---------- Arazi katmanları (muharebe ve olay sahneleri) ----------
+  const tree = (x, y, h, c) => `<path d="M${x} ${y}l${-h * 0.32} 0l${h * 0.22} ${-h * 0.36}l${-h * 0.14} 0l${h * 0.24} ${-h * 0.34}l${-h * 0.1} 0l${h * 0.1} ${-h * 0.3}l${h * 0.1} ${h * 0.3}l${-h * 0.1} 0l${h * 0.24} ${h * 0.34}l${-h * 0.14} 0l${h * 0.22} ${h * 0.36}z" fill="${c}"/><rect x="${x - 1}" y="${y}" width="2" height="${h * 0.12}" fill="#3a2a1a"/>`;
+  const palm = (x, y, h, c) => `<path d="M${x} ${y}q${h * 0.08} ${-h * 0.5} ${h * 0.02} ${-h}" stroke="#5a4428" stroke-width="${h * 0.06}" fill="none"/><g fill="${c}"><path d="M${x + h * 0.02} ${y - h}q${-h * 0.4} ${-h * 0.1} ${-h * 0.55} ${h * 0.25}q${h * 0.3} ${-h * 0.18} ${h * 0.55} ${-h * 0.25}z"/><path d="M${x + h * 0.02} ${y - h}q${h * 0.4} ${-h * 0.12} ${h * 0.55} ${h * 0.25}q${-h * 0.3} ${-h * 0.18} ${-h * 0.55} ${-h * 0.25}z"/><path d="M${x + h * 0.02} ${y - h}q${-h * 0.1} ${-h * 0.35} ${h * 0.3} ${-h * 0.3}q${-h * 0.25} ${h * 0.02} ${-h * 0.3} ${h * 0.3}z"/></g>`;
+  const ruin = (x, y, w, h, c) => { let win = ''; for (let i = 0; i < 3; i++) for (let j = 0; j < Math.floor(h / 14); j++) if ((i + j * 3 + x) % 4) win += `<rect x="${x + 4 + i * (w - 8) / 3}" y="${y - h + 6 + j * 14}" width="${(w - 8) / 3 - 4}" height="7" fill="#1e1b16" opacity="0.8"/>`; return `<path d="M${x} ${y}V${y - h + 6}l${w * 0.3} -6l${w * 0.15} 10l${w * 0.25} -4V${y - h * 0.55}l${w * 0.3} 6V${y}z" fill="${c}" stroke="${OUT}" stroke-width="0.6"/>${win}`; };
+  const TER_PAL = { plains: 'day', forest: 'day', hills: 'day', mountain: 'day', desert: 'desert', marsh: 'day', jungle: 'day', urban: 'dusk' };
+  const terrain = (te, W, H, seed) => {
+    const hy = H * 0.62; let s = '';
+    if (te === 'forest') { for (let i = 0; i < 26; i++) { const x = (i * 53 + seed) % (W + 20) - 10, yy = hy + 4 + ((i * 17) % 10); s += tree(x, yy, 22 + ((i * 7) % 12), i % 3 ? '#3f5a34' : '#34502c'); } }
+    else if (te === 'jungle') { for (let i = 0; i < 16; i++) { const x = (i * 61 + seed) % (W + 20) - 10; s += palm(x, hy + 8 + ((i * 13) % 10), 30 + ((i * 7) % 14), i % 2 ? '#2f5a2c' : '#3b6a33'); } }
+    else if (te === 'mountain') s += `<path d="M0 ${hy}L50 ${hy - 50}L90 ${hy - 20}L140 ${hy - 70}L200 ${hy - 14}L250 ${hy - 56}L${W} ${hy - 10}V${hy + 10}H0Z" fill="#8a8e8c"/><path d="M140 ${hy - 70}l14 16l-8-2l-6 6l-8-8l-8 2z M250 ${hy - 56}l12 14l-7-1l-5 5l-7-7l-6 2z M50 ${hy - 50}l10 12l-6-1l-4 4l-6-6l-5 2z" fill="#eef1f2"/>`;
+    else if (te === 'hills') s += `<path d="M0 ${hy + 4}Q60 ${hy - 30} 120 ${hy}T240 ${hy - 4}T${W + 40} ${hy}V${hy + 20}H0Z" fill="#7d7c56" opacity="0.9"/>`;
+    else if (te === 'desert') s += `<path d="M0 ${hy + 10}Q80 ${hy - 6} 160 ${hy + 8}T${W} ${hy + 4}V${H}H0Z" fill="#d9bd85" opacity="0.8"/><path d="M40 ${hy + 30}q30-8 60 0M200 ${hy + 26}q30-8 60 0" stroke="#b8975e" stroke-width="1.2" fill="none"/>`;
+    else if (te === 'marsh') { s += `<g fill="#5f7f80" opacity="0.85"><ellipse cx="80" cy="${hy + 30}" rx="50" ry="6"/><ellipse cx="230" cy="${hy + 24}" rx="40" ry="5"/></g>`; let r = ''; for (let i = 0; i < 30; i++) { const x = (i * 37 + seed) % W; r += `M${x} ${hy + 28 + (i % 5)}l${(i % 3) - 1} -10`; } s += `<path d="${r}" stroke="#4d5a34" stroke-width="1"/>`; }
+    else if (te === 'urban') { const xs = [0, 46, 98, 170, 222, 268]; xs.forEach((x, i) => { s += ruin(x, hy + 6, 40 + (i % 2) * 10, 40 + ((i * 17) % 30), i % 2 ? '#6b6158' : '#5b524a'); }); s += `<path d="M0 ${hy + 6}h${W}v6H0z" fill="#4a443c"/>`; }
+    return s;
+  };
+  const riverBand = (W, H) => `<path d="M0 ${H * 0.74}C${W * 0.3} ${H * 0.7} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.73}V${H * 0.84}C${W * 0.6} ${H * 0.9} ${W * 0.3} ${H * 0.8} 0 ${H * 0.85}Z" fill="#5f7f8f"/><path d="M20 ${H * 0.79}q30-3 60 0M150 ${H * 0.8}q30-3 60 0" stroke="#a9c0c8" stroke-width="1" fill="none"/>`;
+  const blast = (x, y, s) => `<g opacity="0.9"><circle cx="${x}" cy="${y}" r="${9 * s}" fill="#ffcc66" style="filter:blur(${2 * s}px)"/><circle cx="${x}" cy="${y}" r="${4.5 * s}" fill="#fff4d0"/></g>${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}`;
+  // bir tarafın kuvveti (sağa bakan, 0..160 bölgesi); savunan aynalanır
+  const force = (tag, kind, lvl, y, H, def) => {
+    const sol = (x, yy, sc, pose, k) => put(soldier(tag, y, pose, k), x, yy, sc);
+    const gy = H - 10;
+    switch (kind) {
+      case 'arm': { const t = tank(tag, lvl, y), sc = Math.min(1.2, 120 / t.w); return put(t.svg, 30, gy - t.h * sc, sc) + sol(4, gy - 64 * 0.8, 0.8, 'adv', 1); }
+      case 'mot': case 'mech': return put(truck(tag, kind === 'mech'), 6, gy - 42 * 1.3, 1.3) + sol(96, gy - 64 * 0.95, 0.95, 'adv', 0) + sol(126, gy - 64 * 0.82, 0.82, 'adv', 2);
+      case 'cav': return put(horse(tag, y, 1), 4, gy - 64 * 0.9, 0.9) + put(horse(tag, y, 0), 64, gy - 64 * 1.05, 1.05);
+      case 'art': return put(gun(tag, 'art'), 50, gy - 44 * 1.6, 1.6) + sol(14, gy - 64 * 0.9, 0.9, 'kneel', 0) + blast(150, gy - 74, 0.7);
+      default:
+        if (def) return `<path d="M110 ${gy}q10-12 22-12h28v12z" fill="#7a6a48" stroke="${OUT}" stroke-width="0.6"/><g fill="#a08a5c" stroke="${OUT}" stroke-width="0.6">${[0, 1, 2, 3].map((i) => `<rect x="${116 + i * 11}" y="${gy - 14}" width="11" height="6" rx="2.5"/><rect x="${121 + i * 11 - 6}" y="${gy - 20}" width="11" height="6" rx="2.5"/>`).join('')}</g>` + sol(96, gy - 64 * 1.05, 1.05, 'kneel', 0) + sol(60, gy - 64 * 0.95, 0.95, 'kneel', 1) + sol(20, gy - 64 * 0.85, 0.85, 'adv', 2);
+        return sol(100, gy - 64 * 1.1, 1.1, 'adv', 0) + sol(56, gy - 64 * 1.0, 1.0, 'adv', 1) + sol(14, gy - 64 * 0.9, 0.9, 'kneel', 2);
+    }
+  };
+  // muharebe sahnesi: solda saldıran, sağda (aynalı) savunan; arazi ve nehir arka planda
+  G.art.battle = (aTag, aKind, aLvl, dTag, dKind, dLvl, te, river, y = yearNow()) => memo(`b|${aTag}|${aKind}|${aLvl}|${dTag}|${dKind}|${dLvl}|${te}|${river ? 1 : 0}|${y >= 1942 ? 1942 : y >= 1940 ? 1940 : 1936}`, () => {
+    const W = 320, H = 150, id = 'bt' + ++uid, sd = hash(aTag + dTag + te);
+    const pal = PAL[TER_PAL[te] || 'day'];
+    let s = ground(W, H, pal, id) + terrain(te, W, H, sd % 97);
+    if (river) s += riverBand(W, H);
+    s += smoke(150, 70, 1.3, '#bdb4a2', 0.55) + smoke(200, 64, 0.9, '#cfc6b2', 0.45);
+    s += `<path d="M120 96L190 84M128 104L200 96M200 90L140 100" stroke="#ffe08a" stroke-width="0.9" opacity="0.8" stroke-dasharray="6 9"/>`;
+    s += blast(160, 98, 0.9) + blast(222, 108, 0.6);
+    s += `<g>${force(aTag, aKind, aLvl, y, H, false)}</g>`;
+    s += `<g transform="translate(${W} 0) scale(-1 1)">${force(dTag, dKind, dLvl, y, H, true)}</g>`;
+    s += grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
+    return svg(W, H, s, 'art battleart');
+  });
+  // olay sahneleri için parçalar (eventart.js kullanır)
+  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, next: () => ++uid };
+
   // <img> olarak kullanım: aynı resim sayfada çok kez geçse de SVG metni bir kez çözülür (blob adresi önbellekte)
   const urls = new Map();
   G.art.url = (svgStr) => {
