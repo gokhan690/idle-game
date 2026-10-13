@@ -809,3 +809,14 @@ details.hsec > p { padding: 0 11px 10px; }
 /* kayıt yuvaları: düğmeler sabit genişlikte dikey sütun */
 .item.slot > .btns { display: grid; grid-auto-rows: auto; gap: 6px; width: 104px; flex: none; margin: 0 0 0 auto; }
 .item.slot > .btns .btn { width: 100%; }
+/* askerî resimler (js/ui/art.js): kart afişi, küçük resimler ve portreler */
+.artimg { display: block; flex: none; object-fit: cover; background: #2a2a22; border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.35); }
+.artimg.artbanner { width: 100%; height: auto; aspect-ratio: 320 / 150; max-height: 150px; border-radius: 6px; margin: 0 0 10px; }
+.artimg.vehbanner { width: 100%; max-width: 360px; height: auto; aspect-ratio: 2 / 1; border-radius: 6px; margin: 0 auto 10px; }
+.artimg.artthumb { width: 72px; height: 34px; border-radius: 4px; }
+.artimg.vehthumb { width: 58px; height: 30px; border-radius: 4px; align-self: flex-start; }
+.artimg.portrait-s { width: 38px; height: 48px; border-radius: 4px; }
+.artimg.portrait-m { width: 52px; height: 65px; border-radius: 4px; align-self: flex-start; }
+.item > .artimg { margin-right: 10px; }
+.genrow:has(> .artimg) { flex-direction: row; align-items: center; gap: 8px; }
+.card-h > .artimg { margin-right: 8px; align-self: center; }

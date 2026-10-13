@@ -22,7 +22,7 @@
     const dz = UI.dz; if (dz.t > best) dz.t = Math.max(1, best);
     const xk = G.XP_KIND[e], cost = G.designCost(e, dz), err = G.designValid(c, e, dz);
     const pv = G.designPreview(e, dz), ref = G.designStats(e, G.defaultDesign(e, dz.t));
-    let html = `<div class="row" style="justify-content:space-between;align-items:center"><span class="small">${XPN[xk]}: <b>${Math.floor(c[xk] ?? 30)}</b></span><span class="small">Kaydetme: <b class="${(c[xk] ?? 30) >= cost ? '' : 'bad'}">${cost} tecrübe</b></span></div>`;
+    let html = G.art.img(G.art.vehicle(e, dz.t, c.tag), 'vehbanner') + `<div class="row" style="justify-content:space-between;align-items:center"><span class="small">${XPN[xk]}: <b>${Math.floor(c[xk] ?? 30)}</b></span><span class="small">Kaydetme: <b class="${(c[xk] ?? 30) >= cost ? '' : 'bad'}">${cost} tecrübe</b></span></div>`;
     if (D.ship) html += `<p class="muted small" style="margin:0">Gemi gücü çarpanı: <b>×${G.shipPow(e, pv.v).toFixed(2)}</b>. Bu tasarımla üretilen gemiler filodaki ${esc(D.n.toLowerCase())} ortalama gücünü değiştirir (mevcut ortalama ×${G.shipQ(c, e).toFixed(2)}).</p>`;
     html += sec(D.n === 'Tank' ? 'Şasi' : 'Gövde', `<div class="seg sm wrap">${D.tierN.slice(1).map((n, i) => `<button class="${dz.t === i + 1 ? 'on' : ''}" data-act="dztier" data-v="${i + 1}" ${i + 1 > best ? 'disabled' : ''}>${esc(n)}</button>`).join('')}</div>`);
     let mh = '';
@@ -47,7 +47,7 @@
     const l = c.lines[i]; if (!l) { UI.sub = null; return PANELS.prod(); }
     const cur = G.lineDesign(c, l), list = G.designsFor(c, l.e).reverse();
     const ref = G.designStats(l.e, G.defaultDesign(l.e, Math.floor(G.bestLevel(c, l.e))));
-    let html = `<p class="muted small" style="margin:0">Hattın ürettiği tasarımı değiştirmek fabrika verimini düşürür (yeniden donanım).</p>`;
+    let html = G.art.img(G.art.vehicle(l.e, cur ? cur.t : Math.floor(G.bestLevel(c, l.e)), c.tag), 'vehbanner') + `<p class="muted small" style="margin:0">Hattın ürettiği tasarımı değiştirmek fabrika verimini düşürür (yeniden donanım).</p>`;
     html += `<div class="list">${list.map((d) => { const st0 = G.designStats(l.e, d), on = cur && cur.id === d.id; return `<div class="item ${on ? 'active' : ''}"><div class="grow"><div class="t">${esc(d.n)} <span class="muted small">${esc(g.DESIGN[l.e].tierN[d.t])}</span></div>${statTable(l.e, st0, ref)}</div>${on ? '<span class="muted small">üretimde</span>' : `<button class="btn sm pri" data-act="linedesign" data-k="${i}" data-v="${d.id}">Seç</button>`}</div>`; }).join('')}</div>`;
     html += `<div class="btns"><button class="btn pri" data-act="dznew" data-v="${l.e}" data-k="${i}">+ Yeni tasarım</button></div>`;
     return { title: `${g.EQUIP[l.e].n}: tasarım seç`, html };
@@ -79,7 +79,7 @@
       const upg = !dsg && !eq.ship && !eq.convoy && lv < best;
       const dUp = dsg && dsg.t < Math.floor(best);
       const resTxt = Object.entries(eq.res).map(([r, v]) => `${g.RES[r].slice(0, 3)} ${r1(v * l.f)}`).join(' · ');
-      return `<div class="item line"><div class="grow"><div class="t">${eq.n}${model ? ` <span class="muted small">${model}</span>` : ''}</div><div class="d">${stock} · ${rate}${eq.ship || eq.convoy ? '' : ` · verim ${pct(l.eff)}/${pct(effCap)}`}</div><div class="d">${resTxt}</div>${eq.ship ? bar((l.acc || 0) / eq.cost) : bar(l.eff / effCap, 'g')}
+      return `<div class="item line">${G.art.eqImg(l.e, dsg ? dsg.t : lv, c.tag)}<div class="grow"><div class="t">${eq.n}${model ? ` <span class="muted small">${model}</span>` : ''}</div><div class="d">${stock} · ${rate}${eq.ship || eq.convoy ? '' : ` · verim ${pct(l.eff)}/${pct(effCap)}`}</div><div class="d">${resTxt}</div>${eq.ship ? bar((l.acc || 0) / eq.cost) : bar(l.eff / effCap, 'g')}
         <div class="btns" style="margin-top:4px">${dsg ? `<button class="btn sm ${dUp ? 'pri' : ''}" data-act="sub" data-v="line:${i}">${dUp ? 'Yeni şasi var · ' : ''}Tasarım ▾</button>` : ''}${upg ? `<button class="btn sm pri" data-act="lineup" data-v="${i}">Yeni modele geç: ${(g.MODEL_N[l.e] || [])[best] || 'Seviye ' + best}</button>` : ''}<button class="btn sm danger" data-act="linedel" data-v="${i}">Hattı sil</button></div></div>
         <div class="stepper"><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="-1" aria-label="Azalt">−</button><b>${l.f}</b><button data-act="line" data-e="${l.e}" data-i="${i}" data-v="1" aria-label="Artır">+</button></div></div>`;
     };
@@ -326,7 +326,7 @@
       const mx = G.maxPlan(c, a);
       oh += `<div class="item army" style="border-left:4px solid ${G.armyColor(a)}"><div class="grow">
         <div class="row" style="gap:8px"><div class="t grow">${esc(a.n)} <span class="muted small">${us.length}/${G.ARMY_MAX} tümen${battle ? ` · <span class="bad">${battle} muharebe</span>` : ''}</span></div><button class="btn sm" data-act="armysel" data-v="${a.id}">Haritada seç</button></div>
-        <button class="genrow" data-act="sub" data-v="gen:${a.id}">${gen ? `<div>${genLine(gen)}</div>${genSkills(gen)}` : '<span class="warn">Komutan ata ›</span>'}</button>
+        <button class="genrow" data-act="sub" data-v="gen:${a.id}">${gen ? `${G.art.genImg(gen, c.tag)}<div class="grow"><div>${genLine(gen)}</div>${genSkills(gen)}</div>` : '<span class="warn">Komutan ata ›</span>'}</button>
         <div class="small muted">Cephe: ${a.vs ? esc(G.cname(a.vs)) : 'tüm düşmanlar'} · ${a.front && a.front.length ? a.front.length + ' eyaletlik hat' : 'hat yok'}${a.goal != null ? ' · hedef: ' + esc(G.pname(a.goal)) : ''}</div>
         <div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a.plan || 0) / mx, a.ord === 'atk' ? 'r' : 'g')}</div></div>
         <div class="seg sm">${Object.entries(ORD_N).map(([k, n]) => `<button class="${a.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a.id}" data-v="${k}">${n}</button>`).join('')}</div>
@@ -388,7 +388,7 @@
     const sup = G.supplyMul(u);
     const state = u.sr ? 'Stratejik konuşlanma' : G.inBattle && G.inBattle.has(u) ? 'Muharebede' : u.ret ? 'Geri çekiliyor' : u.path.length ? `${G.pname(u.path[u.path.length - 1])} yönünde ilerliyor` : 'Mevzide';
     const xl = G.xpName(u.xp);
-    let html = `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b>${u.vol ? ` <span class="pill ally">Gönüllü (${esc(G.cname(u.vol))})</span>` : ''}</div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
+    let html = G.art.img(G.art.unitOf(u), 'artbanner') + `<div class="row" style="gap:10px;align-items:center"><canvas class="nato" data-k="${R.kindOf(u)}" data-c="${R.ccolor(u.t)}" width="44" height="30"></canvas><div class="grow"><div class="t"><b>${esc(t.n)}</b>${u.vol ? ` <span class="pill ally">Gönüllü (${esc(G.cname(u.vol))})</span>` : ''}</div><div class="muted small">${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${state}</div></div></div>`;
     html += kv([['Güç', pct(u.str), u.str < 0.5 ? 'bad' : ''], ['Moral', `${Math.round(Math.max(0, u.org))}/${Math.round(s2.org)}`, u.org < s2.org * 0.3 ? 'bad' : ''], ['Tecrübe', xl], ['Yumuşak saldırı', r1(s2.sa)], ['Sert saldırı', r1(s2.ha)], ['Savunma', r1(s2.df)], ['Atılım', r1(s2.bt)], ['Sertlik', pct(s2.hd)], ['Zırh', Math.round(s2.arm)], ['Zırh delme', Math.round(s2.prc)], ['Genişlik', t.w], ['Hız', r1(s2.spd / 2.4) + ' km/s'], ['Siper', pct(u.ent || 0)], ['İkmal', pct(G.supplyRatio(u)), G.supplyRatio(u) < 0.8 ? 'bad' : ''], ['İkmal kullanımı', r1(G.supplyUse(u))]]);
     html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Tecrübe</span><div class="grow">${bar(u.xp ?? 0.25)}</div></div><div class="small muted" style="margin-top:-6px">${G.XP_LV.map(([, n]) => n === xl ? `<b style="color:var(--paper)">${n}</b>` : n).join(' › ')}</div>`;
     html += sec('Komuta', `<div class="small">${a ? `${esc(a.n)}${gen ? ' · ' + esc(gen.n) : ''}` : 'Ordusuz'}${u.auto ? ' · otomatik kurmay' : ''}</div><div class="small muted">Teçhizat modelleri: piyade ${g.MODEL_N?.inf?.[Math.floor(u.lv?.inf || 1)] || 'Model ' + r1(u.lv?.inf || 1)}${t.eq.art ? ' · topçu ' + (g.MODEL_N?.art?.[Math.floor(u.lv?.art || 1)] || r1(u.lv?.art || 1)) : ''}${t.eq.tank ? ' · tank ' + (g.MODEL_N?.tank?.[Math.floor(u.lv?.tank || 1)] || r1(u.lv?.tank || 1)) : ''}</div>`);
@@ -402,7 +402,7 @@
     let html = `<div class="list">`;
     for (const u of us) {
       const s2 = G.unitStats(u);
-      html += `<button class="item" data-act="divinfo" data-v="${u.id}"><div class="grow"><div class="t">${esc(s2.t.n)} <span class="muted small">${u.vol ? 'Gönüllü (' + esc(G.cname(u.vol)) + ') · ' : ''}${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
+      html += `<button class="item" data-act="divinfo" data-v="${u.id}">${G.art.img(G.art.unitOf(u), 'artthumb')}<div class="grow"><div class="t">${esc(s2.t.n)} <span class="muted small">${u.vol ? 'Gönüllü (' + esc(G.cname(u.vol)) + ') · ' : ''}${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
     }
     return { title: `${a.n} · ${us.length} tümen`, html: html + '</div>' };
   }
@@ -465,7 +465,7 @@
     for (const gen of c.gens) {
       const a = (c.armies || []).find((x) => x.gen === gen.id);
       const grp = (c.armies || []).filter((x) => x.grp === gen.id);
-      html += `<div class="item"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'}${grp.length ? ` · ordu grubu: ${grp.map((x) => esc(x.n)).join(', ')}` : ''} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div><div class="btns" style="margin-top:4px">${gen.fm ? '' : `<button class="btn sm" data-act="genfm" data-v="${gen.id}" ${gen.lvl >= 3 && (c.cp || 0) >= 40 ? '' : 'disabled'}>Mareşal yap · 40 KG${gen.lvl < 3 ? ' (3. seviye gerekir)' : ''}</button>`}<button class="btn sm" data-act="sub" data-v="gtr:${gen.id}" ${gen.tr.length < 4 ? '' : 'disabled'}>Özellik eğitimi · 50 KG</button></div></div></div>`;
+      html += `<div class="item">${G.art.genImg(gen, c.tag, 'portrait-m')}<div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}<div class="d">${a ? esc(a.n) + ' komutanı' : 'Görevsiz'}${grp.length ? ` · ordu grubu: ${grp.map((x) => esc(x.n)).join(', ')}` : ''} · tecrübe ${Math.round(gen.xp)}/${40 * gen.lvl}</div><div class="btns" style="margin-top:4px">${gen.fm ? '' : `<button class="btn sm" data-act="genfm" data-v="${gen.id}" ${gen.lvl >= 3 && (c.cp || 0) >= 40 ? '' : 'disabled'}>Mareşal yap · 40 KG${gen.lvl < 3 ? ' (3. seviye gerekir)' : ''}</button>`}<button class="btn sm" data-act="sub" data-v="gtr:${gen.id}" ${gen.tr.length < 4 ? '' : 'disabled'}>Özellik eğitimi · 50 KG</button></div></div></div>`;
     }
     html += `</div><button class="btn pri" data-act="newgen" ${c.pp >= 50 ? '' : 'disabled'}>Yeni komutan ata (50 SG)</button><p class="muted small">Komuta gücü: ${int(c.cp || 0)}/${G.CP_MAX} (+${G.cpRate(c).toFixed(2)}/gün). Mareşaller ordu grubu yönetir: bağlı ordulara saldırı ve savunma becerisi başına +%2 verir ve komuta gücü kazancını artırır.</p>`;
     return { title: 'Komutanlar', html };
@@ -491,7 +491,7 @@
     const sorted = c.gens.slice().sort((x, y) => (y.atk + y.def + y.plan + y.log) - (x.atk + x.def + x.plan + x.log));
     for (const gen of sorted) {
       const other = (c.armies || []).find((x) => x.gen === gen.id && x.id !== armyId);
-      html += `<button class="item ${a.gen === gen.id ? 'active' : ''}" data-act="setgen" data-k="${armyId}" data-v="${gen.id}"><div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}${other ? `<div class="d warn">Şu an ${esc(other.n)} komutanı</div>` : ''}</div></button>`;
+      html += `<button class="item ${a.gen === gen.id ? 'active' : ''}" data-act="setgen" data-k="${armyId}" data-v="${gen.id}">${G.art.genImg(gen, c.tag)}<div class="grow"><div class="t">${genLine(gen)}</div>${genSkills(gen)}${other ? `<div class="d warn">Şu an ${esc(other.n)} komutanı</div>` : ''}</div></button>`;
     }
     return { title: 'Komutan seç', html: html + '</div>' };
   }
@@ -501,7 +501,7 @@
     const t = G.T(c.tag, id);
     const nb = Object.values(tpl.b).reduce((a, b) => a + b, 0);
     const ns = Object.values(tpl.s || {}).filter(Boolean).length;
-    let html = `<label class="field"><span>Şablon adı</span><input id="tpl-name" data-tpl="${id}" value="${esc(tpl.n)}" maxlength="28"></label>`;
+    let html = G.art.img(G.art.tplOf(c, tpl), 'artbanner') + `<label class="field"><span>Şablon adı</span><input id="tpl-name" data-tpl="${id}" value="${esc(tpl.n)}" maxlength="28"></label>`;
     html += kv([['Yumuşak saldırı', r1(t.sa)], ['Sert saldırı', r1(t.ha)], ['Savunma', r1(t.df)], ['Atılım', r1(t.bt)], ['Sertlik', pct(t.hd)], ['Moral', Math.round(t.org)], ['Hız', t.spd], ['Zırh', Math.round(t.arm)], ['Zırh delme', Math.round(t.prc)], ['Genişlik', t.w], ['Asker', t.mp + 'K'], ['Eğitim', t.days + ' gün']]);
     html += `<p class="muted small" style="margin:0">Teçhizat: ${Object.entries(t.eq).map(([e, n]) => `${Math.round(n)} ${g.EQUIP[e].s.toLowerCase()}`).join(', ')}. Muharebe genişliği arazinin kaldırabileceği tümen sayısını belirler (ovada 80).</p>`;
     let bh = '<div class="list">';
