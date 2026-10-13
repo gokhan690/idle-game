@@ -556,6 +556,8 @@
     }
     if (lost && (defs[0].t === st.player || attTag === st.player)) G.log(`${G.pname(n)}: ${lost} tümen kuşatılarak imha edildi!`, [defs[0].t, attTag], defs[0].t === st.player ? 'bad' : 'good');
     const remaining = defs.filter((u) => !u.dead && u.loc === n).length;
+    // tümen şerefi: eyaleti alan saldıranlar ya da saldırıyı püskürten savunanlar zafer kazanır
+    if (G.honorWin) { if (!remaining) G.honorWin(A.filter((u) => !u.dead), defs[0].t, n); else if (atts.length >= 2 && atts.every((u) => u.dead || u.org <= 0.5)) G.honorWin(D.filter((u) => !u.dead), attTag, n); }
     const aPow = A.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / A.length, dPow = D.reduce((s, u) => s + Math.max(0, u.org) / u._s.org, 0) / D.length;
     G.battles.push({ n, att: attTag, def: defs[0].t, from: atts[0].loc, adv: aPow / (aPow + dPow + 0.001), na: atts.length, nd: remaining,
       A, D, atts, defs, width, baseW, dirs, te: te.id, fort: pr.fort, amph: b.amph, hitA, hitD, aAir: aAirM, dAir: dAirM, hdA, hdD, prcA, prcD, hmA, hmD, riv: rivAvg, tac: { ta: tac.b.ta, td: tac.b.td, cnt: tac.b.cnt, phase: tac.b.phase, hist: tac.b.hist.slice(), sa: tac.b.sa, sd: tac.b.sd, mA: tac.mA, mD: tac.mD } });
@@ -802,12 +804,14 @@
     capitulations();
     G.checkEvents();
     if (G.altTick) G.altTick();
+    if (G.moreEvTick) G.moreEvTick();
     if (st.day % 5 === 0) G.timedSpirits();
     if (st.day % 30 === 25 && G.civilAid) G.civilAid();
     if (st.day % 5 === 2 && G.intelTick) G.intelTick();
     if (G.cpTick) G.cpTick();
     if (G.bcTick) { G.bcHistTick(); G.bcTick(); if (st.day % 30 === 12) G.bcAi(); }
-    if (st.day % 30 === 18 && G.aiCommand) { G.aiCommand(); if (G.aiUltimatum) G.aiUltimatum(); }
+    if (st.day % 30 === 18 && G.aiCommand) { G.aiCommand(); if (G.aiUltimatum) G.aiUltimatum(); if (G.aiLL) G.aiLL(); if (G.aiTemplates) G.aiTemplates(); }
+    if (st.day % 30 === 7 && G.llTick) G.llTick();
     if (st.day % 30 === 0 && G.achCheck) G.achCheck();
     if (G.endCheck) G.endCheck();
     G.decTick();

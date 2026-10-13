@@ -14,7 +14,7 @@
     { t: '#nav [data-p=dip]', h: 'Diplomasi ve istihbarat', d: 'İttifak kur, ülkelere ültimatom ver, sınır çatışması başlat, gönüllü gönder. Üstte dünya gerginliği ve savaş durumu; aşağıda istihbarat teşkilatını kurup casus ağı örebilirsin.' },
     { t: '#btn-mapmode', h: 'Harita modları', d: 'Bu düğme harita modu menüsünü açar: ikmal, kaynak, ideoloji, savaş hedefleri, deniz üstünlüğü ve daha fazlası.' },
     { t: '#btn-box', h: 'Harita ve seçim', d: 'Tümene dokun → seç, hedef eyalete dokun → yürür ya da saldırır. Bu düğme tüm tümenleri, bir bölgeyi ya da bir alanı seçmeni sağlar. İki parmakla yakınlaştır.' },
-    { t: '#btn-menu', h: 'Menü', d: 'Kaydet, ayarlar (müzik, ses efektleri, haberler) ve ayrıntılı "Nasıl oynanır" rehberi burada. İyi oyunlar!' },
+    { t: '#btn-menu', h: 'Menü', d: 'Kaydet, ayarlar (müzik, ses efektleri, haberler), harita görünümü (NATO ya da resimli sayaç, yüksek çözünürlük) ve ayrıntılı "Nasıl oynanır" rehberi burada. Tümen ve komutan sayfalarında ülkenin üniformasıyla çizilmiş resimleri göreceksin. İyi oyunlar!' },
   ];
   let k = 0, box = null;
   const close = (done) => { if (box) box.remove(); box = null; g.removeEventListener('resize', place); if (done) try { localStorage.setItem('dc_tut', '1'); } catch (e) { /* */ } };

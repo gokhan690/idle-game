@@ -482,6 +482,9 @@
   ACT.volback = (d) => { const n = G.volReturn(me().tag, d.v, 'geri çağırdın'); UI.toast(n ? 'Gönüllüler eve dönüyor.' : 'Geri çağrılacak gönüllü yok.', n ? 'good' : 'warn'); G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud(); };
   ACT.elsusp = () => { const r = G.elecSuspend(me()); UI.toast(r.ok ? 'Seçimler askıya alındı.' : r.why, r.ok ? 'warn' : 'bad'); UI.render(); UI.hud(); };
   ACT.elres = () => { G.elecResume(me()); UI.toast('Seçimler yeniden başlıyor.', 'good'); UI.render(); UI.hud(); };
+  ACT.lldays = (d) => { UI.llDays = +d.v; UI.render(); };
+  ACT.llstart = (d) => { const r = G.llStart(me().tag, d.k, d.e, +d.v, UI.llDays || 180); UI.toast(r.ok ? 'Ödünç verme anlaşması imzalandı.' : r.why, r.ok ? 'good' : 'warn'); UI.render(); };
+  ACT.llstop = (d) => { G.llStop(me().tag, d.k, d.v); UI.toast('Anlaşma durduruldu.', 'info'); UI.render(); };
   ACT.lend = (d) => { const ok = G.lend(me().tag, d.k, d.e, +d.v); UI.toast(ok ? `${G.cname(d.k)} ülkesine gönderildi.` : 'Yeterli stok yok.', ok ? 'good' : 'warn'); UI.render(); };
   ACT.intelfound = () => { const r = G.intelFound(me()); if (!r.ok) UI.toast(r.why, 'warn'); UI.render(); UI.hud(); };
   ACT.intelopen = () => { UI.sub = 'intel'; UI.render(true); };

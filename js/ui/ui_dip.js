@@ -173,7 +173,17 @@
     let th = '<div class="list">';
     const emb = st.embargo[c.tag + '>' + tag];
     th += `<button class="item" data-act="embargo" data-v="${tag}"><div class="grow"><div class="t">${emb ? 'Ambargoyu kaldır' : 'Ambargo uygula'}</div><div class="d">Ambargo uygulanan ülke senden kaynak alamaz.</div></div><span class="muted">›</span></button>`;
-    if (!atWar) th += `<div class="item"><div class="grow"><div class="t">Ödünç verme-kiralama</div><div class="d">Teçhizat gönder; ilişkiler iyileşir.</div><div class="btns" style="margin-top:6px">${G.LEND.map(([e2, n, nm]) => `<button class="btn sm" data-act="lend" data-k="${tag}" data-e="${e2}" data-v="${n}" ${((e2 === 'conv' ? c.ships.conv : c.stock[e2]) || 0) >= n ? '' : 'disabled'}>${n} ${nm}</button>`).join('')}</div></div></div>`;
+    if (!atWar) th += `<div class="item"><div class="grow"><div class="t">Tek seferlik yardım</div><div class="d">Bir defalık teçhizat gönder; ilişkiler iyileşir.</div><div class="btns" style="margin-top:6px">${G.LEND.map(([e2, n, nm]) => `<button class="btn sm" data-act="lend" data-k="${tag}" data-e="${e2}" data-v="${n}" ${((e2 === 'conv' ? c.ships.conv : c.stock[e2]) || 0) >= n ? '' : 'disabled'}>${n} ${nm}</button>`).join('')}</div></div></div>`;
+    // ödünç verme anlaşması: her ay aynı paket
+    if (!atWar) {
+      const mine = (st.ll || []).filter((x) => x.a === c.tag && x.t === tag);
+      th += `<div class="item"><div class="grow"><div class="t">Ödünç verme anlaşması</div><div class="d">Her ay ${G.cname(tag)} ülkesine aynı teçhizat paketi gider; stok iki ay üst üste yetmezse anlaşma düşer. Süre: <b>${UI.llDays || 180} gün</b></div>`
+        + `<div class="seg sm" style="margin-top:6px">${G.LL_DAYS.map((dd) => `<button class="${(UI.llDays || 180) === dd ? 'on' : ''}" data-act="lldays" data-v="${dd}">${dd} gün</button>`).join('')}</div>`
+        + `<div class="btns" style="margin-top:6px">${G.LEND.map(([e2, n, nm]) => { const a2 = G.llAllowed(c.tag, tag, e2); return `<button class="btn sm" data-act="llstart" data-k="${tag}" data-e="${e2}" data-v="${n}" ${a2.ok ? '' : `disabled title="${esc(a2.why)}"`}>Her ay ${n} ${nm}</button>`; }).join('')}</div>`
+        + (mine.length ? `<div class="list" style="margin-top:6px">${mine.map((x) => `<div class="item"><div class="grow"><div class="t">${x.n} ${(G.LEND.find((y) => y[0] === x.e) || [0, 0, x.e])[2]} / ay</div><div class="d">${Math.max(0, x.until - st.day)} gün kaldı · gönderilen ${x.sent}${x.miss ? ' · <span class="warn">stok yetmedi</span>' : ''}</div></div><button class="btn sm danger" data-act="llstop" data-k="${tag}" data-v="${x.e}">Durdur</button></div>`).join('')}</div>` : '') + '</div></div>';
+    }
+    const inc = (st.ll || []).filter((x) => x.t === c.tag && x.a === tag);
+    if (inc.length) th += `<div class="item"><div class="grow"><div class="t good">${G.cname(tag)} bize teçhizat gönderiyor</div><div class="d">${inc.map((x) => `${x.n} ${(G.LEND.find((y) => y[0] === x.e) || [0, 0, x.e])[2]} / ay`).join(' · ')}</div></div></div>`;
     html += sec('Ticaret ve yardım', th + '</div>');
     // istihbarat
     let ih = '<div class="list">';

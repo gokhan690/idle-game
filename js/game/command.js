@@ -46,6 +46,27 @@
       c.aiOrd = { k: (c.surrender || 0) > 0.15 ? 'def' : 'atk', until: st.day + 15 };
     }
   };
+  // tümen şerefi ve adları: zafer sayısı (u.win), 4 zaferde "Muhafız" unvanı (+%5 saldırı ve savunma).
+  // Tarihî modda yalnızca oyuncunun tümenleri; tarihî olmayan modlarda herkes. Aynı tümen haftada bir zafer sayar.
+  G.GUARD_WINS = 4;
+  G.honorWin = (us, foe, n) => {
+    const st = G.st;
+    for (const u of us) {
+      if (st.opts.hist && u.t !== st.player) continue;
+      if (u.hwd != null && st.day - u.hwd < 7) continue;
+      u.hwd = st.day; u.win = (u.win || 0) + 1;
+      if (!u.gd && u.win >= G.GUARD_WINS) {
+        u.gd = 1; u._sd = -1;
+        if (u.t === st.player) G.log(`${G.divName(u)} ${G.pname(n)} zaferinden sonra "Muhafız" unvanı aldı (+%5 saldırı ve savunma).`, [u.t], 'good');
+      }
+    }
+  };
+  // tümen adı: oyuncunun tümenlerine sıra numarası (ilk gösterimde verilir), muhafızlara unvan
+  G.divName = (u) => {
+    const st = G.st, c = st.C[u.t], t = G.T(u.t, u.u);
+    if (u.no == null && u.t === st.player && c) u.no = c.divNo = (c.divNo || 0) + 1;
+    return `${u.gd ? 'Muhafız ' : ''}${u.no ? u.no + '. ' : ''}${t.n}`;
+  };
   // deniz çıkarması hazırlık süresi (gün): deniz piyadesi ve çıkarma doktrinleri kısaltır
   G.invPrep = (c, u) => { const t = G.T(u.t, u.u); return Math.max(4, Math.round(14 - (t.amph || 0) * 8 - (c.mods.invasion || 0) * 12)); };
   // ordu emirleri: KG harcayarak süreli bonus

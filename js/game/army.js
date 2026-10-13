@@ -218,6 +218,7 @@
     // ordu emirleri (komuta gücü) ve ordu grubu mareşali
     const am = u.army && G.armyMul ? G.armyMul(c, u, t) : null;
     if (am) { sa *= am.atk; ha *= am.atk; bt *= am.atk; df *= am.def; spd *= am.spd; }
+    if (u.gd) { sa *= 1.05; ha *= 1.05; bt *= 1.05; df *= 1.05; } // muhafız tümeni (şeref unvanı)
     u._sd = G.st.day;
     // tanksavar teknolojisi yalnızca tanksavar desteği olan tümenlerin delmesini tam artırır (HOI4: AT teçhizatı)
     return (u._s = { sa, ha, df, bt, atk: sa + ha, def: df, hd: t.hd, hp: t.hp, org, arm: ls.arm, prc: ls.prc + (m.prc || 0) * (t.atS ? 1 : 0.25) * (1 - t.mob * 0.6), spd, t, gb });

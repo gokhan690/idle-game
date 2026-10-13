@@ -400,8 +400,9 @@
   G.art.kindOfB = (b) => {
     b = b || {}; let all = 0; for (const v of Object.values(b)) all += v || 0;
     if (!all) return 'inf';
-    if (b.arm) return 'arm';
+    if (b.arm || b.td) return 'arm';
     if (b.mech) return 'mech';
+    if (b.spa && (b.spa || 0) / all >= 0.3) return 'art';
     if ((b.art || 0) / all >= 0.4) return 'art';
     const order = ['mot', 'para', 'mar', 'mtn', 'cav', 'inf'];
     let best = 'inf', bv = -1; for (const k of order) if ((b[k] || 0) > bv) { bv = b[k] || 0; best = k; }

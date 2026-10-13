@@ -88,6 +88,52 @@
     }
   };
 
+  // ---------- Ödünç verme-kiralama anlaşması (Lend-Lease) ----------
+  // Her ay aynı teçhizat paketi gönderilir (G.lend); stok iki ay üst üste yetmezse anlaşma düşer.
+  G.LL_DAYS = [90, 180, 365];
+  G.llOf = (a) => (G.st.ll || []).filter((x) => x.a === a);
+  G.llAllowed = (a, t, e) => {
+    const st = G.st, x = st.C[t];
+    if (!x || !x.alive || a === t) return { ok: false, why: 'Geçersiz' };
+    if (G.atWar(a, t)) return { ok: false, why: 'Savaştasınız' };
+    if (st.embargo && st.embargo[a + '>' + t]) return { ok: false, why: 'Ambargo var' };
+    if ((st.ll || []).some((y) => y.a === a && y.t === t && y.e === e)) return { ok: false, why: 'Bu teçhizat için anlaşma zaten var' };
+    if (G.llOf(a).length >= 5) return { ok: false, why: 'En çok 5 anlaşma' };
+    return { ok: true };
+  };
+  G.llStart = (a, t, e, n, days) => {
+    const st = G.st, r = G.llAllowed(a, t, e); if (!r.ok) return r;
+    (st.ll || (st.ll = [])).push({ a, t, e, n, until: st.day + days, sent: 0, miss: 0 });
+    const nm = (G.LEND.find((x) => x[0] === e) || [0, 0, e])[2];
+    G.log(`${G.cname(a)}, ${G.cname(t)} ile ödünç verme anlaşması imzaladı: her ay ${n} ${nm}.`, [a, t], a === st.player || t === st.player ? 'major' : 'info');
+    return { ok: true };
+  };
+  G.llStop = (a, t, e) => { const st = G.st; st.ll = (st.ll || []).filter((y) => !(y.a === a && y.t === t && y.e === e)); };
+  G.llTick = () => {
+    const st = G.st; if (!st.ll || !st.ll.length) return;
+    for (const x of st.ll.slice()) {
+      const end = (why) => { G.llStop(x.a, x.t, x.e); if (x.a === st.player || x.t === st.player) G.log(`${G.cname(x.a)} → ${G.cname(x.t)} ödünç verme anlaşması sona erdi: ${why}.`, [x.a, x.t], 'info'); };
+      if (!alive(x.a) || !alive(x.t)) { end('ülke yok'); continue; }
+      if (G.atWar(x.a, x.t)) { end('savaş'); continue; }
+      if (st.day > x.until) { end(`süre doldu (toplam ${x.sent})`); continue; }
+      if (G.lend(x.a, x.t, x.e, x.n)) { x.sent += x.n; x.miss = 0; }
+      else if (++x.miss >= 2) end('stok yetersiz');
+    }
+  };
+  // YZ (tarihî olmayan modlar): demokrasiler faşist ya da komünist saldırıya uğrayanlara, ideoloji ortakları birbirine teçhizat verir
+  G.aiLL = () => {
+    const st = G.st; if (st.opts.hist) return;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player || c.enemies.length || G.llOf(c.tag).length >= 2) continue;
+      if ((c.stock.inf || 0) < 15000) continue;
+      const cand = Object.values(st.C).filter((x) => x.alive && x.tag !== c.tag && x.enemies.length && !G.atWar(c.tag, x.tag) && G.llAllowed(c.tag, x.tag, 'inf').ok
+        && (c.ideo === 'dem' ? x.enemies.some((e) => ['fas', 'com'].includes(st.C[e]?.ideo)) && x.ideo !== 'fas' : x.ideo === c.ideo || G.sameFaction(c.tag, x.tag)));
+      if (!cand.length) continue;
+      cand.sort((p, q) => G.armyPower(p.tag) - G.armyPower(q.tag));
+      G.llStart(c.tag, cand[0].tag, 'inf', 1000, 180);
+    }
+  };
+
   // ---------- Müttefikleri savaşa çağır ----------
   G.ctaAllowed = (a, t) => {
     const st = G.st, c = st.C[a], x = st.C[t];

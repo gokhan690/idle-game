@@ -5,6 +5,18 @@
 
   const TECH_PRIORITY = ['ind1', 'con1', 'inf1', 'art1', 'sup1', 'ind2', 'con2', 'eff1', 'D1', 'radio1', 'mot1', 'tank1', 'fig1', 'inf2', 'art2', 'at1', 'tank2', 'aa1', 'fig2', 'cas1', 'D2', 'eff2', 'ind3', 'con3', 'syn1', 'mtn1', 'sup2', 'doc_air', 'comp', 'cas2', 'tank3', 'inf3', 'art3', 'at2', 'eff3', 'D3', 'ind4', 'fig3', 'enc1', 'dec1', 'aa2', 'sup3', 'D4', 'con4', 'eff4', 'syn2', 'bom1', 'bom2', 'tank4', 'inf4', 'art4', 'cas3', 'bom3', 'comp2', 'jet', 'mar1', 'dd1', 'ss1', 'dd2', 'ss2', 'bb1', 'bb2', 'cv1', 'radar', 'doc_nav', 'N1', 'N2', 'atom', 'N3'];
   const NAV_PREF = { ENG: 'f', USA: 'c', JAP: 'c', GER: 't', ITA: 'f', SOV: 't', FRA: 'f' };
+  // geç dönem teknolojileri: yalnızca tarihî olmayan modlarda YZ araştırır (tarihî akış değişmez)
+  const LATE = ['mech1', 'td1', 'spg1', 'radar2', 'v2', 'jet2'];
+  // YZ şablon yenilemesi (tarihî olmayan modlar): yeni taburlar araştırılınca zırhlı ve motorize şablonlar güncellenir
+  G.aiTemplates = () => {
+    const st = G.st; if (st.opts.hist) return;
+    for (const c of Object.values(st.C)) {
+      if (!c.alive || !c.major || c.tag === st.player) continue;
+      const t = G.templatesOf(c);
+      if (c.tech.mech1 && t.mot && !t.mot.b.mech) { t.mot.b = { mech: 4, mot: 2, art: 1 }; c._tc = {}; }
+      if (c.tech.td1 && c.tech.spg1 && t.arm && !t.arm.b.td) { t.arm.b = { arm: 3, mech: c.tech.mech1 ? 2 : 0, mot: c.tech.mech1 ? 0 : 2, td: 1, spa: 1 }; for (const k of Object.keys(t.arm.b)) if (!t.arm.b[k]) delete t.arm.b[k]; c._tc = {}; }
+    }
+  };
 
   G.aiResearch = (c) => {
     const yr = G.year(G.st.day);
@@ -18,6 +30,7 @@
         if (t.cat === 'nav' && (c.sum.dock || 0) < 2) continue;
         pick = id; break;
       }
+      if (!pick && !G.st.opts.hist) for (const id of LATE) { const t = g.TECH_BY_ID[id]; if (t && G.techAvailable(c, id) && t.year <= yr + 1) { pick = id; break; } }
       if (!pick) break;
       G.startResearch(c, pick);
     }
