@@ -12,11 +12,11 @@
     const divs = st.units.filter((u) => u.t === tag).length;
     return Math.round(vp * 3 + (c.sum.provs || 0) + (c.sum.civ || 0) * 2 + (c.sum.mil || 0) * 3 + divs * 2);
   };
-  G.scoreBoard = () => Object.values(G.st.C).filter((c) => c.alive && (c.major || c.tag === G.st.player)).map((c) => ({ t: c.tag, s: G.score(c.tag) })).sort((a, b) => b.s - a.s);
+  G.scoreBoard = () => Object.values(G.st.C).filter((c) => c.alive && (c.major || G.isHuman(c.tag))).map((c) => ({ t: c.tag, s: G.score(c.tag) })).sort((a, b) => b.s - a.s);
   // oyunun başındaki değerler (karşılaştırma için; oyuncu ülkesi)
   G.scoreStart = () => {
     const st = G.st, c = st.C[st.player]; if (!c || st.s0) return;
-    st.s0 = { provs: c.sum.provs || 0, civ: c.sum.civ || 0, mil: c.sum.mil || 0, divs: st.units.filter((u) => u.t === st.player).length };
+    st.s0 = { provs: c.sum.provs || 0, civ: c.sum.civ || 0, mil: c.sum.mil || 0, divs: st.units.filter((u) => G.isHuman(u.t)).length };
   };
 
   const capOf = (tag) => { const d = g.COUNTRY_DEFS[tag]; return P.findIndex((p) => p.n === d.cap); };

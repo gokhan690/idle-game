@@ -98,7 +98,7 @@
       const own = (i) => st.prov[i].c === b;
       const prov = own(k) ? k : P[k].a.find(own) ?? -1;
       if (prov < 0) continue;
-      const pl = a === st.player || b === st.player;
+      const pl = G.isHuman(a) || G.isHuman(b);
       G.bcStart(a, b, { prov, n, hist: pl ? 0 : 1, win, days, free: 1 });
     }
   };
@@ -106,7 +106,7 @@
   G.bcAi = () => {
     const st = G.st; if (st.opts.hist || st.day < 200) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || c.tag === st.player || c.enemies.length || (c.ideo !== 'fas' && c.ideo !== 'com') || G.rand() > 0.08) continue;
+      if (!c.alive || G.isHuman(c.tag) || c.enemies.length || (c.ideo !== 'fas' && c.ideo !== 'com') || G.rand() > 0.08) continue;
       if (c.lastBc && st.day - c.lastBc < 365) continue;
       const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) neigh.add(st.prov[j].c);
       const cands = [...neigh].filter((t) => t !== c.tag && alive(t) && G.bcAllowed(c.tag, t).ok && G.armyPower(t) < G.armyPower(c.tag) * 0.8);

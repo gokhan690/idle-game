@@ -172,7 +172,7 @@
   G.genOf = (u) => {
     const c = G.st.C[u.t];
     if (u.army) { const a = G.armyById(c, u.army); if (a && a.gen) return G.genById(c, a.gen); return null; }
-    if (u.t !== G.st.player && c.gens && c.gens.length) {
+    if (!G.isHuman(u.t) && c.gens && c.gens.length) {
       if (!c._best || c._bestDay !== G.st.day >> 5) { c._best = c.gens.reduce((b, x) => (x.atk + x.def + x.plan > b.atk + b.def + b.plan ? x : b), c.gens[0]); c._bestDay = G.st.day >> 5; }
       return c._best;
     }

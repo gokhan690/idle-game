@@ -75,7 +75,7 @@
   function holdElection(c) {
     const st = G.st, el = G.elecInit(c), P = g.PARTY_N;
     const year = G.year(st.day);
-    const histAI = st.opts.hist && c.tag !== st.player;
+    const histAI = st.opts.hist && !G.isHuman(c.tag);
     const sh = G.elecShares(c, true);
     const own = c.ideo;
     let top = IDS.reduce((b, k) => (sh[k] > sh[b] ? k : b), own);
@@ -104,7 +104,7 @@
     el.next = nextDate(c.tag, st.day); el.w = 0;
     // günlüğü küçük ülkelerin seçimleriyle doldurma: yalnızca oyuncu, büyük güçler ve hükümet değişiklikleri
     if (c.tag === st.player || c.major || outcome === 'chg') G.log(`${G.cname(c.tag)} seçimleri: ${shares}. ${line}`, [c.tag], c.tag === st.player || outcome === 'chg' ? 'major' : 'info');
-    if (c.tag === st.player) {
+    if (G.isLocal(c.tag)) {
       G.queuePopup({ title: `Seçim sonuçları · ${G.cname(c.tag)}`, text: `Oy dağılımı: ${shares}. ${line}`, opts: [{ n: 'Tamam', fx: () => {} }] });
     }
     if (outcome === 'chg') G.setIdeology(c, top);
@@ -143,7 +143,7 @@
         continue;
       }
       const left = el.next - st.day;
-      if (c.tag === st.player) { // seçim öncesi bilgilendirme
+      if (G.isHuman(c.tag)) { // seçim öncesi bilgilendirme
         if (left <= 60 && left > 7 && el.w < 1) {
           el.w = 1; const sh = G.elecShares(c, false);
           G.log(`Seçimlere ${left} gün kaldı (${G.elecDate(c)}). Tahmini destek: demokratlar ${pc(sh[c.ideo])}${sh[c.ideo] < 0.5 ? ' (çoğunluk yok!)' : ''}; istikrar ${pc(c.stab ?? 0.5)}.`, [c.tag], 'warn');
@@ -152,7 +152,7 @@
         }
       }
       if (left > 0) continue;
-      if (c.tag !== st.player && postponed(c)) { el.next = st.day + 180; continue; }
+      if (!G.isHuman(c.tag) && postponed(c)) { el.next = st.day + 180; continue; }
       holdElection(c);
     }
   };

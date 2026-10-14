@@ -55,6 +55,8 @@
       prov: [], C: {}, units: [], wars: {}, factions: {}, tension: 8, ev: {}, pacts: {}, access: {}, guar: {}, goals: {}, deals: [], embargo: {}, ops: [],
       log: [], nextId: 1, over: 0,
     };
+    // çok oyunculu: insan oyuncular {TAG: yuva} (tek oyunculuda yok; G.isHuman st.player'a bakar)
+    if (opts && opts.humans) { st.humans = Object.assign({}, opts.humans); delete st.opts.humans; }
     G.st = st;
     for (let i = 0; i < NP; i++) {
       const p = P[i];
@@ -149,7 +151,7 @@
   G.makeUnit = (tag, type, loc, str) => {
     const st = G.st;
     const c = st.C[tag];
-    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: tag !== st.player ? 1 : 0, ret: 0, xp: 0.2, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
+    const u = { id: st.nextId++, t: tag, u: type, loc, path: [], prog: 0, str: str, org: 0, ent: 0, auto: !G.isHuman(tag) ? 1 : 0, ret: 0, xp: 0.2, lv: { inf: G.lvl(c, 'inf'), art: G.lvl(c, 'art'), tank: G.lvl(c, 'tank') } };
     if (G.T(tag, type).tanks) u.lv.tq = Object.assign({}, G.stockVec(c, 'tank'));
     u.org = G.unitStats(u).org * (str >= 1 ? 1 : 0.5);
     return u;
@@ -210,6 +212,17 @@
 
   // ---------- Kayıt ----------
   const SKIP = new Set(['eset', 'mods', 'sum', 'econ', '_s', 'enemies', '_tc', '_best', '_bestDay', '_mpu', '_sd', '_rf', '_rfDay']);
+  // Türetilmiş önbellekler (kayıtta tutulmaz): yüklemede taze bir oyundaki hâline döner. Böylece yükleme "saf" olur:
+  // aynı kayıt hangi cihazda, hangi oyundan sonra yüklenirse yüklensin aynı devamı üretir (çok oyunculu eşitleme).
+  G.resetDerived = () => {
+    G.btac = {}; G.supAvail = {}; G.supRatio = {}; G.hubs = {}; G.connCap = {}; G.reachOf = {};
+    G.pkVer = (G.pkVer || 0) + 1;
+    G._abLoad = null; G._conv = undefined; G._convDay = undefined; G._sold = undefined;
+    G.airR = undefined; G._sup = undefined; G.navalBattles = undefined; G.battles = undefined; G.inBattle = undefined;
+    G._hc = undefined; G._hcs = undefined; G._cbCache = undefined; G._cbDay = undefined; G._nbLog = undefined;
+    G.needSummary = undefined; G.supTick = undefined; G.supDirty = 1; G.cwDirty = 1;
+    if (G.resetDerivedHooks) for (const f of G.resetDerivedHooks) f();
+  };
   G.serialize = () => JSON.stringify(G.st, (k, v) => (SKIP.has(k) ? undefined : v));
   // Kayıt sürümü: kayıt biçimi bozulacak biçimde değişirse G.SAVE_V artırılır ve SAVE_MIGRATE[eski] eski kaydı bir üst sürüme taşır.
   // Yeni alanlar tembel oluşturulduğundan çoğu değişiklik sürüm artırmayı gerektirmez (aşağıdaki varsayılanlar yeterli).
@@ -222,7 +235,7 @@
     if (st.v > G.SAVE_V) throw new Error('Kayıt oyunun daha yeni bir sürümüyle yapılmış');
     if (st.v !== G.SAVE_V) throw new Error('Kayıt sürümü çok eski');
     G.tickIt = null; // yarım kalmış gün eski oyuna aittir
-    G.reachOf = {}; G.pkVer = (G.pkVer || 0) + 1; // türetilmiş kuşatma önbellekleri eski oyuna aittir
+    G.resetDerived();
     G.TSRC = st.tsrc || {}; G.TL = (st.tl || []).slice(); if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
     G.st = st;
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır

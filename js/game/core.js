@@ -63,6 +63,10 @@
 
   G.atWar = (a, b) => { const c = G.st.C[a]; return !!(c && c.eset && c.eset.has(b)); };
   G.enemies = (tag) => { const c = G.st.C[tag]; return c ? c.enemies : []; };
+  // insan oyuncular: çok oyunculuda st.humans = {TAG: yuva}; tek oyunculuda yalnızca st.player.
+  // Sim kararları (YZ atlama, tarihî senaryo, zorluk) isHuman'a, ekranda pencere açma isLocal'e bakar.
+  G.isHuman = (t) => { const st = G.st; return st.humans ? st.humans[t] != null : t === st.player; };
+  G.isLocal = (t) => t != null && t === G.st.player;
   G.sameFaction = (a, b) => { if (a === b) return true; const ca = G.st.C[a], cb = G.st.C[b]; return !!(ca && cb && ca.fac && ca.fac === cb.fac); };
   G._cob = new Map();
   G.coBelligerent = (a, b) => {

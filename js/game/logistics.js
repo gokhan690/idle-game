@@ -256,7 +256,7 @@
     try {
       for (const c of Object.values(st.C)) {
         if (!c.alive) { delete G.supRatio[c.tag]; continue; }
-        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; if (st.pkt && st.pkt[c.tag]) { delete st.pkt[c.tag]; G.pkVer = (G.pkVer || 0) + 1; } continue; }
+        if (!c.enemies.length && !G.isHuman(c.tag)) { delete G.supRatio[c.tag]; if (st.pkt && st.pkt[c.tag]) { delete st.pkt[c.tag]; G.pkVer = (G.pkVer || 0) + 1; } continue; }
         G.computeSupplyFor(c);
         yield;
       }

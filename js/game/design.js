@@ -291,7 +291,7 @@
     cv: (c, t) => ({ deck: c.tag === 'USA' || c.tag === 'JAP' ? 'big' : 'arm', aaa: 2, sp1: 'none' }),
   };
   G.aiDesign = (c, e) => {
-    if (!c.major || !G.DESIGNABLE.has(e) || !AI_PRESET[e] || c.tag === G.st.player) return null;
+    if (!c.major || !G.DESIGNABLE.has(e) || !AI_PRESET[e] || G.isHuman(c.tag)) return null;
     const ship = g.DESIGN[e].ship;
     if (ship && G.st.opts.hist) return null; // tarihî modda YZ gemileri standart kalır
     const t = Math.floor(G.bestLevel(c, e));

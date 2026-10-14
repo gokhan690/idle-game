@@ -28,6 +28,7 @@
     if (UI.sub === 'new') return { title: 'Yeni oyun', html: `<p style="margin:0">Mevcut oyun kaydedilmediyse kaybolur. Otomatik kayıt yine de saklanır.</p><div class="btns"><button class="btn danger" data-act="newgame">Yeni oyuna başla</button><button class="btn" data-act="back">Vazgeç</button></div>` };
     let html = '';
     html += sec('Kayıt', UI.slotList(true), 'Bu cihazda saklanır');
+    const ch = UI.cloudSection(true); if (ch) html += sec('Bulut kaydı', ch, 'Hesabına bağlı');
     const modes = UI.MODE_N;
     html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
@@ -122,7 +123,7 @@
   <section class="sec"><h3 class="sec-h">Hava indirme</h3><p class="small" style="margin:0">"Hava İndirme" teknolojisi Paraşüt Tümeni şablonunu açar. Paraşüt tümenini hava üssü olan bir dost eyalete getir, seç ve "🪂 Hava indirme"ye bas; sonra en fazla 500 km uzaktaki bir eyalete dokun. Hedef bölgede en az %40 hava üstünlüğü gerekir ve düşman birliği bulunan eyalete atlanamaz. Tümen hedefi hemen ele geçirir ama morali çok düşük iner; düşman hattının gerisinde ikmalsiz kalabilir.</p></section>
   <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
-  <section class="sec"><h3 class="sec-h">Kayıt ve taşıma</h3><p class="small" style="margin:0">Menü → Kayıt bölümünde üç yuva ve bir otomatik kayıt vardır. Her yuva ülkeyi, oyun tarihini, modu, zorluğu ve kaydın yapıldığı saati gösterir; Sil düğmesine iki kez dokununca yuva boşalır. Otomatik kayıt aralığı (kapalı, aylık, 3 ayda, 6 ayda, yıllık) ayarlardan seçilir ve cihazda hatırlanır. <b>Dosyaya aktar</b> oyunu bir JSON dosyası olarak indirir; bu dosya başka bir telefonda ya da bilgisayarda <b>Dosyadan yükle</b> ile (başlangıç ekranından da) açılır. Bozuk ya da uyumsuz bir dosya seçilirse mevcut oyun korunur.</p></section>
+  <section class="sec"><h3 class="sec-h">Kayıt ve taşıma</h3><p class="small" style="margin:0">Menü → Kayıt bölümünde üç yuva ve bir otomatik kayıt vardır. Her yuva ülkeyi, oyun tarihini, modu, zorluğu ve kaydın yapıldığı saati gösterir; Sil düğmesine iki kez dokununca yuva boşalır. Otomatik kayıt aralığı (kapalı, aylık, 3 ayda, 6 ayda, yıllık) ayarlardan seçilir ve cihazda hatırlanır. <b>Dosyaya aktar</b> oyunu bir JSON dosyası olarak indirir; bu dosya başka bir telefonda ya da bilgisayarda <b>Dosyadan yükle</b> ile (başlangıç ekranından da) açılır. Bozuk ya da uyumsuz bir dosya seçilirse mevcut oyun korunur. Oyun claude.ai içinde açıldıysa ve oturumun açıksa Menü → Bulut kaydı ile kayıtlar hesabına yazılır (yalnızca sana görünür); başka cihazda aynı hesapla açıp başlangıç ekranındaki "Bulut kayıtları"ndan devam edebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Görseller ve harita görünümü</h3><p class="small" style="margin:0">Her ülkenin askerleri kendi üniforması, miğferi ve nişanıyla çizilir: Alman Stahlhelm'i, Sovyet SSh-40'ı, Amerikan M1 miğferi (1942'den sonra), Fransız Adrian'ı, Japon Type 90'ı. Tümen sayfasında ve listelerde tümenin resmi, komutanlarda portre, üretimde tank, uçak ve gemi resmi, muharebe penceresinde araziye göre karşılaşan iki taraf görünür; olay pencereleri olayın geçtiği ülkelere göre çizilir. Menü → <b>Harita görünümü</b>: birlik sayacını <b>NATO simgesi</b> ya da <b>Resimli</b> (asker, tank, kamyon, süvari, top silueti) seç; <b>Yüksek çözünürlük</b> haritayı telefonun tam piksel yoğunluğunda çizer (yavaş cihazlarda kendiliğinden düşer).</p></section>
   <section class="sec"><h3 class="sec-h">Yeni birlik türleri</h3><p class="small" style="margin:0">Geç dönem teknolojileri yeni taburlar açar: <b>Mekanize Piyade</b> (1940; yarı paletli, motorize kadar hızlı ama daha sert ve dayanıklı), <b>Tank Avcısı</b> (1941; yüksek sert saldırı ve zırh delme) ve <b>Kundağı Motorlu Topçu</b> (1941; zırhlılarla aynı hızda ateş desteği). Şablon tasarımcısında taburları ekle. Ayrıca Jet Avcısı (1945), Gelişmiş Radar (1943) ve Roket Programı (1944) teknolojileri var. Tarihî modda yapay zekâ bunları araştırmaz; serbest ve alternatif modlarda şablonlarını günceller.</p></section>
   <section class="sec"><h3 class="sec-h">Tümen şerefi ve muhafızlar</h3><p class="small" style="margin:0">Tümenlerin numarası ve zafer sayısı tutulur. Eyalet alan saldırı ya da püskürtülen saldırı (en az iki düşman tümeni) bir zafer sayılır; aynı tümen haftada en çok bir zafer kazanır. Dört zafere ulaşan tümen <b>Muhafız</b> unvanı alır: saldırı ve savunma +%5, tümen kartında yıldızlar. Tarihî modda yalnızca senin tümenlerin unvan kazanır.</p></section>
@@ -156,6 +157,7 @@
     let html = '';
     if (meta) html += `<div class="sec"><h3 class="sec-h">Kaldığın yerden</h3><button class="item" data-act="continue"><span>${G.flag(meta.player, 30, 20)}</span><div class="grow"><div class="t">${esc(G.cname(meta.player))}</div><div class="d">${G.fmtDate(meta.day)} · otomatik kayıt</div></div><span class="btn sm pri">Devam et</span></button></div>`;
     if (['1', '2', '3'].some((s) => G.saveMeta(s))) html += sec('Kayıtlı oyunlar', UI.slotList(false));
+    const ch = UI.cloudSection(false); if (ch) html += sec('Bulut kayıtları', ch, 'Hesabına bağlı');
     else html += `<div class="sec"><div class="btns">${impBtn()}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
@@ -182,6 +184,32 @@
     let at = '';
     if (m.at) try { at = new Date(m.at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { /* */ }
     return `${p.join(' · ')}${at ? `<br><span class="muted">Kaydedildi: ${at}</span>` : ''}`;
+  };
+  // bulut kaydı (claude.ai içinde, oturum açıkken): yuvalar zaman uyumsuz okunur, gelince ekran yenilenir
+  UI.cloud = { ready: null, metas: null, busy: '' };
+  UI.cloudRefresh = () => {
+    if (!G.cloud || UI.cloud.loading) return;
+    UI.cloud.loading = 1;
+    G.cloud.ready().then(async (ok) => { UI.cloud.ready = ok; UI.cloud.metas = ok ? await G.cloud.metas() : null; })
+      .catch(() => { UI.cloud.ready = false; })
+      .finally(() => { UI.cloud.loading = 0; UI.cloud.t = Date.now(); if (UI.panel === 'menu') UI.render(); else if (!$('start').hidden) UI.renderStart(); });
+  };
+  UI.cloudSection = (inGame) => {
+    const C = UI.cloud;
+    if (C.ready === null || (C.ready && Date.now() - (C.t || 0) > 60000 && !C.busy)) UI.cloudRefresh();
+    if (!C.ready) return '';
+    const M = C.metas || {};
+    let h = '<div class="list">';
+    for (const s of G.CLOUD_SLOTS) {
+      const m = M[s];
+      if (!inGame && !m) continue;
+      const line = m ? `${esc(G.cname(m.tag))} · ${G.fmtDate(m.day)}<br><span class="muted">Kaydedildi: ${new Date(m.t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : 'Boş';
+      const busy = C.busy === s;
+      h += `<div class="item slot">${m ? `<span>${G.flag(m.tag, 30, 20)}</span>` : ''}<div class="grow"><div class="t">${s === 'cauto' ? 'Otomatik bulut kaydı' : 'Bulut ' + s.slice(1)}</div><div class="d">${busy ? 'İşleniyor…' : line}</div></div><div class="btns">${inGame && s !== 'cauto' ? `<button class="btn sm pri" data-act="csave" data-v="${s}" ${C.busy ? 'disabled' : ''}>Kaydet</button>` : ''}<button class="btn sm" data-act="cload" data-v="${s}" ${m && !C.busy ? '' : 'disabled'}>Yükle</button></div></div>`;
+    }
+    h += '</div>';
+    if (inGame) h += '<p class="muted small" style="margin:6px 0 0">Bulut kayıtları yalnızca sana görünür. Başka cihazda aynı hesapla oyunu açıp "Yükle" ile devam edebilirsin. Uygulamadan çıkarken oyun en çok 5 dakikada bir otomatik bulut kaydına da yazılır.</p>';
+    return h;
   };
   UI.slotList = (inGame) => {
     let h = '<div class="list">';

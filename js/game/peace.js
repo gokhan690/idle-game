@@ -240,7 +240,7 @@
     let guard = 0;
     while (!conf.done && guard++ < 2000) {
       const w = G.confTurn(conf);
-      if (w === G.st.player) return;
+      if (G.isHuman(w)) return;
       G.confAI(conf, w);
     }
   };

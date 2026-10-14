@@ -24,8 +24,8 @@
     if (home < 0) return;
     const surf = { dd: c.ships.dd, cr: c.ships.cr, bb: c.ships.bb, ss: 0, cv: c.ships.cv };
     const subs = c.ships.ss;
-    if (SH.some((e) => surf[e] > 0)) c.fleets.push({ id: G.st.nextId++, n: '1. Filo', loc: home, home, sh: surf, mis: c.tag === G.st.player ? 'hold' : 'patrol', path: [], prog: 0, auto: 1 });
-    if (subs > 0) c.fleets.push({ id: G.st.nextId++, n: 'Denizaltı Filosu', loc: home, home, sh: { dd: 0, cr: 0, bb: 0, ss: subs, cv: 0 }, mis: c.tag === G.st.player ? 'hold' : 'raid', path: [], prog: 0 });
+    if (SH.some((e) => surf[e] > 0)) c.fleets.push({ id: G.st.nextId++, n: '1. Filo', loc: home, home, sh: surf, mis: G.isHuman(c.tag) ? 'hold' : 'patrol', path: [], prog: 0, auto: 1 });
+    if (subs > 0) c.fleets.push({ id: G.st.nextId++, n: 'Denizaltı Filosu', loc: home, home, sh: { dd: 0, cr: 0, bb: 0, ss: subs, cv: 0 }, mis: G.isHuman(c.tag) ? 'hold' : 'raid', path: [], prog: 0 });
     for (const e of SH) c.ships[e] = 0;
   };
   // Yeni gemi: otomatik takviye işaretli filoya, yoksa yedeğe
@@ -57,8 +57,8 @@
     // tarihî mod: Pearl Harbor'dan Midway'e dek Batı Pasifik'te Japon deniz üstünlüğü (Müttefikler Filipinler'e,
     // Malaya'ya ve Doğu Hint Adaları'na takviye taşıyamaz)
     // (pencere ABD-Japonya savaşının gerçek başlangıcından itibaren ~6 aydır; oyuncu Japonya ise uygulanmaz)
-    const kb = st.opts.hist && st.player !== 'JAP' && ((st.wstart && st.wstart[G.pairKey('JAP', 'USA')]) ?? st.wars[G.pairKey('JAP', 'USA')]?.since);
-    if (kb != null && kb !== false && st.day >= kb && st.day < kb + KBD && zone >= NP && G.atWar(tag, 'JAP') && tag !== st.player) {
+    const kb = st.opts.hist && !G.isHuman('JAP') && ((st.wstart && st.wstart[G.pairKey('JAP', 'USA')]) ?? st.wars[G.pairKey('JAP', 'USA')]?.since);
+    if (kb != null && kb !== false && st.day >= kb && st.day < kb + KBD && zone >= NP && G.atWar(tag, 'JAP') && !G.isHuman(tag)) {
       const z = G.SEAS[zone - NP]; if (z && z.lon > 95 && z.lat < 30 && z.lat > -15) v = Math.min(v, 0.3);
     }
     return v;
@@ -146,8 +146,8 @@
         const need = G.dist(f.loc, f.path[0]);
         if (f.prog >= need) { f.loc = f.path.shift(); f.prog = 0; }
       }
-      if (c.tag !== st.player && (st.day + c.tag.charCodeAt(0)) % 3 === 0) aiFleets(c);
-      else if (c.tag === st.player && st.day % 3 === 0) for (const f of c.fleets) if (f.mis !== 'hold' && !f.path.length) fleetMission(c, f);
+      if (!G.isHuman(c.tag) && (st.day + c.tag.charCodeAt(0)) % 3 === 0) aiFleets(c);
+      else if (G.isHuman(c.tag) && st.day % 3 === 0) for (const f of c.fleets) if (f.mis !== 'hold' && !f.path.length) fleetMission(c, f);
     }
     // muharebeler
     const byZone = new Map();

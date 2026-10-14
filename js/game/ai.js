@@ -11,7 +11,7 @@
   G.aiTemplates = () => {
     const st = G.st; if (st.opts.hist) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag)) continue;
       const t = G.templatesOf(c);
       if (c.tech.mech1 && t.mot && !t.mot.b.mech) { t.mot.b = { mech: 4, mot: 2, art: 1 }; c._tc = {}; }
       if (c.tech.td1 && c.tech.spg1 && t.arm && !t.arm.b.td) { t.arm.b = { arm: 3, mech: c.tech.mech1 ? 2 : 0, mot: c.tech.mech1 ? 0 : 2, td: 1, spa: 1 }; for (const k of Object.keys(t.arm.b)) if (!t.arm.b[k]) delete t.arm.b[k]; c._tc = {}; }
@@ -230,9 +230,9 @@
       for (let i = 0; i < NP; i++) {
         const pr = st.prov[i]; if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
         if (opts.front && !opts.front.has(i)) continue;
-        if (st.opts.hist && tag === 'JAP' && tag !== st.player && P[i].lon < 65) continue; // Japonya Hindistan'ın batısında savaşmaz
+        if (st.opts.hist && tag === 'JAP' && !G.isHuman(tag) && P[i].lon < 65) continue; // Japonya Hindistan'ın batısında savaşmaz
         // tarihî mod: Batılı Müttefikler Sovyet cephelerinde, Sovyetler Batılı müttefik cephelerinde savaşmaz
-        if (st.opts.hist && tag !== st.player && pr.c !== tag && ((WESTERN.has(tag) && (pr.c === 'SOV' || pr.c === 'CHI')) || (tag === 'SOV' && WESTERN.has(pr.c)))) continue;
+        if (st.opts.hist && !G.isHuman(tag) && pr.c !== tag && ((WESTERN.has(tag) && (pr.c === 'SOV' || pr.c === 'CHI')) || (tag === 'SOV' && WESTERN.has(pr.c)))) continue;
         let threat = 0, enemyAdj = [];
         // müttefik toprağından ancak o müttefik de o düşmanla savaştaysa cephe açılır (tarafsız müttefikten saldırı yok)
         for (const j of P[i].a) { const ec = st.prov[j].c; if (G.atWar(tag, ec) && (pr.c === tag || G.atWar(pr.c, ec)) && (!opts.vs || ec === opts.vs || !G.atWar(tag, opts.vs))) { enemyAdj.push(j); threat += provThreat(j, tag) + 3; } }
@@ -326,11 +326,11 @@
       const aggr = (G.diffAggr() - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
       // Tarihî modda demokrasiler ve tarafsızlar 1942 ortasına dek yalnızca kendi/müttefik topraklarını geri alır
       // (Afrika ve Ortadoğu hariç: Pusula, Habeşistan, Irak, Suriye harekâtları)
-      const passive = tag !== st.player && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
+      const passive = !G.isHuman(tag) && st.opts.hist && c.ideo !== 'fas' && c.ideo !== 'com' && st.day < G.dayOf('1942-06-01');
       // tarihî mod: "Garip Savaş" — Almanya Sarı Durum'a (Mayıs 1940) dek Fransa'ya saldırmaz
-      const sitz = tag === 'GER' && tag !== st.player && st.opts.hist && !st.ev.gelb;
+      const sitz = tag === 'GER' && !G.isHuman(tag) && st.opts.hist && !st.ev.gelb;
       // tarihî mod: Japonya ve Mançukuo Çin'de tarihî kazanım çizgisini aşınca savunmaya geçer (1939-44 durgunluğu)
-      const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
+      const chinaHold = !G.isHuman(tag) && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
       const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0, pin: pincer(t.e) })).sort((a, b) => (a.def + a.gd - a.pin * 4 - b.def - b.gd + b.pin * 4) || (b.vp - a.vp));
@@ -437,7 +437,7 @@
           const naval = pass === 4;
           // tarihî mod: Batılı Müttefikler Avrupa cephelerine deniz yoluyla ancak Sicilya'dan sonra İtalya'ya,
           // D-Günü'nden sonra her yere asker taşır
-          const euroBan = naval && st.opts.hist && WESTERN.has(tag) && tag !== st.player && st.day < G.dayOf('1944-06-06');
+          const euroBan = naval && st.opts.hist && WESTERN.has(tag) && !G.isHuman(tag) && st.day < G.dayOf('1944-06-06');
           const srcs = fl.filter((f) => (deficit.get(f.i) || 0) > 0)
             .filter((f) => !euroBan || !(P[f.i].lon > -12 && P[f.i].lon < 40 && P[f.i].lat > 36) || (st.day >= G.dayOf('1943-07-10') && st.prov[f.i].o === 'ITA'))
             .map((f) => ({ i: f.i, c: 6 / (1 + (f.threat + 6) / (f.have + 6)) * (f.own ? 1 : 1.5) }));
@@ -629,7 +629,7 @@
     if (!c.fac && !c.major) {
       for (const [fid, f] of Object.entries(st.factions)) {
         const L = st.C[f.leader];
-        if (!L?.alive || L.tag === st.player) continue;
+        if (!L?.alive || G.isHuman(L.tag)) continue;
         const shared = c.enemies.length && c.enemies.every((e) => L.eset.has(e));
         const ideoOk = L.ideo === c.ideo && c.ideo !== 'neu';
         const near = G.dist(L.cap, c.cap) < 700;
@@ -666,7 +666,7 @@
     const my = G.armyPower(tag);
     for (const t of neigh) {
       if (!st.C[t]?.alive || G.sameFaction(tag, t) || G.atWar(tag, t) || st.pacts[G.pairKey(tag, t)]) continue;
-      if (t === st.player && st.day < 365) continue;
+      if (G.isHuman(t) && st.day < 365) continue;
       const their = G.sidePower(t, (x) => G.armyPower(x.tag));
       const r = my / (their + 1);
       if (r > (free ? 2.4 : 1.8) && r > bv) { bv = r; best = t; }

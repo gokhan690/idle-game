@@ -5,7 +5,7 @@
   const G = g.G;
   const C = (t) => G.st.C[t];
   const alive = (t) => !!C(t)?.alive;
-  const ai = (t) => t !== G.st.player;
+  const ai = (t) => !G.isHuman(t);
   const free = (t) => alive(t) && ai(t);
   const sp = (c, id) => { if (!c.spirits.includes(id)) { c.spirits.push(id); G.recomputeMods(c); } };
   const tsp = (c, id, d) => G.timedSpirit(c.tag, id, d);
@@ -321,7 +321,7 @@
   G.onCivilEnd = (win, lose) => {
     const st = G.st, c = st.C[win]; if (!c || !c.alive) return;
     G.timedSpirit(win, 'alt_ruins', 540);
-    if (win === st.player && G.achFlag) G.achFlag('civil');
+    if (G.isHuman(win) && G.achFlag) G.achFlag('civil');
     const opts = [
       { n: 'Ulusal uzlaşma', d: '2 yıl Ulusal Uzlaşma (istikrar +%10, fabrika +%5)', fx: () => G.timedSpirit(win, 'alt_reconcile', 730) },
       { n: 'Hesap sor', d: '2 yıl Hesaplaşma (savaş desteği +%10, insan gücü, istikrar −%5)', fx: () => G.timedSpirit(win, 'alt_reckoning', 730) },

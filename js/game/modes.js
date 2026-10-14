@@ -11,8 +11,8 @@
     { n: 'Elit', d: 'Yapay zekâya +%20 fabrika, +%10 araştırma ve moral; sana istikrar ve savaş desteği cezası. Yalnızca tecrübeli komutanlar için.', pl: { stab: -0.08, ws: -0.05, factory: -0.05 }, ai: { factory: 0.2, research: 0.1, org: 0.05 }, cm: 1.15, aggr: 1.15 },
   ];
   const D = () => G.DIFF[G.st.opts.diff ?? 1] || G.DIFF[1];
-  G.diffFx = (c) => { const d = D(); if (c.tag === G.st.player) return d.pl; return (c.major && d.aiMajor) || d.ai; };
-  G.diffCombat = (tag) => (tag === G.st.player ? 1 : D().cm);
+  G.diffFx = (c) => { const d = D(); if (G.isHuman(c.tag)) return d.pl; return (c.major && d.aiMajor) || d.ai; };
+  G.diffCombat = (tag) => (G.isHuman(tag) ? 1 : D().cm);
   G.diffAggr = () => D().aggr;
 
   // ---------- Alternatif dünya ----------
@@ -27,7 +27,7 @@
   };
   G.altSetup = () => {
     const st = G.st; if (!st.opts.alt) return;
-    const cands = Object.keys(g.FOCUS_NATIONAL).filter((t) => t !== st.player && st.C[t]?.alive && rootsOf(t).length);
+    const cands = Object.keys(g.FOCUS_NATIONAL).filter((t) => !G.isHuman(t) && st.C[t]?.alive && rootsOf(t).length);
     const n = Math.min(cands.length, 4 + Math.floor(G.rand() * 3));
     st.altPlan = {};
     for (let k = 0; k < n; k++) {
@@ -54,7 +54,7 @@
   // dünya haberi: bir YZ ülkesi alternatif yola girdi
   G.altRootNews = (c, f) => {
     const st = G.st;
-    if (c.tag === st.player || !st.player) return;
+    if (G.isHuman(c.tag) || !st.player) return;
     G.log(`${G.cname(c.tag)} alternatif bir yola girdi: ${f.n}.`, [c.tag], 'major');
     if (!G.newsOn || st._newsDay === st.day) return;
     st._newsDay = st.day;
@@ -71,7 +71,7 @@
       const [a, b] = pr; if (!pr[2] && pr[2] !== 0) continue; // tarihî İspanya İç Savaşı kendi yardımını alır
       if (!st.C[a]?.alive || !st.C[b]?.alive) continue;
       for (const m of Object.values(st.C)) {
-        if (!m.alive || !m.major || m.tag === st.player || m.tag === a || m.tag === b || m.enemies.length) continue;
+        if (!m.alive || !m.major || G.isHuman(m.tag) || m.tag === a || m.tag === b || m.enemies.length) continue;
         const side = [a, b].find((t) => st.C[t].ideo === m.ideo && st.C[t === a ? b : a].ideo !== m.ideo);
         if (!side) continue;
         G.lend(m.tag, side, 'inf', 500); G.lend(m.tag, side, 'art', 10);

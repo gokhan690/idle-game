@@ -506,6 +506,21 @@
   ACT.load = (d) => { const ok = G.loadGame(d.v); UI.toast(ok ? 'Kayıt yüklendi.' : 'Kayıt yüklenemedi.', ok ? 'good' : 'bad'); if (ok) { UI.close(); UI.enterGame(); } };
   // yuva silme: ilk dokunuş onay ister, ikincisi siler
   ACT.delsave = (d) => { if (UI.delArm !== d.v) { UI.delArm = d.v; UI.render(); return; } G.saveDel(d.v); UI.delArm = null; UI.toast('Kayıt silindi.', 'info'); UI.render(); };
+  ACT.csave = async (d) => {
+    UI.cloud.busy = d.v; UI.render();
+    const r = await G.cloud.save(d.v);
+    UI.cloud.busy = ''; UI.toast(r.ok ? 'Oyun buluta kaydedildi.' : 'Bulut kaydı başarısız: ' + r.why, r.ok ? 'good' : 'bad');
+    UI.cloud.t = 0; UI.cloudRefresh();
+  };
+  ACT.cload = async (d) => {
+    UI.cloud.busy = d.v; if (UI.panel) UI.render(); else UI.renderStart();
+    const r = await G.cloud.load(d.v);
+    UI.cloud.busy = '';
+    if (!r.ok) { UI.toast('Bulut kaydı yüklenemedi: ' + r.why, 'bad'); if (UI.panel) UI.render(); else UI.renderStart(); return; }
+    const x = G.importSave(r.str);
+    if (!x.ok) { UI.toast('Kayıt yüklenemedi: ' + x.why, 'bad'); return; }
+    UI.toast('Bulut kaydı yüklendi.', 'good'); UI.close(); UI.enterGame();
+  };
   ACT.exportsave = async () => { const r = await G.exportSave(); UI.toast(r.ok ? 'Kayıt dosyası indirildi.' : r.why || 'Dosya oluşturulamadı.', r.ok ? 'good' : 'bad'); };
   ACT.mapset = (d) => { UI.settings[d.k] = d.k === 'hires' || d.k === 'big' || d.k === 'q' || d.k === 'fs' ? +d.v : d.v; if (d.k === 'q') { R.qAuto = null; R.dprAuto = 0; } UI.saveSettings(); UI.applyMapSettings(); UI.render(); };
   ACT.autosave = (d) => { UI.settings.autosave = +d.v; UI.saveSettings(); UI.render(); };

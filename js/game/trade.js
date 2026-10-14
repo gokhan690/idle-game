@@ -110,7 +110,7 @@
     G.refreshTradeCache();
     for (const c of Object.values(st.C)) {
       if (!c.alive) continue;
-      if (c.tag === st.player && !c.auto.trade) continue;
+      if (G.isHuman(c.tag) && !c.auto.trade) continue;
       G.autoTrade(c);
     }
     G.refreshTradeCache();

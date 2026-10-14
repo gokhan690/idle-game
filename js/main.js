@@ -367,7 +367,13 @@
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
   });
   g.addEventListener('orientationchange', () => setTimeout(() => R.resize(), 250));
-  document.addEventListener('visibilitychange', () => { if (document.hidden && G.st && $('start').hidden && UI.settings.autosave) G.saveGame('auto'); });
+  let lastCloud = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden || !G.st || !$('start').hidden) return;
+    if (UI.settings.autosave) G.saveGame('auto');
+    // otomatik bulut kaydı: en çok 5 dakikada bir, bulut kullanılabiliyorsa
+    if (UI.cloud && UI.cloud.ready && Date.now() - lastCloud > 300000 && !(G.net && G.net.active)) { lastCloud = Date.now(); G.cloud.save('cauto'); }
+  });
 
   // ---------- Başlat ----------
   function boot(restore) {
