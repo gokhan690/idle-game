@@ -35,7 +35,7 @@
   N.create = async () => {
     const db = await D(), me = await caps.uid(); if (!db || !me) return UI.toast('Çok oyunculu için claude.ai içinde oturum açık olmalı.', 'bad');
     const gid = randCode();
-    await db.doc('games/' + gid).set({ host: me, mode: 'turn', turnDays: 7, hist: 1, alt: 0, diff: 1, status: 'lobby', slots: { [me]: { slot: 0, tag: null } }, created: Date.now(), turn: 0 });
+    await db.doc('games/' + gid).set({ host: me, rt: 0, turnDays: 7, hist: 1, alt: 0, diff: 1, status: 'lobby', slots: { [me]: { slot: 0, tag: null } }, created: Date.now(), turn: 0 });
     N.watch(gid);
   };
   N.join = async (code) => {
@@ -51,7 +51,12 @@
     }
     N.watch(gid);
   };
-  N.leave = () => { stopWatch(); N.active = false; N.gid = null; N.game = null; N.phase = ''; N.turn = -1; N.ords = {}; refresh(); };
+  N.leave = () => {
+    stopWatch(); leaveRoom();
+    N.active = false; N.gid = null; N.game = null; N.phase = ''; N.turn = -1; N.ords = {}; G.simMask = undefined;
+    Object.assign(N.rt, { lastN: -1, maxDay: -1, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], syncing: false });
+    refresh();
+  };
   N.pick = async (tag) => {
     if (!N.game || N.game.status !== 'lobby') return;
     if (Object.entries(N.game.slots).some(([id, s]) => id !== N.me && s.tag === tag)) return UI.toast('Bu ülkeyi başka bir oyuncu seçti.', 'warn');
@@ -63,8 +68,14 @@
     const db = await D(); N.me = await caps.uid(); N.gid = gid; remember(gid);
     unsubs.push(db.doc('games/' + gid).onSnapshot((s) => {
       if (!s.exists) { UI.toast('Oyun kapatıldı.', 'warn'); N.leave(); return; }
+      const prevHost = N.game && N.game.host;
       N.game = s.data(); names();
-      if (N.game.status === 'play' && N.game.turn !== N.turn && !N.loading) N.loadTurn(N.game.turn);
+      if (N.game.status === 'play') {
+        joinRoom(gid);
+        if (N.game.rt) N.rtWatch(prevHost);
+        else if (N.game.turn !== N.turn && !N.loading) N.loadTurn(N.game.turn);
+        else if (prevHost !== N.game.host) scanOrds(); // kurucu değişti: hazırsa turu yeni kurucu çözer
+      }
       refresh();
     }, () => UI.toast('Oyun bağlantısı koptu; sayfayı yenileyip kodla yeniden katıl.', 'bad')));
     unsubs.push(db.collection(`games/${gid}/ord`).onSnapshot((q) => { N._od = q.docs.map((d) => d.data()); scanOrds(); }));
@@ -85,7 +96,7 @@
     const humans = {}, ns = {};
     slots.forEach(([id, s], i) => { humans[s.tag] = i; ns[id] = { slot: i, tag: s.tag }; });
     G.newGame(gm.slots[N.me].tag, { hist: gm.hist, alt: gm.alt, diff: gm.diff, humans });
-    G.st.speed = 2; G.st.paused = 1; G.st.mp = { gid: N.gid, days: gm.turnDays };
+    G.st.speed = 2; G.st.paused = 1; G.st.mp = { gid: N.gid, days: gm.turnDays, rt: gm.rt ? 1 : 0 };
     N.busy = true;
     try {
       await G.blobWrite(await D(), `games/${N.gid}/snap/m`, `games/${N.gid}/snap/c`, G.serialize(), { turn: 0, day: G.st.day });
@@ -103,7 +114,7 @@
       G.deserialize(r.str);
       const st = G.st, tag = N.myTag();
       st.player = tag || st.player; st.paused = 1;
-      N.turnStart = r.str; N.turnStartObj = JSON.parse(r.str);
+      N.turnStart = r.str; N.turnStartObj = JSON.parse(r.str); G.simMask = '';
       if (!N.isHost()) st.nextId += (N.mySlot() || 0) * SLOT_ID;
       N.turn = turn; N.active = true; N.ords = {};
       for (const x of N._od || []) if (x.turn === turn) N.ords[x.slot] = x;
@@ -143,6 +154,7 @@
       st.nextId = nid; st.player = N.myTag(); st.mpEv = [];
       // tur içindeki olaylar: varsayılan seçenek uygulanır, oyunculara bildirilir
       G.onPopup = () => { while (G.popupQueue.length) { const p = G.popupQueue.shift(); if (!p.news && p.title) evs.push(p.title); try { p.opts && p.opts[0] && p.opts[0].fx && p.opts[0].fx(); } catch (e) { console.error(e); } } };
+      G.simMask = ''; // insan ülkelerinin hepsi aynı kurala tabi: olaylar ve konferanslar pencere açmadan çözülür
       for (let i = 0; i < days && !st.over; i++) G.tick();
       st.mpEv = evs.slice(0, 12); st.paused = 1;
       const str = G.serialize();
@@ -154,14 +166,364 @@
     } catch (e) { console.error(e); UI.toast('Tur çözülemedi: ' + ((e && e.message) || ''), 'bad'); N.phase = 'orders'; } finally { G.onPopup = pop; N.busy = false; N.hud(); }
   };
 
+  // ---------- oda: kim çevrimiçi (kurucu devri) ve gerçek zamanlı iletiler ----------
+  // Gerçek zamanlı kipte herkes aynı simülasyonu çalıştırır (kilitli adım). Kurucu saati yönetir: ~0,4 sn'de bir "frame"
+  // yayar {n, day: tamamlanan gün, sp, pa, c: yeni emirler}; kimse bu günü geçmez. Her emir (durum farkı) kurucuya "cmd" ile
+  // gider; kurucu onu bir güne zamanlar (st.mpq) ve çerçeveyle herkese duyurur; herkes o günün başında aynı sırayla uygular.
+  // Eylemin yerel etkisi geri alınır, böylece emir her cihazda aynı anda devreye girer. Her 20 günde bir durum karmaşası
+  // presence ile karşılaştırılır; uyuşmazlıkta (ya da kayıp çerçevede) oyuncu kurucudan taze anlık görüntü ister ("need" → "snap").
+  const RT = (N.rt = { n: 0, lastN: -1, maxDay: -1, idc: 0, q: 0, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], syncing: false, needAt: 0, snapAt: 0, liveAt: 0, sentDay: -1, sentSp: -1, sentPa: -1, sentAt: 0, waitFor: '', joinedAt: 0, hostSeen: 0 });
+  N.peers = [];
+  let room = null, roomGid = null, roomP = null, timer = 0;
+  const LAG = 10; // kurucu en geride kalan çevrimiçi oyuncudan en çok bu kadar gün öne geçer
+  const livePath = () => [`games/${N.gid}/live/m`, `games/${N.gid}/live/c`];
+  N.rtOn = () => !!(N.active && G.st && G.st.mp && G.st.mp.rt);
+  const slotOf = (id) => (N.game && N.game.slots && N.game.slots[id] ? N.game.slots[id].slot : null);
+  const onlineIds = () => new Set(N.peers.filter((p) => p.by && !p.isMe && p.presence && p.presence.g === N.gid).map((p) => p.by));
+  const joinRoom = async (gid) => {
+    if (roomGid === gid) return room;
+    roomGid = gid;
+    const lob = await (roomP || (roomP = caps.capOf('room')));
+    if (!lob || !lob.join || roomGid !== gid) return null;
+    let r; try { r = await lob.join('dc-' + gid.toLowerCase()); } catch (e) { return null; }
+    if (roomGid !== gid) { try { r.leave(); } catch (e) { /* */ } return null; }
+    room = r; RT.joinedAt = Date.now();
+    r.onPeers((ch) => { N.peers = (ch && ch.peers) || []; if (N.game && onlineIds().has(N.game.host)) RT.hostSeen = Date.now(); N.hud(); });
+    r.on('cmd', (m) => onCmd(m));
+    r.on('frame', (m) => onFrame(m));
+    r.on('need', (m) => onNeed(m));
+    r.on('snap', (m) => onSnap(m));
+    pres({ g: gid, slot: N.mySlot() });
+    if (!timer) timer = setInterval(pump, 400);
+    return r;
+  };
+  const leaveRoom = () => { if (room) try { room.leave(); } catch (e) { /* */ } room = null; roomGid = null; N.peers = []; if (timer) { clearInterval(timer); timer = 0; } };
+  let presLast = '';
+  const pres = (p) => { if (!room) return; const s = JSON.stringify(p); if (s === presLast) return; presLast = s; room.presence(p).catch(() => {}); };
+  const emit = (topic, data) => { if (room) room.emit(topic, data).catch((e) => console.warn('room', topic, e && e.code)); };
+
+  // durum karmaşası (yerel oyuncu, günlük ve zamanlanmış emirler gibi cihaza özgü alanlar hariç)
+  const HSKIP = ['player', 'log', 'led', 'mpq', 'paused', 'speed', 'tsrc', 'tl', 'mpEv'];
+  N.stateHash = () => { const o = JSON.parse(G.serialize()); for (const k of HSKIP) delete o[k]; const s = JSON.stringify(o); let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return (x >>> 0).toString(36); };
+  // emirden sonra türetilmiş değerler (kayda girmeyen) yeniden hesaplanır; herkeste aynı noktada
+  const rederive = () => { const st = G.st; for (const c of Object.values(st.C)) G.recomputeMods(c); G.refreshEnemies(); G.rebuildUnitIndex(); G.updateSummaries(); G.mapDirty = 1; R.mapDirty = 1; };
+
+  // ---- eylem yakalama: önce/sonra farkı, yerel etkiyi geri al, kurucuya gönder ----
+  const UI_ONLY = new Set(('alert back battle bcesc boxsel chime clearsel close closecard continue csave cload delsave dipc divinfo divonly exportsave '
+    + 'focusclose ftnext ftzoom fullscreen home importsave intelopen intelback ledmetric ledtab load log logf mapmode mapmodeNext mapset newgame '
+    + 'opencountry ovgo panel pause pick resinfo save selall selarmy selgroup selmenu selpick selprov setting setmode showc slotpick sopt sound speed '
+    + 'tab tall tutorial unsel wxtoggle autosave dzmod dztier dzlvl paramode linemode armygoaladd armysel fleetsel').split(' '));
+  N.capture = (fn) => {
+    if (!N.rtOn()) return fn();
+    if (!N.myTag()) { UI.toast('İzleyicisin: emir veremezsin.', 'warn'); return; }
+    if (RT.syncing) { UI.toast('Eşitleniyor; birazdan yeniden dene.', 'warn'); return; }
+    G.finishTick();
+    const st = G.st, slot = N.mySlot() || 0, sd = G.supDirty, cw = G.cwDirty, nid = st.nextId;
+    const a = G.snapObj();
+    RT.idc = Math.max(RT.idc, (st.mpIds && st.mpIds[slot]) || 0);
+    const base = 1e9 + slot * 1e7 + RT.idc; // oyuncunun yeni nesne kimlikleri ayrı aralıkta
+    st.nextId = base;
+    let r;
+    try { r = fn(); } finally {
+      const s2 = G.st;
+      if (s2 === st) {
+        const used = st.nextId - base; st.nextId = nid;
+        if (used > 0) { RT.idc += used; st.mpIds = Object.assign({}, st.mpIds, { [slot]: RT.idc }); }
+        const b = G.snapObj(), ops = G.stateDiff(a, b);
+        if (ops.length) { G.applyPatch(st, G.stateDiff(b, a)); rederive(); sendCmd(ops); }
+        G.supDirty = sd; G.cwDirty = cw;
+      }
+    }
+    return r;
+  };
+  const act0 = UI.act;
+  UI.act = (a, ds, el) => (N.rtOn() && !UI_ONLY.has(a) && !a.startsWith('mp') ? N.capture(() => act0(a, ds, el)) : act0(a, ds, el));
+
+  const sendCmd = (ops) => {
+    const s = N.mySlot() || 0, q = (RT.q = Math.max(RT.q + 1, Date.now())), o = JSON.stringify(ops), k = s + ':' + q;
+    if (o.length > 200000) { UI.toast('Bu emir çok büyük; daha küçük adımlarla dene.', 'bad'); return; }
+    const c = { s, q, o };
+    if (N.isHost()) { schedule(c); return; }
+    RT.pend[k] = { c, t: Date.now(), big: o.length > 3000 };
+    transmit(k);
+    N.hud();
+  };
+  const transmit = async (k) => {
+    const p = RT.pend[k]; if (!p) return;
+    p.t = Date.now();
+    if (p.big) {
+      if (!p.stored) { await (await D()).doc(`games/${N.gid}/cmd/${p.c.s}_${p.c.q}`).set({ o: p.c.o }); p.stored = 1; }
+      emit('cmd', { s: p.c.s, q: p.c.q, r: 1 });
+    } else emit('cmd', p.c);
+  };
+  // kurucu: emri bir güne zamanla (tamamlanan günden sonraki gün başında uygulanır)
+  const schedule = async (c) => {
+    const k = c.s + ':' + c.q;
+    if (RT.seen[k]) return; RT.seen[k] = 1;
+    if (c.o == null) {
+      const d = await (await D()).doc(`games/${N.gid}/cmd/${c.s}_${c.q}`).get().catch(() => null);
+      if (!d || !d.exists) { delete RT.seen[k]; return; }
+      c.o = d.data().o;
+    } else if (c.o.length > 3000 && N.isHost() && c.s === (N.mySlot() || 0)) {
+      await (await D()).doc(`games/${N.gid}/cmd/${c.s}_${c.q}`).set({ o: c.o });
+    }
+    G.finishTick();
+    const st = G.st, e = { k, s: c.s, q: c.q, d: st.day, o: c.o };
+    (st.mpq || (st.mpq = [])).push(e);
+    RT.out.push(e);
+  };
+  const onCmd = (m) => {
+    if (!N.isHost() || !N.rtOn() || m.sameTab) return;
+    const c = m.data || {};
+    if (typeof c.s !== 'number' || typeof c.q !== 'number' || slotOf(m.by) !== c.s) return; // gönderen kendi yuvası adına emir verebilir
+    if (c.r) schedule({ s: c.s, q: c.q, o: null }); else if (typeof c.o === 'string') schedule({ s: c.s, q: c.q, o: c.o });
+  };
+
+  // ---- gün sınırı: zamanı gelen emirleri yuva/sıra düzeninde uygula ----
+  G.preDay = () => {
+    const st = G.st; if (!st.mpq || !st.mpq.length) return;
+    const due = st.mpq.filter((e) => e.d <= st.day && e.o != null).sort((a, b) => a.d - b.d || a.s - b.s || a.q - b.q);
+    if (!due.length) return;
+    st.mpq = st.mpq.filter((e) => !due.includes(e));
+    for (const e of due) { RT.applied[e.k] = 1; try { G.applyPatch(st, JSON.parse(e.o)); } catch (err) { console.error(err); } }
+    rederive(); G.supDirty = 1;
+  };
+  // gerçek zamanlı kipte gün işlenirken yerel oyuncu maskelenir: olaylar ve konferanslar herkeste aynı çözülür
+  const syncMask = () => { G.simMask = N.active && G.st && G.st.mp ? '' : undefined; };
+  G.dayGate = () => {
+    if (!N.rtOn()) return true;
+    const st = G.st;
+    if (RT.syncing) return false;
+    if (N.isHost()) {
+      // en geride kalan çevrimiçi oyuncuyu bekle
+      RT.waitFor = '';
+      const on = onlineIds();
+      for (const p of N.peers) if (p.by && on.has(p.by) && !p.presence.away && typeof p.presence.day === 'number' && p.presence.day < st.day - LAG) { RT.waitFor = N.names[p.by] || 'oyuncu'; return false; }
+      return true;
+    }
+    if (st.day >= RT.maxDay) return false;
+    for (const e of st.mpq || []) if (e.d <= st.day && e.o == null) return false;
+    return true;
+  };
+  // gün sonu (simülasyonun içinden, gün tamamlanınca): 20 günde bir durum karmaşası
+  G.dayEnd = () => {
+    if (!N.rtOn()) return;
+    const st = G.st;
+    if (st.day % 20 === 0) {
+      RT.hashes[st.day] = N.stateHash();
+      for (const d of Object.keys(RT.hashes)) if (+d < st.day - 200) delete RT.hashes[d];
+    }
+    // kurucu: dakikada bir (en çok) canlı anlık görüntü; kurucu dönünce ya da kimse yokken sürdürmek için
+    if (N.isHost() && st.day % 30 === 0 && Date.now() - RT.liveAt > 60000) { RT.liveAt = Date.now(); setTimeout(() => writeLive(false), 0); }
+  };
+
+  // ---- kurucu: çerçeve yayını ----
+  const emitFrames = (force) => {
+    const st = G.st; if (!st) return;
+    const done = G.tickIt ? st.day - 1 : st.day, sp = st.speed || 1, pa = st.paused || UI.modalOpen ? 1 : 0;
+    if (!force && !RT.out.length && done === RT.sentDay && sp === RT.sentSp && pa === RT.sentPa && Date.now() - RT.sentAt < 3000) return;
+    const out = RT.out; RT.out = [];
+    let c = [], size = 0;
+    const send = () => { emit('frame', { n: ++RT.n, day: done, sp, pa, c }); c = []; size = 0; };
+    for (const e of out) {
+      const x = e.o.length <= 3000 ? { k: e.k, s: e.s, q: e.q, d: e.d, o: e.o } : { k: e.k, s: e.s, q: e.q, d: e.d, r: 1 };
+      const xs = JSON.stringify(x).length;
+      if (size + xs > 3400 && c.length) send();
+      c.push(x); size += xs;
+    }
+    send();
+    RT.sentDay = done; RT.sentSp = sp; RT.sentPa = pa; RT.sentAt = Date.now();
+  };
+  // ---- oyuncu: çerçeve al ----
+  const onFrame = (m) => {
+    if (m.sameTab || !N.game || m.by !== N.game.host || N.isHost()) return;
+    const f = m.data; if (!f || typeof f.n !== 'number') return;
+    if (RT.syncing || !N.rtOn()) { RT.buf.push(f); if (RT.buf.length > 400) RT.buf.shift(); return; }
+    applyFrame(f);
+  };
+  const applyFrame = (f) => {
+    if (f.n <= RT.lastN) return;
+    if (RT.lastN >= 0 && f.n !== RT.lastN + 1) { requestSync('kayıp çerçeve'); RT.buf.push(f); return; }
+    RT.lastN = f.n;
+    const st = G.st;
+    for (const x of f.c || []) {
+      delete RT.pend[x.k];
+      if (RT.applied[x.k] || (st.mpq || []).some((e) => e.k === x.k)) continue;
+      if (x.d < st.day) { requestSync('geç emir'); return; }
+      const e = { k: x.k, s: x.s, q: x.q, d: x.d, o: x.o != null ? x.o : null };
+      (st.mpq || (st.mpq = [])).push(e);
+      if (e.o == null) fetchRef(e);
+    }
+    RT.maxDay = Math.max(RT.maxDay, f.day);
+    st.paused = 0; // oyuncu izin verilen güne kadar ilerler (kurucu duraklarsa izin verilen gün de durur)
+    st.speed = RT.maxDay - st.day > 4 || f.pa ? 5 : f.sp; // geride kalan cihaz yetişmek için hızlanır
+    if (RT.maxDay - st.day > 120) requestSync('çok geride');
+  };
+  const fetchRef = async (e) => {
+    for (let k = 0; k < 6 && e.o == null; k++) {
+      const d = await (await D()).doc(`games/${N.gid}/cmd/${e.s}_${e.q}`).get().catch(() => null);
+      if (d && d.exists) { e.o = d.data().o; return; }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    if (e.o == null) requestSync('emir okunamadı');
+  };
+
+  // ---- eşitleme: taze anlık görüntü ----
+  const requestSync = (why) => {
+    if (N.isHost() || !N.gid) return;
+    if (!RT.syncing) { RT.syncing = true; RT.buf = []; console.warn('eşitleme:', why); N.hud(); }
+    if (Date.now() - RT.needAt < 5000) return;
+    RT.needAt = Date.now();
+    emit('need', { at: Date.now() });
+  };
+  const writeLive = async (announce) => {
+    G.finishTick(); emitFrames(true);
+    const st = G.st, str = G.serialize(), meta = { day: st.day, fn: RT.n, at: Date.now(), host: N.me };
+    RT.liveAt = Date.now();
+    const [m, c] = livePath();
+    try { await G.blobWrite(await D(), m, c, str, meta); } catch (e) { console.warn('canlı görüntü yazılamadı', e); return; }
+    if (announce) emit('snap', { at: meta.at });
+  };
+  const onNeed = (m) => {
+    if (!N.isHost() || !N.rtOn() || m.sameTab || slotOf(m.by) == null) return;
+    if (Date.now() - RT.snapAt < 3000) { setTimeout(() => onNeed(m), 3200 - (Date.now() - RT.snapAt)); return; }
+    RT.snapAt = Date.now();
+    writeLive(true);
+  };
+  const onSnap = (m) => { if (!m.sameTab && N.game && m.by === N.game.host && RT.syncing && !N.isHost()) loadLive((m.data && m.data.at) || 0); };
+  const loadLive = async (at) => {
+    if (RT.loadingLive) return; RT.loadingLive = true;
+    try {
+      const [m, c] = livePath();
+      let r = null;
+      // duyurulan görüntü (ya da daha yenisi) okunana dek kısa aralıklarla dene
+      for (let k = 0; k < 6; k++) { r = await G.blobRead(await D(), m, c).catch(() => null); if (r && (r.meta.at || 0) >= at) break; await new Promise((res) => setTimeout(res, 500)); }
+      if (!r || (r.meta.at || 0) < at) { RT.needAt = 0; setTimeout(() => RT.syncing && requestSync('görüntü yok'), 1500); return; }
+      enterRt(r.str, r.meta.fn);
+      const fr = RT.buf.filter((f) => f.n > r.meta.fn).sort((a, b) => a.n - b.n); RT.buf = [];
+      for (const f of fr) applyFrame(f);
+    } finally { RT.loadingLive = false; }
+  };
+  // anlık görüntüyü yükle ve gerçek zamanlı oyuna gir
+  const enterRt = (str, fn) => {
+    const first = !N.active || !$('start').hidden;
+    G.deserialize(str);
+    const st = G.st, tag = N.myTag();
+    st.player = tag || st.player;
+    RT.lastN = fn; RT.maxDay = st.day; RT.syncing = false; RT.applied = {}; RT.seen = {}; RT.hashes = {};
+    for (const e of st.mpq || []) RT.seen[e.k] = 1;
+    RT.idc = Math.max(RT.idc, (st.mpIds && st.mpIds[N.mySlot() || 0]) || 0);
+    if (!N.isHost()) st.paused = 1;
+    N.active = true; N.phase = 'rt'; N.turn = 0; syncMask();
+    R.mapDirty = 1; G.mapDirty = 1;
+    if (first) UI.enterGame(); else { UI.hud(); if (UI.panel) UI.render(); UI.renderSel && UI.renderSel(); }
+    for (const k of Object.keys(RT.pend)) transmit(k); // yanıtı gelmemiş emirler
+    pres({ g: N.gid, slot: N.mySlot(), day: st.day });
+    N.hud();
+  };
+  // gerçek zamanlı oyuna katıl / yeniden bağlan
+  N.rtWatch = async (prevHost) => {
+    const gm = N.game;
+    if (N.isHost()) {
+      if (!N.active && !RT.loadingLive) {
+        // kurucu: önce canlı görüntü, yoksa başlangıç görüntüsü
+        RT.loadingLive = true;
+        try {
+          const [m, c] = livePath();
+          let r = await G.blobRead(await D(), m, c).catch(() => null);
+          if (!r) r = await G.blobRead(await D(), `games/${N.gid}/snap/m`, `games/${N.gid}/snap/c`).catch(() => null);
+          if (!r) { UI.toast('Oyun görüntüsü bulunamadı.', 'bad'); return; }
+          RT.n = Math.max(RT.n, r.meta.fn || 0);
+          enterRt(r.str, RT.n);
+          G.st.paused = 1;
+          // daha ilerideki bir oyuncu çevrimiçiyse kuruculuk ona geçer, biz ondan eşitleniriz
+          setTimeout(handBack, 3000);
+        } finally { RT.loadingLive = false; }
+      } else if (prevHost && prevHost !== N.me) {
+        // kuruculuğu devraldık: emir kaydını sürdür
+        RT.n = Math.max(RT.n, RT.lastN); RT.seen = Object.assign({}, RT.applied); for (const e of G.st.mpq || []) RT.seen[e.k] = 1;
+        RT.syncing = false; RT.buf = [];
+        G.st.paused = 0; UI.toast('Kurucu ayrıldı; oyunu artık sen yönetiyorsun.', 'warn'); N.hud();
+      }
+      return;
+    }
+    if (!N.active || (prevHost && prevHost !== gm.host)) { RT.lastN = -1; requestSync(N.active ? 'kurucu değişti' : 'katılım'); }
+  };
+  // dönen kurucu: kendisinden ileride bir oyuncu varsa kuruculuğu ona bırakır
+  const handBack = async () => {
+    if (!N.isHost() || !N.rtOn()) return;
+    const on = onlineIds(); let best = null;
+    for (const p of N.peers) if (p.by && on.has(p.by) && slotOf(p.by) != null && typeof p.presence.day === 'number' && p.presence.day > G.st.day && (!best || p.presence.day > best.presence.day)) best = p;
+    if (best) { await (await D()).doc('games/' + N.gid).update({ host: best.by }); UI.toast('Diğer oyuncular ilerideydi; oyunu onlardan eşitliyorsun.', 'info'); }
+  };
+  // kurucu çevrimdışıysa: en ileri günde (eşitlikte en küçük yuvada) olan çevrimiçi oyuncu devralır
+  const takeover = async () => {
+    const gm = N.game; if (!gm || gm.status !== 'play' || N.isHost() || !N.active || !room) return;
+    if (Date.now() - RT.joinedAt < 8000) return;
+    const on = onlineIds(); if (on.has(gm.host)) { RT.hostSeen = Date.now(); return; }
+    if (Date.now() - Math.max(RT.hostSeen, RT.joinedAt) < 10000) return;
+    const rt = N.rtOn(), myDay = G.st ? G.st.day : 0, mySlot = N.mySlot();
+    if (mySlot == null || !N.myTag()) return;
+    for (const p of N.peers) {
+      if (!p.by || !on.has(p.by) || slotOf(p.by) == null) continue;
+      const d = typeof p.presence.day === 'number' ? p.presence.day : -1, s = slotOf(p.by);
+      if (rt ? d > myDay || (d === myDay && s < mySlot) : s < mySlot) return; // daha uygun biri var
+    }
+    RT.hostSeen = Date.now();
+    await (await D()).doc('games/' + N.gid).update({ host: N.me });
+  };
+  // düzenli işler: çerçeve yayını, emir yeniden gönderimi, presence, kurucu devri
+  const pump = () => {
+    if (!N.gid) return;
+    syncMask();
+    if (RT.syncing && Date.now() - RT.needAt > 6000) requestSync('yanıt yok');
+    if (N.rtOn()) {
+      if (N.isHost()) emitFrames(false);
+      else for (const [k, p] of Object.entries(RT.pend)) if (Date.now() - p.t > 3000) transmit(k);
+      pres({ g: N.gid, slot: N.mySlot(), day: G.st.day, hd: presHd(), hh: RT.hashes[presHd()], away: document.hidden ? 1 : null });
+      if (!N.isHost()) checkHash();
+    } else pres({ g: N.gid, slot: N.mySlot(), day: G.st && N.active ? G.st.day : null });
+    takeover();
+    N.hud();
+  };
+  const presHd = () => { const ks = Object.keys(RT.hashes).map(Number); return ks.length ? Math.max(...ks) : null; };
+  // kurucunun karmaşası bizimkiyle aynı gün için farklıysa eşitle
+  const checkHash = () => {
+    if (RT.syncing || !N.game) return;
+    const h = N.peers.find((p) => p.by === N.game.host && !p.isMe);
+    const hp = h && h.presence; if (!hp || hp.hd == null || !hp.hh) return;
+    const mine = RT.hashes[hp.hd];
+    if (mine && mine !== hp.hh) { RT.hashes = {}; requestSync(`karmaşa farkı (gün ${hp.hd})`); }
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (!N.rtOn()) return;
+    if (document.hidden && N.isHost()) writeLive(false);
+    pump();
+  });
+
   // ---------- arayüz: tur çubuğu ----------
   N.hud = () => {
     let bar = $('mpbar');
-    document.body.classList.toggle('mp', !!N.active);
+    document.body.classList.toggle('mp', !!N.active && !(N.rtOn() && N.isHost())); // gerçek zamanlıda saati kurucu yönetir
     if (!N.active || $('start').hidden === false) { if (bar) bar.hidden = true; return; }
     if (!bar) { bar = document.createElement('div'); bar.id = 'mpbar'; bar.className = 'mpbar'; document.getElementById('app').appendChild(bar); }
-    const hs = humanSlots(), ready = hs.filter((s) => N.ords[s.slot]).length;
-    let h = `<span class="mpt">Tur ${N.turn + 1} · ${(N.game && N.game.turnDays) || 7} gün</span><span class="mpr">${ready}/${hs.length} hazır</span>`;
+    const hs = humanSlots(), ready = hs.filter((s) => N.ords[s.slot]).length, on = onlineIds(), hostOff = N.game && room && Date.now() - RT.joinedAt > 6000 && !N.isHost() && !on.has(N.game.host);
+    let h;
+    if (N.rtOn()) {
+      const st = G.st, pn = Object.keys(RT.pend).length;
+      h = `<span class="mpt">Canlı</span><span class="mpr">${on.size + 1}/${Math.max(hs.length, on.size + 1)} çevrimiçi</span>`;
+      if (!N.myTag()) h += '<span class="muted small">İzleyici</span>';
+      if (RT.syncing) h += '<span class="muted small">Eşitleniyor…</span>';
+      else if (!N.isHost() && RT.maxDay - st.day > 3) h += `<span class="muted small">Yetişiliyor: ${RT.maxDay - st.day} gün</span>`;
+      if (pn) h += `<span class="muted small">${pn} emir yolda</span>`;
+      if (N.isHost() && RT.waitFor) h += `<span class="muted small">Bekleniyor: ${esc(RT.waitFor)}</span>`;
+      if (hostOff) h += '<span class="muted small">Kurucu çevrimdışı</span>';
+      if (bar.dataset.h !== h) { bar.innerHTML = h; bar.dataset.h = h; }
+      bar.hidden = false;
+      return;
+    }
+    h = `<span class="mpt">Tur ${N.turn + 1} · ${(N.game && N.game.turnDays) || 7} gün</span><span class="mpr">${ready}/${hs.length} hazır</span>`;
+    if (hostOff) h += '<span class="muted small">Kurucu çevrimdışı</span>';
     if (!N.myTag()) h += '<span class="muted small">İzleyici</span>';
     else if (N.phase === 'orders') h += `<button class="btn sm pri" data-act="mpend" ${N.sending ? 'disabled' : ''}>${N.sending ? 'Gönderiliyor…' : 'Turu bitir'}</button>`;
     else if (N.phase === 'wait') h += `<span class="muted small">Bekleniyor</span>${N.isHost() ? '<button class="btn sm" data-act="mpforce">Beklemeden devam</button>' : ''}`;
@@ -172,12 +534,12 @@
 
   // ---------- arayüz: başlangıç ekranı bölümü ve lobi ----------
   UI.mpSection = () => {
-    if (N.availState === undefined) { N.availState = null; N.avail().then((v) => { N.availState = v; if (!$('start').hidden) UI.renderStart(); }); }
+    if (N.availState === undefined) { N.availState = null; N.avail().then(async (v) => { N.roomOk = v && !!(await (roomP || (roomP = caps.capOf('room')))); N.availState = v; if (!$('start').hidden) UI.renderStart(); }); }
     if (!N.availState) return '';
     if (N.gid && N.game && N.game.status === 'lobby') return lobbyHtml();
     const recent = myJoined();
-    return `<div class="sec"><h3 class="sec-h">Çok oyunculu<span>çevrimiçi · tur tabanlı</span></h3>
-      <p class="muted small" style="margin:0 0 8px">Arkadaşlarınla aynı dünyada oyna: herkes kendi ülkesine emir verir, "Turu bitir"e basar; tur herkes için birlikte işler. Arkadaşların bu oyunu claude.ai hesaplarıyla açabilmeli (Paylaş menüsünden en az "katkıda bulunabilir" izni).</p>
+    return `<div class="sec"><h3 class="sec-h">Çok oyunculu<span>çevrimiçi</span></h3>
+      <p class="muted small" style="margin:0 0 8px">Arkadaşlarınla aynı dünyada oyna: tur tabanlı (herkes emirlerini verip "Turu bitir"e basar) ya da gerçek zamanlı (zaman herkes için birlikte akar). Arkadaşların bu oyunu claude.ai hesaplarıyla açabilmeli (Paylaş menüsünden en az "katkıda bulunabilir" izni).</p>
       <div class="btns"><button class="btn pri" data-act="mpcreate">Oyun kur</button></div>
       <div class="row" style="gap:8px;margin-top:8px"><input id="mp-code" class="mpcode-in" maxlength="6" placeholder="Oyun kodu" autocapitalize="characters" autocomplete="off"><button class="btn" data-act="mpjoin">Katıl</button></div>
       ${recent.length ? `<div class="btns" style="margin-top:6px">${recent.map((c) => `<button class="btn sm" data-act="mpjoin" data-v="${c}">${c}</button>`).join('')}</div>` : ''}</div>`;
@@ -196,7 +558,8 @@
       <h3 class="sec-h" style="margin-top:10px">Ayarlar${host ? '' : '<span>kurucu belirler</span>'}</h3>
       <div class="seg">${opt('hist', 1, 'Tarihî')}${opt('hist', 0, 'Serbest')}</div>
       <div class="seg" style="margin-top:6px">${G.DIFF.map((x, i) => opt('diff', i, x.n)).join('')}</div>
-      <div class="seg" style="margin-top:6px">${opt('turnDays', 3, 'Tur 3 gün')}${opt('turnDays', 7, 'Tur 7 gün')}${opt('turnDays', 14, 'Tur 14 gün')}</div>
+      ${N.roomOk ? `<div class="seg" style="margin-top:6px">${opt('rt', 0, 'Tur tabanlı')}${opt('rt', 1, 'Gerçek zamanlı')}</div>` : ''}
+      ${gm.rt ? '<p class="muted small" style="margin:6px 0 0">Zaman herkes için birlikte akar; hızı ve duraklatmayı kurucu yönetir. Emirler bir iki saniye içinde herkeste aynı anda devreye girer. Tur içi olaylarda ilk seçenek uygulanır.</p>' : `<div class="seg" style="margin-top:6px">${opt('turnDays', 3, 'Tur 3 gün')}${opt('turnDays', 7, 'Tur 7 gün')}${opt('turnDays', 14, 'Tur 14 gün')}</div>`}
       <div class="btns" style="margin-top:10px">${host ? `<button class="btn pri" data-act="mpstart" ${mine ? '' : 'disabled'}>Oyunu başlat</button>` : '<span class="muted small">Kurucunun başlatması bekleniyor…</span>'}<button class="btn" data-act="mpleave">Lobiden çık</button></div></div>`;
   };
 
@@ -211,5 +574,5 @@
   A.mpend = () => N.endTurn();
   A.mpforce = () => { if (N.isHost() && Object.keys(N.ords).length) N.resolve(); else UI.toast('Önce kendi turunu bitir.', 'warn'); };
   // çok oyunculu turda zamanı oyuncular değil, tur akışı yönetir
-  for (const k of ['pause', 'speed']) { const f = A[k]; A[k] = (d) => { if (N.active) { UI.toast('Çok oyunculu oyunda zaman turlarla ilerler: "Turu bitir"e bas.', 'info'); return; } f(d); }; }
+  for (const k of ['pause', 'speed']) { const f = A[k]; A[k] = (d) => { if (N.active && !(N.rtOn() && N.isHost())) { UI.toast(N.rtOn() ? 'Gerçek zamanlı oyunda hızı ve duraklatmayı kurucu yönetir.' : 'Çok oyunculu oyunda zaman turlarla ilerler: "Turu bitir"e bas.', 'info'); return; } f(d); }; }
 })(window);

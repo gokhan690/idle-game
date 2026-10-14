@@ -140,8 +140,12 @@
     G.rebuildUnitIndex();
     G.updateSummaries();
     for (const c of Object.values(st.C)) if (c.alive) { G.initFleets(c); G.initWings(c); c._mpu = null; G.econCalc(c); }
-    if (st.C[st.player]) { G.autoArmies(st.C[st.player]); for (const a of st.C[st.player].armies || []) a.ord = 'hold'; }
-    if (G.cpEnsure && st.C[st.player]) { G.cpEnsure(st.C[st.player]); st.C[st.player].nxp = 30; } // komuta gücü, deniz tecrübesi
+    // insan ülkeleri (çok oyunculuda hepsi): başlangıç orduları, komuta gücü, deniz tecrübesi
+    for (const t of st.humans ? Object.keys(st.humans) : [st.player]) {
+      const hc = st.C[t]; if (!hc) continue;
+      G.autoArmies(hc); for (const a of hc.armies || []) a.ord = 'hold';
+      if (G.cpEnsure) { G.cpEnsure(hc); hc.nxp = 30; }
+    }
     if (G.scoreStart) G.scoreStart(); // oyun sonu karşılaştırması için başlangıç değerleri
     if (G.altSetup) G.altSetup(); // alternatif dünya: hangi YZ ülkeleri alternatif yola girecek
     G.log('1 Ocak 1936. Avrupa\'da gerginlik tırmanıyor.', [], 'info');

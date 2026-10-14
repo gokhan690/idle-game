@@ -541,7 +541,7 @@
     rd.onerror = () => UI.toast('Dosya okunamadı.', 'bad');
     rd.readAsText(inp.files[0]);
   };
-  ACT.setmode = (d) => { R.setMode(d.v); if (d.v === 'sup') G.computeSupplyFor(me()); UI.render(); UI.hud(); };
+  ACT.setmode = (d) => { R.setMode(d.v); if (d.v === 'sup' && !(G.net && G.net.active)) G.computeSupplyFor(me()); UI.render(); UI.hud(); };
   ACT.wxtoggle = () => { R.showWeather = !R.showWeather; R.dirty = 1; UI.render(); };
   UI.MODE_N = { pol: 'Siyasi', terrain: 'Arazi', ind: 'Sanayi', res: 'Kaynak', ideo: 'İdeoloji', fac: 'İttifaklar', vp: 'Zafer noktaları', goal: 'Savaş hedefleri', sup: 'İkmal', air: 'Hava', sea: 'Deniz', occ: 'Direniş' };
   UI.MODE_D = { pol: 'Ülkeler ve işgaller', terrain: 'Arazi türleri', ind: 'Fabrika yoğunluğu', res: 'Kahverengi petrol, mavi çelik', ideo: 'İktidar ideolojisi', fac: 'İttifak blokları', vp: 'Şehirlerin zafer noktası', goal: 'Kırmızı savaş, turuncu gerekçe, sarı hazırlanan gerekçe', sup: 'Kırmızı yetersiz, yeşil bol ikmal', air: 'Hava bölgeleri ve üstünlük', sea: 'Deniz bölgelerinde üstünlük', occ: 'İşgaldeki direniş' };
@@ -553,7 +553,7 @@
     m.innerHTML = Object.entries(UI.MODE_N).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}"><b>${n}</b><small>${UI.MODE_D[k]}</small></button>`).join('');
     m.hidden = false;
   };
-  ACT.setmode = (d) => { $('mm-menu').hidden = true; R.setMode(d.v); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + ' · ' + UI.MODE_D[R.mode]); UI.hud(); };
+  ACT.setmode = (d) => { $('mm-menu').hidden = true; R.setMode(d.v); if (R.mode === 'sup' && !(G.net && G.net.active)) G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + ' · ' + UI.MODE_D[R.mode]); UI.hud(); };
   ACT.mapmodeNext = () => { const order = Object.keys(UI.MODE_N); R.setMode(order[(order.indexOf(R.mode) + 1) % order.length]); if (R.mode === 'sup') G.computeSupplyFor(me()); UI.toast('Harita modu: ' + UI.MODE_N[R.mode] + (R.mode === 'sup' ? ' · kırmızı: yetersiz, yeşil: bol ikmal; kutular ikmal merkezleri, çizgiler demiryolları' : R.mode === 'occ' ? ' · işgal altındaki eyaletler: yeşil düşük, kırmızı yüksek direniş' : '')); UI.hud(); };
   ACT.auto = (d) => { const r = G.autoAct(d.k, d.v); if (!r.ok) UI.toast('Bu eylem şu an yapılamaz.', 'bad'); UI.render(true); UI.hud(); };
   ACT.tutorial = () => { UI.close(); if (UI.startTutorial) UI.startTutorial(); };

@@ -40,19 +40,38 @@
   };
   const db = { doc, collection: (p) => col(p) };
   const user = { id: async () => uid, me: async () => ({ id: uid, name: 'Oyuncu ' + uid, isMe: true }), isOwner: async () => uid === 'u1', canEdit: async () => true, can: async () => true, profiles: async (ids) => Object.fromEntries(ids.map((i) => [i, { id: i, name: 'Oyuncu ' + i }])) };
-  // room: BroadcastChannel ile anlık mesaj ve presence
+  // room: BroadcastChannel ile anlık mesaj ve presence (gerçek API biçimi: msg {topic, data, by, peer, isMe, sameTab}; onPeers {peers, joined, left, updated})
+  const tab = Math.random().toString(36).slice(2, 10);
+  const drop = +(new URLSearchParams(location.search).get('drop') || 0); // test: iletilerin bu oranı düşer
   const mkRoom = (name) => {
     const ch = new BroadcastChannel('mockroom:' + name), on = {}, peersF = new Set(), peers = {};
-    let me = null;
-    ch.onmessage = (e) => { const m = e.data; if (m.k === 'ev') (on[m.topic] || []).forEach((f) => f(m.data, { id: m.from })); else if (m.k === 'pr') { if (m.data == null) delete peers[m.from]; else peers[m.from] = m.data; peersF.forEach((f) => f(Object.entries(peers).map(([id, p]) => ({ id, presence: p, isMe: id === uid })))); } else if (m.k === 'hello' && me) ch.postMessage({ k: 'pr', from: uid, data: me }); };
-    const api = {
-      emit: async (topic, data) => { ch.postMessage({ k: 'ev', topic, data, from: uid }); },
-      on: (topic, f) => { (on[topic] || (on[topic] = [])).push(f); return () => { on[topic] = on[topic].filter((x) => x !== f); }; },
-      presence: async (p) => { me = Object.assign({}, me || {}, p); peers[uid] = me; ch.postMessage({ k: 'pr', from: uid, data: me }); peersF.forEach((f) => f(Object.entries(peers).map(([id, pp]) => ({ id, presence: pp, isMe: id === uid })))); },
-      onPeers: (f) => { peersF.add(f); setTimeout(() => f(Object.entries(peers).map(([id, p]) => ({ id, presence: p, isMe: id === uid }))), 0); return () => peersF.delete(f); },
-      leave: async () => { ch.postMessage({ k: 'pr', from: uid, data: null }); ch.close(); },
+    let me = null, snap = Object.freeze([]);
+    const seen = {};
+    // yaşam sinyali: kapanan sekme (unload olayı gelmese de) 6 sn sonra odadan düşer
+    setInterval(() => {
+      if (me) ch.postMessage({ k: 'pr', pid: tab, by: uid, data: me });
+      const gone = Object.keys(peers).filter((pid) => pid !== tab && Date.now() - (seen[pid] || 0) > 6000);
+      if (gone.length) { const L = gone.map((pid) => peers[pid]); for (const pid of gone) delete peers[pid]; fire([], L); }
+    }, 1500);
+    const mkPeer = (pid, by, pr) => Object.freeze({ peer: pid, by, isMe: by === uid, sameTab: pid === tab, kind: 'viewer', guest: false, presence: pr, updatedAt: Date.now() });
+    const fire = (joined, left) => { snap = Object.freeze(Object.values(peers)); const ch2 = { peers: snap, joined: joined || [], left: left || [], updated: [] }; peersF.forEach((f) => f(ch2)); };
+    const deliver = (topic, data, pid, by) => (on[topic] || []).forEach((f) => f({ topic, data: clone(data), by, peer: pid, isMe: by === uid, sameTab: pid === tab, kind: 'viewer', guest: false }));
+    ch.onmessage = (e) => {
+      const m = e.data;
+      if (m.k === 'ev') { if (drop && Math.random() < drop) return; deliver(m.topic, m.data, m.pid, m.by); }
+      else if (m.k === 'pr') { if (m.data == null) { const p = peers[m.pid]; delete peers[m.pid]; delete seen[m.pid]; fire([], p ? [p] : []); } else { seen[m.pid] = Date.now(); const ch2 = JSON.stringify(m.data) !== JSON.stringify(peers[m.pid] && peers[m.pid].presence); if (!ch2) return; const nw = !peers[m.pid]; peers[m.pid] = mkPeer(m.pid, m.by, m.data); fire(nw ? [peers[m.pid]] : []); } }
+      else if (m.k === 'hello' && me) ch.postMessage({ k: 'pr', pid: tab, by: uid, data: me });
     };
-    ch.postMessage({ k: 'hello', from: uid });
+    const api = {
+      emit: async (topic, data) => { if (JSON.stringify(data ?? null).length > 4096) throw { code: 'invalid_argument', message: '4 KiB' }; ch.postMessage({ k: 'ev', topic, data, pid: tab, by: uid }); setTimeout(() => deliver(topic, data, tab, uid), 0); },
+      on: (topic, f) => { (on[topic] || (on[topic] = [])).push(f); return () => { on[topic] = on[topic].filter((x) => x !== f); }; },
+      presence: async (p) => { me = Object.assign({}, me || {}, p); for (const k in me) if (me[k] === null) delete me[k]; peers[tab] = mkPeer(tab, uid, me); ch.postMessage({ k: 'pr', pid: tab, by: uid, data: me }); fire(); },
+      peers: () => snap,
+      onPeers: (f) => { peersF.add(f); setTimeout(() => f({ peers: snap, joined: snap, left: [], updated: [] }), 0); return () => peersF.delete(f); },
+      leave: async () => { ch.postMessage({ k: 'pr', pid: tab, by: uid, data: null }); ch.close(); },
+    };
+    addEventListener('pagehide', () => { try { ch.postMessage({ k: 'pr', pid: tab, by: uid, data: null }); } catch (e) { /* */ } });
+    ch.postMessage({ k: 'hello', pid: tab, by: uid });
     return api;
   };
   const room = Object.assign(mkRoom('lobby'), { join: async (n) => mkRoom(n) });

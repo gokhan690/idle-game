@@ -27,7 +27,7 @@
   const afterLoad = () => {
     // çok oyunculu bir oyunun kaydı tek başına sürdürülür: diğer insan ülkeleri yapay zekâya geçer
     if (G.net && G.net.active) G.net.leave();
-    if (G.st.humans || G.st.mp) { delete G.st.humans; delete G.st.mp; }
+    if (G.st.humans || G.st.mp) { delete G.st.humans; delete G.st.mp; delete G.st.mpq; delete G.st.mpIds; }
     G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); };
   G.loadGame = (slot) => {
     const s = store.get(KEY(slot)); if (!s) return false;
@@ -89,7 +89,11 @@
       const end = t0 + (t0 - Math.max(mapTouch, UI.lastTouch || 0) < 400 ? 5 : 11);
       let ticks = 0;
       for (;;) {
-        if (!G.tickIt) { if (!running || acc < 1 || UI.modalOpen || st.over === 1) break; acc -= 1; }
+        if (!G.tickIt) {
+          if (!running || acc < 1 || UI.modalOpen || st.over === 1) break;
+          if (G.dayGate && !G.dayGate()) { acc = Math.min(acc, 1); break; } // çok oyunculu: kurucunun izin verdiği güne kadar
+          acc -= 1;
+        }
         if (!G.tickSlice(end)) break;
         ticks++;
         const m = G.dateOf(st.day).getUTCMonth();
@@ -190,10 +194,10 @@
     if (gesture.type === 'pinch') { if (pointers.size === 0) gesture = null; else { const q = [...pointers.values()][0]; gesture = { type: 'pan', x0: q.x, y0: q.y, cx: R.cam.x, cy: R.cam.y, moved: 1 }; } return; }
     if (gesture.type === 'box') {
       const b = R.box; R.box = null; R.dirty = 1;
-      if (gesture.moved) boxSelect(b); else onTap(p.x, p.y);
+      if (gesture.moved) boxSelect(b); else tapCmd(p.x, p.y);
       gesture = null; return;
     }
-    if (!gesture.moved && !gesture.long && performance.now() - gesture.t0 < 600) onTap(p.x, p.y);
+    if (!gesture.moved && !gesture.long && performance.now() - gesture.t0 < 600) tapCmd(p.x, p.y);
     gesture = null;
   };
   cv.addEventListener('pointerup', end);
@@ -226,6 +230,12 @@
     UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
   }
 
+  // gerçek zamanlı çok oyunculu: emir verebilecek dokunuşlar (seçim ya da emir kipi varken) yakalanıp herkese iletilir
+  function tapCmd(x, y) {
+    const st = G.st;
+    if (st && G.net && G.net.rtOn() && (R.sel.units.size || R.sel.fleet || UI.airPick || UI.basePick || st.conf || UI.lineMode || UI.paraMode || UI.fbMode || UI.goalMode)) G.net.capture(() => onTap(x, y));
+    else onTap(x, y);
+  }
   function onTap(x, y) {
     const sm = document.getElementById('selmenu'); if (sm && !sm.hidden) { sm.hidden = true; return; }
     const st = G.st; if (!st || !$('start').hidden) return;
@@ -366,7 +376,7 @@
   // klavye kısayolları (masaüstü)
   g.addEventListener('keydown', (e) => {
     if (!G.st || !$('start').hidden || UI.modalOpen) return;
-    if ((e.code === 'Space' || /^Digit[1-5]$/.test(e.code)) && G.net && G.net.active) { e.preventDefault(); return; }
+    if ((e.code === 'Space' || /^Digit[1-5]$/.test(e.code)) && G.net && G.net.active && !(G.net.rtOn() && G.net.isHost())) { e.preventDefault(); return; }
     if (e.code === 'Space') { e.preventDefault(); G.st.paused = !G.st.paused; UI.hud(); }
     else if (/^Digit[1-5]$/.test(e.code)) { G.st.speed = +e.code.slice(5); G.st.paused = 0; UI.hud(); }
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
