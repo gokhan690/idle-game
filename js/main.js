@@ -24,7 +24,11 @@
   };
   G.saveMeta = (slot) => { const m = store.get(KEY(slot) + '_meta'); try { return m ? JSON.parse(m) : null; } catch (e) { return null; } };
   G.saveDel = (slot) => { store.del(KEY(slot)); store.del(KEY(slot) + '_meta'); };
-  const afterLoad = () => { G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); };
+  const afterLoad = () => {
+    // çok oyunculu bir oyunun kaydı tek başına sürdürülür: diğer insan ülkeleri yapay zekâya geçer
+    if (G.net && G.net.active) G.net.leave();
+    if (G.st.humans || G.st.mp) { delete G.st.humans; delete G.st.mp; }
+    G.st.paused = 1; R.mapDirty = 1; G.mapDirty = 1; if (G.st.conf) setTimeout(() => G.onConference(G.st.conf), 0); };
   G.loadGame = (slot) => {
     const s = store.get(KEY(slot)); if (!s) return false;
     try { G.deserialize(s); afterLoad(); return true; } catch (e) { console.error(e); return false; }
@@ -362,6 +366,7 @@
   // klavye kısayolları (masaüstü)
   g.addEventListener('keydown', (e) => {
     if (!G.st || !$('start').hidden || UI.modalOpen) return;
+    if ((e.code === 'Space' || /^Digit[1-5]$/.test(e.code)) && G.net && G.net.active) { e.preventDefault(); return; }
     if (e.code === 'Space') { e.preventDefault(); G.st.paused = !G.st.paused; UI.hud(); }
     else if (/^Digit[1-5]$/.test(e.code)) { G.st.speed = +e.code.slice(5); G.st.paused = 0; UI.hud(); }
     else if (e.code === 'Escape') { if (UI.panel) UI.close(); else { R.sel.units.clear(); $('selbar').hidden = true; R.dirty = 1; } }
@@ -370,7 +375,7 @@
   let lastCloud = 0;
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden || !G.st || !$('start').hidden) return;
-    if (UI.settings.autosave) G.saveGame('auto');
+    if (UI.settings.autosave && !(G.net && G.net.active)) G.saveGame('auto');
     // otomatik bulut kaydı: en çok 5 dakikada bir, bulut kullanılabiliyorsa
     if (UI.cloud && UI.cloud.ready && Date.now() - lastCloud > 300000 && !(G.net && G.net.active)) { lastCloud = Date.now(); G.cloud.save('cauto'); }
   });

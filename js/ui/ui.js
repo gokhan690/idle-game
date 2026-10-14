@@ -102,6 +102,7 @@
     pause.classList.toggle('paused', !!st.paused);
     document.querySelectorAll('.speed [data-act=speed]').forEach((b) => { b.classList.toggle('on', +b.dataset.v <= st.speed); b.classList.toggle('cur', +b.dataset.v === st.speed); });
     $('btn-mapmode').title = UI.MODE_N[R.mode];
+    if (G.net) G.net.hud();
     UI.placeToasts();
   };
   // bildirimler üst şeridin (uyarılar dahil) altında çıkar; uyarıların önünü kapatmaz

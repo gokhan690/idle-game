@@ -8,15 +8,19 @@
   const clone = (x) => (x == null ? x : JSON.parse(JSON.stringify(x)));
   const read = (path) => { const v = localStorage.getItem(P + path); return v ? JSON.parse(v) : undefined; };
   const notify = () => { for (const f of subs) try { f(); } catch (e) { console.error(e); } };
-  bc.onmessage = () => notify();
+  // diğer sekmenin yazısı localStorage'a kanal iletisinden sonra yansıyabilir: storage olayı da dinlenir
+  bc.onmessage = () => { notify(); setTimeout(notify, 80); };
+  window.addEventListener('storage', (e) => { if (!e.key || e.key.startsWith(P)) notify(); });
   const write = (path, data) => { if (data === undefined) localStorage.removeItem(P + path); else localStorage.setItem(P + path, JSON.stringify(data)); bc.postMessage(path); setTimeout(notify, 0); };
+  // update: iç içe nesneler özyinelemeli birleşir, diziler ve diğer değerler bütünüyle değişir (gerçek db gibi)
+  const merge = (a, b) => { for (const k in b) { const v = b[k]; if (v && typeof v === 'object' && !Array.isArray(v) && a[k] && typeof a[k] === 'object' && !Array.isArray(a[k])) merge(a[k], v); else a[k] = v; } return a; };
   const snap = (path) => { const d = read(path); return { id: path.split('/').pop(), exists: d !== undefined, data: () => clone(d), metadata: { fromCache: false, hasPendingWrites: false } }; };
   const listDocs = (col) => { const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith(P + col + '/')) continue; const rest = k.slice(P.length + col.length + 1); if (rest.includes('/')) continue; out.push(snap(col + '/' + rest)); } return out; };
   const doc = (path) => ({
     id: path.split('/').pop(), path,
     get: async () => snap(path),
     set: async (d) => write(path, clone(d)),
-    update: async (d) => { const cur = read(path); if (cur === undefined) throw { code: 'invalid_argument', message: 'yok' }; write(path, Object.assign(cur, clone(d))); },
+    update: async (d) => { const cur = read(path); if (cur === undefined) throw { code: 'invalid_argument', message: 'yok' }; write(path, merge(cur, clone(d))); },
     delete: async () => write(path, undefined),
     onSnapshot: (next) => { let last = ''; const f = () => { const s = JSON.stringify(read(path) ?? null); if (s !== last) { last = s; next(snap(path)); } }; subs.add(f); setTimeout(f, 0); return () => subs.delete(f); },
     acquire: async () => ({ acquired: true }),
