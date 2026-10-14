@@ -14699,6 +14699,7 @@ window.RIVERS = [
     let html = '';
     html += sec('Kayıt', UI.slotList(true), 'Bu cihazda saklanır');
     const ch = UI.cloudSection(true); if (ch) html += sec('Bulut kaydı', ch, 'Hesabına bağlı');
+    { const ph = UI.pwaSection ? UI.pwaSection() : ''; if (ph) html += sec('Uygulama', ph); }
     const modes = UI.MODE_N;
     html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
@@ -14832,6 +14833,7 @@ window.RIVERS = [
     if (['1', '2', '3'].some((s) => G.saveMeta(s))) html += sec('Kayıtlı oyunlar', UI.slotList(false));
     const ch = UI.cloudSection(false); if (ch) html += sec('Bulut kayıtları', ch, 'Hesabına bağlı');
     else html += `<div class="sec"><div class="btns">${impBtn()}</div></div>`;
+    { const ph = UI.pwaSection ? UI.pwaSection() : ''; if (ph) html += sec('Uygulama', ph); }
     if (UI.mpSection) { const mh = UI.mpSection(); if (mh && G.net.gid && G.net.game && G.net.game.status === 'lobby') { $('start-body').innerHTML = mh; return; } html += mh; }
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
@@ -16846,6 +16848,62 @@ ${scene(k, A, B, v, y)}
   for (const k of ['pause', 'speed']) { const f = A[k]; A[k] = (d) => { if (N.active && !(N.rtOn() && N.isHost())) { UI.toast(N.rtOn() ? 'Gerçek zamanlı oyunda hızı ve duraklatmayı kurucu yönetir.' : 'Çok oyunculu oyunda zaman turlarla ilerler: "Turu bitir"e bas.', 'info'); return; } f(d); }; }
 })(window);
 
+/* js/ui/pwa.js */
+// Telefon uygulaması (PWA): ana ekrana ekleme, yeni sürüm bildirimi ve claude.ai dışı bilgi notu.
+(function (g) {
+  const G = g.G, UI = G.UI;
+  const P = (G.pwa = { prompt: null, update: false, standalone: false });
+  try { P.standalone = g.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || g.navigator.standalone === true; } catch (e) { /* */ }
+  const ua = (g.navigator && g.navigator.userAgent) || '';
+  P.ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && g.navigator.maxTouchPoints > 1);
+  P.web = /^https?:$/.test(location.protocol) && !g.claude; // claude.ai dışında, normal web barındırmada
+  const rerender = () => { const s = document.getElementById('start'); if (s && !s.hidden) UI.renderStart(); else if (UI.panel === 'menu') UI.render(); };
+  // Android/Chrome: tarayıcının kurulum isteği saklanır, düğmeyle gösterilir
+  g.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); P.prompt = e; rerender(); });
+  g.addEventListener('appinstalled', () => { P.prompt = null; P.standalone = true; UI.toast && UI.toast('Demir Cephe ana ekrana eklendi.', 'good'); rerender(); });
+
+  // başlangıç ekranı ve menü bölümü: kurulum ve claude.ai dışı not
+  UI.pwaSection = () => {
+    let h = '';
+    if (P.update) h += '<div class="btns"><button class="btn pri" data-act="appreload">Yeni sürüm hazır · Yenile</button></div>';
+    if (!P.standalone && P.web) {
+      if (P.prompt) h += '<div class="btns"><button class="btn" data-act="appinstall">Uygulamayı yükle</button></div><p class="muted small" style="margin:6px 0 0">Ana ekrana eklenir; tam ekran ve internetsiz açılır.</p>';
+      else if (P.ios) h += '<p class="muted small" style="margin:0">Uygulama gibi oynamak için Safari\'de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>. Tam ekran ve internetsiz açılır.</p>';
+    }
+    if (P.web) h += `<p class="muted small" style="margin:${h ? '8px' : '0'} 0 0">Çok oyunculu ve bulut kaydı, oyun claude.ai'deki sayfasından açıldığında çalışır. Burada kayıtlar bu cihazda tutulur; "Dosyaya aktar" ile başka cihaza taşıyabilirsin.</p>`;
+    return h;
+  };
+  UI.ACT.appinstall = async () => {
+    const p = P.prompt; if (!p) return;
+    P.prompt = null;
+    try { p.prompt(); await p.userChoice; } catch (e) { /* */ }
+    rerender();
+  };
+  // yeni sürüm: oyun sürüyorsa önce otomatik kayıt, sonra yenile
+  UI.ACT.appreload = () => {
+    try { if (G.st && document.getElementById('start').hidden) G.saveGame('auto'); } catch (e) { /* */ }
+    location.reload();
+  };
+
+  // hizmet çalışanı: kayıt, düzenli güncelleme denetimi, yeni sürüm hazır olunca bildirim
+  P.register = () => {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol) || g.__NO_SW__) return;
+    const hadCtl = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      setInterval(check, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    }).catch(() => {});
+    // ilk kurulumda değil, yalnızca var olan sürüm değiştiğinde haber ver
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadCtl || P.update) return;
+      P.update = true;
+      if (UI.toast && document.getElementById('start').hidden) UI.toast('Yeni sürüm hazır: Menü → Uygulama → "Yenile".', 'info');
+      rerender();
+    });
+  };
+})(window);
+
 /* js/main.js */
 // Açılış, oyun döngüsü, dokunmatik/fare girdisi, kayıt ve PWA.
 (function (g) {
@@ -17259,9 +17317,7 @@ ${scene(k, A, B, v, y)}
   if (hot && hot.ready) hot.ready((data) => boot(data || {})); else boot((hot && hot.data) || {});
 
   // PWA (yalnızca normal web barındırmada)
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !g.__NO_SW__) {
-    g.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
-  }
+  if (G.pwa) g.addEventListener('load', () => G.pwa.register());
 })(window);
 </script>
 </body>

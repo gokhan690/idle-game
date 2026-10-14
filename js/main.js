@@ -410,7 +410,5 @@
   if (hot && hot.ready) hot.ready((data) => boot(data || {})); else boot((hot && hot.data) || {});
 
   // PWA (yalnızca normal web barındırmada)
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !g.__NO_SW__) {
-    g.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
-  }
+  if (G.pwa) g.addEventListener('load', () => G.pwa.register());
 })(window);
