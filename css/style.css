@@ -885,3 +885,12 @@ details.hsec > p { padding: 0 11px 10px; }
   body:has(#sheet:not([hidden]):not(.full)) #toasts { right: 432px; }
 }
 .item > .grow { flex: 1; min-width: 0; }
+
+/* çok oyunculu: tur çubuğu ve lobi */
+.mpbar { position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: calc(var(--nav-h, 56px) + var(--safe-b, 0px) + 10px); z-index: 24; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; background: rgba(18,22,17,0.96); border: 1px solid var(--brass, #b8913a); border-radius: 22px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); white-space: nowrap; font-variant-numeric: tabular-nums; max-width: calc(100vw - 20px); flex-wrap: wrap; justify-content: center; }
+.mpbar .mpt { font-weight: 700; }
+.mpbar .mpr { color: var(--muted, #a9a58f); font-size: 0.9em; }
+.mpcode { font: 700 34px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.18em; text-align: center; padding: 10px; margin: 0 0 6px; border: 1px dashed var(--brass, #b8913a); border-radius: 8px; user-select: all; }
+.mpcode-in { flex: 1; min-width: 0; font: 600 18px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.15em; text-transform: uppercase; padding: 9px 10px; background: rgba(0,0,0,0.25); color: inherit; border: 1px solid var(--rule, #444); border-radius: 6px; }
+@media (min-width: 900px) and (min-height: 561px) { .mpbar { bottom: 16px; } }
+body.mp #btn-pause, body.mp .speed { display: none; }
