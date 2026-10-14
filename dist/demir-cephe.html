@@ -839,6 +839,32 @@ details.hsec > p { padding: 0 11px 10px; }
 :root { --muted: #b4b29a; }
 @media (pointer: coarse) { .btn.sm { min-height: 34px; } .seg.sm button { min-height: 32px; } }
 .btn:active:not([disabled]), .item[data-act]:active, .mcard:active, .seg button:active { transform: translateY(1px); filter: brightness(1.12); }
+
+/* ---------- Arayüz I: panel tutamağı, dokunma alanları, yazı boyutu ---------- */
+/* yazı boyutu ayarı (--uiz): paneller, kartlar, pencereler ve bildirimler */
+#sheet-body, #selbar, #card, #modal .dialog, #toasts { zoom: var(--uiz, 1); }
+/* dikey ekranda panel başlığı tutamaçtır: aşağı sürükle → kapat, yukarı → büyüt */
+@media (orientation: portrait) {
+  .sheet:not(.full) .sheet-head { position: relative; touch-action: none; padding-top: 14px; cursor: grab; }
+  .sheet:not(.full) .sheet-head::before { content: ''; position: absolute; top: 5px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(236,230,210,0.32); }
+}
+/* parmakla kullanım: en az 44 px dokunma alanı */
+@media (pointer: coarse) {
+  .btn { min-height: 42px; }
+  .btn.sm { min-height: 36px; padding: 4px 11px; }
+  .seg button { min-height: 42px; }
+  .toggle, .item[data-act] { min-height: 48px; }
+  .sheet-close, .sheet-back, .sheet-tall { width: 44px; height: 44px; }
+  .alert { min-width: 36px; min-height: 36px; }
+}
+/* basınca görsel tepki */
+.toggle:active, .alert:active, .sheet-close:active, .sheet-back:active, .sheet-tall:active { filter: brightness(1.2); transform: translateY(1px); }
+/* rakamlar hizalı (tablo ve sayaçlarda kaymaz) */
+.chip b, .kv b, .bar-l, .stat b, .ledger td { font-variant-numeric: tabular-nums; }
+/* büyük yazıda dar satırlar alta kayar (filo görevleri, düğme grupları) */
+.item .seg.sm { flex-wrap: wrap; }
+.item .seg.sm button { flex: 1 1 auto; }
+.item .btns { flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -2894,8 +2920,10 @@ window.RIVERS = [
   G.def = (tag) => g.COUNTRY_DEFS[tag];
   G.cname = (tag) => (g.COUNTRY_DEFS[tag] ? g.COUNTRY_DEFS[tag].n : tag);
   G.pname = (i) => P[i].n.startsWith('#') ? `${G.cname(P[i].n.slice(1).split(':')[0])} Bölgesi ${P[i].n.split(':')[1]}` : P[i].n;
-  G.fmtK = (v) => (v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : Math.round(v).toString());
-  G.fmtMP = (k) => (k >= 1000 ? (k / 1000).toFixed(2) + 'M' : Math.round(k) + 'K');
+  // sayı biçimi (yalnızca arayüz): Türkçe ondalık virgül; B = bin, Mn = milyon
+  const dec = (v, d) => v.toFixed(d).replace('.', ',');
+  G.fmtK = (v) => (v >= 1e6 ? dec(v / 1e6, v >= 1e7 ? 1 : 2) + ' Mn' : v >= 1e3 ? dec(v / 1e3, v >= 1e5 ? 0 : 1) + ' B' : Math.round(v).toString());
+  G.fmtMP = (k) => (k >= 1000 ? dec(k / 1000, k >= 1e4 ? 1 : 2) + ' Mn' : Math.round(k) + ' B');
   const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
   G.pairKey = key;
 
@@ -13327,7 +13355,10 @@ window.RIVERS = [
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
   // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
-  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const q = UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2); R.quality = R.qAuto != null ? Math.min(q, R.qAuto) : q; const cap = [1.5, 2, 3][R.quality]; if (R.dprCap !== cap) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  // yazı boyutu: paneller, kartlar, pencereler ve bildirimler ölçeklenir (Küçük / Normal / Büyük / Çok büyük)
+  UI.FS = [0.9, 1, 1.12, 1.25];
+  UI.applyMapSettings = () => {
+    document.documentElement.style.setProperty('--uiz', UI.FS[UI.settings.fs ?? 1] || 1); R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const q = UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2); R.quality = R.qAuto != null ? Math.min(q, R.qAuto) : q; const cap = [1.5, 2, 3][R.quality]; if (R.dprCap !== cap) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
   UI.applyMapSettings();
 
   // ---------- Bildirim ----------
@@ -13415,14 +13446,43 @@ window.RIVERS = [
   g.addEventListener('resize', () => setTimeout(() => UI.placeToasts && UI.placeToasts(), 60));
 
   // ---------- Panel çerçevesi ----------
+  // Android geri tuşu / tarayıcı geri: açık paneli (ya da alt sayfasını) kapatır
+  UI._hist = false; UI._skipPop = false;
+  UI.histPush = () => { if (UI._hist) return; try { history.pushState({ dc: 1 }, ''); UI._hist = true; } catch (e) { /* korumalı çerçevede geçmiş kapalı olabilir */ } };
+  g.addEventListener('popstate', () => {
+    if (UI._skipPop) { UI._skipPop = false; return; }
+    UI._hist = false;
+    if (UI.modalOpen) return;
+    if (UI.sub && UI.panel) { UI.sub = null; UI.render(true); UI.histPush(); }
+    else if (UI.panel) { UI._popping = 1; UI.close(); UI._popping = 0; }
+  });
   UI.open = (p, sub) => {
+    if (!UI.panel) UI.histPush();
     UI.delArm = null;
     if (UI.panel === p && !sub && !UI.sub) { UI.close(); return; }
     UI.panel = p; UI.sub = sub || null;
     $('card').hidden = true;
     UI.render(true);
   };
-  UI.close = () => { UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
+  UI.close = () => {
+    if (UI._hist && !UI._popping) { UI._hist = false; UI._skipPop = true; try { history.back(); } catch (e) { UI._skipPop = false; } }
+    UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
+  // panel tutamağı (dikey ekran): başlıktan aşağı sürükle → küçült ya da kapat, yukarı sürükle → büyüt
+  {
+    const sheet = $('sheet'), head = sheet.querySelector('.sheet-head');
+    let y0 = null, dy = 0, pid = null;
+    const can = () => g.matchMedia('(orientation: portrait)').matches && !sheet.classList.contains('full');
+    head.addEventListener('pointerdown', (e) => { if (e.target.closest('button') || !can()) return; y0 = e.clientY; dy = 0; pid = e.pointerId; try { head.setPointerCapture(pid); } catch (er) { /* */ } sheet.style.transition = 'none'; });
+    head.addEventListener('pointermove', (e) => { if (y0 == null || e.pointerId !== pid) return; dy = e.clientY - y0; sheet.style.transform = `translateY(${dy > 0 ? dy : Math.max(-36, dy * 0.35)}px)`; });
+    const end = () => {
+      if (y0 == null) return; y0 = null;
+      sheet.style.transition = 'transform 0.16s ease-out'; sheet.style.transform = '';
+      setTimeout(() => { sheet.style.transition = ''; }, 180);
+      if (dy > 90) { if (UI.tall) UI.act('tall'); else UI.close(); }
+      else if (dy < -45 && !UI.tall) UI.act('tall');
+    };
+    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  }
   UI.render = (reset, auto) => {
     if (!UI.panel) return;
     const sheet = $('sheet'), body = $('sheet-body');
@@ -14567,6 +14627,7 @@ window.RIVERS = [
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
+    html += sec('Görünüm', `<div class="small" style="margin:0 0 6px">Yazı boyutu</div><div class="seg">${[[0, 'Küçük'], [1, 'Normal'], [2, 'Büyük'], [3, 'Çok büyük']].map(([v, n]) => `<button class="${(UI.settings.fs ?? 1) === v ? 'on' : ''}" data-act="mapset" data-k="fs" data-v="${v}">${n}</button>`).join('')}</div><p class="muted small" style="margin:6px 0 0">Paneller, kartlar, olay pencereleri ve bildirimler bu boyutta gösterilir. Paneli başlığından aşağı sürükleyerek kapatabilir, yukarı sürükleyerek büyütebilirsin; telefonun geri tuşu da paneli kapatır.</p>`);
     html += sec('Harita görünümü', `<div class="small" style="margin:0 0 6px">Birlik sayacı</div><div class="seg"><button class="${UI.settings.ctr !== 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="nato">NATO simgesi</button><button class="${UI.settings.ctr === 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="art">Resimli</button></div><p class="muted small" style="margin:6px 0 10px">Resimli sayaçta tümenler ülkenin üniformasıyla asker, tank, kamyon, süvari ya da top silueti olarak görünür.</p><div class="list"><button class="toggle ${UI.settings.big === 1 ? 'on' : ''}" data-act="mapset" data-k="big" data-v="${UI.settings.big === 1 ? 0 : 1}"><span><b>Büyük sayaç</b><br><span class="muted small">Birlik sayaçları %25 büyük çizilir; küçük ekranda okumayı kolaylaştırır.</span></span><i></i></button></div><div class="small" style="margin:12px 0 6px">Grafik kalitesi</div><div class="seg">${[[2, 'Yüksek'], [1, 'Orta'], [0, 'Düşük']].map(([v, n]) => `<button class="${(UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2)) === v ? 'on' : ''}" data-act="mapset" data-k="q" data-v="${v}">${n}</button>`).join('')}</div><p class="muted small" style="margin:6px 0 0">Yüksek: ekranın tam piksel yoğunluğu (3×), arazi simgeleri, kabartma ve dalgalar. Orta: 2×, daha seyrek simgeler. Düşük: 1,5×, yalnız doku deseni; eski telefonlarda en akıcısı.${R.qAuto != null ? ' Bu cihazda akıcılık için kalite otomatik olarak bir kademe düşürüldü.' : ''}</p>`);
     const AS = [[0, 'Kapalı'], [1, 'Aylık'], [3, '3 ayda'], [6, '6 ayda'], [12, 'Yıllık']], asv = +UI.settings.autosave || 0;
     html += sec('Otomatik kayıt', `<div class="seg wrap">${AS.map(([v, n]) => `<button class="${asv === v ? 'on' : ''}" data-act="autosave" data-v="${v}">${n}</button>`).join('')}</div><p class="muted small" style="margin:6px 0 0">Oyun ayın başında ve uygulamadan çıkarken otomatik kayıt yuvasına kaydedilir.</p>`);
@@ -15318,7 +15379,7 @@ window.RIVERS = [
   // yuva silme: ilk dokunuş onay ister, ikincisi siler
   ACT.delsave = (d) => { if (UI.delArm !== d.v) { UI.delArm = d.v; UI.render(); return; } G.saveDel(d.v); UI.delArm = null; UI.toast('Kayıt silindi.', 'info'); UI.render(); };
   ACT.exportsave = async () => { const r = await G.exportSave(); UI.toast(r.ok ? 'Kayıt dosyası indirildi.' : r.why || 'Dosya oluşturulamadı.', r.ok ? 'good' : 'bad'); };
-  ACT.mapset = (d) => { UI.settings[d.k] = d.k === 'hires' || d.k === 'big' || d.k === 'q' ? +d.v : d.v; if (d.k === 'q') { R.qAuto = null; R.dprAuto = 0; } UI.saveSettings(); UI.applyMapSettings(); UI.render(); };
+  ACT.mapset = (d) => { UI.settings[d.k] = d.k === 'hires' || d.k === 'big' || d.k === 'q' || d.k === 'fs' ? +d.v : d.v; if (d.k === 'q') { R.qAuto = null; R.dprAuto = 0; } UI.saveSettings(); UI.applyMapSettings(); UI.render(); };
   ACT.autosave = (d) => { UI.settings.autosave = +d.v; UI.saveSettings(); UI.render(); };
   // dosyadan yükle (menü ve başlangıç ekranı): dosya seçici panel dışında tek bir gizli girdi; panel yenilense de kaybolmaz
   ACT.importsave = () => {

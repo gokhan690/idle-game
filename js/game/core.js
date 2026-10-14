@@ -54,8 +54,10 @@
   G.def = (tag) => g.COUNTRY_DEFS[tag];
   G.cname = (tag) => (g.COUNTRY_DEFS[tag] ? g.COUNTRY_DEFS[tag].n : tag);
   G.pname = (i) => P[i].n.startsWith('#') ? `${G.cname(P[i].n.slice(1).split(':')[0])} Bölgesi ${P[i].n.split(':')[1]}` : P[i].n;
-  G.fmtK = (v) => (v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : Math.round(v).toString());
-  G.fmtMP = (k) => (k >= 1000 ? (k / 1000).toFixed(2) + 'M' : Math.round(k) + 'K');
+  // sayı biçimi (yalnızca arayüz): Türkçe ondalık virgül; B = bin, Mn = milyon
+  const dec = (v, d) => v.toFixed(d).replace('.', ',');
+  G.fmtK = (v) => (v >= 1e6 ? dec(v / 1e6, v >= 1e7 ? 1 : 2) + ' Mn' : v >= 1e3 ? dec(v / 1e3, v >= 1e5 ? 0 : 1) + ' B' : Math.round(v).toString());
+  G.fmtMP = (k) => (k >= 1000 ? dec(k / 1000, k >= 1e4 ? 1 : 2) + ' Mn' : Math.round(k) + ' B');
   const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
   G.pairKey = key;
 
