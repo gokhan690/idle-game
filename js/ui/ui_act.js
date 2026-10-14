@@ -76,7 +76,7 @@
       // ---- Tümen seçimi ----
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
       const KN = { inf: 'piyade', arm: 'zırhlı', mot: 'motorize', cav: 'süvari', mtn: 'dağ', mar: 'deniz p.', para: 'paraşüt' };
-      html += `<div class="card-h">${sel.length === 1 ? G.art.img(G.art.unitOf(sel[0]), 'artthumb') : ''}<div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
+      html += `<div class="card-h">${sel.length === 1 ? G.art.img(G.art.unitOf(sel[0], 1), 'artthumb') : ''}<div class="grow"><h3>${sel.length} tümen <span class="muted small">${Object.entries(kinds).map(([k, n]) => `${n} ${KN[k]}`).join(' · ')}</span></h3><div class="muted small">${esc(where)} · güç ${pct(avgStr)} · moral ${pct(avgOrg)}${auto ? ' · <b>otomatik kurmay</b>' : ''}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
       if (sel.length > 12) {
         // çok tümen: tür başına özet (sayı, ortalama güç ve moral)
         const by = new Map(); for (const u of sel) { const s2 = G.unitStats(u); const k = s2.t.s; const x = by.get(k) || { n: 0, str: 0, org: 0 }; x.n++; x.str += u.str; x.org += Math.max(0, u.org) / s2.org; by.set(k, x); }

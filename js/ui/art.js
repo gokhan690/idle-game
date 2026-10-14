@@ -113,8 +113,10 @@
     }
   };
   // tüfek: dipçik (x1,y1) → namlu (x2,y2)
-  const rifle = (x1, y1, x2, y2, bay) => { const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, mx = x1 + ux * L * 0.62, my = y1 + uy * L * 0.62; return `<path d="M${x1} ${y1}L${mx.toFixed(1)} ${my.toFixed(1)}" stroke="#4a3220" stroke-width="2" stroke-linecap="round"/><path d="M${mx.toFixed(1)} ${my.toFixed(1)}L${x2} ${y2}" stroke="#2b2b2b" stroke-width="1.1" stroke-linecap="round"/>${bay ? `<path d="M${x2} ${y2}l${(ux * 5).toFixed(1)} ${(uy * 5).toFixed(1)}" stroke="#bfc3c6" stroke-width="0.7"/>` : ''}`; };
+  const rifle = (x1, y1, x2, y2, bay) => { const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, mx = x1 + ux * L * 0.62, my = y1 + uy * L * 0.62, bx = x1 + ux * L * 0.4, by2 = y1 + uy * L * 0.4; return `<path d="M${x1} ${y1}L${mx.toFixed(1)} ${my.toFixed(1)}" stroke="#4a3220" stroke-width="2" stroke-linecap="round"/><path d="M${x1} ${y1}L${(x1 + ux * 4).toFixed(1)} ${(y1 + uy * 4).toFixed(1)}" stroke="#36241a" stroke-width="2.6" stroke-linecap="round"/><path d="M${bx.toFixed(1)} ${by2.toFixed(1)}l${(-uy * 1.8).toFixed(1)} ${(ux * 1.8).toFixed(1)}" stroke="#2b2b2b" stroke-width="0.8" stroke-linecap="round"/><path d="M${mx.toFixed(1)} ${my.toFixed(1)}L${x2} ${y2}" stroke="#2b2b2b" stroke-width="1.1" stroke-linecap="round"/>${bay ? `<path d="M${x2} ${y2}l${(ux * 5).toFixed(1)} ${(uy * 5).toFixed(1)}" stroke="#bfc3c6" stroke-width="0.7"/>` : ''}`; };
   const limb = (d, c, w) => `<path d="${d}" stroke="${OUT}" stroke-width="${w + 1.3}" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // yüz ayrıntısı (kaş, burun gölgesi, çene kayışı); dy baş merkezinin kayması
+  const faceBits = (sk, dy) => `<path d="M13.2 ${11.6 + dy}Q14.2 ${15.4 + dy} 18.4 ${15 + dy}" stroke="#2b261f" stroke-width="0.5" fill="none"/><path d="M18 ${8.8 + dy}l2.2 0.3" stroke="#3a2a1e" stroke-width="0.6" stroke-linecap="round"/><path d="M20.5 ${10.6 + dy}l0.9 1.4-1 0.2z" fill="${shade(sk, -0.18)}"/><path d="M12.4 ${9.4 + dy}Q12 ${12.6 + dy} 14 ${14.2 + dy}" stroke="${shade(sk, -0.2)}" stroke-width="1" fill="none" opacity="0.6"/>`;
   const soldier = (tag, year, pose = 'adv', k = 0) => {
     const n = nat(tag), u = n.u, ud = shade(u, -0.22), ul = shade(u, 0.12), sk = skinOf(n, k), boot = '#2a241c', belt = n.ins === 'redstar' || n.ins === 'cross' ? '#2b2620' : '#6b5232';
     const hel = helmet(helmetOf(n, year), n.h === 'cap' ? u : shade(u, -0.05));
@@ -122,7 +124,7 @@
       return `${limb('M14 40L8 46L4 58', ud, 4.8)}<path d="M2 57h7v3H2z" fill="${boot}"/>${limb('M16 40L24 44L23 58', u, 4.8)}<path d="M21 56h7v3h-7z" fill="${boot}"/>`
         + `<path d="M7 26h5v11H7z" fill="${shade(u, -0.3)}" stroke="${OUT}" stroke-width="0.6"/><path d="M10 22Q15 20 19.5 22L20.5 41L10.5 41Z" fill="${u}" stroke="${OUT}" stroke-width="0.7"/><path d="M12 23Q15 22 17.6 23" stroke="${ul}" stroke-width="1.2" fill="none"/><rect x="10.3" y="35" width="10.4" height="2.2" fill="${belt}"/>`
         + `${rifle(9, 31, 36, 21, 1)}${limb('M12 25L18 30L26 26', ud, 3.4)}${limb('M17 24L24 25L30 23.5', u, 3.4)}<circle cx="30.4" cy="23.4" r="1.6" fill="${sk}"/>`
-        + `<rect x="14.6" y="15.5" width="3.2" height="4" fill="${sk}"/><circle cx="16.3" cy="13" r="4.4" fill="${sk}" stroke="${OUT}" stroke-width="0.6"/><circle cx="19" cy="12.6" r="0.55" fill="#222"/>${hel}`;
+        + `<rect x="14.6" y="15.5" width="3.2" height="4" fill="${sk}"/><circle cx="16.3" cy="13" r="4.4" fill="${sk}" stroke="${OUT}" stroke-width="0.6"/><circle cx="19" cy="12.6" r="0.55" fill="#222"/>${faceBits(sk, 2.5)}${hel}`;
     }
     const legs = pose === 'ride'
       ? `${limb('M15 35L23 37L22 48', u, 4.8)}<path d="M19.5 46.5h6.5v3h-6.5z" fill="${boot}"/>`
@@ -138,10 +140,13 @@
       : pose === 'stand'
         ? `${rifle(21, 36, 23, 6, 0)}${limb('M12.5 21L11.5 29L12 34', ud, 3.4)}${limb('M18.4 21L21 27L22.5 24', u, 3.4)}<circle cx="22.7" cy="23.4" r="1.6" fill="${sk}"/>`
         : `${rifle(8, 31, 37, 18, 1)}${limb('M12.5 21L17 28L24 25', ud, 3.4)}${limb('M18 21L25 24L31 21', u, 3.4)}<circle cx="31.3" cy="20.8" r="1.6" fill="${sk}"/>`;
-    return `${legs}<path d="M5.6 20.5h5.6v12H5.6z" fill="${shade(u, -0.3)}" stroke="${OUT}" stroke-width="0.6" rx="1"/>`
-      + `<path d="M10 19Q15 16.8 20 19L21 37L11 37Z" fill="${u}" stroke="${OUT}" stroke-width="0.7"/><path d="M11.6 20Q15 18.8 18 19.8" stroke="${ul}" stroke-width="1.2" fill="none"/><path d="M15.6 20.5v15" stroke="${ud}" stroke-width="0.5"/>`
+    // teçhizat: sırt çantası, matara, (Alman) gaz maskesi kutusu, Y askılar; üniformada arka gölge
+    const gas = n.ins === 'cross' ? `<rect x="6.4" y="31.6" width="3.4" height="6.6" rx="1.5" fill="#6b7062" stroke="${OUT}" stroke-width="0.5"/><path d="M6.4 33.6h3.4M6.4 35.6h3.4" stroke="#4b5045" stroke-width="0.4"/>` : '';
+    return `${legs}<path d="M5.6 20.5h5.6v12H5.6z" fill="${shade(u, -0.3)}" stroke="${OUT}" stroke-width="0.6" rx="1"/>${gas}`
+      + `<path d="M10 19Q15 16.8 20 19L21 37L11 37Z" fill="${u}" stroke="${OUT}" stroke-width="0.7"/><path d="M10.4 19.4Q11.8 18.4 13 18.4L12.4 37H11Z" fill="#000" opacity="0.16"/><path d="M11.6 20Q15 18.8 18 19.8" stroke="${ul}" stroke-width="1.2" fill="none"/><path d="M15.6 20.5v15" stroke="${ud}" stroke-width="0.5"/><path d="M12 19.6L15.2 31.6M18.8 19.4L16.4 31.6" stroke="${belt}" stroke-width="0.9"/>`
+      + `<ellipse cx="11.2" cy="35.4" rx="1.7" ry="2.3" fill="#56584a" stroke="${OUT}" stroke-width="0.4"/><rect x="10.6" y="32.6" width="1.2" height="0.9" fill="#2b2b2b"/>`
       + `<rect x="10.6" y="31.6" width="10.6" height="2.2" fill="${belt}"/><rect x="15" y="31.4" width="2" height="2.6" fill="#a8956a"/><rect x="12" y="32.4" width="2.4" height="3" fill="${shade(belt, 0.1)}"/>`
-      + `${arms}<rect x="14.6" y="12.5" width="3.2" height="4" fill="${sk}"/><circle cx="16.3" cy="10.5" r="4.4" fill="${sk}" stroke="${OUT}" stroke-width="0.6"/><circle cx="19" cy="10.2" r="0.55" fill="#222"/><path d="M19.6 12.6h1.4" stroke="#7a4b35" stroke-width="0.5"/>${hel}`;
+      + `${arms}<rect x="14.6" y="12.5" width="3.2" height="4" fill="${sk}"/><circle cx="16.3" cy="10.5" r="4.4" fill="${sk}" stroke="${OUT}" stroke-width="0.6"/><circle cx="19" cy="10.2" r="0.55" fill="#222"/><path d="M19.6 12.6h1.4" stroke="#7a4b35" stroke-width="0.5"/>${faceBits(sk, 0)}${hel}`;
   };
   const put = (inner, x, y, s, flip) => `<g transform="translate(${x} ${y}) scale(${flip ? -s : s} ${s})">${inner}</g>`;
 
@@ -166,31 +171,97 @@
     { L: 92, H: 16, tw: 31, th: 13, gun: 38, gw: 3.1, wheels: 6, wr: 5.2, slope: 12, brake: 1 },
     { L: 100, H: 17, tw: 34, th: 14, gun: 48, gw: 3.6, wheels: 7, wr: 5.4, slope: 16, brake: 1, skirt: 1 },
   ];
-  const tank = (tag, lvl, year) => {
-    const n = nat(tag), T = TANK[Math.max(1, Math.min(4, lvl | 0 || 1))], id = 'tk' + ++uid;
+  // ülkeye özgü silüet: ger kutu gövde (Pz III/IV), 3+ seviyede eğik zırh ve iç içe tekerlek (Panther);
+  // sov eğik zırh, basık döküm kule, Christie tekerlek (T-34/IS); usa yüksek gövde, yuvarlak döküm kule, boji (M3/Sherman);
+  // eng alçak uzun gövde, köşeli kule (Matilda/Cromwell); jap küçük gövde, ortada kule (Chi-Ha); ita perçinli kutu (M13/40);
+  // fra yuvarlak APX kulesi ve yan zırh (Somua/Char B); diğerleri en yakın türe eşlenir
+  const TK = { GER: 'ger', HUN: 'ger', BUL: 'ger', SOV: 'sov', PRC: 'sov', MON: 'sov', FIN: 'sov', USA: 'usa', CHI: 'usa', BRA: 'usa', MEX: 'usa', ENG: 'eng', CAN: 'eng', AST: 'eng', RAJ: 'eng', SAF: 'eng', NZL: 'eng', POL: 'eng', HOL: 'eng', JAP: 'jap', MAN: 'jap', SIA: 'jap', ITA: 'ita', CZE: 'ita', SPN: 'ita', SPR: 'sov', FRA: 'fra', BEL: 'fra', ROM: 'fra', YUG: 'fra', GRE: 'fra', TUR: 'eng' };
+  const f1 = (v) => +v.toFixed(1);
+  const tank = (tag, lvl, year, lod) => {
+    const n = nat(tag), lv = Math.max(1, Math.min(4, lvl | 0 || 1)), T = TANK[lv], st = TK[tag] || 'gen', id = 'tk' + ++uid, big = lv >= 3;
     const base = n.cam2y && year >= n.cam2y && n.cam[1] ? n.cam[1] : n.cam[0], blot = n.cam2y && year >= n.cam2y ? n.cam[0] : n.cam[1];
-    const L = T.L, H = T.H, by = 30, ty = by - T.th, tx = L * 0.32;
-    let s = `<defs><linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.28"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.25"/></linearGradient>`
-      + `<clipPath id="${id}c"><path d="M0 ${by}L${T.slope} ${by - H * 0.15}L${L - T.slope * 1.4} ${by - H * 0.15}L${L} ${by + H * 0.5}L${L - 4} ${by + H}L4 ${by + H}Z M${tx} ${ty}h${T.tw}l3 ${T.th}h-${T.tw + 6}z"/></clipPath></defs>`;
-    // paletler ve tekerlekler
-    const tY = by + H - 2, tH = T.wr * 2 + 4;
-    s += `<rect x="2" y="${tY}" width="${L - 4}" height="${tH}" rx="${tH / 2}" fill="#2b2925" stroke="${OUT}" stroke-width="0.8"/>`;
-    let links = ''; for (let x = 4; x < L - 4; x += 3) links += `M${x} ${tY + 0.6}v1.6M${x} ${tY + tH - 2.2}v1.6`; s += `<path d="${links}" stroke="#55514a" stroke-width="1"/>`;
-    for (let i = 0; i < T.wheels; i++) { const cx = 8 + T.wr + (i * (L - 16 - T.wr * 2)) / (T.wheels - 1); s += `<circle cx="${cx.toFixed(1)}" cy="${tY + tH / 2}" r="${T.wr}" fill="#3d3a33" stroke="#1b1a16" stroke-width="0.8"/><circle cx="${cx.toFixed(1)}" cy="${tY + tH / 2}" r="${T.wr * 0.38}" fill="#6a665c"/>`; }
-    // gövde
-    s += `<path d="M0 ${by}L${T.slope} ${by - H * 0.15}L${L - T.slope * 1.4} ${by - H * 0.15}L${L} ${by + H * 0.5}L${L - 4} ${by + H}L4 ${by + H}Z" fill="${base}" stroke="${OUT}" stroke-width="0.9" stroke-linejoin="round"/>`;
-    if (T.skirt) s += `<path d="M6 ${by + H - 3}h${L - 14}v${T.wr + 2}h-${L - 14}z" fill="${shade(base, -0.08)}" stroke="${OUT}" stroke-width="0.6"/>`;
-    // kule ve top
-    const gy = ty + T.th * 0.45;
-    s += `<rect x="${tx + T.tw}" y="${gy - T.gw / 2}" width="${T.gun}" height="${T.gw}" fill="${shade(base, -0.2)}" stroke="${OUT}" stroke-width="0.6"/>`;
-    if (T.brake) s += `<rect x="${tx + T.tw + T.gun - 2}" y="${gy - T.gw}" width="5" height="${T.gw * 2}" fill="${shade(base, -0.3)}" stroke="${OUT}" stroke-width="0.6"/>`;
-    s += `<path d="M${tx} ${ty + T.th}L${tx + 3} ${ty}h${T.tw - 3}l3 ${T.th}z" fill="${base}" stroke="${OUT}" stroke-width="0.9" stroke-linejoin="round"/>`;
-    s += `<path d="M${tx + 6} ${ty}h${T.tw * 0.4}v-3h-${T.tw * 0.4}z" fill="${shade(base, -0.1)}" stroke="${OUT}" stroke-width="0.6"/><path d="M${tx + 8} ${ty - 3}l-6 -14" stroke="#222" stroke-width="0.6"/>`;
-    // kamuflaj lekeleri
-    if (blot) { let b = ''; for (let i = 0; i < 6; i++) { const x = ((i * 37 + hash(tag)) % (L - 10)) + 4, y = by - T.th + ((i * 11) % (H + T.th)); b += `<ellipse cx="${x}" cy="${y}" rx="${7 + (i % 3) * 3}" ry="${3 + (i % 2) * 2}" transform="rotate(${(i * 23) % 40 - 20} ${x} ${y})"/>`; } s += `<g clip-path="url(#${id}c)" fill="${blot}" opacity="0.75">${b}</g>`; }
-    s += `<path d="M0 ${by}L${T.slope} ${by - H * 0.15}L${L - T.slope * 1.4} ${by - H * 0.15}L${L} ${by + H * 0.5}L${L - 4} ${by + H}L4 ${by + H}Z M${tx} ${ty + T.th}L${tx + 3} ${ty}h${T.tw - 3}l3 ${T.th}z" fill="url(#${id}h)"/>`;
-    s += insignia(tag, tx + T.tw * 0.5, ty + T.th * 0.55, Math.min(4.2, T.th * 0.32));
-    return { svg: s, w: L + T.gun * 0.6 + 6, h: by + H + tH };
+    const [kL, kH, kT] = { jap: [0.84, 0.9, 0.78], eng: [1.06, 0.86, 1], usa: [0.98, 1.16, 1.06], ita: [0.9, 0.95, 0.82], sov: [1.02, 0.94, 1.14], fra: [0.95, 1.08, 0.9] }[st] || [1, 1, 1];
+    const L = Math.round(T.L * kL), H = T.H * kH, tw = T.tw * kT, th = T.th * (st === 'sov' ? 0.86 : st === 'eng' ? 1.05 : 1), gun = T.gun * (st === 'jap' || st === 'ita' ? 0.72 : st === 'usa' && lv === 1 ? 0.8 : 1), gw = T.gw;
+    const by = 30, top = by - H * (st === 'usa' ? 0.45 : st === 'eng' ? 0.04 : 0.15), bot = by + H;
+    const HP = {
+      ger: big ? [[0, top + 2], [3, top], [L - H * 1.15, top], [L, by + H * 0.55], [L - 4, bot], [4, bot], [0, by + H * 0.5]]
+        : [[0, top + 1.5], [2, top], [L - 4, top], [L - 4, by + H * 0.3], [L, by + H * 0.36], [L, by + H * 0.62], [L - 5, bot], [5, bot], [0, by + H * 0.55]],
+      sov: [[0, by + H * 0.25], [H * 0.55, top], [L - H * 1.25, top], [L, by + H * 0.5], [L - 6, bot], [6, bot], [1, by + H * 0.62]],
+      usa: [[0, top + 2], [3, top], [L - H * 0.95, top], [L - H * 0.25, by + H * 0.2], [L, by + H * 0.55], [L - 5, bot], [5, bot], [0, by + H * 0.5]],
+      eng: [[0, top], [L - 7, top], [L, top + 3], [L, by + H * 0.6], [L - 6, bot], [6, bot], [0, by + H * 0.6]],
+      jap: [[0, by + H * 0.15], [5, top], [L * 0.5, top], [L - 9, top + 1.5], [L, by + H * 0.5], [L - 5, bot], [5, bot], [0, by + H * 0.55]],
+      ita: [[0, top], [L - 13, top], [L - 3, by + H * 0.22], [L, by + H * 0.55], [L - 5, bot], [4, bot], [0, by + H * 0.55]],
+      fra: [[0, by], [4, top], [L - 10, top], [L, by + H * 0.3], [L, by + H * 0.62], [L - 6, bot], [6, bot]],
+      gen: [[0, by], [T.slope, top], [L - T.slope * 1.4, top], [L, by + H * 0.5], [L - 4, bot], [4, bot]],
+    };
+    const hull = 'M' + HP[st].map((q) => f1(q[0]) + ' ' + f1(q[1])).join('L') + 'Z';
+    // kule
+    const tx = f1(L * ({ jap: 0.4, sov: 0.26, usa: 0.33, eng: 0.3 }[st] || 0.32)), tb = f1(top + 0.5), ty = f1(tb - th), tr = f1(tx + tw);
+    const TU = {
+      ger: big ? `M${tx} ${tb}L${tx + 1} ${f1(ty + 2)}L${f1(tx + tw * 0.72)} ${ty}L${f1(tr + 2)} ${f1(ty + th * 0.62)}L${f1(tr + 2)} ${tb}Z` : `M${tx} ${tb}L${tx + 2} ${f1(ty + 1)}L${f1(tr - 3)} ${ty}L${f1(tr + 1)} ${f1(ty + th * 0.35)}L${f1(tr + 1)} ${tb}Z`,
+      sov: lv >= 4 ? `M${tx - 2} ${tb}Q${tx - 1} ${ty} ${f1(tx + tw * 0.5)} ${ty}Q${f1(tr + 4)} ${f1(ty + 1)} ${f1(tr + 4)} ${tb}Z` : `M${tx - 2} ${tb}L${tx + 3} ${f1(ty + 1)}L${f1(tr - 4)} ${ty}L${f1(tr + 3)} ${f1(ty + th * 0.72)}L${f1(tr + 3)} ${tb}Z`,
+      usa: `M${tx} ${tb}Q${tx} ${ty} ${f1(tx + tw * 0.45)} ${ty}Q${f1(tr + 3)} ${ty} ${f1(tr + 3)} ${tb}Z`,
+      fra: `M${tx} ${tb}Q${tx + 1} ${ty} ${f1(tx + tw * 0.5)} ${ty}Q${f1(tr + 1)} ${ty} ${f1(tr + 1)} ${tb}Z`,
+      eng: `M${tx} ${tb}L${tx} ${ty}L${tr} ${ty}L${f1(tr + 1.5)} ${tb}Z`,
+      jap: `M${tx} ${tb}L${tx + 2} ${f1(ty + 1.5)}Q${f1(tx + tw * 0.5)} ${f1(ty - 1)} ${f1(tr - 2)} ${f1(ty + 1.5)}L${tr} ${tb}Z`,
+      ita: `M${tx} ${tb}L${tx + 1} ${ty}L${f1(tr - 3)} ${ty}L${f1(tr + 1)} ${f1(ty + th * 0.55)}L${f1(tr + 1)} ${tb}Z`,
+      gen: `M${tx} ${tb}L${tx + 3} ${ty}L${tr} ${ty}L${f1(tr + 3)} ${tb}Z`,
+    };
+    const tur = TU[st];
+    const tf = f1(tr + (st === 'sov' ? 3 : st === 'usa' ? 3 : st === 'ger' && big ? 2 : 1)), gy = f1(ty + th * 0.45);
+    let s = `<defs><linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.3"/><stop offset="0.45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.28"/></linearGradient><clipPath id="${id}c"><path d="${hull} ${tur}"/></clipPath></defs>`;
+    // yürüyen aksam: tekerlek düzeni türe göre
+    const wr0 = T.wr, tY = f1(by + H - 2);
+    const WH = { sov: ['chr', 5, 1.3], eng: ['chr', 5, 1.22], ger: big ? ['int', 8, 1.15] : ['sm', 6, 0.72], usa: ['vv', 6, 0.8], jap: ['sm', 8, 0.6], ita: ['sm', 8, 0.58], fra: ['sm', 7, 0.66], gen: ['std', T.wheels, 1] }[st];
+    const [wt, wn, wk] = WH, wr = f1(wr0 * wk), tH = f1(wr * 2 + 4), wy = f1(tY + tH / 2);
+    if (!lod) s += `<ellipse cx="${f1(L / 2)}" cy="${f1(tY + tH + 0.8)}" rx="${f1(L * 0.54)}" ry="2.6" fill="#000" opacity="0.22"/>`;
+    s += `<rect x="1" y="${tY}" width="${L - 2}" height="${tH}" rx="${f1(tH / 2)}" fill="#2b2925" stroke="${OUT}" stroke-width="0.8"/>`;
+    if (!lod) { let links = ''; for (let x = 4; x < L - 4; x += 2.6) links += `M${f1(x)} ${f1(tY + 0.6)}v1.6M${f1(x)} ${f1(tY + tH - 2.2)}v1.6`; s += `<path d="${links}" stroke="#57534b" stroke-width="0.9"/>`; }
+    const wheel = (cx, r, sh = 0) => {
+      let w = `<circle cx="${f1(cx)}" cy="${wy}" r="${r}" fill="${shade('#3d3a33', sh)}" stroke="#1b1a16" stroke-width="0.8"/>`;
+      if (lod) return w + `<circle cx="${f1(cx)}" cy="${wy}" r="${f1(r * 0.4)}" fill="#77726a"/>`;
+      w += `<circle cx="${f1(cx)}" cy="${wy}" r="${f1(r * 0.72)}" fill="none" stroke="#5a564d" stroke-width="0.6"/><circle cx="${f1(cx)}" cy="${wy}" r="${f1(r * 0.34)}" fill="#77726a" stroke="#2a2823" stroke-width="0.4"/>`;
+      if (wt === 'chr') for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; w += `<circle cx="${f1(cx + Math.cos(a) * r * 0.55)}" cy="${f1(wy + Math.sin(a) * r * 0.55)}" r="${f1(r * 0.1)}" fill="#24221d"/>`; }
+      return w;
+    };
+    const span = L - 12 - wr * 2;
+    if (wt === 'vv') {
+      for (let b = 0; b < 3; b++) { const c0 = 7 + wr + (b * span) / 2.2; s += wheel(c0, wr) + wheel(c0 + wr * 2.1, wr) + `<path d="M${f1(c0 - 1)} ${f1(wy - wr - 1.6)}h${f1(wr * 2.1 + 2)}l-1.5 ${f1(wr + 0.6)}h-${f1(wr * 2.1 - 1)}z" fill="${shade(base, -0.25)}" stroke="${OUT}" stroke-width="0.5"/>`; }
+    } else if (wt === 'int') {
+      for (let i = 0; i < wn; i++) { const cx = 7 + wr + (i * span) / (wn - 1); if (i % 2) s += wheel(cx, wr, -0.15); }
+      for (let i = 0; i < wn; i++) { const cx = 7 + wr + (i * span) / (wn - 1); if (!(i % 2)) s += wheel(cx, wr); }
+    } else for (let i = 0; i < wn; i++) s += wheel(7 + wr + (i * span) / (wn - 1), wr);
+    // taşıyıcı makaralar ve uç dişliler
+    if (!lod && (wt === 'sm' || wt === 'vv')) for (let i = 0; i < 3; i++) s += `<circle cx="${f1(L * (0.25 + i * 0.25))}" cy="${f1(tY + 2)}" r="1.3" fill="#4a463e" stroke="#1b1a16" stroke-width="0.4"/>`;
+    s += `<circle cx="${f1(tH / 2 + 1)}" cy="${wy}" r="${f1(tH / 2 - 2.2)}" fill="#34312b" stroke="#1b1a16" stroke-width="0.6"/><circle cx="${f1(L - tH / 2 - 1)}" cy="${wy}" r="${f1(tH / 2 - 2)}" fill="#34312b" stroke="#1b1a16" stroke-width="0.6"/>`;
+    // gövde, çamurluk, yan zırh
+    s += `<path d="${hull}" fill="${base}" stroke="${OUT}" stroke-width="0.9" stroke-linejoin="round"/>`;
+    s += `<path d="M0 ${f1(tY - 0.4)}H${L}" stroke="${shade(base, -0.35)}" stroke-width="1.2"/>`;
+    if (T.skirt || st === 'fra') s += `<path d="M6 ${f1(by + H - 3)}h${L - 14}v${f1(wr * 0.9 + 1)}h-${L - 14}z" fill="${shade(base, -0.08)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    // top: namlu, kalkan (mantle), namlu freni
+    s += `<rect x="${tf}" y="${f1(gy - gw / 2)}" width="${f1(gun)}" height="${gw}" fill="${shade(base, -0.22)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    if (T.brake && st !== 'eng' && st !== 'jap') s += `<rect x="${f1(tf + gun - 2)}" y="${f1(gy - gw)}" width="5" height="${f1(gw * 2)}" fill="${shade(base, -0.3)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    // kule ve ayrıntılar
+    s += `<path d="${tur}" fill="${base}" stroke="${OUT}" stroke-width="0.9" stroke-linejoin="round"/>`;
+    s += `<rect x="${f1(tf - 1.6)}" y="${f1(gy - gw * 1.3)}" width="${f1(st === 'usa' || st === 'ger' ? 4 : 3)}" height="${f1(gw * 2.6)}" rx="1" fill="${shade(base, -0.12)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    const cup = st === 'jap' ? f1(tx + tw * 0.55) : st === 'sov' ? f1(tx + tw * 0.3) : f1(tx + 3);
+    if (st === 'ger' || st === 'usa' || st === 'fra' || st === 'jap' || big) s += `<path d="M${cup} ${ty}v-2.6h${st === 'jap' ? 4 : 5.5}v2.6z" fill="${shade(base, -0.1)}" stroke="${OUT}" stroke-width="0.6"/>`;
+    else s += `<path d="M${f1(tx + tw * 0.25)} ${ty}h${f1(tw * 0.35)}v-1.4h-${f1(tw * 0.35)}z" fill="${shade(base, -0.1)}" stroke="${OUT}" stroke-width="0.5"/>`;
+    s += `<path d="M${f1(cup + 2)} ${f1(ty - 2.6)}l-6 -14" stroke="#222" stroke-width="0.6"/>`;
+    if (!lod) {
+      // perçinler (ita, jap, erken eng), kapaklar, egzoz, aletler, yedek palet
+      if (st === 'ita' || st === 'jap' || (st === 'eng' && !big)) { let r = ''; for (let x = 4; x < L - 8; x += 4.5) r += `<circle cx="${f1(x)}" cy="${f1(top + 1.6)}" r="0.45"/><circle cx="${f1(x)}" cy="${f1(by + H * 0.5)}" r="0.45"/>`; for (let x = tx + 2; x < tr - 1; x += 3.5) r += `<circle cx="${f1(x)}" cy="${f1(ty + 1.6)}" r="0.4"/>`; s += `<g fill="${shade(base, -0.4)}">${r}</g>`; }
+      s += `<path d="M${f1(L * 0.68)} ${f1(top + 0.2)}h${f1(L * 0.12)}v1.2h-${f1(L * 0.12)}z" fill="${shade(base, -0.18)}"/>`;
+      s += `<path d="M${f1(L * 0.12)} ${f1(tY - 2)}h${f1(L * 0.22)}" stroke="#6b5434" stroke-width="1.1" stroke-linecap="round"/><path d="M${f1(L * 0.36)} ${f1(tY - 1.6)}h${f1(L * 0.1)}" stroke="#4a4a46" stroke-width="0.8"/>`;
+      s += st === 'ger' ? `<rect x="-1.5" y="${f1(by + H * 0.12)}" width="4" height="3" rx="1.5" fill="#3a3530" stroke="${OUT}" stroke-width="0.4"/>` : `<path d="M0.5 ${f1(by + H * 0.25)}h-2v2h2" fill="#2e2b26"/>`;
+      if (st === 'sov' && lv >= 2) s += `<rect x="1" y="${f1(top - 3)}" width="${f1(L * 0.12)}" height="3" rx="1.5" fill="${shade(base, -0.15)}" stroke="${OUT}" stroke-width="0.4"/>`;
+      if (st === 'ger' && !big) s += `<path d="M${f1(L - 4)} ${f1(by + H * 0.42)}h3.6v3h-3.6z" fill="#2b2925" stroke="${OUT}" stroke-width="0.4"/>`;
+    }
+    // kamuflaj lekeleri, ışık ve gölge
+    if (blot) { let b = ''; for (let i = 0; i < 6; i++) { const x = ((i * 37 + hash(tag)) % (L - 10)) + 4, y = by - th + ((i * 11) % (H + th)); b += `<ellipse cx="${x}" cy="${f1(y)}" rx="${7 + (i % 3) * 3}" ry="${3 + (i % 2) * 2}" transform="rotate(${(i * 23) % 40 - 20} ${x} ${f1(y)})"/>`; } s += `<g clip-path="url(#${id}c)" fill="${blot}" opacity="0.75">${b}</g>`; }
+    s += `<path d="${hull} ${tur}" fill="url(#${id}h)"/>`;
+    s += insignia(tag, f1(tx + tw * (st === 'jap' ? 0.35 : 0.5)), f1(ty + th * 0.58), Math.min(lod ? 5 : 4.2, th * (lod ? 0.4 : 0.32)));
+    return { svg: s, w: f1(tf + gun + (T.brake ? 4 : 1)), h: f1(tY + tH + (lod ? 0 : 3.4)) };
   };
 
   // ---------- Kamyon ve yarı paletli ----------
@@ -215,16 +286,24 @@
 
   // ---------- Uçak (yandan) ----------
   // e: fig avcı, cas yakın destek, bom bombardıman; lvl 4 avcı = jet
-  const plane = (tag, e, lvl, year) => {
+  const plane = (tag, e, lvl, year, lod) => {
     const n = nat(tag), c = n.ins === 'redstar' ? '#55613f' : n.ins === 'usstar' ? (year >= 1944 ? '#b9bcbf' : '#5d6342') : n.ins === 'hinomaru' ? (e === 'fig' ? '#c9c5b2' : '#4f5a3c') : n.ins === 'cross' ? '#5f6852' : n.ins === 'roundel' && n.rc[0] === '#1f3a8a' ? '#6a6446' : shade(n.cam[0], 0.05);
     const belly = n.ins === 'hinomaru' && e === 'fig' ? '#c9c5b2' : '#a9b4b8', cd = shade(c, -0.22), id = 'pl' + ++uid;
     const jet = e === 'fig' && lvl >= 4;
     let s = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="0.55" stop-color="${c}"/><stop offset="0.56" stop-color="${belly}"/><stop offset="1" stop-color="${shade(belly, -0.1)}"/></linearGradient></defs>`;
     if (e === 'bom') {
+      // ağır bombardıman (USA/ENG 2+): dört motor; GER/SOV/ITA camlı burun; ENG çift dikey kuyruk
+      const heavy = (n.ins === 'usstar' || (n.ins === 'roundel' && n.rc[0] === '#1f3a8a')) && lvl >= 2, glaze = ['cross', 'redstar'].includes(n.ins) || tag === 'ITA', twin = n.ins === 'roundel' && n.rc[0] === '#1f3a8a';
       s += `<path d="M4 20Q2 14 10 13L74 12Q90 12 96 18Q90 24 74 24L10 24Q2 24 4 20Z" fill="url(#${id})" stroke="${OUT}" stroke-width="0.9"/>`;
-      s += `<path d="M6 13L2 2h8l8 11z" fill="${c}" stroke="${OUT}" stroke-width="0.8"/><path d="M30 18L62 18L52 34L40 34Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8" opacity="0.95"/>`;
-      s += `<path d="M44 20h14l2 6H42z" fill="${shade(c, -0.12)}" stroke="${OUT}" stroke-width="0.7"/><ellipse cx="61" cy="23" rx="1.2" ry="6" fill="#bbb" opacity="0.6"/><path d="M84 13q6 1 9 4h-9z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>`;
-      s += `<path d="M66 13q4-3 8 0z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>` + insignia(tag, 24, 18.5, 3.6);
+      s += twin ? `<path d="M5 13L3 3h6l6 10z" fill="${shade(c, -0.1)}" stroke="${OUT}" stroke-width="0.7"/><path d="M9 14L7 5h6l5 9z" fill="${c}" stroke="${OUT}" stroke-width="0.8"/>`
+        : `<path d="M6 13L2 2h8l8 11z" fill="${c}" stroke="${OUT}" stroke-width="0.8"/>${n.ins === 'usstar' ? `<path d="M10 12.6L18 7.6l10 5z" fill="${c}" stroke="${OUT}" stroke-width="0.6"/>` : ''}`;
+      s += `<path d="M3 15.6h14" stroke="${cd}" stroke-width="1.6"/><path d="M30 18L62 18L52 34L40 34Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8" opacity="0.95"/>`;
+      const nac = (x, y0, sh) => `<path d="M${x - 14} ${y0}h14l2 6H${x - 16}z" fill="${shade(c, sh)}" stroke="${OUT}" stroke-width="0.7"/><ellipse cx="${x + 3}" cy="${y0 + 3}" rx="1.2" ry="6" fill="#bbb" opacity="0.6"/>`;
+      s += heavy ? nac(52, 21, -0.2) + nac(60, 24, -0.08) : nac(58, 20, -0.12);
+      s += glaze ? `<path d="M80 12.4Q92 12.6 96 18Q92 23.6 84 23.8Q86 18 80 12.4z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.6"/><path d="M84 13.6q3 4.4 0 10M88 14.6q2 3.4 0 7.4" stroke="#55707c" stroke-width="0.5" fill="none"/>`
+        : `<path d="M84 13q6 1 9 4h-9z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/><path d="M66 13q4-3 8 0z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>`;
+      if (heavy) s += `<circle cx="70" cy="11.6" r="2.4" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/><circle cx="48" cy="24.6" r="2.2" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>`;
+      s += `<path d="M20 15.6h40" stroke="${shade(c, -0.1)}" stroke-width="0.4"/>` + insignia(tag, 24, 18.5, 3.6);
       return { svg: s, w: 98, h: 36 };
     }
     if (jet) {
@@ -232,23 +311,43 @@
       s += `<path d="M26 18L46 18L40 28L32 28Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8"/><path d="M34 21h16q4 2 0 5H34z" fill="#3a3a36" stroke="${OUT}" stroke-width="0.6"/><path d="M56 13q6-5 13 1z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>` + insignia(tag, 22, 18, 3.2);
       return { svg: s, w: 84, h: 30 };
     }
+    // ülkeye özgü avcı: bf (Bf 109) köşeli kuyruk ve kanat ucu, spit eliptik kanat ve kuyruk, yak yuvarlak kuyruk,
+    // zero yıldız motor ve uzun kabin, p51 karın radyatörü ve (1944+) damla kabin, mc yıldız motor ve kambur kabin, d5 (D.520)
+    const PS = { GER: 'bf', HUN: 'bf', ROM: 'bf', BUL: 'bf', FIN: 'bf', ENG: 'spit', CAN: 'spit', AST: 'spit', RAJ: 'spit', SAF: 'spit', NZL: 'spit', SOV: 'yak', PRC: 'yak', JAP: 'zero', MAN: 'zero', USA: 'p51', CHI: 'p51', ITA: 'mc', POL: 'mc', SPN: 'mc', FRA: 'd5', BEL: 'd5', TUR: 'd5' };
+    const ps = PS[tag] || 'gen', radial = ps === 'zero' || ps === 'mc' || (e === 'cas' && n.ins === 'usstar');
     const gull = e === 'cas' && n.ins === 'cross';
-    s += `<path d="M4 17Q3 13 10 12.6L48 12Q62 12 66 16.4Q62 21 48 21L10 21Q3 21 4 17Z" fill="url(#${id})" stroke="${OUT}" stroke-width="0.9"/><path d="M7 13L3 3h6l8 10z" fill="${c}" stroke="${OUT}" stroke-width="0.8"/>`;
-    s += gull ? `<path d="M30 17L36 24L52 22L46 17Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8"/><path d="M38 23v6M48 22v6" stroke="#2b2b2b" stroke-width="1.6"/><path d="M36 28h4v3h-4zM46 27h4v3h-4z" fill="#2b2b2b"/>` : `<path d="M30 17L50 17L45 24L35 24Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8"/>`;
-    s += `<path d="M38 12q4-5 10-0.4z" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/><path d="M65 15h3v3h-3z" fill="#3a3a36"/><ellipse cx="69" cy="16.5" rx="1.2" ry="9" fill="#ccc" opacity="0.55"/>`;
+    s += radial ? `<path d="M4 17Q3 13 10 12.6L50 11.8L62 11.4L64.4 12.2V21.2L62 22L50 21.4L10 21Q3 21 4 17Z" fill="url(#${id})" stroke="${OUT}" stroke-width="0.9"/><path d="M62 11.4h2.8v10.6H62z" fill="${shade(c, -0.3)}" stroke="${OUT}" stroke-width="0.6"/><circle cx="66" cy="16.7" r="1.6" fill="#3a3a36"/>`
+      : `<path d="M4 17Q3 13 10 12.6L48 12Q60 12 64 15L68.6 16.5L64 18.2Q60 21 48 21L10 21Q3 21 4 17Z" fill="url(#${id})" stroke="${OUT}" stroke-width="0.9"/><path d="M64 14.6L70 16.5L64 18.4Z" fill="${ps === 'bf' ? '#e8e2cc' : shade(c, -0.3)}" stroke="${OUT}" stroke-width="0.5"/>`;
+    const FIN = { bf: 'M7 13L4 3.4h6.6l7 9.6z', spit: 'M8 13Q2 10 4.5 5Q7 2 11 4.5Q14 8 17 13z', yak: 'M7 13Q4 6 6 3.6Q9 3 17 13z', zero: 'M8 13Q4 7 6.5 4Q10 3.2 17 13z', p51: 'M5 13L4 3h5l2 4L22 12.4z', mc: 'M7 13L5 4Q8 2.6 10 4L17 13z', d5: 'M7 13Q4 7 5.5 3.6h4.4L17 13z', gen: 'M7 13L3 3h6l8 10z' };
+    s += `<path d="${FIN[ps]}" fill="${c}" stroke="${OUT}" stroke-width="0.8"/><path d="M3 16.2h12" stroke="${cd}" stroke-width="1.4"/>`;
+    const WING = { bf: 'M30 17.6L52 17.6L47.5 24.4L37 24.4Z', spit: 'M30 17.6L52 17.6Q51 22 46.4 24.2Q40.6 25.4 35.4 24.2Q30.6 22 30 17.6Z', yak: 'M30 17.6L52 17.6Q48 24.6 40 24.6Q33 24.2 30 17.6Z', zero: 'M30 17.6L52 17.6Q49 25 40 25Q32 24.6 30 17.6Z', p51: 'M30 17.6L53 17.6L46.5 24L39 24Z', mc: 'M30 17.6L51 17.6L46 24.4L36 24.4Z', d5: 'M30 17.6L52 17.6Q47 24.6 39 24.4Z', gen: 'M30 17L50 17L45 24L35 24Z' };
+    s += gull ? `<path d="M30 17L36 24L52 22L46 17Z" fill="${cd}" stroke="${OUT}" stroke-width="0.8"/><path d="M38 23v6M48 22v6" stroke="#2b2b2b" stroke-width="1.6"/><path d="M36 28h4v3h-4zM46 27h4v3h-4z" fill="#2b2b2b"/>` : `<path d="${WING[ps]}" fill="${cd}" stroke="${OUT}" stroke-width="0.8"/>`;
+    // kabin
+    const bubble = ps === 'p51' && year >= 1944;
+    const CAN = { bf: 'M37 12.2L40 8.2h8l3 4z', spit: 'M37 12.2Q41 8 47 8.2L51 12z', yak: 'M37 12.2Q41 8.2 47 8.2L50 12z', zero: 'M33 12.2Q35 8.4 43 8.2Q49 8.4 51 12z', p51: bubble ? 'M39 12.2Q43 6.4 50 12z' : 'M37 12.2L40 8.4h7l4 3.8z', mc: 'M36 12Q38 7.6 44 7.6Q48 8 52 11.6L46 12.6z', d5: 'M37 12.2Q40 8.2 46 8.4L50 12z', gen: 'M38 12q4-5 10-0.4z' };
+    s += `<path d="${CAN[ps]}" fill="#a9c2cc" stroke="${OUT}" stroke-width="0.5"/>`;
+    if (!lod) {
+      if (ps === 'bf' || ps === 'zero' || (ps === 'p51' && !bubble)) s += `<path d="M42 8.4v3.8M46 8.4v3.8${ps === 'zero' ? 'M38 9v3.2' : ''}" stroke="#55707c" stroke-width="0.5"/>`;
+      if (!radial) s += `<path d="M55.4 14.4h1.4M57.8 14.2h1.4M60.2 14h1.4" stroke="#2b2b2b" stroke-width="0.8"/>`;
+      if (ps === 'bf' || ps === 'spit') s += `<path d="M33 12.4l-1-3.4M32 9L9 9.6" stroke="#333" stroke-width="0.3"/>`;
+      s += `<path d="M14 16.6h20M26 13v7" stroke="${shade(c, -0.12)}" stroke-width="0.35"/>`;
+    }
+    if (ps === 'p51') s += `<path d="M30 21h11q-1 3.6-3 3.6h-6z" fill="${cd}" stroke="${OUT}" stroke-width="0.6"/>`;
+    if (ps === 'bf' || ps === 'spit') s += `<path d="M38 23.4h6l-0.6 2h-4.8z" fill="${shade(cd, -0.15)}" stroke="${OUT}" stroke-width="0.4"/>`;
+    s += `<ellipse cx="${radial ? 67 : 70}" cy="16.5" rx="1.2" ry="9" fill="#ccc" opacity="0.55"/>`;
     if (e === 'cas') s += `<path d="M40 25h10q2 1.2 0 2.4H40z" fill="#2f2f2a"/>`;
     s += insignia(tag, 22, 16.6, 3.2);
     return { svg: s, w: 72, h: 32 };
   };
 
   // ---------- Gemi (yandan) ----------
-  const ship = (tag, e) => {
+  const ship = (tag, e, lod) => {
     const n = nat(tag), c = n.ins === 'usstar' ? '#7c8790' : n.ins === 'redstar' ? '#7a8580' : n.ins === 'hinomaru' ? '#6f7478' : '#8a9094', cd = shade(c, -0.25), deck = '#9a8a6a';
     const turret = (x, y, w, dir = 1) => `<path d="M${x} ${y}h${w}l-1 -${w * 0.45}h-${w - 2}z" fill="${cd}" stroke="${OUT}" stroke-width="0.6"/><path d="M${dir > 0 ? x + w - 1 : x + 1} ${y - w * 0.28}h${dir * w * 1.1}" stroke="#2b2b2b" stroke-width="1.2"/>`;
     const L = { dd: 90, cr: 120, bb: 150, ss: 90, cv: 150, conv: 100 }[e] || 100, H = { dd: 7, cr: 9, bb: 12, ss: 5, cv: 10, conv: 10 }[e] || 9;
     let s = `<path d="M0 30L6 ${30 + H}H${L - 10}L${L} 28Z" fill="${c}" stroke="${OUT}" stroke-width="0.9" stroke-linejoin="round"/><path d="M4 ${33 + H * 0.4}H${L - 6}" stroke="${shade(c, 0.15)}" stroke-width="0.6"/>`;
     if (e === 'ss') return `<path d="M0 32Q4 38 14 38H${L - 12}Q${L} 36 ${L} 33L${L - 6} 31H6Z" fill="#3e4447" stroke="${OUT}" stroke-width="0.9"/><path d="M38 31l3-9h12l3 9z" fill="#4b5256" stroke="${OUT}" stroke-width="0.8"/><path d="M45 22v-8M49 22v-6" stroke="#2b2b2b" stroke-width="1"/><path d="M58 30h6" stroke="#2b2b2b" stroke-width="1.6"/>`;
-    if (e === 'cv') { s += `<path d="M-4 28H${L + 4}v-3H-4z" fill="${deck}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.62} 25v-14h12v14z" fill="${cd}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.62 + 4} 11v-6" stroke="#2b2b2b" stroke-width="1"/>`; for (let i = 0; i < 4; i++) s += `<path d="M${14 + i * 18} 24l8-1 2 1-2 1z" fill="${shade(c, -0.35)}"/>`; return s; }
+    if (e === 'cv') { s += `<path d="M-4 28H${L + 4}v-3H-4z" fill="${deck}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.62} 25v-14h12v14z" fill="${cd}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.62 + 4} 11v-6" stroke="#2b2b2b" stroke-width="1"/>`; for (let i = 0; i < 4; i++) s += `<path d="M${14 + i * 18} 24l8-1 2 1-2 1z" fill="${shade(c, -0.35)}"/>`; return s + shipDetail(tag, e, L, H, 1); }
     if (e === 'conv') return s + `<path d="M${L * 0.55} 30v-10h18v10z" fill="#d8d1bf" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.62} 20v-8h5v8z" fill="#2b2b2b"/><path d="M14 30v-6h28v6zM46 30v-5h10v5z" fill="#7a5e3e" stroke="${OUT}" stroke-width="0.6"/><path d="M28 24V8M28 10l-10 8M28 10l10 8" stroke="#3a3a36" stroke-width="0.7"/>`;
     const sup = e === 'bb' ? `<path d="M${L * 0.4} 28v-12h16v12z M${L * 0.45} 16v-12h7v12z" fill="${shade(c, -0.08)}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.6} 28l2-14h7l2 14z" fill="#3a3a36"/>` : `<path d="M${L * 0.38} 28v-9h14v9z M${L * 0.42} 19v-7h6v7z" fill="${shade(c, -0.08)}" stroke="${OUT}" stroke-width="0.7"/><path d="M${L * 0.58} 28l1.5-10h6l1.5 10z" fill="#3a3a36"/>`;
     s += sup + `<path d="M${L * 0.48} 4V-6" stroke="#2b2b2b" stroke-width="0.8"/>`;
@@ -256,15 +355,28 @@
     const fr = e === 'dd' ? [L * 0.74] : [L * 0.72, L * 0.82], bk = e === 'dd' ? [L * 0.16] : [L * 0.12, L * 0.22];
     for (const x of fr) s += turret(x, 28, tw, 1);
     for (const x of bk) s += turret(x, 28, tw, -1);
-    return s;
+    return s + shipDetail(tag, e, L, H, lod);
+  };
+  // gemi ayrıntısı: korkuluk, lombozlar, direk ve seren, kıç bayrağı, pruva dalgası
+  const shipDetail = (tag, e, L, H, lod) => {
+    const fc = (g.COUNTRY_DEFS[tag] || {}).c || '#888';
+    let d = `<path d="M${L - 12} ${30 + H}q7-1.6 12-${H + 2}q1.4 ${H * 0.7} -4 ${H + 2}z" fill="#f4f6f4" opacity="0.85"/><path d="M${L - 26} ${31 + H}q8 1.6 16-1" stroke="#f4f6f4" stroke-width="1" fill="none" opacity="0.7"/>`;
+    d += `<path d="M3 28V18" stroke="#2b2b2b" stroke-width="0.6"/><path d="M3 18h7v4.4H3z" fill="${fc}" stroke="${OUT}" stroke-width="0.4"/>`;
+    if (lod) return d;
+    d += `<path d="M6 27.4H${L - 12}" stroke="#d8dcdc" stroke-width="0.5" stroke-dasharray="0.6 1.2" opacity="0.8"/>`;
+    if (e !== 'dd') { let ph = ''; for (let x = 12; x < L - 16; x += 6) ph += `<circle cx="${x}" cy="${31.6}" r="0.55"/>`; d += `<g fill="#2b2f33" opacity="0.8">${ph}</g>`; }
+    d += `<path d="M${L * 0.48 - 5} -3h10M${L * 0.48 - 3.5} 0h7M${L * 0.48} -6L${L * 0.2} 26M${L * 0.48} -6L${L * 0.8} 26" stroke="#2b2b2b" stroke-width="0.4" opacity="0.8"/>`;
+    return d;
   };
 
+  // küçük boyut sürümü (LOD): dış konturlar k kat kalınlaşır (uzuvların kontur payı da k kat), küçük resimde kaybolmaz
+  const thick = (str, k = 2.2) => str.replace(/stroke="#16150f" stroke-width="([\d.]+)"/g, (m, w) => { const v = +w; return `stroke="#16150f" stroke-width="${(v > 3 ? v + (k - 1) * 1.3 : v * k).toFixed(2)}"`; });
   const svg = (W, H, body, cls = 'art') => `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
 
   // ---------- Tümen kartı ----------
   // kind: inf mtn cav mot mech arm mar para art; tag ülke; y yıl; lvl tank seviyesi
   G.art = {};
-  G.art.unit = (kind, tag, y = yearNow(), lvl = 1) => memo(`u|${kind}|${tag}|${y >= 1942 ? 1942 : y >= 1940 ? 1940 : 1936}|${lvl}`, () => {
+  G.art.unit = (kind, tag, y = yearNow(), lvl = 1, lod = 0) => memo(`u|${kind}|${tag}|${y >= 1942 ? 1942 : y >= 1940 ? 1940 : 1936}|${lvl}|${lod ? 1 : 0}`, () => {
     const W = 320, H = 150, id = 'ua' + ++uid, sd = hash(tag + kind);
     const pal = kind === 'mtn' ? PAL.snow : kind === 'mar' ? PAL.sea : kind === 'para' ? PAL.dusk : ['ITA', 'ENG'].includes(tag) && kind === 'arm' ? PAL.desert : sd % 3 === 0 ? PAL.dusk : PAL.day;
     let s = ground(W, H, pal, id, kind === 'mar' ? 0.55 : 0.62);
@@ -273,7 +385,7 @@
     s += smoke(W * 0.78, H * 0.52, 1.1) + smoke(W * 0.12, H * 0.5, 0.8, '#cfc6b2', 0.4);
     const sol = (x, yy, sc, pose, k, flip) => put(soldier(tag, y, pose, k), x, yy, sc, flip);
     switch (kind) {
-      case 'arm': { const t = tank(tag, lvl, y), sc = Math.min(1.7, 200 / t.w); s += put(t.svg, 300 - t.w * sc, H - 8 - t.h * sc, sc) + sol(38, 76, 0.95, 'adv', 1) + sol(8, 82, 0.8, 'adv', 2); break; }
+      case 'arm': { const t = tank(tag, lvl, y, lod), sc = Math.min(1.7, 200 / t.w); s += put(t.svg, 300 - t.w * sc, H - 8 - t.h * sc, sc) + sol(38, 76, 0.95, 'adv', 1) + sol(8, 82, 0.8, 'adv', 2); break; }
       case 'mot': s += put(truck(tag, 0), 150, 74, 1.9) + sol(70, 70, 1.15, 'adv', 0) + sol(30, 78, 0.95, 'march', 1); break;
       case 'mech': s += put(truck(tag, 1), 140, 72, 1.9) + sol(60, 70, 1.15, 'adv', 0) + sol(24, 78, 0.95, 'adv', 2); break;
       case 'cav': s += put(horse(tag, y, 2), 222, 72, 0.8) + put(horse(tag, y, 1), 24, 66, 1.0) + put(horse(tag, y, 0), 110, 58, 1.35); break;
@@ -284,39 +396,47 @@
       default: s += sol(238, 76, 0.95, 'march', 0) + sol(178, 66, 1.18, 'adv', 1) + sol(40, 68, 1.15, 'kneel', 2) + sol(104, 54, 1.45, 'adv', 0);
     }
     s += grass(W, H - 18, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
-    return svg(W, H, s, 'art unitart');
+    return svg(W, H, lod ? thick(s, 2.4) : s, 'art unitart');
   });
 
   // ---------- Teçhizat resmi ----------
   // e: inf sup art at aa mot tank fig cas bom dd cr bb ss cv conv
-  G.art.vehicle = (e, lvl, tag, y = yearNow()) => memo(`v|${e}|${lvl | 0}|${tag}|${y >= 1943 ? 1943 : y >= 1940 ? 1940 : 1936}`, () => {
+  G.art.vehicle = (e, lvl, tag, y = yearNow(), lod = 0) => memo(`v|${e}|${lvl | 0}|${tag}|${y >= 1943 ? 1943 : y >= 1940 ? 1940 : 1936}|${lod ? 1 : 0}`, () => {
     const W = 240, H = 120, id = 'va' + ++uid;
     const naval = ['dd', 'cr', 'bb', 'ss', 'cv', 'conv'].includes(e), air = ['fig', 'cas', 'bom'].includes(e);
     let s = '';
     if (naval) {
       s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#93a7b3"/><stop offset="1" stop-color="#dcd6c4"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>${smoke(150, 50, 0.8, '#c9c4b6', 0.4)}`;
       const L = { dd: 90, cr: 120, bb: 150, ss: 90, cv: 150, conv: 100 }[e] || 100, sc = Math.min(1.45, 200 / L);
-      s += put(ship(tag, e), (W - L * sc) / 2, 32, sc) + `<rect y="${32 + 38 * sc}" width="${W}" height="${H}" fill="#5c7684"/><path d="M0 ${36 + 38 * sc}q15-3 30 0t30 0t30 0t30 0t30 0t30 0t30 0t30 0" stroke="#a6bcc5" stroke-width="1.2" fill="none"/>`;
+      s += put(ship(tag, e, lod), (W - L * sc) / 2, 32, sc) + `<rect y="${32 + 38 * sc}" width="${W}" height="${H}" fill="#5c7684"/><path d="M0 ${36 + 38 * sc}q15-3 30 0t30 0t30 0t30 0t30 0t30 0t30 0t30 0" stroke="#a6bcc5" stroke-width="1.2" fill="none"/>`;
     } else if (air) {
       s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f9cb0"/><stop offset="1" stop-color="#e2dccb"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/><path d="M20 90q20-12 44-4q18-14 40 0q16-6 30 4z M150 40q14-8 30-2q14-8 26 2z" fill="#f2efe6" opacity="0.7"/>`;
-      const p = plane(tag, e, lvl, y), sc = Math.min(2.4, 200 / p.w);
+      const p = plane(tag, e, lvl, y, lod), sc = Math.min(2.4, 200 / p.w);
       s += put(p.svg, (W - p.w * sc) / 2, (H - p.h * sc) / 2, sc);
     } else {
       s += ground(W, H, PAL.day, id, 0.6);
-      if (e === 'tank') { const t = tank(tag, lvl || 1, y), sc = Math.min(1.75, 200 / t.w); s += put(t.svg, (W - t.w * sc) / 2 + 6, 22, sc); }
+      if (e === 'tank') { const t = tank(tag, lvl || 1, y, lod), sc = Math.min(1.75, 200 / t.w, (H - 16) / (t.h + 6)); s += put(t.svg, (W - t.w * sc) / 2 + 4, H - 8 - t.h * sc, sc); }
       else if (e === 'mot') s += put(truck(tag, 0), 40, 26, 2.3);
       else if (e === 'art' || e === 'at' || e === 'aa') s += put(gun(tag, e), 40, 20, 2.3);
       else if (e === 'sup') s += `<g stroke="${OUT}" stroke-width="0.9"><rect x="60" y="62" width="44" height="30" fill="#7a5e3e"/><rect x="108" y="66" width="36" height="26" fill="#6b5232"/><rect x="80" y="40" width="40" height="22" fill="#86683f"/><path d="M60 77h44M108 79h36M80 51h40" stroke="#4a3a28"/></g><path d="M156 92l8-40h6l-6 40z M172 92l12-34h6l-12 34z" fill="#3a3a36"/>` + put(soldier(tag, y, 'stand', 1), 186, 30, 1);
       else s += `<g stroke="${OUT}" stroke-width="0.9"><rect x="44" y="64" width="70" height="28" fill="#6f5434"/><path d="M44 74h70M44 84h70" stroke="#4a3a28"/></g>${rifle(52, 62, 120, 46, 1)}${rifle(56, 58, 124, 40, 0)}` + put(soldier(tag, y, 'stand', 0), 140, 26, 1.05) + put(soldier(tag, y, 'march', 1), 176, 30, 0.95);
     }
     s += `<rect width="${W}" height="${H}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="2"/>`;
-    return svg(W, H, s, 'art vehart');
+    return svg(W, H, lod ? thick(s, 2.2) : s, 'art vehart');
   });
 
   // sivil devlet adamı portresi (demokrat ve tarafsız liderler): takım elbise, kravat, şapkasız
+  // portre yüz ayrıntısı: yanak ve çene gölgesi, göz kapağı, göz parıltısı, burun kanadı, alt dudak; omuz gölgesi
+  const faceDetail = (cx, cy, ey, fw, skd) => `<g opacity="0.45" fill="${skd}"><ellipse cx="${cx - fw + 7}" cy="${cy + 9}" rx="5" ry="8"/><ellipse cx="${cx + fw - 6}" cy="${cy + 9}" rx="5.4" ry="8.4"/></g>`
+    + `<path d="M${cx - fw + 5} ${cy + 15}Q${cx} ${cy + 33} ${cx + fw - 5} ${cy + 15}" stroke="${shade(skd, -0.12)}" stroke-width="2" fill="none" opacity="0.4"/>`
+    + `<path d="M${cx - 12.4} ${ey - 1.4}q3.9-2.6 7.8 0M${cx + 4.6} ${ey - 1.4}q3.9-2.6 7.8 0" stroke="#3a2a20" stroke-width="0.9" fill="none" stroke-linecap="round"/>`
+    + `<circle cx="${cx - 7.4}" cy="${ey - 0.6}" r="0.55" fill="#fff"/><circle cx="${cx + 9.6}" cy="${ey - 0.6}" r="0.55" fill="#fff"/>`
+    + `<path d="M${cx - 4} ${ey + 10.4}q1.2 1.4 2.4 0.6M${cx + 4} ${ey + 10.4}q-1.2 1.4-2.4 0.6" stroke="${shade(skd, -0.2)}" stroke-width="0.8" fill="none"/>`
+    + `<path d="M${cx - 4} ${ey + 21.6}q4 1.6 8 0" stroke="${shade(skd, -0.1)}" stroke-width="0.9" fill="none" opacity="0.7"/>`;
+  const shoulderShade = (H, id) => `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="url(#${id}u)"/>`;
   const civPortrait = (s, gen, tag, h, sk, skd, hair, age, fat, must, glasses, W, H, id) => {
     const suit = ['#2b2b30', '#3a3530', '#2e3440'][h % 3], tie = (g.COUNTRY_DEFS[tag] || {}).c || '#6b2a24';
-    s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${suit}" stroke="${OUT}" stroke-width="1"/>`;
+    s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${suit}" stroke="${OUT}" stroke-width="1"/>` + shoulderShade(H, id);
     s += `<path d="M48 100L60 128L72 100Z" fill="#f2efe6" stroke="${OUT}" stroke-width="0.7"/><path d="M57 104L60 101L63 104L62 126L60 130L58 126Z" fill="${shade(tie, -0.1)}" stroke="${OUT}" stroke-width="0.5"/>`;
     s += `<path d="M48 100L56 122L44 112Z M72 100L64 122L76 112Z" fill="${shade(suit, 0.12)}" stroke="${OUT}" stroke-width="0.6"/>`;
     s += `<path d="M50 84h20v18H50z" fill="${skd}"/>`;
@@ -330,6 +450,7 @@
     s += `<path d="M${cx} ${ey + 1}L${cx - 3} ${ey + 11}Q${cx} ${ey + 13} ${cx + 3} ${ey + 11}" stroke="${shade(skd, -0.15)}" stroke-width="1.2" fill="none"/>`;
     if (must === 1) s += `<path d="M${cx - 9} ${ey + 16}Q${cx} ${ey + 12} ${cx + 9} ${ey + 16}Q${cx} ${ey + 16.6} ${cx - 9} ${ey + 16}Z" fill="${hc}"/>`;
     s += `<path d="M${cx - 6} ${ey + 19}q6 2.4 12 0" stroke="#7a4b3a" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    s += faceDetail(cx, cy, ey, fw, skd);
     if (glasses) s += `<g fill="none" stroke="#2b2b2b" stroke-width="1"><circle cx="${cx - 8.5}" cy="${ey}" r="5"/><circle cx="${cx + 8.5}" cy="${ey}" r="5"/><path d="M${cx - 3.5} ${ey}h7"/></g>`;
     s += `<rect width="${W}" height="${H}" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="3"/>`;
     return svg(W, H, s, 'art portrait');
@@ -339,21 +460,34 @@
   // ---------- Komutan portresi ----------
   // gen: {id, n, lvl, fm, tr}; belirlenimli (kimlikten hash), oyun rastgeleliğine dokunmaz
   const CAP_C = { schirm: 1, service: 1, kepi: 1, jap: 1, rogat: 1 };
-  G.art.portrait = (gen, tag, y = yearNow()) => memo(`p|${tag}|${gen.id}|${gen.n}|${gen.lvl | 0}|${gen.fm ? 1 : 0}|${gen.civ ? 1 : 0}`, () => {
+  G.art.portrait = (gen, tag, y = yearNow(), lod = 0) => (lod ? memo(`pl|${tag}|${gen.id}|${gen.n}|${gen.lvl | 0}|${gen.fm ? 1 : 0}|${gen.civ ? 1 : 0}`, () => thick(portraitSvg(gen, tag, y), 2)) : portraitSvg(gen, tag, y));
+  const portraitSvg = (gen, tag, y = yearNow()) => memo(`p|${tag}|${gen.id}|${gen.n}|${gen.lvl | 0}|${gen.fm ? 1 : 0}|${gen.civ ? 1 : 0}`, () => {
     const n = nat(tag), h = hash(tag + '|' + gen.n + '|' + gen.id), id = 'pt' + ++uid;
     const W = 120, H = 150, sk = skinOf(n, h), skd = shade(sk, -0.18), hair = ['#2a2018', '#4a3826', '#7a6a58', '#b8b0a4', '#1c1612'][(h >> 3) % 5];
     const age = (h >> 6) % 3, fat = ((h >> 9) % 3) * 2, must = (h >> 11) % 4, glasses = (h >> 13) % 5 === 0, u = n.u, ud = shade(u, -0.2);
     const capT = CAP_C[n.cap] ? n.cap : 'schirm', cc = n.cc || ud, band = n.band || shade(cc, -0.25), gold = gen.fm ? '#e2c25a' : n.trim || '#c9b45e';
-    let s = `<defs><radialGradient id="${id}b" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="${shade(u, 0.45)}"/><stop offset="1" stop-color="${shade(u, -0.45)}"/></radialGradient><linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${sk}"/><stop offset="1" stop-color="${skd}"/></linearGradient></defs>`;
+    let s = `<defs><radialGradient id="${id}b" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="${shade(u, 0.45)}"/><stop offset="1" stop-color="${shade(u, -0.45)}"/></radialGradient><linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${sk}"/><stop offset="1" stop-color="${skd}"/></linearGradient><linearGradient id="${id}u" x1="0" y1="0" x2="1" y2="0.3"><stop offset="0" stop-color="#000" stop-opacity="0.32"/><stop offset="0.3" stop-color="#fff" stop-opacity="0.08"/><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.36"/></linearGradient></defs>`;
     s += `<rect width="${W}" height="${H}" fill="url(#${id}b)"/>`;
     if (gen.civ) return civPortrait(s, gen, tag, h, sk, skd, hair, age, fat, must, glasses, W, H, id);
     // omuzlar ve üniforma
-    s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${u}" stroke="${OUT}" stroke-width="1"/>`;
+    s += `<path d="M6 ${H}Q8 112 34 104L50 100H70L86 104Q112 112 114 ${H}Z" fill="${u}" stroke="${OUT}" stroke-width="1"/>` + shoulderShade(H, id);
     s += `<path d="M50 100L60 124L70 100Z" fill="${shade(u, 0.1)}" stroke="${OUT}" stroke-width="0.8"/><path d="M52 101L60 118L68 101" fill="#ece6d6"/><path d="M57 104L60 122L63 104Z" fill="#3a3530"/>`;
     s += `<path d="M42 102L52 102L58 112L48 116Z M78 102L68 102L62 112L72 116Z" fill="${shade(u, -0.05)}" stroke="${OUT}" stroke-width="0.7"/>`;
     // yaka işaretleri ve omuz apoletleri
     s += `<path d="M46 106l7-1 2 6-7 2z M74 106l-7-1-2 6 7 2z" fill="${gen.fm ? '#b5232a' : band}" stroke="${gold}" stroke-width="0.8"/>`;
     s += `<path d="M16 112l18-6 2 5-18 7z M104 112l-18-6-2 5 18 7z" fill="${gold}" stroke="${OUT}" stroke-width="0.7"/>`;
+    // ülkeye göre yaka arması
+    if (n.ins === 'cross') s += `<path d="M47.6 107.6l5-0.8M48.2 109.8l5-0.8M72.4 107.6l-5-0.8M71.8 109.8l-5-0.8" stroke="#d8dcd8" stroke-width="0.8"/>`;
+    else if (n.ins === 'redstar' || n.ins === 'chi') s += `<path d="${starPath(50.6, 108.6, 1.8)} ${starPath(69.4, 108.6, 1.8)}" fill="${n.ins === 'chi' ? '#fff' : '#c4161c'}"/>`;
+    else if (n.ins === 'usstar') s += `<circle cx="50.6" cy="108.6" r="2" fill="#e2c25a" stroke="${OUT}" stroke-width="0.3"/><circle cx="69.4" cy="108.6" r="2" fill="#e2c25a" stroke="${OUT}" stroke-width="0.3"/>`;
+    else if (n.ins === 'hinomaru') s += `<path d="${starPath(49.6, 108.6, 1.1)} ${starPath(52, 108.2, 1.1)} ${starPath(68, 108.2, 1.1)} ${starPath(70.4, 108.6, 1.1)}" fill="#e6c34a"/>`;
+    else s += `<path d="M48.6 108.6h4M67.4 108.6h-4" stroke="${gold}" stroke-width="1"/>`;
+    // yüksek rütbede boyun nişanı (Şövalye Haçı, Kahraman yıldızı ya da madalya)
+    if ((gen.lvl | 0) >= 4 || gen.fm) {
+      if (n.ins === 'cross') s += `<path d="M57.6 100l2.4 3 2.4-3" stroke="#111" stroke-width="0.8" fill="none"/><path d="M60 103.4l2.4 1.2 1.2 2.4-1.2 2.4-2.4 1.2-2.4-1.2-1.2-2.4 1.2-2.4z" fill="#111" stroke="#e8e8e8" stroke-width="0.6"/>`;
+      else if (n.ins === 'redstar') s += `<rect x="34" y="111" width="5" height="2.6" fill="#b5232a"/><path d="${starPath(36.5, 117, 3.2)}" fill="#e2c25a" stroke="${OUT}" stroke-width="0.4"/>`;
+      else s += `<path d="M58 100l2 4 2-4" stroke="${band}" stroke-width="1.4" fill="none"/><circle cx="60" cy="106" r="2.6" fill="#e2c25a" stroke="${OUT}" stroke-width="0.4"/>`;
+    }
     // nişanlar: seviye kadar şerit, mareşalde kordon
     const ribbons = Math.min(5, Math.max(1, gen.lvl | 0));
     for (let i = 0; i < ribbons; i++) { const cols = [['#b5232a', '#f2efe4'], ['#1f3a8a', '#e2c25a'], ['#2b6b3a', '#f2efe4'], ['#e2c25a', '#111'], ['#6b2c91', '#f2efe4']][(h + i) % 5]; s += `<rect x="${78 + (i % 3) * 7}" y="${118 + Math.floor(i / 3) * 4}" width="6.4" height="3.4" fill="${cols[0]}" stroke="${OUT}" stroke-width="0.3"/><rect x="${80.6 + (i % 3) * 7}" y="${118 + Math.floor(i / 3) * 4}" width="1.3" height="3.4" fill="${cols[1]}"/>`; }
@@ -375,6 +509,7 @@
     if (must === 1) s += `<path d="M${cx - 9} ${ey + 16}Q${cx} ${ey + 12} ${cx + 9} ${ey + 16}Q${cx} ${ey + 16.6} ${cx - 9} ${ey + 16}Z" fill="${age === 2 ? '#c9c4bb' : hair}"/>`;
     else if (must === 2) s += `<path d="M${cx - 3.5} ${ey + 13}h7v3h-7z" fill="${hair}"/>`;
     s += `<path d="M${cx - 6} ${ey + 19}q6 2.4 12 0" stroke="#7a4b3a" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    s += faceDetail(cx, cy, ey, fw, skd);
     if (fat >= 4) s += `<path d="M${cx - 14} ${cy + 22}q14 10 28 0" stroke="${shade(skd, -0.08)}" stroke-width="0.8" fill="none"/>`;
     if (glasses) s += `<g fill="none" stroke="#2b2b2b" stroke-width="1"><circle cx="${cx - 8.5}" cy="${ey}" r="5"/><circle cx="${cx + 8.5}" cy="${ey}" r="5"/><path d="M${cx - 3.5} ${ey}h7M${cx - 13.5} ${ey}l-${fw - 13}-2M${cx + 13.5} ${ey}l${fw - 13}-2"/></g>`;
     // şapka
@@ -473,20 +608,21 @@
   };
   G.art.img = (svgStr, cls = '') => `<img class="artimg ${cls}" src="${G.art.url(svgStr)}" alt="" decoding="async" draggable="false">`;
   // kısayollar: tümen, komutan ve teçhizat resmi
-  G.art.unitOf = (u) => { const k = G.art.kindOf(u); return G.art.unit(k, u.t, yearNow(), k === 'arm' ? G.art.tankLvl(G.st.C[u.t]) : 1); };
-  G.art.tplOf = (c, tpl) => { const k = G.art.kindOfB(tpl.b); return G.art.unit(k, c.tag, yearNow(), k === 'arm' ? G.art.tankLvl(c) : 1); };
-  G.art.genImg = (gen, tag, cls = 'portrait-s') => G.art.img(G.art.portrait(gen, tag), cls);
-  G.art.eqImg = (e, lvl, tag, cls = 'vehthumb') => G.art.img(G.art.vehicle(e, Math.max(1, Math.floor(lvl || 1)), tag), cls);
+  G.art.unitOf = (u, lod) => { const k = G.art.kindOf(u); return G.art.unit(k, u.t, yearNow(), k === 'arm' ? G.art.tankLvl(G.st.C[u.t]) : 1, lod); };
+  G.art.tplOf = (c, tpl, lod) => { const k = G.art.kindOfB(tpl.b); return G.art.unit(k, c.tag, yearNow(), k === 'arm' ? G.art.tankLvl(c) : 1, lod); };
+  // küçük resimler (portrait-s, vehthumb) kalın konturlu sade sürümü kullanır
+  G.art.genImg = (gen, tag, cls = 'portrait-s') => G.art.img(G.art.portrait(gen, tag, yearNow(), cls === 'portrait-s' ? 1 : 0), cls);
+  G.art.eqImg = (e, lvl, tag, cls = 'vehthumb') => G.art.img(G.art.vehicle(e, Math.max(1, Math.floor(lvl || 1)), tag, yearNow(), cls === 'vehthumb' ? 1 : 0), cls);
   // harita sayacı silueti (resimli sayaç): 52x32, saydam zemin; Image önbellekte, yüklenince harita yeniden çizilir
   const sprites = new Map();
   const spriteSvg = (kind, tag, y) => {
     let b = '';
-    if (kind === 'arm') { const t = tank(tag, G.art.tankLvl(G.st.C[tag]), y), sc = Math.min(50 / t.w, 30 / t.h); b = put(t.svg, (52 - t.w * sc) / 2, 31 - t.h * sc, sc); }
+    if (kind === 'arm') { const t = tank(tag, G.art.tankLvl(G.st.C[tag]), y, 1), sc = Math.min(50 / t.w, 30 / t.h); b = put(t.svg, (52 - t.w * sc) / 2, 31 - t.h * sc, sc); }
     else if (kind === 'mot' || kind === 'mech') b = put(truck(tag, kind === 'mech'), 3, 2, 0.7);
     else if (kind === 'cav') b = put(horse(tag, y, 0), 6, 2, 0.47);
     else if (kind === 'art') b = put(gun(tag, 'art'), 3, 4, 0.68);
     else b = put(soldier(tag, y, 'adv', 0), 4, 1, 0.47) + put(soldier(tag, y, 'adv', 1), 24, 1, 0.47);
-    return `<svg viewBox="0 0 52 32" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
+    return `<svg viewBox="0 0 52 32" xmlns="http://www.w3.org/2000/svg">${thick(b, 2.6)}</svg>`;
   };
   // SVG bir kez yüklenir, sonra sayaçtaki boyutun cihaz pikseli kadar (26×16 × ölçek) bir tuvale çizilir:
   // haritada 1:1 kopyalandığı için 3× ekranda da keskin kalır
