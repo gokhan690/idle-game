@@ -284,8 +284,9 @@
       if (!e || st.ev[id] || !e.cond()) return fallback();
       st.ev[id] = 1;
       const later = fb && fb[0] === 'goal' ? fallback : () => {};
-      if (c.tag === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) });
-      else e.opts[0].fx();
+      const pop = { title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) };
+      if (c.tag === st.player) G.queuePopup(pop);
+      else if (!(G.humanQ && G.humanQ(c.tag, pop))) e.opts[0].fx();
     },
     goal(c, list) {
       const st = G.st;

@@ -51,7 +51,7 @@ const check = (name, ok, extra = '') => { console.log((ok ? 'TAMAM ' : 'HATA  ')
   const S1 = A.serialize();
   const ops = A.stateDiff(o0, JSON.parse(S1));
   const B = mk(); B.newGame('GER', { hist: 1, seed: 3 }); B.deserialize(S0);
-  const bad = B.applyPatch(B.st, ops);
+  const bad = B.applyPatch(B.st, JSON.parse(JSON.stringify(ops))); // ağ üzerinden gider gibi JSON'dan geçir
   // iki taraf da yüklenerek karşılaştırılır (yükleme insan gücü gibi türetilmiş değerleri yeniden hesaplar)
   B.deserialize(B.serialize());
   const R1 = mk(); R1.newGame('GER', { hist: 1, seed: 3 }); R1.deserialize(S1);

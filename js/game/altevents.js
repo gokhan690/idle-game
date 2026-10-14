@@ -291,7 +291,9 @@
     const st = G.st, c = st.C[tag], e = EV[id];
     if (!e || !c || !c.alive) return;
     (st.altDone || (st.altDone = {}))[id] = 1;
-    if (tag === st.player) G.queuePopup({ title: e.title, text: e.text, art: e.art, date: st.day, opts: e.opts.map((o) => ({ n: o.n, d: o.d, fx: () => o.fx(st.C[tag]) })) });
+    const pop = { title: e.title, text: e.text, art: e.art, date: st.day, opts: e.opts.map((o) => ({ n: o.n, d: o.d, fx: () => o.fx(G.st.C[tag]) })) };
+    if (tag === st.player) G.queuePopup(pop);
+    else if (G.humanQ && G.humanQ(tag, pop)) { /* çok oyunculu: insan oyuncu karar verir */ }
     else { try { e.opts[0].fx(c); } catch (err) { console.error('altev', id, err); } if (G.newsAlt) G.newsAlt(tag, e); }
   };
   // YZ ülkesinin alternatif yol zirvesi oyuncuya dünya haberi olarak gelir

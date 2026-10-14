@@ -333,6 +333,7 @@
       st.ev[e.id] = 1; (st.evOk || (st.evOk = {}))[e.id] = 1; // gerçekten yaşanan olaylar (güç dengesi vb.)
       if (!st.opts.hist && !G.isHuman(e.actor) && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
+      else if (G.humanQ && G.humanQ(e.actor, { title: e.title, text: e.text, opts: e.opts })) { /* çok oyunculu: insan oyuncu karar verir */ }
       else if (G.isLocal(e.targetPrompt)) {
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
       } else { e.opts[0].fx(); if (G.newsFor) G.newsFor(e); }

@@ -904,6 +904,16 @@ details.hsec > p { padding: 0 11px 10px; }
 .mpcode { font: 700 34px/1.1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.18em; text-align: center; padding: 10px; margin: 0 0 6px; border: 1px dashed var(--brass, #b8913a); border-radius: 8px; user-select: all; }
 .mpcode-in { flex: 1; min-width: 0; font: 600 18px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.15em; text-transform: uppercase; padding: 9px 10px; background: rgba(0,0,0,0.25); color: inherit; border: 1px solid var(--rule, #444); border-radius: 6px; }
 body.mp #btn-pause, body.mp .speed { display: none; }
+/* çok oyunculu masa: sohbet, oyuncu durumu, rozet */
+.mpchat { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: rgba(0,0,0,0.22); border: 1px solid var(--rule, #444); border-radius: 6px; }
+.mpmsg { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.mpmsg b { color: var(--brass, #b8913a); margin-right: 4px; }
+.mpmsg.me b { color: var(--good, #8fbf6a); }
+.mpsay { flex: 1; min-width: 0; font: inherit; padding: 9px 10px; background: rgba(0,0,0,0.25); color: inherit; border: 1px solid var(--rule, #444); border-radius: 6px; }
+.mpdot { width: 10px; height: 10px; border-radius: 50%; background: #555; flex: none; margin-left: 6px; }
+.mpdot.on { background: #6fcf5a; box-shadow: 0 0 6px rgba(111,207,90,0.7); }
+.mpbadge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 9px; background: var(--bad, #c0392b); color: #fff; font-style: normal; font-size: 12px; line-height: 18px; text-align: center; }
+.sec-card { padding: 10px; border: 1px solid var(--rule, #444); border-radius: 8px; background: rgba(0,0,0,0.18); margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -4685,7 +4695,11 @@ window.RIVERS = [
     const lateWar = !st.opts.hist || st.day >= G.dayOf('1941-06-01');
     if (!opts.alone) for (const t of G.sideOf(a)) {
       if (t === a || def.has(t)) continue;
-      if (t === st.player) { G.queuePopup({ title: 'Silah Çağrısı', text: `Müttefikimiz ${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti. Savaşa katılalım mı?`, opts: [{ n: 'Savaşa katıl', fx: () => { for (const y of G.sideOf(b)) if (!G.sameFaction(t, y)) G.setWar(t, y); } }, { n: 'Uzak dur', fx: () => {} }] }); continue; }
+      if (t === st.player || (G.humanQ && G.isHuman(t))) {
+        const pop = { title: 'Silah Çağrısı', text: `Müttefikimiz ${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti. Savaşa katılalım mı?`, opts: [{ n: 'Savaşa katıl', fx: () => { for (const y of G.sideOf(b)) if (!G.sameFaction(t, y)) G.setWar(t, y); } }, { n: 'Uzak dur', fx: () => {} }] };
+        if (t === st.player) { G.queuePopup(pop); continue; }
+        if (G.humanQ(t, pop)) continue; // çok oyunculu (gerçek zamanlı): insan oyuncu karar verir
+      }
       const ct = st.C[t];
       if (ct.overlord === a || (ct.ideo === st.C[a].ideo && ct.ideo !== 'neu' && lateWar)) att.add(t);
     }
@@ -6266,8 +6280,9 @@ window.RIVERS = [
       if (!e || st.ev[id] || !e.cond()) return fallback();
       st.ev[id] = 1;
       const later = fb && fb[0] === 'goal' ? fallback : () => {};
-      if (c.tag === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) });
-      else e.opts[0].fx();
+      const pop = { title: e.title, text: e.text, opts: e.opts.map((o, i) => (i ? { n: o.n, fx: () => { o.fx(); later(); } } : o)) };
+      if (c.tag === st.player) G.queuePopup(pop);
+      else if (!(G.humanQ && G.humanQ(c.tag, pop))) e.opts[0].fx();
     },
     goal(c, list) {
       const st = G.st;
@@ -8802,6 +8817,7 @@ window.RIVERS = [
       st.ev[e.id] = 1; (st.evOk || (st.evOk = {}))[e.id] = 1; // gerçekten yaşanan olaylar (güç dengesi vb.)
       if (!st.opts.hist && !G.isHuman(e.actor) && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
+      else if (G.humanQ && G.humanQ(e.actor, { title: e.title, text: e.text, opts: e.opts })) { /* çok oyunculu: insan oyuncu karar verir */ }
       else if (G.isLocal(e.targetPrompt)) {
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
       } else { e.opts[0].fx(); if (G.newsFor) G.newsFor(e); }
@@ -10579,7 +10595,9 @@ window.RIVERS = [
     const st = G.st, c = st.C[tag], e = EV[id];
     if (!e || !c || !c.alive) return;
     (st.altDone || (st.altDone = {}))[id] = 1;
-    if (tag === st.player) G.queuePopup({ title: e.title, text: e.text, art: e.art, date: st.day, opts: e.opts.map((o) => ({ n: o.n, d: o.d, fx: () => o.fx(st.C[tag]) })) });
+    const pop = { title: e.title, text: e.text, art: e.art, date: st.day, opts: e.opts.map((o) => ({ n: o.n, d: o.d, fx: () => o.fx(G.st.C[tag]) })) };
+    if (tag === st.player) G.queuePopup(pop);
+    else if (G.humanQ && G.humanQ(tag, pop)) { /* çok oyunculu: insan oyuncu karar verir */ }
     else { try { e.opts[0].fx(c); } catch (err) { console.error('altev', id, err); } if (G.newsAlt) G.newsAlt(tag, e); }
   };
   // YZ ülkesinin alternatif yol zirvesi oyuncuya dünya haberi olarak gelir
@@ -14797,6 +14815,7 @@ window.RIVERS = [
   <section class="sec"><h3 class="sec-h">Kayıt ve taşıma</h3><p class="small" style="margin:0">Menü → Kayıt bölümünde üç yuva ve bir otomatik kayıt vardır. Her yuva ülkeyi, oyun tarihini, modu, zorluğu ve kaydın yapıldığı saati gösterir; Sil düğmesine iki kez dokununca yuva boşalır. Otomatik kayıt aralığı (kapalı, aylık, 3 ayda, 6 ayda, yıllık) ayarlardan seçilir ve cihazda hatırlanır. <b>Dosyaya aktar</b> oyunu bir JSON dosyası olarak indirir; bu dosya başka bir telefonda ya da bilgisayarda <b>Dosyadan yükle</b> ile (başlangıç ekranından da) açılır. Bozuk ya da uyumsuz bir dosya seçilirse mevcut oyun korunur. Oyun claude.ai içinde açıldıysa ve oturumun açıksa Menü → Bulut kaydı ile kayıtlar hesabına yazılır (yalnızca sana görünür); başka cihazda aynı hesapla açıp başlangıç ekranındaki "Bulut kayıtları"ndan devam edebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Çok oyunculu</h3><p class="small" style="margin:0">Oyun claude.ai içinde açıldıysa başlangıç ekranındaki <b>Çok oyunculu</b> bölümünden <b>Oyun kur</b>: altı harfli bir kod çıkar. Arkadaşların oyunu açıp kodu yazar ve <b>Katıl</b>'a basar (sayfa onlarla Paylaş menüsünden en az "katkıda bulunabilir" izniyle paylaşılmış olmalı). Lobide herkes bir ülke seçer; kurucu mod, zorluk ve tur uzunluğunu (3, 7 ya da 14 gün) belirleyip başlatır. Seçilmeyen ülkeleri yapay zekâ yönetir. Her turda oyun durur: herkes kendi ülkesine emir verir (araştırma, üretim, inşaat, birlik hareketleri, diplomasi) ve alttaki çubuktan <b>Turu bitir</b>'e basar. Herkes hazır olunca tur, kurucunun cihazında herkes için birlikte işlenir ve yeni durum herkese gelir. Kurucu bekleyemiyorsa <b>Beklemeden devam</b> der; emir göndermeyenlerin ülkesi o tur yalnızca var olan emirleriyle sürer. Tur sırasında çıkan olaylarda ilk seçenek uygulanır ve sonraki turun başında bildirilir. İki oyuncu aynı turda aynı şeyi değiştirirse (ör. aynı ülkeye ikisi birden savaş ilan ederse) küçük yuvanın emri önce, diğerininki sonra uygulanır.</p>
     <p class="small" style="margin:8px 0 0"><b>Gerçek zamanlı kip:</b> lobide "Gerçek zamanlı" seçilirse zaman herkes için birlikte akar; hızı ve duraklatmayı kurucu yönetir. Her cihaz aynı dünyayı çalıştırır: verdiğin emir kurucuya gider, bir iki saniye içinde herkeste aynı günün başında devreye girer (o ana dek ekranda eski hâli görünebilir; alttaki çubuk "emir yolda" der). Geride kalan cihaz kendiliğinden hızlanır; kurucu, çok geride kalan çevrimiçi oyuncuyu bekler. Cihazlar her 20 günde bir durumlarını karşılaştırır, fark çıkarsa kurucudan taze görüntü alınır.</p>
+    <p class="small" style="margin:8px 0 0"><b>Masa:</b> Alttaki çubuktaki <b>Masa</b> düğmesi oyuncuları (çevrimiçi olanlar yeşil), sohbeti, gelen diplomasi tekliflerini ve bekleyen kararları gösterir. Başka bir oyuncuya pakt, ittifak daveti, geçiş izni, beyaz barış ya da savaşa çağrı Diplomasi panelinden teklif edilir; o kabul edince gerçekleşir. Gerçek zamanlı kipte ülkene gelen seçimli olaylar Masa'da bekler; 15 gün içinde seçmezsen ilk seçenek uygulanır. Lobide <b>Herkese açık</b> seçilen oyunlar başlangıç ekranındaki <b>Açık oyunlar</b> listesinde görünür.</p>
     <p class="small" style="margin:8px 0 0"><b>Kopma ve geri dönüş:</b> Sayfa kapanırsa başlangıç ekranındaki son kodlar düğmesiyle geri katılırsın; oyun kaldığı yerden sürer. Kurucunun bağlantısı 10 saniyeden uzun koparsa oyunu çevrimiçi oyunculardan biri devralır (gerçek zamanlıda en ileride olan); kurucu dönünce oyuncu olarak katılır. Oyun bu sayfanın veritabanında saklanır: herkes çıksa da aynı kodla dönüp son kaydedilen andan (tur kipinde son turdan, gerçek zamanlıda en çok bir dakika öncesinden) sürdürebilirsiniz.</p></section>
   <section class="sec"><h3 class="sec-h">Görseller ve harita görünümü</h3><p class="small" style="margin:0">Her ülkenin askerleri kendi üniforması, miğferi ve nişanıyla çizilir: Alman Stahlhelm'i, Sovyet SSh-40'ı, Amerikan M1 miğferi (1942'den sonra), Fransız Adrian'ı, Japon Type 90'ı. Tümen sayfasında ve listelerde tümenin resmi, komutanlarda portre, üretimde tank, uçak ve gemi resmi, muharebe penceresinde araziye göre karşılaşan iki taraf görünür; olay pencereleri olayın geçtiği ülkelere göre çizilir. Menü → <b>Harita görünümü</b>: birlik sayacını <b>NATO simgesi</b> ya da <b>Resimli</b> (asker, tank, kamyon, süvari, top silueti) seç; <b>Yüksek çözünürlük</b> haritayı telefonun tam piksel yoğunluğunda çizer (yavaş cihazlarda kendiliğinden düşer).</p></section>
   <section class="sec"><h3 class="sec-h">Yeni birlik türleri</h3><p class="small" style="margin:0">Geç dönem teknolojileri yeni taburlar açar: <b>Mekanize Piyade</b> (1940; yarı paletli, motorize kadar hızlı ama daha sert ve dayanıklı), <b>Tank Avcısı</b> (1941; yüksek sert saldırı ve zırh delme) ve <b>Kundağı Motorlu Topçu</b> (1941; zırhlılarla aynı hızda ateş desteği). Şablon tasarımcısında taburları ekle. Ayrıca Jet Avcısı (1945), Gelişmiş Radar (1943) ve Roket Programı (1944) teknolojileri var. Tarihî modda yapay zekâ bunları araştırmaz; serbest ve alternatif modlarda şablonlarını günceller.</p></section>
@@ -16198,8 +16217,8 @@ ${scene(k, A, B, v, y)}
 // Çok oyunculu eşitleme: durum farkı (diff) ve yama.
 // İstemci bir eylemden önceki ve sonraki durumu karşılaştırır, küçük bir işlem listesi üretir ve kurucuya gönderir;
 // kurucu yamayı kendi (yetkili) durumuna uygular. Kurucu düzenli olarak anlık görüntü yayınlar ve herkes onu yükler.
-// İşlem: [yol, değer] — yol bölümleri nesne anahtarı (dize), dizi sırası (sayı) ya da kimlikli dizi öğesi ({ id });
-// değer undefined ise silinir. Kimlik taşıyan nesnelerden oluşan diziler (tümenler, ordular, filolar) kimliğe göre
+// İşlem: [yol, değer] ya da silme için yalnızca [yol] (JSON'da undefined null'a dönüştüğünden silme ayrı biçimde kodlanır);
+// yol bölümleri nesne anahtarı (dize), dizi sırası (sayı) ya da kimlikli dizi öğesi ({ id }). Kimlik taşıyan nesnelerden oluşan diziler (tümenler, ordular, filolar) kimliğe göre
 // karşılaştırılır: ekleme sona yapılır, silme yerinde. Uzunluğu değişen sıradan diziler bütünüyle değiştirilir.
 (function (g) {
   const G = g.G;
@@ -16219,14 +16238,14 @@ ${scene(k, A, B, v, y)}
           if (!(k in x)) ops.push([path.concat([k]), y[k]]);
           else walk(x[k], y[k], path.concat([k]));
         }
-        for (const k in x) if (!(k in y) && !(path.length === 0 && SKIP_TOP.has(k))) ops.push([path.concat([k]), undefined]);
+        for (const k in x) if (!(k in y) && !(path.length === 0 && SKIP_TOP.has(k))) ops.push([path.concat([k])]);
         return;
       }
       if (Array.isArray(x) && Array.isArray(y)) {
         if ((idArr(x) || !x.length) && (idArr(y) || !y.length) && (x.length || y.length)) {
           const xm = new Map(x.map((e) => [e.id, e])), ym = new Set();
           for (const e of y) { ym.add(e.id); const o = xm.get(e.id); if (o === undefined) ops.push([path.concat([{ id: e.id }]), e]); else walk(o, e, path.concat([{ id: e.id }])); }
-          for (const e of x) if (!ym.has(e.id)) ops.push([path.concat([{ id: e.id }]), undefined]);
+          for (const e of x) if (!ym.has(e.id)) ops.push([path.concat([{ id: e.id }])]);
           return;
         }
         if (x.length === y.length) { for (let i = 0; i < y.length; i++) walk(x[i], y[i], path.concat([i])); return; }
@@ -16241,8 +16260,9 @@ ${scene(k, A, B, v, y)}
   G.applyPatch = (st, ops) => {
     let bad = 0;
     const cp = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
-    for (const [path, val] of ops) {
-      if (!path.length) { bad++; continue; }
+    for (const op of ops) {
+      const path = op[0], val = op.length < 2 ? undefined : op[1]; // [yol] = silme
+      if (!Array.isArray(path) || !path.length) { bad++; continue; }
       let o = st, ok = true;
       for (let k = 0; k < path.length - 1; k++) {
         const s = path[k];
@@ -16306,7 +16326,7 @@ ${scene(k, A, B, v, y)}
   N.create = async () => {
     const db = await D(), me = await caps.uid(); if (!db || !me) return UI.toast('Çok oyunculu için claude.ai içinde oturum açık olmalı.', 'bad');
     const gid = randCode();
-    await db.doc('games/' + gid).set({ host: me, rt: 0, turnDays: 7, hist: 1, alt: 0, diff: 1, status: 'lobby', slots: { [me]: { slot: 0, tag: null } }, created: Date.now(), turn: 0 });
+    await db.doc('games/' + gid).set({ host: me, rt: 0, pub: 1, turnDays: 7, hist: 1, alt: 0, diff: 1, status: 'lobby', slots: { [me]: { slot: 0, tag: null } }, created: Date.now(), turn: 0 });
     N.watch(gid);
   };
   N.join = async (code) => {
@@ -16324,8 +16344,8 @@ ${scene(k, A, B, v, y)}
   };
   N.leave = () => {
     stopWatch(); leaveRoom();
-    N.active = false; N.gid = null; N.game = null; N.phase = ''; N.turn = -1; N.ords = {}; G.simMask = undefined;
-    Object.assign(N.rt, { lastN: -1, maxDay: -1, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], syncing: false });
+    N.active = false; N.gid = null; N.game = null; N.phase = ''; N.turn = -1; N.ords = {}; G.simMask = undefined; N.chat = [];
+    Object.assign(N.rt, { lastN: -1, maxDay: -1, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], recent: [], hold: false, syncing: false });
     refresh();
   };
   N.pick = async (tag) => {
@@ -16350,6 +16370,7 @@ ${scene(k, A, B, v, y)}
       refresh();
     }, () => UI.toast('Oyun bağlantısı koptu; sayfayı yenileyip kodla yeniden katıl.', 'bad')));
     unsubs.push(db.collection(`games/${gid}/ord`).onSnapshot((q) => { N._od = q.docs.map((d) => d.data()); scanOrds(); }));
+    unsubs.push(watchChat(db, gid));
   };
   // gelen emirler: bu turunkiler; kurucu herkes hazırsa turu çözer
   const scanOrds = () => {
@@ -16443,8 +16464,8 @@ ${scene(k, A, B, v, y)}
   // gider; kurucu onu bir güne zamanlar (st.mpq) ve çerçeveyle herkese duyurur; herkes o günün başında aynı sırayla uygular.
   // Eylemin yerel etkisi geri alınır, böylece emir her cihazda aynı anda devreye girer. Her 20 günde bir durum karmaşası
   // presence ile karşılaştırılır; uyuşmazlıkta (ya da kayıp çerçevede) oyuncu kurucudan taze anlık görüntü ister ("need" → "snap").
-  const RT = (N.rt = { n: 0, lastN: -1, maxDay: -1, idc: 0, q: 0, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], syncing: false, needAt: 0, snapAt: 0, liveAt: 0, sentDay: -1, sentSp: -1, sentPa: -1, sentAt: 0, waitFor: '', joinedAt: 0, hostSeen: 0 });
-  N.peers = [];
+  const RT = (N.rt = { n: 0, lastN: -1, maxDay: -1, idc: 0, q: 0, pend: {}, seen: {}, applied: {}, hashes: {}, out: [], buf: [], recent: [], hold: false, syncing: false, needAt: 0, snapAt: 0, liveAt: 0, sentDay: -1, sentSp: -1, sentPa: -1, sentAt: 0, waitFor: '', joinedAt: 0, hostSeen: 0 });
+  N.peers = []; N.evToast = {};
   let room = null, roomGid = null, roomP = null, timer = 0;
   const LAG = 10; // kurucu en geride kalan çevrimiçi oyuncudan en çok bu kadar gün öne geçer
   const livePath = () => [`games/${N.gid}/live/m`, `games/${N.gid}/live/c`];
@@ -16464,6 +16485,7 @@ ${scene(k, A, B, v, y)}
     r.on('frame', (m) => onFrame(m));
     r.on('need', (m) => onNeed(m));
     r.on('snap', (m) => onSnap(m));
+    r.on('evpick', (m) => onEvPick(m));
     pres({ g: gid, slot: N.mySlot() });
     if (!timer) timer = setInterval(pump, 400);
     return r;
@@ -16484,7 +16506,7 @@ ${scene(k, A, B, v, y)}
     + 'focusclose ftnext ftzoom fullscreen home importsave intelopen intelback ledmetric ledtab load log logf mapmode mapmodeNext mapset newgame '
     + 'opencountry ovgo panel pause pick resinfo save selall selarmy selgroup selmenu selpick selprov setting setmode showc slotpick sopt sound speed '
     + 'tab tall tutorial unsel wxtoggle autosave dzmod dztier dzlvl paramode linemode armygoaladd armysel fleetsel').split(' '));
-  N.capture = (fn) => {
+  N.capture = (fn, asTag) => {
     if (!N.rtOn()) return fn();
     if (!N.myTag()) { UI.toast('İzleyicisin: emir veremezsin.', 'warn'); return; }
     if (RT.syncing) { UI.toast('Eşitleniyor; birazdan yeniden dene.', 'warn'); return; }
@@ -16495,7 +16517,9 @@ ${scene(k, A, B, v, y)}
     const base = 1e9 + slot * 1e7 + RT.idc; // oyuncunun yeni nesne kimlikleri ayrı aralıkta
     st.nextId = base;
     let r;
+    const pl = st.player; if (asTag) st.player = asTag; // kurucu başka oyuncunun olay seçimini onun adına uygular
     try { r = fn(); } finally {
+      if (asTag) st.player = pl;
       const s2 = G.st;
       if (s2 === st) {
         const used = st.nextId - base; st.nextId = nid;
@@ -16590,7 +16614,7 @@ ${scene(k, A, B, v, y)}
 
   // ---- kurucu: çerçeve yayını ----
   const emitFrames = (force) => {
-    const st = G.st; if (!st) return;
+    const st = G.st; if (!st || RT.hold) return;
     const done = G.tickIt ? st.day - 1 : st.day, sp = st.speed || 1, pa = st.paused || UI.modalOpen ? 1 : 0;
     if (!force && !RT.out.length && done === RT.sentDay && sp === RT.sentSp && pa === RT.sentPa && Date.now() - RT.sentAt < 3000) return;
     const out = RT.out; RT.out = [];
@@ -16609,6 +16633,7 @@ ${scene(k, A, B, v, y)}
   const onFrame = (m) => {
     if (m.sameTab || !N.game || m.by !== N.game.host || N.isHost()) return;
     const f = m.data; if (!f || typeof f.n !== 'number') return;
+    RT.recent.push(f); if (RT.recent.length > 300) RT.recent.shift();
     if (RT.syncing || !N.rtOn()) { RT.buf.push(f); if (RT.buf.length > 400) RT.buf.shift(); return; }
     applyFrame(f);
   };
@@ -16647,13 +16672,24 @@ ${scene(k, A, B, v, y)}
     RT.needAt = Date.now();
     emit('need', { at: Date.now() });
   };
+  // Yüklenen durum, kesintisiz çalışanla birebir aynı ilerlemez (muharebe ve hava önbellekleri yüklemede sıfırlanır).
+  // Bu yüzden duyurulan her görüntüyü herkes (kurucu dahil) yükler: hepsi aynı noktadan taze başlar. Kurucu, duyuru
+  // gidene dek yeni çerçeve yaymaz; oyuncular görüntüden sonraki çerçeveleri halka tampondan yeniden uygular.
   const writeLive = async (announce) => {
     G.finishTick(); emitFrames(true);
     const st = G.st, str = G.serialize(), meta = { day: st.day, fn: RT.n, at: Date.now(), host: N.me };
     RT.liveAt = Date.now();
+    if (announce) { RT.hold = true; reloadSelf(str); }
     const [m, c] = livePath();
-    try { await G.blobWrite(await D(), m, c, str, meta); } catch (e) { console.warn('canlı görüntü yazılamadı', e); return; }
-    if (announce) emit('snap', { at: meta.at });
+    try { await G.blobWrite(await D(), m, c, str, meta); } catch (e) { console.warn('canlı görüntü yazılamadı', e); RT.hold = false; return; }
+    if (announce) { emit('snap', { at: meta.at }); RT.hold = false; }
+  };
+  const reloadSelf = (str) => {
+    const o = G.st, pl = o.player, sp = o.speed, pa = o.paused;
+    G.deserialize(str);
+    const st = G.st; st.player = pl; st.speed = sp; st.paused = pa;
+    R.mapDirty = 1; G.mapDirty = 1; RT.hashes = {};
+    UI.hud(); if (UI.panel) UI.render(); if (UI.renderSel) UI.renderSel();
   };
   const onNeed = (m) => {
     if (!N.isHost() || !N.rtOn() || m.sameTab || slotOf(m.by) == null) return;
@@ -16661,7 +16697,11 @@ ${scene(k, A, B, v, y)}
     RT.snapAt = Date.now();
     writeLive(true);
   };
-  const onSnap = (m) => { if (!m.sameTab && N.game && m.by === N.game.host && RT.syncing && !N.isHost()) loadLive((m.data && m.data.at) || 0); };
+  const onSnap = (m) => {
+    if (m.sameTab || !N.game || m.by !== N.game.host || N.isHost() || !N.gid) return;
+    if (!RT.syncing) { RT.syncing = true; RT.buf = []; N.hud(); } // eşit olan oyuncu da aynı görüntüye geçer
+    loadLive((m.data && m.data.at) || 0);
+  };
   const loadLive = async (at) => {
     if (RT.loadingLive) return; RT.loadingLive = true;
     try {
@@ -16671,7 +16711,7 @@ ${scene(k, A, B, v, y)}
       for (let k = 0; k < 6; k++) { r = await G.blobRead(await D(), m, c).catch(() => null); if (r && (r.meta.at || 0) >= at) break; await new Promise((res) => setTimeout(res, 500)); }
       if (!r || (r.meta.at || 0) < at) { RT.needAt = 0; setTimeout(() => RT.syncing && requestSync('görüntü yok'), 1500); return; }
       enterRt(r.str, r.meta.fn);
-      const fr = RT.buf.filter((f) => f.n > r.meta.fn).sort((a, b) => a.n - b.n); RT.buf = [];
+      const seen = new Set(), fr = RT.recent.concat(RT.buf).filter((f) => f.n > r.meta.fn && !seen.has(f.n) && seen.add(f.n)).sort((a, b) => a.n - b.n); RT.buf = [];
       for (const f of fr) applyFrame(f);
     } finally { RT.loadingLive = false; }
   };
@@ -16749,7 +16789,8 @@ ${scene(k, A, B, v, y)}
     syncMask();
     if (RT.syncing && Date.now() - RT.needAt > 6000) requestSync('yanıt yok');
     if (N.rtOn()) {
-      if (N.isHost()) emitFrames(false);
+      if (N.isHost()) { emitFrames(false); evDeadlines(); }
+      for (const it of myEvs()) if (!N.evToast[it.seq]) { N.evToast[it.seq] = 1; UI.toast(`Karar bekliyor: ${it.title} (Masa)`, 'warn'); }
       else for (const [k, p] of Object.entries(RT.pend)) if (Date.now() - p.t > 3000) transmit(k);
       pres({ g: N.gid, slot: N.mySlot(), day: G.st.day, hd: presHd(), hh: RT.hashes[presHd()], away: document.hidden ? 1 : null });
       if (!N.isHost()) checkHash();
@@ -16773,6 +16814,7 @@ ${scene(k, A, B, v, y)}
   });
 
   // ---------- arayüz: tur çubuğu ----------
+  const masaBtn = () => { const n = N.pending() + unread(); return `<button class="btn sm" data-act="mpmasa">Masa${n ? ` <em class="mpbadge">${n}</em>` : ''}</button>`; };
   N.hud = () => {
     let bar = $('mpbar');
     document.body.classList.toggle('mp', !!N.active && !(N.rtOn() && N.isHost())); // gerçek zamanlıda saati kurucu yönetir
@@ -16789,6 +16831,7 @@ ${scene(k, A, B, v, y)}
       if (pn) h += `<span class="muted small">${pn} emir yolda</span>`;
       if (N.isHost() && RT.waitFor) h += `<span class="muted small">Bekleniyor: ${esc(RT.waitFor)}</span>`;
       if (hostOff) h += '<span class="muted small">Kurucu çevrimdışı</span>';
+      h += masaBtn();
       if (bar.dataset.h !== h) { bar.innerHTML = h; bar.dataset.h = h; }
       bar.hidden = false;
       return;
@@ -16799,6 +16842,7 @@ ${scene(k, A, B, v, y)}
     else if (N.phase === 'orders') h += `<button class="btn sm pri" data-act="mpend" ${N.sending ? 'disabled' : ''}>${N.sending ? 'Gönderiliyor…' : 'Turu bitir'}</button>`;
     else if (N.phase === 'wait') h += `<span class="muted small">Bekleniyor</span>${N.isHost() ? '<button class="btn sm" data-act="mpforce">Beklemeden devam</button>' : ''}`;
     else if (N.phase === 'resolve' || N.busy) h += '<span class="muted small">Tur işleniyor…</span>';
+    h += masaBtn();
     if (bar.dataset.h !== h) { bar.innerHTML = h; bar.dataset.h = h; }
     bar.hidden = false;
   };
@@ -16813,7 +16857,7 @@ ${scene(k, A, B, v, y)}
       <p class="muted small" style="margin:0 0 8px">Arkadaşlarınla aynı dünyada oyna: tur tabanlı (herkes emirlerini verip "Turu bitir"e basar) ya da gerçek zamanlı (zaman herkes için birlikte akar). Arkadaşların bu oyunu claude.ai hesaplarıyla açabilmeli (Paylaş menüsünden en az "katkıda bulunabilir" izni).</p>
       <div class="btns"><button class="btn pri" data-act="mpcreate">Oyun kur</button></div>
       <div class="row" style="gap:8px;margin-top:8px"><input id="mp-code" class="mpcode-in" maxlength="6" placeholder="Oyun kodu" autocapitalize="characters" autocomplete="off"><button class="btn" data-act="mpjoin">Katıl</button></div>
-      ${recent.length ? `<div class="btns" style="margin-top:6px">${recent.map((c) => `<button class="btn sm" data-act="mpjoin" data-v="${c}">${c}</button>`).join('')}</div>` : ''}</div>`;
+      ${recent.length ? `<div class="btns" style="margin-top:6px">${recent.map((c) => `<button class="btn sm" data-act="mpjoin" data-v="${c}">${c}</button>`).join('')}</div>` : ''}${N.openHtml()}</div>`;
   };
   const FEAT = ['GER', 'SOV', 'USA', 'ENG', 'FRA', 'ITA', 'JAP', 'TUR', 'CHI', 'POL', 'SPN', 'ROM'];
   const lobbyHtml = () => {
@@ -16831,7 +16875,9 @@ ${scene(k, A, B, v, y)}
       <div class="seg" style="margin-top:6px">${G.DIFF.map((x, i) => opt('diff', i, x.n)).join('')}</div>
       ${N.roomOk ? `<div class="seg" style="margin-top:6px">${opt('rt', 0, 'Tur tabanlı')}${opt('rt', 1, 'Gerçek zamanlı')}</div>` : ''}
       ${gm.rt ? '<p class="muted small" style="margin:6px 0 0">Zaman herkes için birlikte akar; hızı ve duraklatmayı kurucu yönetir. Emirler bir iki saniye içinde herkeste aynı anda devreye girer. Tur içi olaylarda ilk seçenek uygulanır.</p>' : `<div class="seg" style="margin-top:6px">${opt('turnDays', 3, 'Tur 3 gün')}${opt('turnDays', 7, 'Tur 7 gün')}${opt('turnDays', 14, 'Tur 14 gün')}</div>`}
-      <div class="btns" style="margin-top:10px">${host ? `<button class="btn pri" data-act="mpstart" ${mine ? '' : 'disabled'}>Oyunu başlat</button>` : '<span class="muted small">Kurucunun başlatması bekleniyor…</span>'}<button class="btn" data-act="mpleave">Lobiden çık</button></div></div>`;
+      <div class="seg" style="margin-top:6px">${opt('pub', 1, 'Herkese açık')}${opt('pub', 0, 'Yalnız kodla')}</div>
+      <div class="btns" style="margin-top:10px">${host ? `<button class="btn pri" data-act="mpstart" ${mine ? '' : 'disabled'}>Oyunu başlat</button>` : '<span class="muted small">Kurucunun başlatması bekleniyor…</span>'}<button class="btn" data-act="mpleave">Lobiden çık</button></div>
+      <h3 class="sec-h" style="margin-top:10px">Sohbet</h3>${N.chatHtml()}</div>`;
   };
 
   // ---------- eylemler ----------
@@ -16846,6 +16892,177 @@ ${scene(k, A, B, v, y)}
   A.mpforce = () => { if (N.isHost() && Object.keys(N.ords).length) N.resolve(); else UI.toast('Önce kendi turunu bitir.', 'warn'); };
   // çok oyunculu turda zamanı oyuncular değil, tur akışı yönetir
   for (const k of ['pause', 'speed']) { const f = A[k]; A[k] = (d) => { if (N.active && !(N.rtOn() && N.isHost())) { UI.toast(N.rtOn() ? 'Gerçek zamanlı oyunda hızı ve duraklatmayı kurucu yönetir.' : 'Çok oyunculu oyunda zaman turlarla ilerler: "Turu bitir"e bas.', 'info'); return; } f(d); }; }
+  // ---------- masa: oyuncular arası teklifler, olay kararları, sohbet ----------
+  // Teklifler (st.offers) her iki kipte de duruma girer: gönderen ekler, alıcı kabul/ret eder (emirleri gibi herkese yayılır).
+  const OFFER_N = { pact: 'saldırmazlık paktı', access: 'askerî geçiş izni', invite: 'ittifakına katılma daveti', joinfac: 'ittifakına katılma isteği', peace: 'beyaz barış', cta: 'savaşa çağrı' };
+  const offerOk = (k, a, b) => {
+    const st = G.st;
+    switch (k) {
+      case 'pact': return !G.atWar(a, b) && !st.pacts[G.pairKey(a, b)];
+      case 'access': return !G.atWar(a, b) && !st.access[a + '>' + b];
+      case 'invite': return !!st.C[a].fac && st.C[b].fac !== st.C[a].fac;
+      case 'joinfac': return !!st.C[b].fac && st.C[a].fac !== st.C[b].fac;
+      case 'peace': return G.atWar(a, b);
+      case 'cta': return !G.ctaAllowed || G.ctaAllowed(a, b).ok;
+    }
+    return false;
+  };
+  const dip0 = A.dip;
+  A.dip = (d) => {
+    const st = G.st, mine = st.player;
+    if (N.active && st.humans && OFFER_N[d.k]) {
+      let to = d.v;
+      if (d.k === 'joinfac') { const f = st.C[d.v] && st.factions[st.C[d.v].fac]; to = f && f.leader; }
+      if (to && to !== mine && G.isHuman(to)) {
+        if (!offerOk(d.k, mine, to)) { UI.toast('Bu teklif şu an geçerli değil.', 'warn'); return; }
+        if ((st.offers || []).some((o) => o.from === mine && o.to === to && o.k === d.k)) { UI.toast('Bu teklif zaten gönderildi; yanıt bekleniyor.', 'info'); return; }
+        (st.offers || (st.offers = [])).push({ id: st.nextId++, from: mine, to, k: d.k, day: st.day });
+        G.log(`${G.cname(mine)}, ${G.cname(to)} oyuncusuna ${OFFER_N[d.k]} teklif etti.`, [mine, to], 'info');
+        UI.toast(`${G.cname(to)} oyuncusuna ${OFFER_N[d.k]} teklif edildi; yanıtını bekle.`, 'info');
+        UI.render(); return;
+      }
+    }
+    dip0(d);
+  };
+  const applyOffer = (o) => {
+    const st = G.st, a = o.from, b = o.to;
+    if (!st.C[a] || !st.C[b] || !st.C[a].alive || !st.C[b].alive || !offerOk(o.k, a, b)) return false;
+    switch (o.k) {
+      case 'pact': st.pacts[G.pairKey(a, b)] = 'nap'; break;
+      case 'access': st.access[a + '>' + b] = 1; G.relClear(); break;
+      case 'invite': G.joinFaction(b, st.C[a].fac); break;
+      case 'joinfac': G.joinFaction(a, st.C[b].fac); break;
+      case 'peace': G.makePeace(a, b); break;
+      case 'cta': for (const e of st.C[a].enemies) if (!G.atWar(b, e) && !G.sameFaction(b, e) && !st.pacts[G.pairKey(b, e)]) G.setWar(b, e); break;
+    }
+    G.log(`${G.cname(b)}, ${G.cname(a)} oyuncusunun ${OFFER_N[o.k]} teklifini kabul etti.`, [a, b], 'major');
+    G.mapDirty = 1; R.dirty = 1;
+    return true;
+  };
+  // teklife yanıt (oyunun durumunu değiştirir: gerçek zamanlıda yakalanıp herkese iletilir)
+  A.offer = (d) => {
+    const st = G.st, o = (st.offers || []).find((x) => x.id === +d.v); if (!o) return;
+    const mine = st.player;
+    if (d.k === 'cancel' && o.from === mine) { st.offers = st.offers.filter((x) => x !== o); UI.toast('Teklif geri alındı.', 'info'); }
+    else if (o.to === mine && (d.k === 'acc' || d.k === 'rej')) {
+      st.offers = st.offers.filter((x) => x !== o);
+      if (d.k === 'acc') { if (applyOffer(o)) UI.toast('Teklif kabul edildi.', 'good'); else UI.toast('Teklif artık geçerli değil.', 'warn'); }
+      else { G.log(`${G.cname(mine)}, ${G.cname(o.from)} oyuncusunun ${OFFER_N[o.k]} teklifini reddetti.`, [o.from, mine], 'info'); UI.toast('Teklif reddedildi.', 'info'); }
+    }
+    UI.render(); UI.hud();
+  };
+
+  // olay kararları (gerçek zamanlı): insan ülkesine gelen seçimli olay her cihazda aynı sırayla st.evq'ya yazılır,
+  // seçenek işlevleri bellekte tutulur. Sahibi seçer → kurucu seçeneği uygular ve sonucu emir gibi yayar. 15 gün içinde
+  // seçilmezse kurucu ilk seçeneği uygular.
+  const EVFX = {};
+  G.humanQ = (tag, pop) => {
+    if (!N.rtOn() || G.simMask === undefined || !G.isHuman(tag) || !pop || !pop.opts || pop.opts.length < 2) return false;
+    const st = G.st, seq = (st.evSeq = (st.evSeq || 0) + 1);
+    (st.evq || (st.evq = [])).push({ seq, tag, title: String(pop.title || '').slice(0, 120), text: String(pop.text || '').slice(0, 600), opts: pop.opts.map((o) => String(o.n || '').slice(0, 80)), d: st.day + 15 });
+    EVFX[seq] = pop.opts;
+    return true;
+  };
+  const hostEvPick = (seq, i, tag) => {
+    const st = G.st, it = (st.evq || []).find((x) => x.seq === seq);
+    if (!it || it.tag !== tag || !N.isHost()) return;
+    const pop = G.onPopup;
+    // seçeneğin yan etkisi olarak açılan pencereler: ilk seçenek (kimsenin ekranında pencere açılmaz)
+    G.onPopup = () => { while (G.popupQueue.length) { const p = G.popupQueue.shift(); try { p.opts && p.opts[0] && p.opts[0].fx && p.opts[0].fx(); } catch (e) { console.error(e); } } };
+    try {
+      N.capture(() => {
+        const s = G.st; s.evq = (s.evq || []).filter((x) => x.seq !== seq);
+        const fx = EVFX[seq]; delete EVFX[seq];
+        const opt = fx && fx[i];
+        if (opt && opt.fx) { opt.fx(); G.log(`${G.cname(tag)} · ${it.title}: ${it.opts[i] || ''}`, [tag], 'info'); }
+      }, tag);
+    } finally { G.onPopup = pop; }
+  };
+  A.mpevpick = (d) => {
+    const seq = +d.k, i = +d.v, tag = N.myTag();
+    N.evSent[seq] = 1;
+    if (N.isHost()) hostEvPick(seq, i, tag); else emit('evpick', { seq, i });
+    UI.toast('Kararın iletildi.', 'info'); UI.render();
+  };
+  N.evSent = {};
+  const onEvPick = (m) => {
+    if (!N.isHost() || !N.rtOn() || m.sameTab || !m.data) return;
+    const s = N.game.slots[m.by]; if (!s || !s.tag) return;
+    hostEvPick(+m.data.seq, +m.data.i, s.tag);
+  };
+  // kurucu: süresi dolan kararlar ilk seçenekle
+  const evDeadlines = () => {
+    if (!N.isHost() || !N.rtOn() || RT.syncing) return;
+    for (const it of (G.st.evq || []).slice()) if (it.d <= G.st.day) hostEvPick(it.seq, 0, it.tag);
+  };
+
+  // sohbet: games/<kod>/chat (son 40 ileti)
+  N.chat = []; N.chatRead = 0;
+  const watchChat = (db, gid) => db.collection(`games/${gid}/chat`).orderBy('at', 'desc').limit(40).onSnapshot((q) => {
+    const L = q.docs.map((d) => d.data()).filter((x) => x && typeof x.t === 'string').reverse();
+    const fresh = L.filter((x) => x.at > (N.chat.length ? N.chat[N.chat.length - 1].at : 0) && x.by !== N.me);
+    N.chat = L;
+    if (UI.panel === 'mp') { N.chatRead = Date.now(); UI.render(); }
+    else if (fresh.length && N.chat.length && N.active) UI.toast(`${N.names[fresh[fresh.length - 1].by] || 'Oyuncu'}: ${fresh[fresh.length - 1].t.slice(0, 60)}`, 'info');
+    refresh();
+  });
+  A.mpsay = async () => {
+    const el = $('mp-say'); const t = el ? el.value.trim().slice(0, 200) : '';
+    if (!t || !N.gid) return;
+    el.value = '';
+    try { await (await D()).doc(`games/${N.gid}/chat/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`).set({ by: N.me, t, at: Date.now() }); }
+    catch (e) { UI.toast('İleti gönderilemedi.', 'bad'); }
+  };
+  const unread = () => N.chat.filter((x) => x.by !== N.me && x.at > N.chatRead).length;
+  const myEvs = () => (G.st && G.st.evq ? G.st.evq.filter((x) => x.tag === N.myTag() && !N.evSent[x.seq]) : []);
+  const myOffers = () => (G.st && G.st.offers ? G.st.offers.filter((o) => o.to === N.myTag()) : []);
+  N.pending = () => (N.active ? myEvs().length + myOffers().length : 0);
+  const chatHtml = () => `<div class="mpchat">${N.chat.length ? N.chat.map((x) => `<div class="mpmsg ${x.by === N.me ? 'me' : ''}"><b>${esc(N.names[x.by] || 'Oyuncu')}</b> ${esc(x.t)}</div>`).join('') : '<p class="muted small" style="margin:0">Henüz ileti yok.</p>'}</div>
+    <div class="row" style="gap:8px;margin-top:8px"><input id="mp-say" class="mpsay" maxlength="200" placeholder="İleti yaz…" autocomplete="off" enterkeyhint="send"><button class="btn" data-act="mpsay">Gönder</button></div>`;
+  N.chatHtml = chatHtml;
+
+  // masa paneli
+  UI.PANELS.mp = () => {
+    const st = G.st, mine = N.myTag(), L = UI.L;
+    N.chatRead = Date.now();
+    let html = '';
+    const evs = myEvs();
+    if (evs.length) html += L.sec('Bekleyen kararlar', evs.map((it) => `<div class="sec-card"><div class="t"><b>${esc(it.title)}</b> <span class="muted small">· ${Math.max(0, it.d - st.day)} gün içinde</span></div><p class="small" style="margin:4px 0 8px">${esc(it.text)}</p><div class="btns">${it.opts.map((n, i) => `<button class="btn ${i ? '' : 'pri'}" data-act="mpevpick" data-k="${it.seq}" data-v="${i}">${esc(n)}</button>`).join('')}</div></div>`).join(''), String(evs.length));
+    const inc = myOffers(), out = (st.offers || []).filter((o) => o.from === mine);
+    if (inc.length || out.length) html += L.sec('Diplomasi teklifleri', `<div class="list">${inc.map((o) => `<div class="item"><span>${G.flag(o.from, 30, 20)}</span><div class="grow"><div class="t">${esc(G.cname(o.from))}</div><div class="d">${esc(OFFER_N[o.k])} öneriyor</div></div><button class="btn sm pri" data-act="offer" data-k="acc" data-v="${o.id}">Kabul</button><button class="btn sm" data-act="offer" data-k="rej" data-v="${o.id}">Ret</button></div>`).join('')}${out.map((o) => `<div class="item"><span>${G.flag(o.to, 30, 20)}</span><div class="grow"><div class="t">${esc(G.cname(o.to))}</div><div class="d">${esc(OFFER_N[o.k])} · yanıt bekleniyor</div></div><button class="btn sm" data-act="offer" data-k="cancel" data-v="${o.id}">Geri al</button></div>`).join('')}</div>`);
+    const on = onlineIds();
+    const pl = Object.entries((N.game && N.game.slots) || {}).filter(([, s]) => s.tag).sort((a, b) => a[1].slot - b[1].slot).map(([id, s]) => {
+      const c = st.C[s.tag], live = id === N.me || on.has(id);
+      return `<div class="item"><span>${G.flag(s.tag, 30, 20)}</span><div class="grow"><div class="t">${esc(N.names[id] || 'Oyuncu')}${id === N.game.host ? ' <span class="pill">Kurucu</span>' : ''}${id === N.me ? ' <span class="muted small">(sen)</span>' : ''}</div><div class="d">${esc(G.cname(s.tag))}${c && !c.alive ? ' · teslim oldu' : ''}${s.tag !== mine && c && c.alive && G.atWar(mine, s.tag) ? ' · <span class="warn">savaşta</span>' : ''}</div></div><span class="mpdot ${live ? 'on' : ''}" title="${live ? 'çevrimiçi' : 'çevrimdışı'}"></span></div>`;
+    }).join('');
+    html += L.sec('Oyuncular', `<div class="list">${pl}</div><p class="muted small" style="margin:6px 0 0">Başka bir oyuncuya pakt, ittifak, geçiş izni, barış ya da savaşa çağrı teklifi Diplomasi panelinden gönderilir; o kabul edince gerçekleşir.</p>`);
+    html += L.sec('Sohbet', chatHtml());
+    return { title: 'Masa', html };
+  };
+  A.mpmasa = () => { UI.panel = 'mp'; UI.sub = null; $('card').hidden = true; UI.render(true); };
+  // üst çubuk uyarısı: bekleyen karar ve teklifler
+  const alerts0 = UI.alertsOf;
+  UI.alertsOf = (c) => { const al = alerts0(c); const n = N.pending(); if (n) al.unshift(['mp', '', `${n} bekleyen karar ya da teklif`, 'peace', n]); return al; };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.id === 'mp-say') { e.preventDefault(); A.mpsay(); } });
+
+  // açık oyunlar (lobi): herkese açık, son 3 saatte kurulmuş
+  N.open = { list: null, at: 0 };
+  const loadOpen = async () => {
+    if (N.open.loading || Date.now() - N.open.at < 20000) return;
+    N.open.loading = 1;
+    try {
+      const q = await (await D()).collection('games').where('status', '==', 'lobby').limit(30).get();
+      N.open.list = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.pub && x.created > Date.now() - 3 * 3600000 && !(x.slots && x.slots[N.me])).sort((a, b) => b.created - a.created).slice(0, 8);
+      const ids = [...new Set(N.open.list.map((x) => x.host))].filter((i) => !N.names[i]);
+      if (ids.length) { const u = await caps.user(); if (u && u.profiles) { const ps = await u.profiles(ids).catch(() => ({})); for (const i of ids) N.names[i] = (ps[i] && ps[i].name) || 'Oyuncu'; } }
+    } catch (e) { N.open.list = N.open.list || []; } finally { N.open.at = Date.now(); N.open.loading = 0; if (!$('start').hidden) UI.renderStart(); }
+  };
+  N.openHtml = () => {
+    loadOpen();
+    const L = N.open.list;
+    if (!L || !L.length) return '';
+    return `<h3 class="sec-h" style="margin-top:10px">Açık oyunlar<span>${L.length}</span></h3><div class="list">${L.map((x) => `<button class="item" data-act="mpjoin" data-v="${esc(x.id)}"><div class="grow"><div class="t">${esc(N.names[x.host] || 'Oyuncu')} kurdu</div><div class="d">${Object.keys(x.slots || {}).length} oyuncu · ${x.rt ? 'gerçek zamanlı' : `tur ${x.turnDays || 7} gün`} · ${x.hist ? 'tarihî' : 'serbest'}</div></div><span class="btn sm pri">Katıl</span></button>`).join('')}</div>`;
+  };
 })(window);
 
 /* js/ui/pwa.js */

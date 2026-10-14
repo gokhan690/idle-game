@@ -1,8 +1,8 @@
 // Çok oyunculu eşitleme: durum farkı (diff) ve yama.
 // İstemci bir eylemden önceki ve sonraki durumu karşılaştırır, küçük bir işlem listesi üretir ve kurucuya gönderir;
 // kurucu yamayı kendi (yetkili) durumuna uygular. Kurucu düzenli olarak anlık görüntü yayınlar ve herkes onu yükler.
-// İşlem: [yol, değer] — yol bölümleri nesne anahtarı (dize), dizi sırası (sayı) ya da kimlikli dizi öğesi ({ id });
-// değer undefined ise silinir. Kimlik taşıyan nesnelerden oluşan diziler (tümenler, ordular, filolar) kimliğe göre
+// İşlem: [yol, değer] ya da silme için yalnızca [yol] (JSON'da undefined null'a dönüştüğünden silme ayrı biçimde kodlanır);
+// yol bölümleri nesne anahtarı (dize), dizi sırası (sayı) ya da kimlikli dizi öğesi ({ id }). Kimlik taşıyan nesnelerden oluşan diziler (tümenler, ordular, filolar) kimliğe göre
 // karşılaştırılır: ekleme sona yapılır, silme yerinde. Uzunluğu değişen sıradan diziler bütünüyle değiştirilir.
 (function (g) {
   const G = g.G;
@@ -22,14 +22,14 @@
           if (!(k in x)) ops.push([path.concat([k]), y[k]]);
           else walk(x[k], y[k], path.concat([k]));
         }
-        for (const k in x) if (!(k in y) && !(path.length === 0 && SKIP_TOP.has(k))) ops.push([path.concat([k]), undefined]);
+        for (const k in x) if (!(k in y) && !(path.length === 0 && SKIP_TOP.has(k))) ops.push([path.concat([k])]);
         return;
       }
       if (Array.isArray(x) && Array.isArray(y)) {
         if ((idArr(x) || !x.length) && (idArr(y) || !y.length) && (x.length || y.length)) {
           const xm = new Map(x.map((e) => [e.id, e])), ym = new Set();
           for (const e of y) { ym.add(e.id); const o = xm.get(e.id); if (o === undefined) ops.push([path.concat([{ id: e.id }]), e]); else walk(o, e, path.concat([{ id: e.id }])); }
-          for (const e of x) if (!ym.has(e.id)) ops.push([path.concat([{ id: e.id }]), undefined]);
+          for (const e of x) if (!ym.has(e.id)) ops.push([path.concat([{ id: e.id }])]);
           return;
         }
         if (x.length === y.length) { for (let i = 0; i < y.length; i++) walk(x[i], y[i], path.concat([i])); return; }
@@ -44,8 +44,9 @@
   G.applyPatch = (st, ops) => {
     let bad = 0;
     const cp = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
-    for (const [path, val] of ops) {
-      if (!path.length) { bad++; continue; }
+    for (const op of ops) {
+      const path = op[0], val = op.length < 2 ? undefined : op[1]; // [yol] = silme
+      if (!Array.isArray(path) || !path.length) { bad++; continue; }
       let o = st, ok = true;
       for (let k = 0; k < path.length - 1; k++) {
         const s = path[k];
