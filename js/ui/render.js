@@ -622,7 +622,7 @@
     const hw = R.w / 2 / z;
     for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
       ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
-      if (R.mode !== 'peace') drawFronts(ctx, z);
+      if (R.mode !== 'peace') { drawFronts(ctx, z); drawPockets(ctx, z); }
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -662,6 +662,20 @@
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
+  // kuşatma cepleri: oyuncu ve müttefikleri kırmızı, düşmanları turuncu kesikli halka
+  function drawPockets(ctx, z) {
+    const st = G.st, pkt = st.pkt; if (!pkt) return;
+    const pl = st.player;
+    for (const tag in pkt) {
+      const mine = tag === pl || G.sameFaction(tag, pl), foe = !mine && G.atWar(tag, pl);
+      if (!mine && !foe) continue;
+      ctx.strokeStyle = mine ? 'rgba(232,64,44,0.95)' : 'rgba(255,160,60,0.95)';
+      ctx.fillStyle = mine ? 'rgba(200,40,30,0.16)' : 'rgba(240,140,40,0.12)';
+      ctx.lineWidth = 2.2 / z; ctx.setLineDash([5 / z, 3.5 / z]);
+      for (const i of pkt[tag]) { ctx.fill(provPath[i], 'evenodd'); ctx.stroke(provPath[i]); }
+      ctx.setLineDash([]);
+    }
+  }
   // sınır çatışmaları: eyalette turuncu çerçeveli çapraz kılıç ve kalan gün
   function drawBorderConflicts(ctx) {
     const st = G.st; R.bcMarks = []; if (!st.bc || !st.bc.length) return;
@@ -1131,6 +1145,15 @@
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    // kuşatılmış: sol üstte kırmızı köşe ve gün sayısı
+    const enc = gl.reduce((m, u) => Math.max(m, u.enc || 0), 0);
+    if (enc) {
+      ctx.fillStyle = '#c42a1c'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 13, y); ctx.lineTo(x, y + 13); ctx.closePath(); ctx.fill();
+      ctx.font = '800 9px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(enc + 'g').width + 6;
+      ctx.fillStyle = 'rgba(20,6,4,0.9)'; ctx.fillRect(x - 2, y - 10, tw, 10); ctx.strokeStyle = '#e0533f'; ctx.lineWidth = 1; ctx.strokeRect(x - 2, y - 10, tw, 10);
+      ctx.fillStyle = '#ffd8cc'; ctx.fillText(enc + 'g', x - 2 + tw / 2, y - 4.6);
+    }
     // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
     const iu = gl.find((u) => u.inv); if (iu) { const yy = gl.some((u) => u.sr) ? y - 9 : y - 5; ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, yy, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, yy + 1, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)

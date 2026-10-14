@@ -3376,7 +3376,7 @@ window.RIVERS = [
   };
 
   G.newGame = (player, opts) => {
-    G.tickIt = null;
+    G.tickIt = null; G.reachOf = {};
     if (G.dynClear) G.dynClear(); // önceki oyunun iç savaş ülkeleri
     G.TSRC = {}; G.TL = []; // gerginlik kaynakları ve zaman çizelgesi (kaydederken st'ye yazılır)
     const st = {
@@ -3551,6 +3551,7 @@ window.RIVERS = [
     if (st.v > G.SAVE_V) throw new Error('Kayıt oyunun daha yeni bir sürümüyle yapılmış');
     if (st.v !== G.SAVE_V) throw new Error('Kayıt sürümü çok eski');
     G.tickIt = null; // yarım kalmış gün eski oyuna aittir
+    G.reachOf = {}; G.pkVer = (G.pkVer || 0) + 1; // türetilmiş kuşatma önbellekleri eski oyuna aittir
     G.TSRC = st.tsrc || {}; G.TL = (st.tl || []).slice(); if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
     G.st = st;
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır
@@ -3839,7 +3840,7 @@ window.RIVERS = [
       if (n < NP) {
         if (!G.canEnter(u.t, n)) { u.path = []; u.prog = 0; continue; }
         if (G.hostileIn(n, u.t)) {
-          if (u.org < stats.org * 0.15 || u.ret) { u.path = []; u.prog = 0; continue; }
+          if ((u.org < stats.org * 0.15 && !u.bo) || u.ret) { u.path = []; u.prog = 0; continue; }
           let b = battles.get(n); if (!b) battles.set(n, (b = { n, att: [], amph: false }));
           b.att.push(u); if (u.loc >= NP) b.amph = true;
           continue;
@@ -3874,13 +3875,82 @@ window.RIVERS = [
     for (const u of st.units) if (!u.dead && !u.path.length && !G.inBattle.has(u)) recover(u, u._s);
     for (const u of st.units) if (!u.dead) reinforce(u, !u.path.length && !G.inBattle.has(u));
     for (const u of st.units) if (!u.dead) G.attrition(u);
+    encircleTick();
     // ölüleri temizle
     if (st.units.some((u) => u.dead)) { st.units = st.units.filter((u) => !u.dead); G.rebuildUnitIndex(); }
   }
 
+  // ---------- Kuşatma ----------
+  // cepteki tümenin gün sayacı; uzun süre kuşatılı kalan zayıf tümenler teslim olur
+  function encircleTick() {
+    const st = G.st, lost = {};
+    for (const u of st.units) {
+      if (u.dead) continue;
+      if (u.loc < NP && G.inPocket(u.t, u.loc)) {
+        u.enc = (u.enc || 0) + 1;
+        if (u.enc >= 40 && u.str < 0.35) { G.surrender(u); lost[u.t] = (lost[u.t] || 0) + 1; }
+      } else if (u.enc || u.bo) { delete u.enc; delete u.bo; }
+    }
+    for (const t in lost) G.encLog(t, lost[t]);
+  }
+  // teslim olan tümen: kuşatan tarafa esir, kaybedene savaş desteği kaybı
+  G.surrender = (u) => {
+    const st = G.st, c = st.C[u.t];
+    u.dead = 1;
+    let en = null;
+    if (u.loc < NP) for (const j of P[u.loc].a) { const pc = st.prov[j].c; if (G.atWar(u.t, pc)) { en = pc; break; } }
+    const pow = Math.round(G.T(u.t, u.u).mp * Math.max(0.1, u.str));
+    c.powLost = (c.powLost || 0) + pow;
+    if (en && st.C[en]) { st.C[en].pow = (st.C[en].pow || 0) + pow; st.C[en].encWon = (st.C[en].encWon || 0) + 1; }
+    c.ws = Math.max(0, (c.ws || 0) - 0.004);
+    st.encN = (st.encN || 0) + 1;
+  };
+  G.encLog = (tag, n) => {
+    const st = G.st;
+    if (tag === st.player) G.log(`${n} tümenimiz kuşatmada teslim oldu.`, [tag], 'bad');
+    else if (G.atWar(st.player, tag)) G.log(`Kuşatılan ${n} ${G.cname(tag)} tümeni teslim oldu.`, [tag], 'good');
+  };
+
+  // bağlı (cep dışı) dost eyalet mi: ikmal hesabındaki erişim haritası, yoksa cep listesi
+  const linked = (tag, j) => { const st = G.st, pc = st.prov[j].c; if (!(pc === tag || (G.friendly(tag, pc) && !G.atWar(tag, pc)))) return false; const r = G.reachOf && G.reachOf[tag]; return r ? !!r[j] : !G.inPocket(tag, j); };
+  // "Kuşatmadan çık": en yakın bağlı dost eyalete, gerekirse düşman eyaletlerinden geçerek yarma (moral düşükken de saldırır)
+  G.breakout = (u) => {
+    if (u.loc >= NP) return false;
+    const st = G.st, seen = new Set([u.loc]), q = [u.loc]; let tgt = -1;
+    for (let k = 0; k < q.length && tgt < 0 && k < 400; k++) for (const j of P[q[k]].a) {
+      if (seen.has(j) || !G.canEnter(u.t, j)) continue;
+      seen.add(j);
+      if (linked(u.t, j) && !G.hostileIn(j, u.t)) { tgt = j; break; }
+      q.push(j);
+    }
+    if (tgt < 0) return false;
+    const path = G.findPath(u.loc, tgt, u.t, G.unitStats(u).spd, {});
+    if (!path || !path.length) return false;
+    u.path = path; u.prog = 0; u.auto = 0; u.bo = 1;
+    return true;
+  };
+  // "Geri çekil": dost topraklardan, komşusunda düşman olmayan en yakın bağlı eyalete
+  G.withdraw = (u) => {
+    if (u.loc >= NP) return false;
+    const st = G.st, seen = new Set([u.loc]), q = [u.loc]; let tgt = -1;
+    const front = (j) => P[j].a.some((k) => G.atWar(u.t, st.prov[k].c));
+    for (let k = 0; k < q.length && tgt < 0 && k < 600; k++) for (const j of P[q[k]].a) {
+      if (seen.has(j) || !linked(u.t, j) || G.hostileIn(j, u.t)) continue;
+      seen.add(j);
+      if (!front(j)) { tgt = j; break; }
+      q.push(j);
+    }
+    if (tgt < 0) return false;
+    const path = G.findPath(u.loc, tgt, u.t, G.unitStats(u).spd, { avoidHostile: true });
+    if (!path || !path.length) return false;
+    u.path = path; u.prog = 0; u.auto = 0;
+    return true;
+  };
+
   function recover(u, s) {
     const st = G.st, c = st.C[u.t];
     if (u.loc >= NP) return;
+    if (u.enc) { u.org = Math.max(0, u.org - s.org * 0.02); return; } // kuşatılmış: moral yenilenmez, erir
     const pr = st.prov[u.loc];
     const home = pr.c === u.t || G.friendly(u.t, pr.c);
     u.org = Math.min(s.org, u.org + s.org * (home ? 0.08 : 0.04) * G.supplyMul(u));
@@ -3907,7 +3977,7 @@ window.RIVERS = [
   // Takviye (HOI4: muharebede ve harekette de sürer; ikmal ve dost toprak gerekir)
   function reinforce(u, still) {
     const st = G.st, c = st.C[u.vol || u.t]; // gönüllüler gönderenin stokundan ve insan gücünden takviye alır
-    if (u.loc >= NP || u.str >= 1) return;
+    if (u.loc >= NP || u.str >= 1 || u.enc) return; // kuşatılmışa takviye ulaşmaz
     const pr = st.prov[u.loc];
     if (!(pr.c === u.t || G.friendly(u.t, pr.c))) return;
     const sr = G.supplyRatio(u); if (sr < 0.4) return;
@@ -4087,6 +4157,7 @@ window.RIVERS = [
       else if (s.gb && s.gb.plan && u.bd < 8) tm *= 1 + 0.5 * s.gb.plan * (1 - u.bd / 8);
       const wx = G.WINTER_READY.has(u.t) ? 1 - 0.2 * G.wx.snow[n] - 0.3 * G.wx.mud[n] : G.wxAtk(n);
       atk *= Math.max(0.25, tm * wx) * airAdj(aAirM, dAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * hmA * (c.decryptAll || (c.decrypt && c.decrypt[defs[0].t] > st.day) ? 1.12 : 1);
+      if (u.enc) atk *= 0.85;
       const rp = G.riverPen(u, s, n); rivSum += rp; atk *= 1 - rp; // nehir geçişi: geldiği kenara göre
       hitD += atk; G.contrib(defs[0].t, u.t, atk);
     }
@@ -4094,7 +4165,7 @@ window.RIVERS = [
     for (const u of D) {
       const s = u._s, c = st.C[u.t];
       let atk = (s.sa * (1 - hdA) + s.ha * hdA) * u.str;
-      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1);
+      atk *= airAdj(dAirM, aAA) * diffMul(u.t) * G.supplyMul(u) * G.fuelMul(u) * terrainMul(s, te, lat, month) * hmD * (c.decryptAll || (c.decrypt && c.decrypt[attTag] > st.day) ? 1.12 : 1) * (u.enc ? 0.85 : 1);
       hitA += atk; G.contrib(attTag, u.t, atk);
     }
     // muharebe taktikleri (HOI4): iki günde bir seçilir, sayaçlar ve evreler
@@ -4108,7 +4179,7 @@ window.RIVERS = [
     for (const u of D) {
       const s = u._s;
       const inc = hitD * rD * (s.t.w || 15) / wD;
-      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
+      const dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * (G.WINTER_READY.has(u.t) ? 1 + 0.25 * G.wx.snow[n] : 1) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg) * (u.enc ? 0.85 : 1);
       const h = hits(inc, dv), armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       u.org -= h * CB.kOrg * armF;
       const sl = h * CB.kStr * armF / Math.max(10, s.hp);
@@ -4133,11 +4204,13 @@ window.RIVERS = [
     for (const u of A.concat(D)) { const gen = G.genOf(u); if (gen && u.army) gens.add([u.t, gen]); }
     for (const [tag, gen] of gens) if (G.genXP(gen, 1) && tag === st.player) G.log(`${gen.n} terfi etti (seviye ${gen.lvl}).`, [tag], 'good');
     // sonuçlar
-    let lost = 0;
+    let lost = 0, surr = 0;
     for (const u of defs) {
       if (u.str <= 0.03) { u.dead = 1; lost++; continue; }
-      if (u.org <= 0.5) { if (!retreat(u, n, atts)) { u.dead = 1; lost++; } }
+      // uzun kuşatılmış tümen bozulunca geri çekilmez, teslim olur
+      if (u.org <= 0.5) { if (u.enc >= 20) { G.surrender(u); surr++; } else if (!retreat(u, n, atts)) { u.dead = 1; lost++; } }
     }
+    if (surr) G.encLog(defs[0].t, surr);
     for (const u of atts) {
       if (u.str <= 0.03) { u.dead = 1; continue; }
       if (u.org <= 0.5) { u.org = 0; u.path = []; u.prog = 0; }
@@ -4176,7 +4249,7 @@ window.RIVERS = [
     const hits = (inc, dv) => (Math.min(inc, dv) * CB.lo + Math.max(0, inc - dv) * CB.hi) * CB.H;
     let defT = 0, attT = 0;
     for (const u of D) {
-      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg);
+      const s = u._s, dv = s.df * u.str * (1 + 0.15 * pr.fort) * (1 + 0.25 * u.ent) * terrainMul(s, te, lat, month) * G.homeDef(u.t, n) * hmD * (1 + G.RIVER_DEF * rivAvg) * (u.enc ? 0.85 : 1);
       const armF = s.arm > 0 ? Math.max(0.5, Math.min(1, prcA / s.arm)) : 1;
       defT += Math.max(0, u.org) / Math.max(0.01, hits(aTot * (s.t.w || 15) / wD, dv) * CB.kOrg * armF);
     }
@@ -5015,13 +5088,13 @@ window.RIVERS = [
             const v = f2 + (sr ? sr[j] : 1) * 3 - (G.unitsAt[j] || []).filter((x) => x.t === tag).length * 0.3;
             if (v > bb) { bb = v; back = j; }
           }
-          if (fn === 0 || (sup < 0.12 && en >= 3 && back < 0)) {
+          if (fn === 0 || (sup < 0.12 && en >= 3 && back < 0) || L.some((u) => u.enc >= 2)) {
             // cep: en yakın dost toprağa doğru yarma
             if (!dist) dist = friendDist(isFr);
             let best = -1, bv = Infinity;
             for (const j of P[n].a) { if (!G.atWar(tag, st.prov[j].c)) continue; const v = dist[j] * 10 + provThreat(j, tag) * 0.05; if (v < bv) { bv = v; best = j; } }
             if (best < 0) continue;
-            for (const u of L) if (!busy(u) && u.org > u._s.org * 0.25) { u.path = [best]; committed.add(u); }
+            for (const u of L) if (!busy(u) && (u.org > u._s.org * 0.25 || u.enc)) { u.path = [best]; if (u.enc) u.bo = 1; committed.add(u); }
           } else if (back >= 0 && en >= 3 && fn <= 2 && sup < 0.5 && P[n].vp < 10) {
             // kuşatılmak üzere olan ikmalsiz çıkıntı: muharebede olmayanlar çekilir
             for (const u of L) if (!busy(u)) { u.path = [back]; committed.add(u); }
@@ -5038,6 +5111,17 @@ window.RIVERS = [
         const here = byFront.get(f.i); if (!here || !here.length) continue;
         for (const e of f.enemyAdj) { let t = targets.get(e); if (!t) targets.set(e, (t = { e, from: [] })); t.from.push(f.i); }
       }
+      // kıskaç değeri: bu eyalet alınırsa bağlantısı bir ya da hiç dost komşuya inecek düşman tümenleri (HOI4 kuşatma)
+      const pincer = (e) => {
+        let v = 0;
+        for (const j of P[e].a) {
+          const pc = st.prov[j].c; if (!G.atWar(tag, pc)) continue;
+          const n = (G.unitsAt[j] || []).filter((u) => u.t === pc || G.friendly(pc, u.t)).length; if (!n) continue;
+          let k = 0; for (const x of P[j].a) { if (x === e) continue; const xc = st.prov[x].c; if (xc === pc || (G.friendly(pc, xc) && !G.atWar(pc, xc))) k++; }
+          if (k <= 1) v += n * (2 - k);
+        }
+        return v;
+      };
       const war0 = Math.min(...c.enemies.map((e) => st.wars[G.pairKey(tag, e)]?.since ?? st.day));
       const stalemate = Math.min(0.25, Math.max(0, (st.day - war0 - 60) / 400));
       const aggr = (G.diffAggr() - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
@@ -5050,7 +5134,7 @@ window.RIVERS = [
       const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0, pin: pincer(t.e) })).sort((a, b) => (a.def + a.gd - a.pin * 4 - b.def - b.gd + b.pin * 4) || (b.vp - a.vp));
       // kazanma eşiği: saldıranın moral süresi / savunanın moral süresi (muharebe tahmini)
       const margin = aggr / 1.3;
       for (const t of tlist) {
@@ -5067,7 +5151,7 @@ window.RIVERS = [
           const lib = st.prov[t.e].core === tag || G.sameFaction(tag, st.prov[t.e].core);
           // düşmanın asli topraklarında derin akın yok: her tür birlik en az iki dost komşu ister
           const ecore = st.prov[t.e].core === st.prov[t.e].c;
-          if (ecore && friendNb < 2) continue;
+          if (ecore && friendNb < 2 && !(t.pin && u._s.t.mob >= 0.5)) continue;
           if (friendNb < (lib ? 1 : 2) && (u._s.t.mob < 0.5 || G.supplyRatio(u) < 0.6) && P[t.e].vp < 10) continue;
           if (G.supplyRatio(u) < (lib ? 0.35 : 0.6)) continue; // ikmali zayıflayan öncü durur
           const left = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u).length;
@@ -5079,7 +5163,7 @@ window.RIVERS = [
         avail.sort((a, b) => (b._s.sa + b._s.ha + b._s.bt * 0.3) * b.str - (a._s.sa + a._s.ha + a._s.bt * 0.3) * a.str);
         let pr = null;
         for (const u of avail) { go.push(u); if (go.length < Math.min(2, avail.length)) continue; pr = G.predictBattle(go, t.e, tag); if (pr.ratio >= margin * 1.25) break; }
-        if (pr && pr.ratio >= margin) {
+        if (pr && pr.ratio >= margin * (t.pin ? 0.85 : 1)) {
           for (const u of go) {
             const rest = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u && !go.includes(x)).length;
             const otherThreat = P[u.loc].a.some((j) => j !== t.e && provThreat(j, tag) > 0);
@@ -6824,6 +6908,34 @@ window.RIVERS = [
       for (let i = 0; i < NP; i++) if (conn[i] && st.prov[i].c === tag && P[i].s.length) for (const z of P[i].s) if (!seaOk[z]) { seaOk[z] = 1; q.push(NP + z); }
       for (let k = 0; k < q.length; k++) { const n = q[k]; for (const [b] of G.adj[n]) if (b >= NP && !seaOk[b - NP] && !G.straitBlocked(tag, n, b)) { seaOk[b - NP] = 1; q.push(b); } }
     }
+    // kuşatma (cep): başkente karadan, ya da açık deniz yolu olan bir limandan bağlanamayan kontrol bölgeleri.
+    // Liste durumda (st.pkt) saklanır: kayıttan dönüşte ve çok oyunculu eşitlemede aynı sonucu verir.
+    {
+      const pk = []; let reach0 = null;
+      if (c.cap >= 0 && st.prov[c.cap].c === tag) {
+        const reach = (reach0 = conn.slice()), q = [];
+        for (let i = 0; i < NP; i++) if (!reach[i] && ctrl(i) && P[i].c && P[i].s.some((z) => seaOk[z])) { reach[i] = 1; q.push(i); }
+        for (let k = 0; k < q.length; k++) for (const j of P[q[k]].a) if (!reach[j] && ctrl(j)) { reach[j] = 1; q.push(j); }
+        // kopuk bölgeler: yalnızca küçük (en çok 15 eyalet) ve büyük şehri (ZP 15+) olmayanlar cep sayılır;
+        // geniş, şehirli kopuk bölgeler kendi başına ikmal alanıdır (ör. Urallar kesilince Sibirya)
+        const seen = new Uint8Array(NP);
+        for (let i = 0; i < NP; i++) {
+          if (reach[i] || seen[i] || !ctrl(i) || !(G.unitsAt[i] || []).some((u) => u.t === tag)) continue;
+          const comp = [i]; seen[i] = 1; let big = false;
+          for (let k = 0; k < comp.length; k++) {
+            const n = comp[k]; if (P[n].vp >= 15) big = true;
+            for (const j of P[n].a) if (!seen[j] && !reach[j] && ctrl(j)) { seen[j] = 1; comp.push(j); }
+          }
+          if (big || comp.length > 15) continue;
+          for (const n of comp) if ((G.unitsAt[n] || []).some((u) => u.t === tag)) pk.push(n);
+        }
+        pk.sort((a, b) => a - b);
+      }
+      (G.reachOf || (G.reachOf = {}))[tag] = reach0;
+      const pkt = st.pkt || (st.pkt = {});
+      if (pk.length) pkt[tag] = pk; else delete pkt[tag];
+      G.pkVer = (G.pkVer || 0) + 1;
+    }
     // ikmal merkezleri: başkent ve büyük şehirler (müttefik merkezleri de paylaşılır)
     const hubs = [];
     const convR = (() => { const need = G.convoyNeed ? G.convoyNeed(tag) : 0; return need > 0 ? Math.min(1, (c.ships.conv || 0) / need) : 1; })();
@@ -6892,7 +7004,7 @@ window.RIVERS = [
     try {
       for (const c of Object.values(st.C)) {
         if (!c.alive) { delete G.supRatio[c.tag]; continue; }
-        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; continue; }
+        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; if (st.pkt && st.pkt[c.tag]) { delete st.pkt[c.tag]; G.pkVer = (G.pkVer || 0) + 1; } continue; }
         G.computeSupplyFor(c);
         yield;
       }
@@ -6900,6 +7012,13 @@ window.RIVERS = [
     G.supTick = (G.supTick || 0) + 1;
   };
   G.computeSupplyAll = () => { for (const _ of G.supplySteps()); };
+  // cepteki eyalet mi (yalnızca o ülkenin tümeni bulunan kopuk eyaletler listelenir)
+  let pkRef = null, pkV = -1, pkSets = {};
+  G.inPocket = (tag, i) => {
+    const pkt = G.st.pkt; if (!pkt) return false;
+    if (pkRef !== pkt || pkV !== G.pkVer) { pkSets = {}; for (const t in pkt) pkSets[t] = new Set(pkt[t]); pkRef = pkt; pkV = G.pkVer; }
+    const s = pkSets[tag]; return !!(s && s.has(i));
+  };
   G.supplyRatio = (u) => { if (u.loc >= NP) return 1; const r = G.supRatio[u.t]; return r ? r[u.loc] : 1; };
   // Muharebe ve toparlanma çarpanı
   G.supplyMul = (u) => {
@@ -6962,6 +7081,7 @@ window.RIVERS = [
     const r = G.supplyRatio(u);
     let loss = 0;
     if (r < 0.7) loss += 0.004 * (0.7 - r) / 0.7;
+    if (u.enc > 7) loss += 0.005; // kuşatma: bir haftadan sonra erime
     const sn = G.wx.snow[u.loc];
     if (sn > 0.5) {
       const pr = st.prov[u.loc];
@@ -12569,7 +12689,7 @@ window.RIVERS = [
     const hw = R.w / 2 / z;
     for (let k = Math.floor((cam.x - hw) / M.W); k <= Math.floor((cam.x + hw) / M.W); k++) {
       ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (R.w / 2 - (cam.x - k * M.W) * z), dpr * (R.h / 2 - cam.y * z));
-      if (R.mode !== 'peace') drawFronts(ctx, z);
+      if (R.mode !== 'peace') { drawFronts(ctx, z); drawPockets(ctx, z); }
       // seçili eyalet
       if (R.sel.prov >= 0 && R.sel.prov < NP) {
         ctx.strokeStyle = '#f2d27a'; ctx.lineWidth = 2.2 / z; ctx.stroke(provPath[R.sel.prov]);
@@ -12609,6 +12729,20 @@ window.RIVERS = [
     R.dirty = R.regionFlash ? 1 : 0;
   };
 
+  // kuşatma cepleri: oyuncu ve müttefikleri kırmızı, düşmanları turuncu kesikli halka
+  function drawPockets(ctx, z) {
+    const st = G.st, pkt = st.pkt; if (!pkt) return;
+    const pl = st.player;
+    for (const tag in pkt) {
+      const mine = tag === pl || G.sameFaction(tag, pl), foe = !mine && G.atWar(tag, pl);
+      if (!mine && !foe) continue;
+      ctx.strokeStyle = mine ? 'rgba(232,64,44,0.95)' : 'rgba(255,160,60,0.95)';
+      ctx.fillStyle = mine ? 'rgba(200,40,30,0.16)' : 'rgba(240,140,40,0.12)';
+      ctx.lineWidth = 2.2 / z; ctx.setLineDash([5 / z, 3.5 / z]);
+      for (const i of pkt[tag]) { ctx.fill(provPath[i], 'evenodd'); ctx.stroke(provPath[i]); }
+      ctx.setLineDash([]);
+    }
+  }
   // sınır çatışmaları: eyalette turuncu çerçeveli çapraz kılıç ve kalan gün
   function drawBorderConflicts(ctx) {
     const st = G.st; R.bcMarks = []; if (!st.bc || !st.bc.length) return;
@@ -13078,6 +13212,15 @@ window.RIVERS = [
     if (opts.armyCol) { ctx.fillStyle = opts.armyCol; ctx.beginPath(); ctx.moveTo(x + w - 8, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 8); ctx.closePath(); ctx.fill(); }
     if (moving && tag === st.player) { ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.moveTo(x + w + 2, y + 6); ctx.lineTo(x + w + 7, y + 11); ctx.lineTo(x + w + 2, y + 16); ctx.closePath(); ctx.fill(); }
     if (gl.some((u) => u.sr)) { ctx.fillStyle = '#7fc8f8'; ctx.fillRect(x, y - 3, w, 2); }
+    // kuşatılmış: sol üstte kırmızı köşe ve gün sayısı
+    const enc = gl.reduce((m, u) => Math.max(m, u.enc || 0), 0);
+    if (enc) {
+      ctx.fillStyle = '#c42a1c'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 13, y); ctx.lineTo(x, y + 13); ctx.closePath(); ctx.fill();
+      ctx.font = '800 9px "Barlow Semi Condensed", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(enc + 'g').width + 6;
+      ctx.fillStyle = 'rgba(20,6,4,0.9)'; ctx.fillRect(x - 2, y - 10, tw, 10); ctx.strokeStyle = '#e0533f'; ctx.lineWidth = 1; ctx.strokeRect(x - 2, y - 10, tw, 10);
+      ctx.fillStyle = '#ffd8cc'; ctx.fillText(enc + 'g', x - 2 + tw / 2, y - 4.6);
+    }
     // çıkarma hazırlığı: üstte mavi ilerleme çubuğu
     const iu = gl.find((u) => u.inv); if (iu) { const yy = gl.some((u) => u.sr) ? y - 9 : y - 5; ctx.fillStyle = 'rgba(10,10,8,0.8)'; ctx.fillRect(x, yy, w, 4); ctx.fillStyle = '#5fa8e8'; ctx.fillRect(x + 1, yy + 1, (w - 2) * Math.min(1, iu.inv.p / iu.inv.n), 2); }
     // tecrübe rozeti: düzenli ve üstü için altın şeritler (HOI4)
@@ -13251,6 +13394,8 @@ window.RIVERS = [
     if (c.enemies.length) {
       const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
       if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
+      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
+      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
     }
     const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');
@@ -14432,7 +14577,7 @@ window.RIVERS = [
 
   // yardım: kategorilere ayrılmış, aranabilir, açılır kapanır bölümler
   const HELP_CAT = [
-    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
+    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Kuşatma', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
     ['Siyaset', ['Siyaset', 'Ulusal ruhlar (buff ve debuff)', 'Odaklar ve tarihî olaylar', 'Yeni tarihî olaylar', 'Odak ağacı dalları', 'Alternatif tarih yolları', 'İç savaş', 'Parti kampanyaları', 'Kararlar', 'Yasalar ve Ar-Ge', 'Seçimler', 'Güç dengesi', 'Değişen tarih', 'Tarihî dönüm noktaları', 'Dünya haberleri ve Türkiye']],
     ['Ekonomi', ['Ekonomi', 'Yakıt', 'İkmal, altyapı ve hava', 'Demiryolları ve ikmal merkezleri', 'Tank ve uçak tasarımcısı', 'Özel projeler ve atom bombası']],
     ['Kara kuvvetleri', ['Ordular, cepheler ve savaş planları', 'Savaş planı: aşamalı taarruz ve savunma hattı', 'Tümen seçimi ve hatta yayma', 'Komuta Gücü ve mareşaller', 'Muharebe', 'Muharebe taktikleri', 'Kara doktrinleri', 'Tümen tasarımcısı', 'Yeni birlik türleri', 'Tümen şerefi ve muhafızlar', 'Nehirler', 'İşgal: direniş ve uyum', 'Hava indirme']],
@@ -14475,7 +14620,7 @@ window.RIVERS = [
   <section class="sec"><h3 class="sec-h">Odak ağacı dalları</h3><p class="small" style="margin:0">Her ülkenin ağacında kara (kırmızı), hava (açık mavi) ve deniz (lacivert) için tek bir dal vardır: ülkenin kendi ulusal dalı varsa o kullanılır, yoksa genel dal; ayrıca sanayi (altın) ve siyaset/diplomasi dalları bulunur. Uzaklaştırınca odaklar madalyon olarak görünür; dokununca ayrıntısı açılır. Denize kıyısı olmayan ülkelerde deniz dalı yoktur.</p></section>
   <section class="sec"><h3 class="sec-h">Defter</h3><p class="small" style="margin:0">Menü → Defter: ülkelerin sanayi, kara, hava ve deniz gücünü ve kayıplarını karşılaştırır. Gidişat sekmesi büyük güçlerin aylık askerî fabrika, sivil fabrika, tümen ve kayıp grafiklerini gösterir; grafiğe dokununca o ayın değerleri çıkar. Bir ülkeye dokununca diplomasi sayfası açılır.</p></section>
   <section class="sec"><h3 class="sec-h">Harita</h3><p class="small" style="margin:0">Tek parmakla kaydır, iki parmakla yakınlaştır. Bir eyalete dokununca bilgi kartı açılır. Sağdaki düğmeler harita modunu değiştirir, alan seçimini açar ve başkente döner.</p></section>
-  <section class="sec"><h3 class="sec-h">Birlikler</h3><p class="small" style="margin:0">Kendi tümenlerinin bulunduğu eyalete (veya sayaca) dokun: tümenler seçilir. Sonra hedef eyalete dokun: en kısa yol bulunur. Deniz aşırı hedeflerde birlikler gemiyle taşınır; düşman kıyısına çıkarma için yeterli deniz gücü gerekir. Düşman birliği olan eyalete yürümek saldırı başlatır. Muharebe simgesindeki renk üstünlüğü gösterir.</p></section>
+  <section class="sec"><h3 class="sec-h">Kuşatma</h3><p class="small" style="margin:0">Başkentine karadan ya da açık deniz yolundaki bir limandan bağlantısı kesilen küçük bölgelerdeki tümenler kuşatılır: haritada kırmızı kesikli halka ve sayaçta gün sayısı görünür. Kuşatılan tümene takviye ulaşmaz, morali erir, bir haftadan sonra gücü azalır, saldırı ve savunması %15 düşer. 20 günden uzun kuşatılan tümen bozulunca geri çekilmez, teslim olur. Seçim kartındaki <b>Kuşatmadan çık</b> en yakın bağlı dost toprağa yarma yaptırır (moral düşükken de saldırır); <b>Geri çekil</b> tümenleri cephe gerisindeki güvenli hatta çeker. Düşmanın cephesinde dar boğazları keserek sen de cep oluşturabilirsin; esirler ve teslim alınan tümenler savaş desteğini etkiler.</p></section><section class="sec"><h3 class="sec-h">Birlikler</h3><p class="small" style="margin:0">Kendi tümenlerinin bulunduğu eyalete (veya sayaca) dokun: tümenler seçilir. Sonra hedef eyalete dokun: en kısa yol bulunur. Deniz aşırı hedeflerde birlikler gemiyle taşınır; düşman kıyısına çıkarma için yeterli deniz gücü gerekir. Düşman birliği olan eyalete yürümek saldırı başlatır. Muharebe simgesindeki renk üstünlüğü gösterir.</p></section>
   <section class="sec"><h3 class="sec-h">Muharebe</h3><p class="small" style="margin:0">HOI4 muharebe modeli: her tümen her gün düşmana <b>yumuşak saldırı</b> (piyadeye karşı) ve <b>sert saldırı</b> (zırhlılara karşı) karışımıyla vurur; karışımı düşmanın <b>sertliği</b> (zırhlı araç oranı) belirler. Gelen vuruşları savunan <b>savunma</b>, saldıran <b>atılım</b> değeriyle karşılar: karşılanan vuruşların yalnızca %10'u, fazlası ise %40 oranında moral (sarı çizgi) ve güç (yeşil çizgi) kaybettirir. <b>Zırh</b> düşmanın <b>zırh delmesinden</b> yüksekse alınan hasar yarıya kadar iner; bu yüzden tanklara karşı tanksavar desteği ya da kendi tankların gerekir. Birden çok yönden saldırmak cephe genişliğini her yön için %50 artırır. Dağ, orman, bataklık, nehir ve şehirler saldırana ceza verir; tahkimat ve siper savunmayı güçlendirir. Moral biten savunucu geri çekilir; geri çekilecek yeri yoksa kuşatılıp yok olur.</p></section>
   <section class="sec"><h3 class="sec-h">Kara doktrinleri</h3><p class="small" style="margin:0">Araştırma panelindeki doktrin sekmesinde HOI4'teki dört kara doktrininden <b>yalnızca birini</b> seçebilirsin: Mobil Savaş (tank hızı ve atılımı), Üstün Ateş Gücü (topçu ve savunma), Büyük Savaş Planı (planlama ve siper) ya da Kitle Saldırısı (insan gücü ve moral). İlk adımı attığında diğer üç ağaç kilitlenir.</p></section>
   <section class="sec"><h3 class="sec-h">Ekonomi</h3><p class="small" style="margin:0">Sivil fabrikalar inşaat yapar ve kaynak ithal eder. Askerî fabrikalar teçhizat, tersaneler gemi üretir. Çelik ve petrol eksikliği üretimi düşürür. Yasalar daha fazla asker ve fabrika verir ama savaş veya gerginlik gerektirebilir.</p></section>
@@ -14748,8 +14893,10 @@ window.RIVERS = [
         const by = new Map(); for (const u of sel) { const s2 = G.unitStats(u); const k = s2.t.s; const x = by.get(k) || { n: 0, str: 0, org: 0 }; x.n++; x.str += u.str; x.org += Math.max(0, u.org) / s2.org; by.set(k, x); }
         html += `<div class="ugrp">${[...by].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => `<div class="ug"><b>${esc(k)}</b><span>×${x.n}</span>${bar(x.str / x.n, 'g')}${bar(x.org / x.n)}</div>`).join('')}</div>`;
       } else html += `<div class="units">${sel.map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
+      const encd = sel.filter((u) => u.enc);
+      if (encd.length) html += `<div class="tbar encbar"><span class="pill war">Kuşatıldı · ${encd.length} tümen · ${Math.max(...encd.map((u) => u.enc))} gün</span><button class="btn sm danger" data-act="breakout">Kuşatmadan çık</button></div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
-      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="withdraw" title="Cephe gerisindeki güvenli hatta çekil">Geri çekil</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
       if (sel.length >= 2) html += `<div class="tbar"><button class="btn sm ${UI.lineMode ? 'pri' : ''}" data-act="linemode">⟿ Hatta yay</button><span class="muted small">${UI.lineMode ? 'Sınırda bir noktaya dokun' : 'Tümenleri sınır boyunca eşit dağıt'}</span></div>`;
       const paras = sel.filter((u) => G.isPara && G.isPara(u));
       if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
@@ -14897,7 +15044,10 @@ window.RIVERS = [
   };
   ACT.panel = (d) => UI.open(d.p);
   ACT.resinfo = (d) => { const t = UI._resInfo && UI._resInfo[d.k]; if (t) UI.toast(t, 'info'); };
-  ACT.alert = (d) => { if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
+  ACT.alert = (d) => {
+    // kuşatılmış tümenler: hepsini seç ve cebe odaklan
+    if (d.p === 'enc') { const L = G.st.units.filter((u) => u.t === G.st.player && u.enc); if (!L.length) return; R.sel.units = new Set(L.map((u) => u.id)); R.sel.army = null; R.focusOn(L[0].loc, 2.5); UI.close(); UI.renderSel(); R.dirty = 1; return; }
+    if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
@@ -15118,6 +15268,8 @@ window.RIVERS = [
   ACT.showc = (d) => { const c = G.st.C[d.v]; if (c.cap >= 0) R.focusOn(c.cap, 1.5); UI.close(); };
   ACT.clearsel = () => { R.sel.fleet = null; R.sel.units.clear(); R.sel.army = null; UI.goalMode = null; $('selbar').hidden = true; R.dirty = 1; };
   ACT.unsel = (d) => { R.sel.units.delete(+d.v); UI.renderSel(); R.dirty = 1; };
+  ACT.breakout = () => { let n = 0; for (const u of G.st.units) if (R.sel.units.has(u.id) && u.enc && G.breakout(u)) n++; R.dirty = 1; UI.toast(n ? `${n} tümen kuşatmayı yarmaya çalışıyor.` : 'Çıkış yolu bulunamadı.', n ? 'info' : 'warn'); UI.renderSel(); };
+  ACT.withdraw = () => { let n = 0; for (const u of G.st.units) if (R.sel.units.has(u.id) && G.withdraw(u)) n++; R.dirty = 1; UI.toast(n ? `${n} tümen geri çekiliyor.` : 'Geri çekilecek güvenli hat bulunamadı.', n ? 'info' : 'warn'); UI.renderSel(); };
   ACT.stop = () => { for (const u of G.st.units) if (R.sel.units.has(u.id)) { u.path = []; u.prog = 0; } R.dirty = 1; UI.toast('Tümenler durduruldu.'); };
   ACT.split = () => { const ids = [...R.sel.units]; const keep = ids.slice(0, Math.ceil(ids.length / 2)); R.sel.units = new Set(keep); UI.renderSel(); R.dirty = 1; };
   ACT.selauto = () => { const sel = G.st.units.filter((u) => R.sel.units.has(u.id)); const on = !sel.every((u) => u.auto); for (const u of sel) { u.auto = on ? 1 : 0; if (on) u.path = []; } UI.renderSel(); };

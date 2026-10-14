@@ -47,7 +47,7 @@
   };
 
   G.newGame = (player, opts) => {
-    G.tickIt = null;
+    G.tickIt = null; G.reachOf = {};
     if (G.dynClear) G.dynClear(); // önceki oyunun iç savaş ülkeleri
     G.TSRC = {}; G.TL = []; // gerginlik kaynakları ve zaman çizelgesi (kaydederken st'ye yazılır)
     const st = {
@@ -222,6 +222,7 @@
     if (st.v > G.SAVE_V) throw new Error('Kayıt oyunun daha yeni bir sürümüyle yapılmış');
     if (st.v !== G.SAVE_V) throw new Error('Kayıt sürümü çok eski');
     G.tickIt = null; // yarım kalmış gün eski oyuna aittir
+    G.reachOf = {}; G.pkVer = (G.pkVer || 0) + 1; // türetilmiş kuşatma önbellekleri eski oyuna aittir
     G.TSRC = st.tsrc || {}; G.TL = (st.tl || []).slice(); if (G.dynClear) { G.dynClear(); G.dynRegister(st); } // iç savaşta doğan ülkeler
     G.st = st;
     // eski kayıtlar: dört doktrinin hepsi → seçilen tek dal (HOI4); bilinmeyen teknolojiler atılır

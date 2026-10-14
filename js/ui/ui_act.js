@@ -82,8 +82,10 @@
         const by = new Map(); for (const u of sel) { const s2 = G.unitStats(u); const k = s2.t.s; const x = by.get(k) || { n: 0, str: 0, org: 0 }; x.n++; x.str += u.str; x.org += Math.max(0, u.org) / s2.org; by.set(k, x); }
         html += `<div class="ugrp">${[...by].sort((a, b) => b[1].n - a[1].n).map(([k, x]) => `<div class="ug"><b>${esc(k)}</b><span>×${x.n}</span>${bar(x.str / x.n, 'g')}${bar(x.org / x.n)}</div>`).join('')}</div>`;
       } else html += `<div class="units">${sel.map((u) => { const s2 = G.unitStats(u); return `<button class="ubox on" data-act="divinfo" data-v="${u.id}"><b>${s2.t.s}</b>${bar(u.str, 'g')}${bar(Math.max(0, u.org) / s2.org)}</button>`; }).join('')}</div>`;
+      const encd = sel.filter((u) => u.enc);
+      if (encd.length) html += `<div class="tbar encbar"><span class="pill war">Kuşatıldı · ${encd.length} tümen · ${Math.max(...encd.map((u) => u.enc))} gün</span><button class="btn sm danger" data-act="breakout">Kuşatmadan çık</button></div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
-      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
+      html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="withdraw" title="Cephe gerisindeki güvenli hatta çekil">Geri çekil</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
       if (sel.length >= 2) html += `<div class="tbar"><button class="btn sm ${UI.lineMode ? 'pri' : ''}" data-act="linemode">⟿ Hatta yay</button><span class="muted small">${UI.lineMode ? 'Sınırda bir noktaya dokun' : 'Tümenleri sınır boyunca eşit dağıt'}</span></div>`;
       const paras = sel.filter((u) => G.isPara && G.isPara(u));
       if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
@@ -231,7 +233,10 @@
   };
   ACT.panel = (d) => UI.open(d.p);
   ACT.resinfo = (d) => { const t = UI._resInfo && UI._resInfo[d.k]; if (t) UI.toast(t, 'info'); };
-  ACT.alert = (d) => { if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
+  ACT.alert = (d) => {
+    // kuşatılmış tümenler: hepsini seç ve cebe odaklan
+    if (d.p === 'enc') { const L = G.st.units.filter((u) => u.t === G.st.player && u.enc); if (!L.length) return; R.sel.units = new Set(L.map((u) => u.id)); R.sel.army = null; R.focusOn(L[0].loc, 2.5); UI.close(); UI.renderSel(); R.dirty = 1; return; }
+    if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
   ACT.tall = () => { UI.tall = !UI.tall; try { localStorage.setItem('dc_tall', UI.tall ? '1' : ''); } catch (e) {} UI.render(true); };
   ACT.back = () => { if (UI.sub) { UI.sub = null; UI.render(true); } else UI.close(); };
@@ -452,6 +457,8 @@
   ACT.showc = (d) => { const c = G.st.C[d.v]; if (c.cap >= 0) R.focusOn(c.cap, 1.5); UI.close(); };
   ACT.clearsel = () => { R.sel.fleet = null; R.sel.units.clear(); R.sel.army = null; UI.goalMode = null; $('selbar').hidden = true; R.dirty = 1; };
   ACT.unsel = (d) => { R.sel.units.delete(+d.v); UI.renderSel(); R.dirty = 1; };
+  ACT.breakout = () => { let n = 0; for (const u of G.st.units) if (R.sel.units.has(u.id) && u.enc && G.breakout(u)) n++; R.dirty = 1; UI.toast(n ? `${n} tümen kuşatmayı yarmaya çalışıyor.` : 'Çıkış yolu bulunamadı.', n ? 'info' : 'warn'); UI.renderSel(); };
+  ACT.withdraw = () => { let n = 0; for (const u of G.st.units) if (R.sel.units.has(u.id) && G.withdraw(u)) n++; R.dirty = 1; UI.toast(n ? `${n} tümen geri çekiliyor.` : 'Geri çekilecek güvenli hat bulunamadı.', n ? 'info' : 'warn'); UI.renderSel(); };
   ACT.stop = () => { for (const u of G.st.units) if (R.sel.units.has(u.id)) { u.path = []; u.prog = 0; } R.dirty = 1; UI.toast('Tümenler durduruldu.'); };
   ACT.split = () => { const ids = [...R.sel.units]; const keep = ids.slice(0, Math.ceil(ids.length / 2)); R.sel.units = new Set(keep); UI.renderSel(); R.dirty = 1; };
   ACT.selauto = () => { const sel = G.st.units.filter((u) => R.sel.units.has(u.id)); const on = !sel.every((u) => u.auto); for (const u of sel) { u.auto = on ? 1 : 0; if (on) u.path = []; } UI.renderSel(); };
