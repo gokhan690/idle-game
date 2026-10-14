@@ -193,7 +193,7 @@
   // ---------- Kamera ----------
   R.resize = () => {
     const cv = R.cv; const od = R.dpr; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
-    if (od !== R.dpr) { texPat.clear(); stripeCache.clear(); mudPat = null; wavePat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
+    if (od !== R.dpr) { texPat.clear(); iconCache.clear(); stripeCache.clear(); mudPat = null; wavePat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
     R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
@@ -270,12 +270,145 @@
     desert: { a: 0.28, f: 'rgba(255,230,160,0.07)', d: (x) => { x.fillStyle = 'rgba(90,70,30,0.8)'; for (const [cx, cy] of [[3, 3], [12, 6], [6, 12], [15, 15], [9, 17]]) x.fillRect(cx, cy, 1.1, 1.1); } },
   };
   let terrPaths = null; const texPat = new Map();
+  // ---------- Arazi simgeleri ve kabartma ----------
+  // Simgeler eyalet içine belirlenimli ızgara + sapma ile bir kez yerleştirilir (karo kovalarında x, y, sıra, tür, çeşit).
+  // Her simge cihaz çözünürlüğünde önceden çizilmiş küçük bir tuvalden kopyalanır; yoğunluk yakınlaştırmaya göre artar.
+  const ICON_T = ['mountain', 'hills', 'forest', 'jungle', 'marsh', 'desert', 'urban'], ICON_STEP = 3.4;
+  // karo başına tembel üretim: bir karo ilk kez ekrana girdiğinde simgeleri hesaplanır (açılış maliyeti yok)
+  let terrIcons = null, reliefProvs = null, tileProvs = null;
+  function initIcons() {
+    terrIcons = new Array(NT).fill(null); reliefProvs = Array.from({ length: NT }, () => []); tileProvs = Array.from({ length: NT }, () => []);
+    for (let i = 0; i < NP; i++) {
+      const ti = ICON_T.indexOf(g.TERRAIN[P[i].te]?.id); if (ti < 0) continue;
+      tileProvs[provT[i]].push(i); if (ti <= 1) reliefProvs[provT[i]].push(i);
+    }
+  }
+  function buildTileIcons(t) {
+    const out = [];
+    for (const i of tileProvs[t]) {
+      const ti = ICON_T.indexOf(g.TERRAIN[P[i].te].id);
+      const b = P[i].b, pa = provPath[i], step = ICON_STEP * [1, 1.2, 1, 1, 1.1, 1.25, 1.5][ti], m = step * 0.3;
+      for (let gy = Math.floor(b[1] / step) * step; gy < b[3]; gy += step) {
+        for (let gx = Math.floor(b[0] / step) * step; gx < b[2]; gx += step) {
+          const ix = Math.round(gx * 4), iy = Math.round(gy * 4);
+          const x = gx + step * (0.5 + (hh(ix, iy, i, ti, 5) - 0.5) * 0.7), y = gy + step * (0.5 + (hh(ix, iy, i, ti, 6) - 0.5) * 0.7);
+          // simge eyalet sınırına taşmasın: merkez ve iki yan nokta içeride olmalı
+          if (!hitCtx.isPointInPath(pa, x, y, 'evenodd') || !hitCtx.isPointInPath(pa, x - m, y - m * 0.5, 'evenodd') || !hitCtx.isPointInPath(pa, x + m, y - m * 0.5, 'evenodd')) continue;
+          out.push(x, y, hh(ix, iy, i, ti, 7), ti, (hh(ix, iy, i, ti, 8) * 3) | 0);
+        }
+      }
+    }
+    return (terrIcons[t] = Float32Array.from(out));
+  }
+  // simge çizimleri (birim kutu: genişlik 1, taban y = 0.9); yarı saydam nötr tonlar ülke rengini örtmez
+  const INK = 'rgba(22,18,12,0.88)', LIT = 'rgba(255,251,238,0.62)', SHD = 'rgba(18,14,8,0.42)';
+  const ICON_DRAW = [
+    (x, v) => { // dağ: ışıklı batı yüzü, gölgeli doğu yüzü, karlı zirve
+      const peaks = v === 0 ? [[0.5, 0.12, 0.42]] : v === 1 ? [[0.36, 0.2, 0.34], [0.66, 0.1, 0.36]] : [[0.58, 0.14, 0.4], [0.28, 0.4, 0.26]];
+      for (const [cx, top, hw] of peaks) {
+        x.fillStyle = LIT; x.beginPath(); x.moveTo(cx - hw, 0.9); x.lineTo(cx, top); x.lineTo(cx + hw * 0.12, 0.9); x.closePath(); x.fill();
+        x.fillStyle = SHD; x.beginPath(); x.moveTo(cx + hw * 0.12, 0.9); x.lineTo(cx, top); x.lineTo(cx + hw, 0.9); x.closePath(); x.fill();
+        x.fillStyle = 'rgba(255,255,255,0.92)'; x.beginPath(); x.moveTo(cx, top); x.lineTo(cx - hw * 0.3, top + (0.9 - top) * 0.3); x.lineTo(cx - hw * 0.05, top + (0.9 - top) * 0.24); x.lineTo(cx + hw * 0.08, top + (0.9 - top) * 0.32); x.lineTo(cx + hw * 0.28, top + (0.9 - top) * 0.28); x.closePath(); x.fill();
+        x.strokeStyle = INK; x.lineWidth = 0.055; x.lineJoin = 'round'; x.beginPath(); x.moveTo(cx - hw, 0.9); x.lineTo(cx, top); x.lineTo(cx + hw, 0.9); x.stroke();
+      }
+    },
+    (x, v) => { // tepe: gölgeli yaylar
+      const hs = v === 0 ? [[0.5, 0.42]] : [[0.34, 0.3], [0.68, 0.26]];
+      for (const [cx, r] of hs) {
+        x.fillStyle = SHD; x.beginPath(); x.ellipse(cx + r * 0.12, 0.9, r, r * 0.7, 0, Math.PI, 0); x.fill();
+        x.fillStyle = LIT; x.beginPath(); x.ellipse(cx - r * 0.18, 0.9, r * 0.62, r * 0.55, 0, Math.PI, Math.PI * 1.6); x.lineTo(cx - r * 0.18, 0.9); x.fill();
+        x.strokeStyle = INK; x.lineWidth = 0.05; x.beginPath(); x.ellipse(cx, 0.9, r, r * 0.7, 0, Math.PI * 1.04, Math.PI * 1.96); x.stroke();
+      }
+    },
+    (x, v) => { // orman: çam kümesi
+      const ts = v === 0 ? [[0.3, 0.55, 0.2], [0.62, 0.42, 0.25]] : v === 1 ? [[0.5, 0.4, 0.27]] : [[0.24, 0.5, 0.18], [0.5, 0.35, 0.23], [0.78, 0.55, 0.17]];
+      for (const [cx, top, w] of ts) {
+        const h = 0.86 - top;
+        x.fillStyle = 'rgba(34,24,14,0.85)'; x.fillRect(cx - 0.03, 0.78, 0.06, 0.12);
+        x.fillStyle = 'rgba(14,44,18,0.9)';
+        for (let k = 0; k < 3; k++) { const ty = top + h * k * 0.28, bw = w * (0.6 + k * 0.22); x.beginPath(); x.moveTo(cx, ty); x.lineTo(cx + bw, ty + h * 0.46); x.lineTo(cx - bw, ty + h * 0.46); x.closePath(); x.fill(); }
+        x.fillStyle = 'rgba(120,170,100,0.45)'; x.beginPath(); x.moveTo(cx, top); x.lineTo(cx - w * 0.5, top + h * 0.38); x.lineTo(cx - w * 0.1, top + h * 0.38); x.closePath(); x.fill();
+      }
+    },
+    (x, v) => { // cangıl: palmiye
+      const cx = 0.5 + (v - 1) * 0.08;
+      x.strokeStyle = 'rgba(40,28,14,0.9)'; x.lineWidth = 0.07; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, 0.9); x.quadraticCurveTo(cx + 0.08, 0.6, cx, 0.32); x.stroke();
+      x.strokeStyle = 'rgba(12,52,18,0.92)'; x.lineWidth = 0.09;
+      for (const a of [-2.7, -2.1, -1.5, -0.9, -0.35]) { x.beginPath(); x.moveTo(cx, 0.32); x.quadraticCurveTo(cx + Math.cos(a) * 0.22, 0.32 + Math.sin(a) * 0.22, cx + Math.cos(a) * 0.36, 0.42 + Math.sin(a) * 0.08); x.stroke(); }
+    },
+    (x, v) => { // bataklık: su çizgileri ve saz
+      x.strokeStyle = 'rgba(20,60,72,0.85)'; x.lineWidth = 0.06; x.lineCap = 'round';
+      x.beginPath(); x.moveTo(0.12, 0.84); x.lineTo(0.5, 0.84); x.moveTo(0.36, 0.7); x.lineTo(0.88, 0.7); x.stroke();
+      x.strokeStyle = 'rgba(30,44,16,0.9)'; x.lineWidth = 0.05;
+      const cx = 0.5 + (v - 1) * 0.12;
+      for (const [dx, h] of [[-0.1, 0.36], [0, 0.48], [0.1, 0.34]]) { x.beginPath(); x.moveTo(cx + dx * 0.4, 0.66); x.lineTo(cx + dx, 0.66 - h); x.stroke(); }
+    },
+    (x, v) => { // çöl: kum tepesi
+      x.fillStyle = 'rgba(255,240,200,0.5)'; x.beginPath(); x.moveTo(0.06, 0.88); x.quadraticCurveTo(0.42, 0.42 + v * 0.06, 0.66, 0.6); x.quadraticCurveTo(0.8, 0.7, 0.94, 0.88); x.closePath(); x.fill();
+      x.fillStyle = 'rgba(110,80,30,0.42)'; x.beginPath(); x.moveTo(0.42, 0.88); x.quadraticCurveTo(0.6, 0.64, 0.66, 0.6); x.quadraticCurveTo(0.8, 0.7, 0.94, 0.88); x.closePath(); x.fill();
+      x.strokeStyle = 'rgba(90,64,24,0.8)'; x.lineWidth = 0.045; x.beginPath(); x.moveTo(0.06, 0.88); x.quadraticCurveTo(0.42, 0.42 + v * 0.06, 0.66, 0.6); x.quadraticCurveTo(0.8, 0.7, 0.94, 0.88); x.stroke();
+    },
+    (x, v) => { // şehir: bina blokları
+      const bs = v === 0 ? [[0.12, 0.5, 0.24], [0.38, 0.28, 0.24], [0.64, 0.46, 0.24]] : [[0.16, 0.38, 0.26], [0.46, 0.54, 0.22], [0.7, 0.32, 0.18]];
+      for (const [bx, top, w] of bs) {
+        x.fillStyle = 'rgba(40,36,32,0.78)'; x.fillRect(bx, top, w, 0.9 - top);
+        x.fillStyle = 'rgba(255,236,170,0.75)'; for (let wy = top + 0.08; wy < 0.82; wy += 0.14) { x.fillRect(bx + w * 0.2, wy, w * 0.2, 0.06); x.fillRect(bx + w * 0.6, wy, w * 0.2, 0.06); }
+      }
+    },
+  ];
+  const iconCache = new Map();
+  function iconSprite(ti, v, px) {
+    const key = ti * 1000 + v * 100 + px;
+    let c = iconCache.get(key);
+    if (!c) {
+      const pd = PD(); c = document.createElement('canvas'); c.width = c.height = Math.ceil(px * pd);
+      const x = c.getContext('2d'); x.scale(px * pd, px * pd); ICON_DRAW[ti](x, v); iconCache.set(key, c);
+    }
+    return c;
+  }
+  // kabartma: dağ ve tepe eyaletlerinde kuzeybatıdan ışık, güneydoğuya gölge (gradyan dünya uzayında bir kez kurulur)
+  const reliefGrad = new Map();
+  function drawRelief(ctx) {
+    for (const t of VIS) for (const i of reliefProvs[t]) {
+      let gr = reliefGrad.get(i);
+      if (!gr) {
+        const b = P[i].b, m = g.TERRAIN[P[i].te].id === 'mountain';
+        gr = ctx.createLinearGradient(b[0], b[1], b[2], b[3]);
+        gr.addColorStop(0, `rgba(255,250,228,${m ? 0.2 : 0.11})`); gr.addColorStop(0.45, 'rgba(255,250,228,0)');
+        gr.addColorStop(0.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, `rgba(12,8,4,${m ? 0.26 : 0.14})`);
+        reliefGrad.set(i, gr);
+      }
+      ctx.fillStyle = gr; ctx.fill(provPath[i], 'evenodd');
+    }
+  }
+  function drawIcons(ctx, z, alpha) {
+    const px = Math.round(Math.max(9, Math.min(17, 7 + z * 1.25)));
+    const show = Math.min(1, Math.pow((ICON_STEP * z) / (px * 1.3), 2)) * (R.quality === 1 ? 0.7 : 1);
+    const T = ctx.getTransform(), W = ctx.canvas.width, H = ctx.canvas.height;
+    const wx0 = -T.e / T.a - px, wx1 = (W - T.e) / T.a + px, wy0 = -T.f / T.d - px, wy1 = (H - T.f) / T.d + px;
+    const s = px / z;
+    ctx.globalAlpha = alpha;
+    for (const t of VIS) {
+      const a = terrIcons[t] || buildTileIcons(t);
+      for (let k = 0; k < a.length; k += 5) {
+        const x = a[k], y = a[k + 1];
+        if (a[k + 2] >= show || x < wx0 || x > wx1 || y < wy0 || y > wy1) continue;
+        ctx.drawImage(iconSprite(a[k + 3], a[k + 4], px), x - s / 2, y - s * 0.72, s, s);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
   function terrainLayer(ctx, z) {
     if (!terrPaths) {
       terrPaths = new Map();
       for (let i = 0; i < NP; i++) { const id = g.TERRAIN[P[i].te]?.id; if (!TEX[id]) continue; let pa = terrPaths.get(id); if (!pa) terrPaths.set(id, (pa = tPaths())); tProv(pa, i); }
     }
-    const fade = Math.max(0, Math.min(1, (z - 0.45) / 0.5));
+    const hq = (R.quality ?? 2) > 0;
+    if (hq && !terrIcons) initIcons();
+    if (hq) drawRelief(ctx);
+    // uzak zoomda doku deseni, yakında simgeler (1,3–1,8 arası geçiş)
+    const ico = hq ? Math.max(0, Math.min(1, (z - 1.3) / 0.5)) : 0;
+    const fade = Math.max(0, Math.min(1, (z - 0.45) / 0.5)) * (1 - ico);
     for (const [id, pa] of terrPaths) {
       const T = TEX[id];
       ctx.fillStyle = T.f; tFill(ctx, pa, 'evenodd');
@@ -286,6 +419,7 @@
       pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
       ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; tFill(ctx, pa, 'evenodd'); ctx.globalAlpha = 1;
     }
+    if (ico > 0) drawIcons(ctx, z, ico);
   }
   // kâğıt dokusu ve kenar karartması (ekran uzayı)
   let noisePat = null, vig = null, vigKey = '';
@@ -363,7 +497,7 @@
     ctx.fillStyle = grd; ctx.fillRect(0, 0, R.w, R.h);
     eachCopy(ctx, (z) => {
       // yakın zoomda dalga çizgileri (dünya uzayında, cihaz çözünürlüğünde desen)
-      if (z > 2.2 && !R.lowQ) {
+      if (z > 2.2 && !R.lowQ && R.quality > 0) {
         if (!wavePat) wavePat = ctx.createPattern(waveCanvas(), 'repeat');
         wavePat.setTransform && wavePat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD())));
         ctx.globalAlpha = Math.min(0.5, (z - 2.2) * 0.35); ctx.fillStyle = wavePat; ctx.fillRect(-M.W, -M.H, M.W * 3, M.H * 3); ctx.globalAlpha = 1;
@@ -469,7 +603,7 @@
       baseCv = LAY[3].cv; baseCtx = LAY[3].ctx; baseKey = '';
     }
     const camKey = cam.x + '|' + cam.y + '|' + z + '|' + W + '|' + H + '|' + R.mode;
-    const kA = camKey + '|' + (R.lowQ ? 1 : 0), kC = camKey + '|' + R.relief + '|' + (R.lowQ ? 1 : 0);
+    const kA = camKey + '|' + (R.lowQ ? 1 : 0) + '|' + R.quality, kC = camKey + '|' + R.relief + '|' + (R.lowQ ? 1 : 0) + '|' + R.quality;
     const kB = camKey + '|' + (R.lowQ ? 1 : 0) + '|' + R.showWeather + '|' + mapVer + '|' + (R.mode === 'peace' ? (G.UI && G.UI.cfSel) : '');
     let ch = 0;
     if (LAY[0].key !== kA) { drawLayerA(LAY[0].ctx); LAY[0].key = kA; ch = 1; }
