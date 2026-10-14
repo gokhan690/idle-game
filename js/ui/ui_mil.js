@@ -402,7 +402,7 @@
     let html = `<div class="list">`;
     for (const u of us) {
       const s2 = G.unitStats(u);
-      html += `<button class="item" data-act="divinfo" data-v="${u.id}">${G.art.img(G.art.unitOf(u), 'artthumb')}<div class="grow"><div class="t">${esc(G.divName(u))}${u.gd ? ' <span class="good">★</span>' : ''} <span class="muted small">${u.vol ? 'Gönüllü (' + esc(G.cname(u.vol)) + ') · ' : ''}${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
+      html += `<button class="item" data-act="divinfo" data-v="${u.id}">${G.art.img(G.art.unitOf(u, 1), 'artthumb')}<div class="grow"><div class="t">${esc(G.divName(u))}${u.gd ? ' <span class="good">★</span>' : ''} <span class="muted small">${u.vol ? 'Gönüllü (' + esc(G.cname(u.vol)) + ') · ' : ''}${u.loc < NP ? esc(G.pname(u.loc)) : 'Denizde'} · ${G.xpName(u.xp)}</span></div><div class="row" style="gap:6px"><div class="grow">${bar(u.str, 'g')}</div><div class="grow">${bar(Math.max(0, u.org) / s2.org)}</div></div></div><span class="muted">›</span></button>`;
     }
     return { title: `${a.n} · ${us.length} tümen`, html: html + '</div>' };
   }
