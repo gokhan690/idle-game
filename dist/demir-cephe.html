@@ -11771,12 +11771,21 @@ window.RIVERS = [
     else b = put(soldier(tag, y, 'adv', 0), 4, 1, 0.47) + put(soldier(tag, y, 'adv', 1), 24, 1, 0.47);
     return `<svg viewBox="0 0 52 32" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
   };
+  // SVG bir kez yüklenir, sonra sayaçtaki boyutun cihaz pikseli kadar (26×16 × ölçek) bir tuvale çizilir:
+  // haritada 1:1 kopyalandığı için 3× ekranda da keskin kalır
   G.art.sprite = (kind, tag) => {
-    const y = yearNow(), k = kind + '|' + tag + '|' + (y >= 1942 ? 1942 : 1936) + '|' + (kind === 'arm' ? G.art.tankLvl(G.st.C[tag]) : 0);
-    let im = sprites.get(k);
-    if (!im) { im = new Image(); im.onload = () => { if (G.R) G.R.dirty = 1; }; im.src = G.art.url(spriteSvg(kind, tag, y)); sprites.set(k, im); }
-    return im.complete && im.naturalWidth ? im : null;
+    const R = G.R, sc = Math.max(1, Math.ceil((R && R.dpr ? R.dpr : 1) * (R && R.ctrBig ? 1.25 : 1)));
+    const y = yearNow(), k = kind + '|' + tag + '|' + (y >= 1942 ? 1942 : 1936) + '|' + (kind === 'arm' ? G.art.tankLvl(G.st.C[tag]) : 0) + '|' + sc;
+    let e = sprites.get(k);
+    if (!e) {
+      e = { cv: null }; sprites.set(k, e);
+      const im = new Image();
+      im.onload = () => { const cv = document.createElement('canvas'); cv.width = 26 * sc; cv.height = 16 * sc; cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); e.cv = cv; if (R) R.dirty = 1; };
+      im.src = G.art.url(spriteSvg(kind, tag, y));
+    }
+    return e.cv;
   };
+  G.art.spriteClear = () => sprites.clear();
   G.art.clear = () => cache.clear();
 })(window);
 
@@ -11949,7 +11958,8 @@ window.RIVERS = [
 
   // ---------- Kamera ----------
   R.resize = () => {
-    const cv = R.cv; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
+    const cv = R.cv; const od = R.dpr; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
+    if (od !== R.dpr) { texPat.clear(); stripeCache.clear(); mudPat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
     R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
@@ -11998,9 +12008,11 @@ window.RIVERS = [
   R.counterAt = (sx, sy) => { for (let k = R.counters.length - 1; k >= 0; k--) { const c = R.counters[k]; if (sx >= c.x && sx <= c.x + c.w && sy >= c.y && sy <= c.y + c.h) return c; } return null; };
 
   // ---------- Desenler ----------
+  // desenler cihaz çözünürlüğünde üretilir (PD kat); dönüşümde 1/PD ile küçültülür, böylece 3× ekranda bulanıklaşmaz
+  const PD = () => Math.max(1, Math.ceil(R.dpr || 1));
   function stripePattern(color) {
-    const c = document.createElement('canvas'); c.width = c.height = 12;
-    const x = c.getContext('2d');
+    const pd = PD(), c = document.createElement('canvas'); c.width = c.height = 12 * pd;
+    const x = c.getContext('2d'); x.scale(pd, pd);
     x.strokeStyle = color; x.lineWidth = 3.2;
     x.beginPath(); x.moveTo(-3, 15); x.lineTo(15, -3); x.moveTo(-3, 3); x.lineTo(3, -3); x.moveTo(9, 15); x.lineTo(15, 9); x.stroke();
     return c;
@@ -12027,8 +12039,8 @@ window.RIVERS = [
       ctx.fillStyle = T.f; tFill(ctx, pa, 'evenodd');
       if (fade <= 0) continue;
       let pat = texPat.get(id);
-      if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 19; T.d(cv.getContext('2d')); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
-      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)));
+      if (!pat) { const pd = PD(), cv = document.createElement('canvas'); cv.width = cv.height = 19 * pd; const x = cv.getContext('2d'); x.scale(pd, pd); T.d(x); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
+      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)) * PD());
       pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
       ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; tFill(ctx, pa, 'evenodd'); ctx.globalAlpha = 1;
     }
@@ -12051,7 +12063,7 @@ window.RIVERS = [
       atmCv.width = Math.round(R.w * R.dpr); atmCv.height = Math.round(R.h * R.dpr);
       const x = atmCv.getContext('2d');
       x.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
-      x.globalAlpha = 0.045; x.fillStyle = x.createPattern(noisePat, 'repeat'); x.fillRect(0, 0, R.w, R.h); x.globalAlpha = 1;
+      x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.045; x.fillStyle = x.createPattern(noisePat, 'repeat'); x.fillRect(0, 0, atmCv.width, atmCv.height); x.globalAlpha = 1; x.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
       vig = x.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)');
       x.fillStyle = vig; x.fillRect(0, 0, R.w, R.h);
     }
@@ -12141,13 +12153,13 @@ window.RIVERS = [
       if (R.showWeather && R.mode !== 'ind') {
         if (wxPaths.snow1) { ctx.fillStyle = 'rgba(235,242,250,0.3)'; tFill(ctx, wxPaths.snow1, 'evenodd'); }
         if (wxPaths.snow2) { ctx.fillStyle = 'rgba(244,248,253,0.52)'; tFill(ctx, wxPaths.snow2, 'evenodd'); }
-        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; tFill(ctx, wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
+        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD()))); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; tFill(ctx, wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
       }
       // işgal çizgileri
       if (R.mode === 'pol' || R.mode === 'peace') for (const [owner, pa] of occGroups) {
         let pat = stripeCache.get(owner);
         if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
-        pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
+        pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD())));
         ctx.globalAlpha = 0.55; ctx.fillStyle = pat;
         tFill(ctx, pa, 'evenodd');
         ctx.globalAlpha = 1;
@@ -12347,11 +12359,12 @@ window.RIVERS = [
         boxes.push(bx);
         ctx.fillStyle = isCap ? '#f2d27a' : '#efe9d8'; ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = 1.2;
         ctx.beginPath(); if (isCap) { starPath(ctx, s.x, s.y - 9, r + 1.5); } else ctx.arc(s.x, s.y - 9, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.strokeText(p.n, s.x, s.y + 3);
+        ctx.lineWidth = 3.6; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(10,12,8,0.88)'; ctx.strokeText(p.n, s.x, s.y + 3);
         ctx.fillStyle = '#efe9d8'; ctx.fillText(p.n, s.x, s.y + 3);
       }
     }
   }
+  const cityShown = (i, z) => { if (z <= 1.4 || i >= NP || P[i].n.startsWith('#')) return false; const minVp = z > 3.4 ? 1 : z > 2.4 ? 2 : z > 1.9 ? 3 : 10; return (P[i].vp || 0) >= minVp; };
   // barış konferansı: bölge başına maliyet ya da talep eden ülke
   function drawConf(ctx) {
     const st = G.st, cf = st.conf; if (!cf) return;
@@ -12739,7 +12752,7 @@ window.RIVERS = [
     return { w, h };
   }
   function drawUnits(ctx, z) {
-    const st = G.st;
+    const st = G.st, cs = R.ctrBig ? 1.25 : 1;
     R.counters = [];
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
@@ -12771,7 +12784,7 @@ window.RIVERS = [
     let draw = items;
     if (merge) {
       // ızgara üzerinde açgözlü kümeleme: aynı anahtarlı ve yakın sayaçlar birleşir
-      const CW = 50, CH = 30, grid = new Map(), out = [];
+      const CW = 50 * cs, CH = 30 * cs, grid = new Map(), out = [];
       items.sort((a, b) => b.gl.length - a.gl.length);
       for (const it of items) {
         const cx = Math.floor(it.x / CW), cy = Math.floor(it.y / CH);
@@ -12792,11 +12805,16 @@ window.RIVERS = [
     for (const it of draw) {
       const sk = Math.round(it.x / 8) + ',' + Math.round(it.y / 8);
       const k = stackAt.get(sk) || 0; stackAt.set(sk, k + 1);
-      const x = it.x - 23 + k * 6, y = it.y - 1 + k * 26;
+      // şehir adı görünüyorsa sayaç yazının altına iner (ad ile sayaç çakışmaz)
+      let y0 = it.y - 1;
+      if (cityShown(it.n, z)) { const q = P[it.n].q, c = q ? visible(q[0], q[1], 80) : null; y0 = c ? Math.max(y0, c.y + 11) : it.y + 11; }
+      const x = it.x - 23 * cs + k * 6 * cs, y = y0 + k * 26 * cs;
       const sel = it.gl.some((u) => R.sel.units.has(u.id));
       const ac = it.tag === st.player ? it.gl.find((u) => u.army && armyCol.has(u.army)) : null;
-      const { w, h } = drawCounter(ctx, x, y, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
-      R.counters.push({ x, y, w, h, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
+      ctx.save(); ctx.translate(x, y); if (cs !== 1) ctx.scale(cs, cs);
+      const { w, h } = drawCounter(ctx, 0, 0, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
+      ctx.restore();
+      R.counters.push({ x, y, w: w * cs, h: h * cs, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
     }
   }
   const lumCache = new Map();
@@ -12830,7 +12848,7 @@ window.RIVERS = [
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
   // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
-  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
   UI.applyMapSettings();
 
   // ---------- Bildirim ----------
@@ -12969,7 +12987,14 @@ window.RIVERS = [
         pd = 0; if (nz !== z) UI.ftSetZoom(nz, mx, my);
       };
     }
-    for (const cv of body.querySelectorAll('canvas.nato')) { const x = cv.getContext('2d'); x.fillStyle = cv.dataset.c; x.fillRect(0, 0, cv.width, cv.height); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0'); }
+    // NATO simgesi tuvali cihaz çözünürlüğünde (CSS boyutu sabit kalır; 3× ekranda bulanıklaşmaz)
+    for (const cv of body.querySelectorAll('canvas.nato')) {
+      const d = Math.min(3, Math.max(1, Math.ceil(g.devicePixelRatio || 1)));
+      if (!cv._w) { cv._w = +cv.getAttribute('width') || 44; cv._h = +cv.getAttribute('height') || 30; cv.width = cv._w * d; cv.height = cv._h * d; }
+      const w = cv._w, h = cv._h;
+      const x = cv.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+      x.fillStyle = cv.dataset.c; x.fillRect(0, 0, w, h); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0');
+    }
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
   };
@@ -14061,7 +14086,7 @@ window.RIVERS = [
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
     const snd = G.Audio ? G.Audio.on : { music: 0, sfx: 0 };
     html += sec('Ayarlar', `<div class="list"><button class="toggle ${snd.music ? 'on' : ''}" data-act="sound" data-v="music"><span><b>Müzik</b><br><span class="muted small">Ortam müziği; savaştayken uzaktan davul vuruşları.</span></span><i></i></button><button class="toggle ${snd.sfx ? 'on' : ''}" data-act="sound" data-v="sfx"><span><b>Ses efektleri</b><br><span class="muted small">Savaş ilanı borusu, teslim davulu, araştırma çanı, muharebe top sesleri.</span></span><i></i></button><button class="toggle ${R.showWeather ? 'on' : ''}" data-act="wxtoggle"><span><b>Hava durumu katmanı</b><br><span class="muted small">Kar beyaz, çamur kahverengi çizgili gösterilir.</span></span><i></i></button><button class="toggle ${UI.settings.news ? 'on' : ''}" data-act="setting" data-v="news"><span><b>Dünya haberleri</b><br><span class="muted small">Büyük tarihî olaylar (Anschluss, Barbarossa, Pearl Harbor…) haber penceresi olarak gelir.</span></span><i></i></button><button class="toggle ${st.opts.hist ? 'on' : ''}" data-act="setting" data-v="hist"><span><b>Tarihî yapay zekâ</b><br><span class="muted small">Açıkken yapay zekâ ülkeleri tarihî olayları izler; senin katılmadığın kilit cepheler (Doğu Cephesi, Çin) tarihî akıştan çok saparsa geride kalan yapay zekâ tarafı muharebede kademeli destek alır. Kapalıysa ülkeler kendi hedeflerini kovalar.</span></span><i></i></button></div>`);
-    html += sec('Harita görünümü', `<div class="small" style="margin:0 0 6px">Birlik sayacı</div><div class="seg"><button class="${UI.settings.ctr !== 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="nato">NATO simgesi</button><button class="${UI.settings.ctr === 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="art">Resimli</button></div><p class="muted small" style="margin:6px 0 10px">Resimli sayaçta tümenler ülkenin üniformasıyla asker, tank, kamyon, süvari ya da top silueti olarak görünür.</p><div class="list"><button class="toggle ${UI.settings.hires !== 0 ? 'on' : ''}" data-act="mapset" data-k="hires" data-v="${UI.settings.hires !== 0 ? 0 : 1}"><span><b>Yüksek çözünürlük</b><br><span class="muted small">Harita telefon ekranının tam piksel yoğunluğunda (3×) çizilir; daha keskin yazı ve sınırlar.${R.dprAuto ? ' Bu cihazda akıcılık için 2×\'e düşürüldü.' : ''}</span></span><i></i></button></div>`);
+    html += sec('Harita görünümü', `<div class="small" style="margin:0 0 6px">Birlik sayacı</div><div class="seg"><button class="${UI.settings.ctr !== 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="nato">NATO simgesi</button><button class="${UI.settings.ctr === 'art' ? 'on' : ''}" data-act="mapset" data-k="ctr" data-v="art">Resimli</button></div><p class="muted small" style="margin:6px 0 10px">Resimli sayaçta tümenler ülkenin üniformasıyla asker, tank, kamyon, süvari ya da top silueti olarak görünür.</p><div class="list"><button class="toggle ${UI.settings.big === 1 ? 'on' : ''}" data-act="mapset" data-k="big" data-v="${UI.settings.big === 1 ? 0 : 1}"><span><b>Büyük sayaç</b><br><span class="muted small">Birlik sayaçları %25 büyük çizilir; küçük ekranda okumayı kolaylaştırır.</span></span><i></i></button><button class="toggle ${UI.settings.hires !== 0 ? 'on' : ''}" data-act="mapset" data-k="hires" data-v="${UI.settings.hires !== 0 ? 0 : 1}"><span><b>Yüksek çözünürlük</b><br><span class="muted small">Harita telefon ekranının tam piksel yoğunluğunda (3×) çizilir; daha keskin yazı ve sınırlar.${R.dprAuto ? ' Bu cihazda akıcılık için 2×\'e düşürüldü.' : ''}</span></span><i></i></button></div>`);
     const AS = [[0, 'Kapalı'], [1, 'Aylık'], [3, '3 ayda'], [6, '6 ayda'], [12, 'Yıllık']], asv = +UI.settings.autosave || 0;
     html += sec('Otomatik kayıt', `<div class="seg wrap">${AS.map(([v, n]) => `<button class="${asv === v ? 'on' : ''}" data-act="autosave" data-v="${v}">${n}</button>`).join('')}</div><p class="muted small" style="margin:6px 0 0">Oyun ayın başında ve uygulamadan çıkarken otomatik kayıt yuvasına kaydedilir.</p>`);
     html += `<p class="muted small" style="margin:-4px 0 10px">Zorluk: <b>${esc((G.DIFF[st.opts.diff ?? 1] || G.DIFF[1]).n)}</b> · Mod: <b>${st.opts.alt ? 'Alternatif dünya' : st.opts.hist ? 'Tarihî' : 'Serbest'}</b></p>`;
@@ -14805,7 +14830,7 @@ window.RIVERS = [
   // yuva silme: ilk dokunuş onay ister, ikincisi siler
   ACT.delsave = (d) => { if (UI.delArm !== d.v) { UI.delArm = d.v; UI.render(); return; } G.saveDel(d.v); UI.delArm = null; UI.toast('Kayıt silindi.', 'info'); UI.render(); };
   ACT.exportsave = async () => { const r = await G.exportSave(); UI.toast(r.ok ? 'Kayıt dosyası indirildi.' : r.why || 'Dosya oluşturulamadı.', r.ok ? 'good' : 'bad'); };
-  ACT.mapset = (d) => { UI.settings[d.k] = d.k === 'hires' ? +d.v : d.v; if (d.k === 'hires') R.dprAuto = 0; UI.saveSettings(); UI.applyMapSettings(); UI.render(); };
+  ACT.mapset = (d) => { UI.settings[d.k] = d.k === 'hires' || d.k === 'big' ? +d.v : d.v; if (d.k === 'hires') R.dprAuto = 0; UI.saveSettings(); UI.applyMapSettings(); UI.render(); };
   ACT.autosave = (d) => { UI.settings.autosave = +d.v; UI.saveSettings(); UI.render(); };
   // dosyadan yükle (menü ve başlangıç ekranı): dosya seçici panel dışında tek bir gizli girdi; panel yenilense de kaybolmaz
   ACT.importsave = () => {
