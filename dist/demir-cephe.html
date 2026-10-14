@@ -11364,7 +11364,7 @@ window.RIVERS = [
   };
   const ground = (W, H, p, id, horizon = 0.62) => {
     const hy = H * horizon;
-    let s = `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.s1}"/><stop offset="1" stop-color="${p.s2}"/></linearGradient><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.gr}"/><stop offset="1" stop-color="${p.gr2}"/></linearGradient><radialGradient id="${id}v" cx="0.5" cy="0.45" r="0.75"><stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.38"/></radialGradient></defs>`;
+    let s = `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.s1}"/><stop offset="1" stop-color="${p.s2}"/></linearGradient><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.gr}"/><stop offset="1" stop-color="${p.gr2}"/></linearGradient><radialGradient id="${id}v" cx="0.5" cy="0.45" r="0.78"><stop offset="0.66" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.26"/></radialGradient></defs>`;
     s += `<rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
     s += `<path d="M0 ${hy - 6} C${W * 0.15} ${hy - 22} ${W * 0.3} ${hy - 10} ${W * 0.45} ${hy - 18} S${W * 0.75} ${hy - 6} ${W * 0.88} ${hy - 20} S${W} ${hy - 12} ${W} ${hy - 14} V${H} H0Z" fill="${p.far}" opacity="0.75"/>`;
     s += `<path d="M0 ${hy + 2} C${W * 0.2} ${hy - 8} ${W * 0.4} ${hy + 4} ${W * 0.6} ${hy - 4} S${W * 0.9} ${hy + 6} ${W} ${hy - 2} V${H} H0Z" fill="${p.mid}"/>`;
@@ -11372,7 +11372,8 @@ window.RIVERS = [
     return s;
   };
   const vignette = (W, H, id) => `<rect width="${W}" height="${H}" fill="url(#${id}v)"/>`;
-  const smoke = (x, y, s, c = '#d8d0bc', o = 0.55) => `<g fill="${c}" opacity="${o}" style="filter:blur(${(1.4 * s).toFixed(1)}px)"><circle cx="${x}" cy="${y}" r="${7 * s}"/><circle cx="${x + 8 * s}" cy="${y - 9 * s}" r="${9 * s}"/><circle cx="${x + 1 * s}" cy="${y - 19 * s}" r="${11 * s}"/><circle cx="${x + 12 * s}" cy="${y - 28 * s}" r="${12 * s}"/></g>`;
+  // duman: CSS bulanıklığı yerine radyal gradyanlı katmanlı bulutlar (her tarayıcıda aynı, keskin ama yumuşak geçişli)
+  const smoke = (x, y, s, c = '#d8d0bc', o = 0.55) => { const id = 'sm' + ++uid, d = shade(c, -0.12); return `<defs><radialGradient id="${id}"><stop offset="0" stop-color="${c}"/><stop offset="0.5" stop-color="${c}" stop-opacity="0.85"/><stop offset="1" stop-color="${d}" stop-opacity="0"/></radialGradient></defs><g fill="url(#${id})" opacity="${o}"><circle cx="${x}" cy="${y}" r="${9 * s}"/><circle cx="${x + 8 * s}" cy="${y - 9 * s}" r="${11.5 * s}"/><circle cx="${x + 1 * s}" cy="${y - 19 * s}" r="${13.5 * s}"/><circle cx="${x + 12 * s}" cy="${y - 28 * s}" r="${15 * s}"/><circle cx="${x + 4 * s}" cy="${y - 36 * s}" r="${12 * s}" opacity="0.7"/></g>`; };
   const grass = (W, y, c, seed) => { let d = ''; for (let i = 0; i < 28; i++) { const x = ((seed * 37 + i * 71) % 1000) / 1000 * W, h = 3 + ((i * 13) % 5); d += `M${x.toFixed(1)} ${y + ((i * 7) % 9)}l1.2 ${-h}l1.2 ${h}`; } return `<path d="${d}" fill="none" stroke="${c}" stroke-width="0.9" opacity="0.7"/>`; };
 
   // ---------- Asker ----------
@@ -11850,7 +11851,22 @@ window.RIVERS = [
     return s;
   };
   const riverBand = (W, H) => `<path d="M0 ${H * 0.74}C${W * 0.3} ${H * 0.7} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.73}V${H * 0.84}C${W * 0.6} ${H * 0.9} ${W * 0.3} ${H * 0.8} 0 ${H * 0.85}Z" fill="#5f7f8f"/><path d="M20 ${H * 0.79}q30-3 60 0M150 ${H * 0.8}q30-3 60 0" stroke="#a9c0c8" stroke-width="1" fill="none"/>`;
-  const blast = (x, y, s) => `<g opacity="0.9"><circle cx="${x}" cy="${y}" r="${9 * s}" fill="#ffcc66" style="filter:blur(${2 * s}px)"/><circle cx="${x}" cy="${y}" r="${4.5 * s}" fill="#fff4d0"/></g>${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}`;
+  // patlama: katmanlı parlama, alev dilleri, savrulan toprak ve duman
+  const blast = (x, y, s) => { const id = 'bl' + ++uid; let sp = ''; for (let k = 0; k < 7; k++) { const a = -Math.PI * (0.1 + k * 0.13), r = (10 + (k % 3) * 4) * s; sp += `M${x} ${y}L${(x + Math.cos(a) * r).toFixed(1)} ${(y + Math.sin(a) * r).toFixed(1)}`; }
+    return `${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}<defs><radialGradient id="${id}"><stop offset="0" stop-color="#fff6d8"/><stop offset="0.35" stop-color="#ffd27a" stop-opacity="0.95"/><stop offset="0.7" stop-color="#e8762e" stop-opacity="0.5"/><stop offset="1" stop-color="#e8762e" stop-opacity="0"/></radialGradient></defs><circle cx="${x}" cy="${y}" r="${14 * s}" fill="url(#${id})"/><path d="${sp}" stroke="#ffb54a" stroke-width="${(1.4 * s).toFixed(1)}" stroke-linecap="round" opacity="0.85"/><g fill="#3a3024">${[[-9, -12, 1.4], [8, -15, 1.1], [13, -6, 0.9], [-14, -4, 1]].map(([dx, dy, r]) => `<circle cx="${(x + dx * s).toFixed(1)}" cy="${(y + dy * s).toFixed(1)}" r="${(r * s).toFixed(1)}"/>`).join('')}</g><circle cx="${x}" cy="${y}" r="${4 * s}" fill="#fffbe8"/>`; };
+  // ön plan: krater, dikenli tel, kırık direk, enkaz (sd ile belirlenimli)
+  const foreground = (W, H, sd) => {
+    const gy = H - 6, cx = 40 + (sd % 7) * 30;
+    let f = `<ellipse cx="${cx}" cy="${gy}" rx="22" ry="4.5" fill="#2e2a20" opacity="0.75"/><path d="M${cx - 22} ${gy}q4-6 10-5M${cx + 22} ${gy}q-4-6-10-5" stroke="#6a5c40" stroke-width="2" fill="none"/>`;
+    const wx = W * 0.56 + (sd % 5) * 6;
+    f += `<path d="M${wx} ${gy - 1}v-12M${wx + 30} ${gy}v-13M${wx + 60} ${gy - 1}v-11" stroke="#4a3a26" stroke-width="1.6"/>`;
+    let wire = ''; for (let i = 0; i < 12; i++) { const x0 = wx + i * 5; wire += `<ellipse cx="${x0 + 2.5}" cy="${gy - 7 + (i % 2)}" rx="3.4" ry="2.6"/>`; }
+    f += `<g fill="none" stroke="#2b2b28" stroke-width="0.6">${wire}</g><path d="M${wx} ${gy - 10}L${wx + 60} ${gy - 9}M${wx} ${gy - 4}L${wx + 60} ${gy - 5}" stroke="#2b2b28" stroke-width="0.6"/>`;
+    f += `<path d="M${W * 0.08} ${gy}l3-16 2 1-2 15z" fill="#5a4630" stroke="${OUT}" stroke-width="0.5"/><path d="M${W * 0.88} ${gy}l10-6 4 2-9 4z M${W * 0.83} ${gy}l6-3 3 2-5 1z" fill="#55524a" stroke="${OUT}" stroke-width="0.5"/>`;
+    return f;
+  };
+  // sahnedeki bayrak (direkli; ülke rengi ve nişanı)
+  const flagPole = (x, y, tag, flip) => { const c = (g.COUNTRY_DEFS[tag] || {}).c || '#888', dx = flip ? -1 : 1; return `<path d="M${x} ${y}v-40" stroke="#3a3026" stroke-width="1.4"/><path d="M${x} ${y - 40}q${dx * 9}-3 ${dx * 18} 0t${dx * 18} 0v13q${-dx * 9}-3 ${-dx * 18} 0t${-dx * 18} 0z" fill="${c}" stroke="${OUT}" stroke-width="0.6"/>${insignia(tag, x + dx * 18, y - 33.5, 4)}`; };
   // bir tarafın kuvveti (sağa bakan, 0..160 bölgesi); savunan aynalanır
   const force = (tag, kind, lvl, y, H, def) => {
     const sol = (x, yy, sc, pose, k) => put(soldier(tag, y, pose, k), x, yy, sc);
@@ -11873,14 +11889,17 @@ window.RIVERS = [
     if (river) s += riverBand(W, H);
     s += smoke(150, 70, 1.3, '#bdb4a2', 0.55) + smoke(200, 64, 0.9, '#cfc6b2', 0.45);
     s += `<path d="M120 96L190 84M128 104L200 96M200 90L140 100" stroke="#ffe08a" stroke-width="0.9" opacity="0.8" stroke-dasharray="6 9"/>`;
-    s += blast(160, 98, 0.9) + blast(222, 108, 0.6);
+    s += `<circle cx="${40 + (sd % 9) * 28}" cy="22" r="26" fill="#fff2c8" opacity="0.22"/><circle cx="${40 + (sd % 9) * 28}" cy="22" r="9" fill="#fff6dc" opacity="0.5"/>`;
+    s += flagPole(22, H * 0.66, aTag, 0) + flagPole(W - 22, H * 0.66, dTag, 1);
+    s += blast(160, 98, 0.9) + blast(222, 108, 0.6) + blast(188, 74, 0.45);
+    s += `<path d="M96 88L176 76M104 112L196 100" stroke="#fff0b0" stroke-width="1.3" opacity="0.9" stroke-dasharray="3 16" stroke-linecap="round"/>`;
     s += `<g>${force(aTag, aKind, aLvl, y, H, false)}</g>`;
     s += `<g transform="translate(${W} 0) scale(-1 1)">${force(dTag, dKind, dLvl, y, H, true)}</g>`;
-    s += grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
+    s += foreground(W, H, sd) + grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
     return svg(W, H, s, 'art battleart');
   });
   // olay sahneleri için parçalar (eventart.js kullanır)
-  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, next: () => ++uid };
+  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, foreground, flagPole, next: () => ++uid };
 
   // <img> olarak kullanım: aynı resim sayfada çok kez geçse de SVG metni bir kez çözülür (blob adresi önbellekte)
   const urls = new Map();
@@ -15457,7 +15476,7 @@ window.RIVERS = [
   // ---------- sahneler ----------
   const W = 320, H = 140;
   const scene = (k, A, B, v, y) => {
-    const K = G.art.kit, { put, soldier, tank, truck, gun, plane, ship, smoke, grass, ground, vignette, PAL, shade, terrain, ruin, blast, insignia, OUT } = K;
+    const K = G.art.kit, { put, soldier, tank, truck, gun, plane, ship, smoke, grass, ground, vignette, PAL, shade, terrain, ruin, blast, insignia, OUT, foreground, flagPole } = K;
     const id = 'ev' + K.next(), sol = (tag, x, yy, sc, pose, kk, flip) => put(soldier(tag, y, pose, kk), x, yy, sc, flip);
     const flag = (tag, x, yy, w = 30, h = 20) => (G.flagAt ? G.flagAt(tag, x, yy, w, h) : '');
     const pole = (tag, x, yy, h) => `<path d="M${x} ${yy}v${-h}" stroke="#2a241c" stroke-width="2"/>${flag(tag, x + 1, yy - h, 26, 17)}`;
@@ -15473,13 +15492,18 @@ window.RIVERS = [
         else s += sol(A, 104, gy - 70, 1.1, 'adv', 0) + sol(A, 58, gy - 64, 1.0, 'adv', 1) + sol(A, 14, gy - 58, 0.9, 'kneel', 2);
         if (B) s += `<g transform="translate(${W} 0) scale(-1 1)">${sol(B, 96, gy - 66, 1.05, 'kneel', 0)}${sol(B, 56, gy - 60, 0.95, 'adv', 1)}</g>`;
         else s += smoke(250, 80, 1, '#8a8070', 0.55) + blast(262, 104, 0.6);
-        s += grass(W, H - 12, '#2e2e20', v);
+        s += `<path d="M120 90L200 80M112 104L210 94" stroke="#fff0b0" stroke-width="1.2" opacity="0.85" stroke-dasharray="3 14" stroke-linecap="round"/>`;
+        s += flagPole(16, H * 0.6, A, 0) + (B ? flagPole(W - 16, H * 0.6, B, 1) : '');
+        s += foreground(W, H, v) + grass(W, H - 12, '#2e2e20', v);
+        // gece taarruzu: koyu gökyüzü, işaret fişeği ışığı
+        if (v % 4 === 3) s += `<defs><radialGradient id="${id}fl" cx="0.62" cy="0.12" r="0.7"><stop offset="0" stop-color="#fff2c0" stop-opacity="0.35"/><stop offset="0.3" stop-color="#1a2030" stop-opacity="0.35"/><stop offset="1" stop-color="#0b0e18" stop-opacity="0.62"/></radialGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}fl)"/><circle cx="198" cy="18" r="3" fill="#fff8d8"/><path d="M198 21q-3 10 2 18" stroke="#d8d0bc" stroke-width="0.8" fill="none" opacity="0.6"/>`;
         break;
       }
       case 'navy': {
         s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fa2ab"/><stop offset="1" stop-color="#ded5bd"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
         s += smoke(220, 40, 1.1, '#6f6a62', 0.6) + `<rect y="78" width="${W}" height="${H}" fill="#56717e"/><path d="M0 84q20-3 40 0t40 0t40 0t40 0t40 0t40 0t40 0t40 0M0 100q25-3 50 0t50 0t50 0t50 0t50 0t50 0t50 0" stroke="#a6bcc5" stroke-width="1" fill="none"/>`;
-        s += put(ship(A, v % 2 ? 'cr' : 'bb'), 30, 44, 1.25) + put(ship(A, 'dd'), 220, 62, 0.62) + put(ship(B || A, v % 2 ? 'conv' : 'dd'), 250, 52, 0.45);
+        s += put(ship(A, v % 3 === 2 ? 'cv' : v % 2 ? 'cr' : 'bb'), 30, 44, v % 3 === 2 ? 1.1 : 1.25) + put(ship(A, 'dd'), 220, 62, 0.62) + put(ship(B || A, v % 2 ? 'conv' : 'dd'), 250, 52, 0.45);
+        if (v % 3 === 2) { const f = plane(A, 'fig', 2, y); s += put(f.svg, 60, 8, 0.6) + put(f.svg, 110, 18, 0.5) + `<path d="M232 60q6-16 14-6" stroke="#2e2a24" stroke-width="1" fill="none" opacity="0.5"/>` + blast(240, 70, 0.6); }
         s += `<g fill="#e8eef0" opacity="0.85"><path d="M150 84q4-22 8 0z"/><path d="M196 86q3-14 6 0z"/></g>`;
         const p = plane(B || A, 'cas', 2, y); s += put(p.svg, 210, 14, 0.9) + put(p.svg, 248, 26, 0.7);
         break;
@@ -15488,7 +15512,12 @@ window.RIVERS = [
         s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e93a4"/><stop offset="1" stop-color="#e2d7bb"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
         s += `<g fill="#f2eee4" opacity="0.65"><ellipse cx="60" cy="50" rx="60" ry="12"/><ellipse cx="250" cy="34" rx="70" ry="10"/></g>`;
         const bom = plane(A, 'bom', 2, y), fig = plane(A, 'fig', y >= 1944 ? 3 : 2, y);
-        s += put(bom.svg, 40, 30, 1.05) + put(bom.svg, 130, 46, 0.85) + put(bom.svg, 200, 24, 0.7) + put(fig.svg, 230, 70, 0.75) + put(fig.svg, 20, 76, 0.6);
+        if (v % 2 && B) {
+          // it dalaşı: iki tarafın avcıları, iz mermileri, düşen uçağın duman izi
+          const fb = plane(B, 'fig', y >= 1944 ? 3 : 2, y);
+          s += put(fig.svg, 30, 40, 1.2) + put(fb.svg, 290, 18, 1.05, true) + put(fig.svg, 150, 76, 0.7) + `<path d="M120 58L200 40M118 62L196 48" stroke="#fff0b0" stroke-width="1.2" stroke-dasharray="3 10" stroke-linecap="round"/>`;
+          s += `<g transform="rotate(28 230 84)">${put(fb.svg, 200, 70, 0.7, true)}</g><path d="M236 92Q270 60 300 52" stroke="#4a4440" stroke-width="5" fill="none" opacity="0.5" stroke-linecap="round"/>` + blast(232, 92, 0.5);
+        } else s += put(bom.svg, 40, 30, 1.05) + put(bom.svg, 130, 46, 0.85) + put(bom.svg, 200, 24, 0.7) + put(fig.svg, 230, 70, 0.75) + put(fig.svg, 20, 76, 0.6);
         s += `<g fill="#2e2a24" opacity="0.7">${[[110, 20], [180, 70], [70, 90], [260, 50]].map(([x, yy]) => `<circle cx="${x}" cy="${yy}" r="4"/><circle cx="${x + 4}" cy="${yy - 2}" r="3"/>`).join('')}</g>`;
         s += `<path d="M0 120Q80 112 160 118T${W} 114V${H}H0Z" fill="#5a5a40"/>` + smoke(90, 118, 0.9, '#5d564c', 0.65) + smoke(210, 116, 0.7, '#5d564c', 0.55);
         break;
@@ -15499,6 +15528,7 @@ window.RIVERS = [
         const gy = H - 8;
         s += sol(A, 190, gy - 64, 1.0, 'stand', 0) + sol(A, 226, gy - 60, 0.94, 'stand', 1) + sol(A, 262, gy - 56, 0.88, 'stand', 2);
         if (B) s += sol(B, 20, gy - 56, 0.88, 'march', 1) + sol(B, 54, gy - 58, 0.9, 'march', 2);
+        s += foreground(W, H, v + 3);
         break;
       }
       case 'diplomacy': {
@@ -15527,7 +15557,8 @@ window.RIVERS = [
         s += smoke(70, 26, 1.1, '#6e685e', 0.6) + smoke(130, 14, 1.3, '#6e685e', 0.6) + smoke(214, 28, 1, '#6e685e', 0.55);
         s += `<g fill="#5a4e40" stroke="${OUT}" stroke-width="0.6"><rect x="64" y="26" width="12" height="60"/><rect x="124" y="14" width="14" height="70"/><rect x="208" y="28" width="12" height="58"/><path d="M0 ${H}V70l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16V${H}z"/></g>`;
         s += `<g fill="#e9c46a" opacity="0.85">${[20, 60, 100, 140, 180, 220, 260, 300].map((x) => `<rect x="${x}" y="88" width="14" height="10"/>`).join('')}</g>`;
-        const t = tank(A, y >= 1942 ? 3 : 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + put(t.svg, 160, H - 10 - t.h * 0.9, 0.9) + put(truck(A, 0), 30, H - 10 - 42 * 1.05, 1.05);
+        if (v % 2) { const pl = plane(A, 'fig', 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + [[20, 0.9], [120, 0.9], [220, 0.9]].map(([x, sc]) => put(pl.svg, x, H - 16 - pl.h * sc, sc)).join('') + `<path d="M0 ${H - 46}h${W}" stroke="#2e2a24" stroke-width="2"/><g stroke="#2e2a24" stroke-width="0.8">${[60, 160, 260].map((x) => `<path d="M${x} ${H - 46}v10"/>`).join('')}</g>`; }
+        else { const t = tank(A, y >= 1942 ? 3 : 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + put(t.svg, 160, H - 10 - t.h * 0.9, 0.9) + put(truck(A, 0), 30, H - 10 - 42 * 1.05, 1.05); }
         break;
       }
       case 'science': {
@@ -15561,10 +15592,10 @@ window.RIVERS = [
     if (!G.art || !G.art.kit) return '';
     const id = 'eg' + uid++;
     return `<svg class="ev-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-<defs><radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.7"/></radialGradient>
-<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${v % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.3 0"/></filter></defs>
+<defs><radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.78"><stop offset="0.64" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.38"/></radialGradient>
+<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${v % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.1 0"/></filter></defs>
 ${scene(k, A, B, v, y)}
-<rect width="${W}" height="${H}" fill="#7a5a2a" opacity="0.16"/><rect width="${W}" height="${H}" filter="url(#${id}n)"/><rect width="${W}" height="${H}" fill="url(#${id}v)"/></svg>`;
+<rect width="${W}" height="${H}" fill="#7a5a2a" opacity="0.06"/><rect width="${W}" height="${H}" filter="url(#${id}n)"/><rect width="${W}" height="${H}" fill="url(#${id}v)"/></svg>`;
   };
 })(window);
 

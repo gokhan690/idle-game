@@ -81,7 +81,7 @@
   };
   const ground = (W, H, p, id, horizon = 0.62) => {
     const hy = H * horizon;
-    let s = `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.s1}"/><stop offset="1" stop-color="${p.s2}"/></linearGradient><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.gr}"/><stop offset="1" stop-color="${p.gr2}"/></linearGradient><radialGradient id="${id}v" cx="0.5" cy="0.45" r="0.75"><stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.38"/></radialGradient></defs>`;
+    let s = `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.s1}"/><stop offset="1" stop-color="${p.s2}"/></linearGradient><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.gr}"/><stop offset="1" stop-color="${p.gr2}"/></linearGradient><radialGradient id="${id}v" cx="0.5" cy="0.45" r="0.78"><stop offset="0.66" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.26"/></radialGradient></defs>`;
     s += `<rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
     s += `<path d="M0 ${hy - 6} C${W * 0.15} ${hy - 22} ${W * 0.3} ${hy - 10} ${W * 0.45} ${hy - 18} S${W * 0.75} ${hy - 6} ${W * 0.88} ${hy - 20} S${W} ${hy - 12} ${W} ${hy - 14} V${H} H0Z" fill="${p.far}" opacity="0.75"/>`;
     s += `<path d="M0 ${hy + 2} C${W * 0.2} ${hy - 8} ${W * 0.4} ${hy + 4} ${W * 0.6} ${hy - 4} S${W * 0.9} ${hy + 6} ${W} ${hy - 2} V${H} H0Z" fill="${p.mid}"/>`;
@@ -89,7 +89,8 @@
     return s;
   };
   const vignette = (W, H, id) => `<rect width="${W}" height="${H}" fill="url(#${id}v)"/>`;
-  const smoke = (x, y, s, c = '#d8d0bc', o = 0.55) => `<g fill="${c}" opacity="${o}" style="filter:blur(${(1.4 * s).toFixed(1)}px)"><circle cx="${x}" cy="${y}" r="${7 * s}"/><circle cx="${x + 8 * s}" cy="${y - 9 * s}" r="${9 * s}"/><circle cx="${x + 1 * s}" cy="${y - 19 * s}" r="${11 * s}"/><circle cx="${x + 12 * s}" cy="${y - 28 * s}" r="${12 * s}"/></g>`;
+  // duman: CSS bulanıklığı yerine radyal gradyanlı katmanlı bulutlar (her tarayıcıda aynı, keskin ama yumuşak geçişli)
+  const smoke = (x, y, s, c = '#d8d0bc', o = 0.55) => { const id = 'sm' + ++uid, d = shade(c, -0.12); return `<defs><radialGradient id="${id}"><stop offset="0" stop-color="${c}"/><stop offset="0.5" stop-color="${c}" stop-opacity="0.85"/><stop offset="1" stop-color="${d}" stop-opacity="0"/></radialGradient></defs><g fill="url(#${id})" opacity="${o}"><circle cx="${x}" cy="${y}" r="${9 * s}"/><circle cx="${x + 8 * s}" cy="${y - 9 * s}" r="${11.5 * s}"/><circle cx="${x + 1 * s}" cy="${y - 19 * s}" r="${13.5 * s}"/><circle cx="${x + 12 * s}" cy="${y - 28 * s}" r="${15 * s}"/><circle cx="${x + 4 * s}" cy="${y - 36 * s}" r="${12 * s}" opacity="0.7"/></g>`; };
   const grass = (W, y, c, seed) => { let d = ''; for (let i = 0; i < 28; i++) { const x = ((seed * 37 + i * 71) % 1000) / 1000 * W, h = 3 + ((i * 13) % 5); d += `M${x.toFixed(1)} ${y + ((i * 7) % 9)}l1.2 ${-h}l1.2 ${h}`; } return `<path d="${d}" fill="none" stroke="${c}" stroke-width="0.9" opacity="0.7"/>`; };
 
   // ---------- Asker ----------
@@ -567,7 +568,22 @@
     return s;
   };
   const riverBand = (W, H) => `<path d="M0 ${H * 0.74}C${W * 0.3} ${H * 0.7} ${W * 0.6} ${H * 0.8} ${W} ${H * 0.73}V${H * 0.84}C${W * 0.6} ${H * 0.9} ${W * 0.3} ${H * 0.8} 0 ${H * 0.85}Z" fill="#5f7f8f"/><path d="M20 ${H * 0.79}q30-3 60 0M150 ${H * 0.8}q30-3 60 0" stroke="#a9c0c8" stroke-width="1" fill="none"/>`;
-  const blast = (x, y, s) => `<g opacity="0.9"><circle cx="${x}" cy="${y}" r="${9 * s}" fill="#ffcc66" style="filter:blur(${2 * s}px)"/><circle cx="${x}" cy="${y}" r="${4.5 * s}" fill="#fff4d0"/></g>${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}`;
+  // patlama: katmanlı parlama, alev dilleri, savrulan toprak ve duman
+  const blast = (x, y, s) => { const id = 'bl' + ++uid; let sp = ''; for (let k = 0; k < 7; k++) { const a = -Math.PI * (0.1 + k * 0.13), r = (10 + (k % 3) * 4) * s; sp += `M${x} ${y}L${(x + Math.cos(a) * r).toFixed(1)} ${(y + Math.sin(a) * r).toFixed(1)}`; }
+    return `${smoke(x - 4 * s, y - 6 * s, s, '#8a8070', 0.6)}<defs><radialGradient id="${id}"><stop offset="0" stop-color="#fff6d8"/><stop offset="0.35" stop-color="#ffd27a" stop-opacity="0.95"/><stop offset="0.7" stop-color="#e8762e" stop-opacity="0.5"/><stop offset="1" stop-color="#e8762e" stop-opacity="0"/></radialGradient></defs><circle cx="${x}" cy="${y}" r="${14 * s}" fill="url(#${id})"/><path d="${sp}" stroke="#ffb54a" stroke-width="${(1.4 * s).toFixed(1)}" stroke-linecap="round" opacity="0.85"/><g fill="#3a3024">${[[-9, -12, 1.4], [8, -15, 1.1], [13, -6, 0.9], [-14, -4, 1]].map(([dx, dy, r]) => `<circle cx="${(x + dx * s).toFixed(1)}" cy="${(y + dy * s).toFixed(1)}" r="${(r * s).toFixed(1)}"/>`).join('')}</g><circle cx="${x}" cy="${y}" r="${4 * s}" fill="#fffbe8"/>`; };
+  // ön plan: krater, dikenli tel, kırık direk, enkaz (sd ile belirlenimli)
+  const foreground = (W, H, sd) => {
+    const gy = H - 6, cx = 40 + (sd % 7) * 30;
+    let f = `<ellipse cx="${cx}" cy="${gy}" rx="22" ry="4.5" fill="#2e2a20" opacity="0.75"/><path d="M${cx - 22} ${gy}q4-6 10-5M${cx + 22} ${gy}q-4-6-10-5" stroke="#6a5c40" stroke-width="2" fill="none"/>`;
+    const wx = W * 0.56 + (sd % 5) * 6;
+    f += `<path d="M${wx} ${gy - 1}v-12M${wx + 30} ${gy}v-13M${wx + 60} ${gy - 1}v-11" stroke="#4a3a26" stroke-width="1.6"/>`;
+    let wire = ''; for (let i = 0; i < 12; i++) { const x0 = wx + i * 5; wire += `<ellipse cx="${x0 + 2.5}" cy="${gy - 7 + (i % 2)}" rx="3.4" ry="2.6"/>`; }
+    f += `<g fill="none" stroke="#2b2b28" stroke-width="0.6">${wire}</g><path d="M${wx} ${gy - 10}L${wx + 60} ${gy - 9}M${wx} ${gy - 4}L${wx + 60} ${gy - 5}" stroke="#2b2b28" stroke-width="0.6"/>`;
+    f += `<path d="M${W * 0.08} ${gy}l3-16 2 1-2 15z" fill="#5a4630" stroke="${OUT}" stroke-width="0.5"/><path d="M${W * 0.88} ${gy}l10-6 4 2-9 4z M${W * 0.83} ${gy}l6-3 3 2-5 1z" fill="#55524a" stroke="${OUT}" stroke-width="0.5"/>`;
+    return f;
+  };
+  // sahnedeki bayrak (direkli; ülke rengi ve nişanı)
+  const flagPole = (x, y, tag, flip) => { const c = (g.COUNTRY_DEFS[tag] || {}).c || '#888', dx = flip ? -1 : 1; return `<path d="M${x} ${y}v-40" stroke="#3a3026" stroke-width="1.4"/><path d="M${x} ${y - 40}q${dx * 9}-3 ${dx * 18} 0t${dx * 18} 0v13q${-dx * 9}-3 ${-dx * 18} 0t${-dx * 18} 0z" fill="${c}" stroke="${OUT}" stroke-width="0.6"/>${insignia(tag, x + dx * 18, y - 33.5, 4)}`; };
   // bir tarafın kuvveti (sağa bakan, 0..160 bölgesi); savunan aynalanır
   const force = (tag, kind, lvl, y, H, def) => {
     const sol = (x, yy, sc, pose, k) => put(soldier(tag, y, pose, k), x, yy, sc);
@@ -590,14 +606,17 @@
     if (river) s += riverBand(W, H);
     s += smoke(150, 70, 1.3, '#bdb4a2', 0.55) + smoke(200, 64, 0.9, '#cfc6b2', 0.45);
     s += `<path d="M120 96L190 84M128 104L200 96M200 90L140 100" stroke="#ffe08a" stroke-width="0.9" opacity="0.8" stroke-dasharray="6 9"/>`;
-    s += blast(160, 98, 0.9) + blast(222, 108, 0.6);
+    s += `<circle cx="${40 + (sd % 9) * 28}" cy="22" r="26" fill="#fff2c8" opacity="0.22"/><circle cx="${40 + (sd % 9) * 28}" cy="22" r="9" fill="#fff6dc" opacity="0.5"/>`;
+    s += flagPole(22, H * 0.66, aTag, 0) + flagPole(W - 22, H * 0.66, dTag, 1);
+    s += blast(160, 98, 0.9) + blast(222, 108, 0.6) + blast(188, 74, 0.45);
+    s += `<path d="M96 88L176 76M104 112L196 100" stroke="#fff0b0" stroke-width="1.3" opacity="0.9" stroke-dasharray="3 16" stroke-linecap="round"/>`;
     s += `<g>${force(aTag, aKind, aLvl, y, H, false)}</g>`;
     s += `<g transform="translate(${W} 0) scale(-1 1)">${force(dTag, dKind, dLvl, y, H, true)}</g>`;
-    s += grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
+    s += foreground(W, H, sd) + grass(W, H - 14, shade(pal.gr2, -0.2), sd) + vignette(W, H, id);
     return svg(W, H, s, 'art battleart');
   });
   // olay sahneleri için parçalar (eventart.js kullanır)
-  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, next: () => ++uid };
+  G.art.kit = { soldier, horse, tank, truck, gun, plane, ship, insignia, ground, vignette, smoke, grass, put, svg, PAL, shade, hash, terrain, ruin, tree, blast, nat, starPath, OUT, yearNow, memo, foreground, flagPole, next: () => ++uid };
 
   // <img> olarak kullanım: aynı resim sayfada çok kez geçse de SVG metni bir kez çözülür (blob adresi önbellekte)
   const urls = new Map();
