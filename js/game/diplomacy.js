@@ -73,7 +73,11 @@
     const lateWar = !st.opts.hist || st.day >= G.dayOf('1941-06-01');
     if (!opts.alone) for (const t of G.sideOf(a)) {
       if (t === a || def.has(t)) continue;
-      if (t === st.player) { G.queuePopup({ title: 'Silah Çağrısı', text: `Müttefikimiz ${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti. Savaşa katılalım mı?`, opts: [{ n: 'Savaşa katıl', fx: () => { for (const y of G.sideOf(b)) if (!G.sameFaction(t, y)) G.setWar(t, y); } }, { n: 'Uzak dur', fx: () => {} }] }); continue; }
+      if (t === st.player || (G.humanQ && G.isHuman(t))) {
+        const pop = { title: 'Silah Çağrısı', text: `Müttefikimiz ${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti. Savaşa katılalım mı?`, opts: [{ n: 'Savaşa katıl', fx: () => { for (const y of G.sideOf(b)) if (!G.sameFaction(t, y)) G.setWar(t, y); } }, { n: 'Uzak dur', fx: () => {} }] };
+        if (t === st.player) { G.queuePopup(pop); continue; }
+        if (G.humanQ(t, pop)) continue; // çok oyunculu (gerçek zamanlı): insan oyuncu karar verir
+      }
       const ct = st.C[t];
       if (ct.overlord === a || (ct.ideo === st.C[a].ideo && ct.ideo !== 'neu' && lateWar)) att.add(t);
     }
