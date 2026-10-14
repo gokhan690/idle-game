@@ -16,7 +16,7 @@
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
   // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
-  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const q = UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2); R.quality = R.qAuto != null ? Math.min(q, R.qAuto) : q; const cap = [1.5, 2, 3][R.quality]; if (R.dprCap !== cap) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
   UI.applyMapSettings();
 
   // ---------- Bildirim ----------
