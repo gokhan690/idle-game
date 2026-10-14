@@ -29,6 +29,7 @@
     let html = '';
     html += sec('Kayıt', UI.slotList(true), 'Bu cihazda saklanır');
     const ch = UI.cloudSection(true); if (ch) html += sec('Bulut kaydı', ch, 'Hesabına bağlı');
+    { const ph = UI.pwaSection ? UI.pwaSection() : ''; if (ph) html += sec('Uygulama', ph); }
     const modes = UI.MODE_N;
     html += sec('Harita modu', `<div class="seg wrap">${Object.entries(modes).map(([k, n]) => `<button class="${R.mode === k ? 'on' : ''}" data-act="setmode" data-v="${k}">${n}</button>`).join('')}</div>`);
     html += sec('Ekran', `<div class="list"><button class="item" data-act="fullscreen"><div class="grow"><div class="t">Tam ekran ve yatay mod</div><div class="d">Telefonu yan çevirince arayüz otomatik olarak yatay düzene geçer. Bu düğme destekleyen tarayıcılarda tam ekrana geçip ekranı yatay kilitler.</div></div><span class="muted">›</span></button></div>`);
@@ -162,6 +163,7 @@
     if (['1', '2', '3'].some((s) => G.saveMeta(s))) html += sec('Kayıtlı oyunlar', UI.slotList(false));
     const ch = UI.cloudSection(false); if (ch) html += sec('Bulut kayıtları', ch, 'Hesabına bağlı');
     else html += `<div class="sec"><div class="btns">${impBtn()}</div></div>`;
+    { const ph = UI.pwaSection ? UI.pwaSection() : ''; if (ph) html += sec('Uygulama', ph); }
     if (UI.mpSection) { const mh = UI.mpSection(); if (mh && G.net.gid && G.net.game && G.net.game.status === 'lobby') { $('start-body').innerHTML = mh; return; } html += mh; }
     html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
