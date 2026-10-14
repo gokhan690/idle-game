@@ -287,13 +287,13 @@
             const v = f2 + (sr ? sr[j] : 1) * 3 - (G.unitsAt[j] || []).filter((x) => x.t === tag).length * 0.3;
             if (v > bb) { bb = v; back = j; }
           }
-          if (fn === 0 || (sup < 0.12 && en >= 3 && back < 0)) {
+          if (fn === 0 || (sup < 0.12 && en >= 3 && back < 0) || L.some((u) => u.enc >= 2)) {
             // cep: en yakın dost toprağa doğru yarma
             if (!dist) dist = friendDist(isFr);
             let best = -1, bv = Infinity;
             for (const j of P[n].a) { if (!G.atWar(tag, st.prov[j].c)) continue; const v = dist[j] * 10 + provThreat(j, tag) * 0.05; if (v < bv) { bv = v; best = j; } }
             if (best < 0) continue;
-            for (const u of L) if (!busy(u) && u.org > u._s.org * 0.25) { u.path = [best]; committed.add(u); }
+            for (const u of L) if (!busy(u) && (u.org > u._s.org * 0.25 || u.enc)) { u.path = [best]; if (u.enc) u.bo = 1; committed.add(u); }
           } else if (back >= 0 && en >= 3 && fn <= 2 && sup < 0.5 && P[n].vp < 10) {
             // kuşatılmak üzere olan ikmalsiz çıkıntı: muharebede olmayanlar çekilir
             for (const u of L) if (!busy(u)) { u.path = [back]; committed.add(u); }
@@ -310,6 +310,17 @@
         const here = byFront.get(f.i); if (!here || !here.length) continue;
         for (const e of f.enemyAdj) { let t = targets.get(e); if (!t) targets.set(e, (t = { e, from: [] })); t.from.push(f.i); }
       }
+      // kıskaç değeri: bu eyalet alınırsa bağlantısı bir ya da hiç dost komşuya inecek düşman tümenleri (HOI4 kuşatma)
+      const pincer = (e) => {
+        let v = 0;
+        for (const j of P[e].a) {
+          const pc = st.prov[j].c; if (!G.atWar(tag, pc)) continue;
+          const n = (G.unitsAt[j] || []).filter((u) => u.t === pc || G.friendly(pc, u.t)).length; if (!n) continue;
+          let k = 0; for (const x of P[j].a) { if (x === e) continue; const xc = st.prov[x].c; if (xc === pc || (G.friendly(pc, xc) && !G.atWar(pc, xc))) k++; }
+          if (k <= 1) v += n * (2 - k);
+        }
+        return v;
+      };
       const war0 = Math.min(...c.enemies.map((e) => st.wars[G.pairKey(tag, e)]?.since ?? st.day));
       const stalemate = Math.min(0.25, Math.max(0, (st.day - war0 - 60) / 400));
       const aggr = (G.diffAggr() - (c.ideo === 'fas' || c.ideo === 'com' ? 0.2 : 0) - stalemate) * (opts.aggrMul || 1);
@@ -322,7 +333,7 @@
       const chinaHold = tag !== st.player && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0 })).sort((a, b) => (a.def + a.gd - b.def - b.gd) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0, pin: pincer(t.e) })).sort((a, b) => (a.def + a.gd - a.pin * 4 - b.def - b.gd + b.pin * 4) || (b.vp - a.vp));
       // kazanma eşiği: saldıranın moral süresi / savunanın moral süresi (muharebe tahmini)
       const margin = aggr / 1.3;
       for (const t of tlist) {
@@ -339,7 +350,7 @@
           const lib = st.prov[t.e].core === tag || G.sameFaction(tag, st.prov[t.e].core);
           // düşmanın asli topraklarında derin akın yok: her tür birlik en az iki dost komşu ister
           const ecore = st.prov[t.e].core === st.prov[t.e].c;
-          if (ecore && friendNb < 2) continue;
+          if (ecore && friendNb < 2 && !(t.pin && u._s.t.mob >= 0.5)) continue;
           if (friendNb < (lib ? 1 : 2) && (u._s.t.mob < 0.5 || G.supplyRatio(u) < 0.6) && P[t.e].vp < 10) continue;
           if (G.supplyRatio(u) < (lib ? 0.35 : 0.6)) continue; // ikmali zayıflayan öncü durur
           const left = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u).length;
@@ -351,7 +362,7 @@
         avail.sort((a, b) => (b._s.sa + b._s.ha + b._s.bt * 0.3) * b.str - (a._s.sa + a._s.ha + a._s.bt * 0.3) * a.str);
         let pr = null;
         for (const u of avail) { go.push(u); if (go.length < Math.min(2, avail.length)) continue; pr = G.predictBattle(go, t.e, tag); if (pr.ratio >= margin * 1.25) break; }
-        if (pr && pr.ratio >= margin) {
+        if (pr && pr.ratio >= margin * (t.pin ? 0.85 : 1)) {
           for (const u of go) {
             const rest = (byFront.get(u.loc) || []).filter((x) => !committed.has(x) && x !== u && !go.includes(x)).length;
             const otherThreat = P[u.loc].a.some((j) => j !== t.e && provThreat(j, tag) > 0);

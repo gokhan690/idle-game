@@ -83,6 +83,8 @@
     if (c.enemies.length) {
       const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
       if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
+      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
+      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
     }
     const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');

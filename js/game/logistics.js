@@ -160,6 +160,34 @@
       for (let i = 0; i < NP; i++) if (conn[i] && st.prov[i].c === tag && P[i].s.length) for (const z of P[i].s) if (!seaOk[z]) { seaOk[z] = 1; q.push(NP + z); }
       for (let k = 0; k < q.length; k++) { const n = q[k]; for (const [b] of G.adj[n]) if (b >= NP && !seaOk[b - NP] && !G.straitBlocked(tag, n, b)) { seaOk[b - NP] = 1; q.push(b); } }
     }
+    // kuşatma (cep): başkente karadan, ya da açık deniz yolu olan bir limandan bağlanamayan kontrol bölgeleri.
+    // Liste durumda (st.pkt) saklanır: kayıttan dönüşte ve çok oyunculu eşitlemede aynı sonucu verir.
+    {
+      const pk = []; let reach0 = null;
+      if (c.cap >= 0 && st.prov[c.cap].c === tag) {
+        const reach = (reach0 = conn.slice()), q = [];
+        for (let i = 0; i < NP; i++) if (!reach[i] && ctrl(i) && P[i].c && P[i].s.some((z) => seaOk[z])) { reach[i] = 1; q.push(i); }
+        for (let k = 0; k < q.length; k++) for (const j of P[q[k]].a) if (!reach[j] && ctrl(j)) { reach[j] = 1; q.push(j); }
+        // kopuk bölgeler: yalnızca küçük (en çok 15 eyalet) ve büyük şehri (ZP 15+) olmayanlar cep sayılır;
+        // geniş, şehirli kopuk bölgeler kendi başına ikmal alanıdır (ör. Urallar kesilince Sibirya)
+        const seen = new Uint8Array(NP);
+        for (let i = 0; i < NP; i++) {
+          if (reach[i] || seen[i] || !ctrl(i) || !(G.unitsAt[i] || []).some((u) => u.t === tag)) continue;
+          const comp = [i]; seen[i] = 1; let big = false;
+          for (let k = 0; k < comp.length; k++) {
+            const n = comp[k]; if (P[n].vp >= 15) big = true;
+            for (const j of P[n].a) if (!seen[j] && !reach[j] && ctrl(j)) { seen[j] = 1; comp.push(j); }
+          }
+          if (big || comp.length > 15) continue;
+          for (const n of comp) if ((G.unitsAt[n] || []).some((u) => u.t === tag)) pk.push(n);
+        }
+        pk.sort((a, b) => a - b);
+      }
+      (G.reachOf || (G.reachOf = {}))[tag] = reach0;
+      const pkt = st.pkt || (st.pkt = {});
+      if (pk.length) pkt[tag] = pk; else delete pkt[tag];
+      G.pkVer = (G.pkVer || 0) + 1;
+    }
     // ikmal merkezleri: başkent ve büyük şehirler (müttefik merkezleri de paylaşılır)
     const hubs = [];
     const convR = (() => { const need = G.convoyNeed ? G.convoyNeed(tag) : 0; return need > 0 ? Math.min(1, (c.ships.conv || 0) / need) : 1; })();
@@ -228,7 +256,7 @@
     try {
       for (const c of Object.values(st.C)) {
         if (!c.alive) { delete G.supRatio[c.tag]; continue; }
-        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; continue; }
+        if (!c.enemies.length && c.tag !== st.player) { delete G.supRatio[c.tag]; if (st.pkt && st.pkt[c.tag]) { delete st.pkt[c.tag]; G.pkVer = (G.pkVer || 0) + 1; } continue; }
         G.computeSupplyFor(c);
         yield;
       }
@@ -236,6 +264,13 @@
     G.supTick = (G.supTick || 0) + 1;
   };
   G.computeSupplyAll = () => { for (const _ of G.supplySteps()); };
+  // cepteki eyalet mi (yalnızca o ülkenin tümeni bulunan kopuk eyaletler listelenir)
+  let pkRef = null, pkV = -1, pkSets = {};
+  G.inPocket = (tag, i) => {
+    const pkt = G.st.pkt; if (!pkt) return false;
+    if (pkRef !== pkt || pkV !== G.pkVer) { pkSets = {}; for (const t in pkt) pkSets[t] = new Set(pkt[t]); pkRef = pkt; pkV = G.pkVer; }
+    const s = pkSets[tag]; return !!(s && s.has(i));
+  };
   G.supplyRatio = (u) => { if (u.loc >= NP) return 1; const r = G.supRatio[u.t]; return r ? r[u.loc] : 1; };
   // Muharebe ve toparlanma çarpanı
   G.supplyMul = (u) => {
@@ -298,6 +333,7 @@
     const r = G.supplyRatio(u);
     let loss = 0;
     if (r < 0.7) loss += 0.004 * (0.7 - r) / 0.7;
+    if (u.enc > 7) loss += 0.005; // kuşatma: bir haftadan sonra erime
     const sn = G.wx.snow[u.loc];
     if (sn > 0.5) {
       const pr = st.prov[u.loc];
