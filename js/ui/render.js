@@ -14,9 +14,35 @@
 
   // ---------- Çokgen kod çözme ----------
   const decode = (arr) => { const out = new Float32Array(arr.length); let x = 0, y = 0; for (let i = 0; i < arr.length; i += 2) { x += arr[i]; y += arr[i + 1]; out[i] = x / Q; out[i + 1] = y / Q; } return out; };
-  const provRings = P.map((p) => p.p.flat().map(decode));
+  // doğal sınırlar: uzun düz kenarlar belirlenimli orta nokta kaydırmasıyla kıvrılır. Kenarın uçları kanonik
+  // sırayla (x, sonra y) ele alınır ve tohum uçların tamsayı koordinatlarından üretilir; böylece aynı kenar iki
+  // komşu eyalette ve sınır listesinde birebir aynı eğriyi verir (dolgu, sınır ve dokunma testi uyumlu kalır).
+  const WIG_MIN = 4, WIG_AMP = 0.13;
+  const hh = (a, b, c, d, k) => { let h = (a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (d * 2654435761) ^ (k * 97531); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const wigSeg = (ax, ay, bx, by, out) => {
+    const L = Math.hypot(bx - ax, by - ay); if (L < WIG_MIN) return;
+    const ia = Math.round(ax * Q), ja = Math.round(ay * Q), ib = Math.round(bx * Q), jb = Math.round(by * Q);
+    const sw = ia > ib || (ia === ib && ja > jb);
+    const x0 = sw ? bx : ax, y0 = sw ? by : ay, x1 = sw ? ax : bx, y1 = sw ? ay : by;
+    const k0 = sw ? ib : ia, l0 = sw ? jb : ja, k1 = sw ? ia : ib, l1 = sw ? ja : jb;
+    const nx = -(y1 - y0) / L, ny = (x1 - x0) / L, A = WIG_AMP * L;
+    const d2 = (hh(k0, l0, k1, l1, 1) - 0.5) * 2 * A, d1 = (hh(k0, l0, k1, l1, 2) - 0.5) * A, d3 = (hh(k0, l0, k1, l1, 3) - 0.5) * A;
+    // kanonik yönde 3 ara nokta (t = 0.25, 0.5, 0.75); orta nokta ana sapma, yan noktalar ona göre yarım genlik
+    const pts = [[0.25, (d2 * 0.5 + d1) * 0.55], [0.5, d2], [0.75, (d2 * 0.5 + d3) * 0.55]]; // köşelere yakın sapma küçük: dar köşelerde komşu kenarlar kesişmez
+    if (sw) pts.reverse();
+    for (const [t, d] of pts) out.push(x0 + (x1 - x0) * t + nx * d, y0 + (y1 - y0) * t + ny * d);
+  };
+  const wiggle = (r, closed) => {
+    const n = r.length / 2, out = [];
+    for (let i = 0; i < n; i++) {
+      out.push(r[2 * i], r[2 * i + 1]);
+      if (i < n - 1 || closed) { const j = (i + 1) % n; wigSeg(r[2 * i], r[2 * i + 1], r[2 * j], r[2 * j + 1], out); }
+    }
+    return Float32Array.from(out);
+  };
+  const provRings = P.map((p) => p.p.flat().map((r) => wiggle(decode(r), true)));
   const provPath = provRings.map((rings) => { const pa = new Path2D(); for (const r of rings) { pa.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) pa.lineTo(r[i], r[i + 1]); pa.closePath(); } return pa; });
-  const borders = M.borders.map(([a, b, e]) => ({ a, b, pts: decode(e) }));
+  const borders = M.borders.map(([a, b, e]) => ({ a, b, pts: wiggle(decode(e), false) }));
   // eyalet çifti -> ortak sınır parçaları (cephe çizgileri için)
   const pairKey = (a, b) => (a < b ? a * 8192 + b : b * 8192 + a);
   const pairMap = new Map();
@@ -167,7 +193,7 @@
   // ---------- Kamera ----------
   R.resize = () => {
     const cv = R.cv; const od = R.dpr; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
-    if (od !== R.dpr) { texPat.clear(); stripeCache.clear(); mudPat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
+    if (od !== R.dpr) { texPat.clear(); stripeCache.clear(); mudPat = null; wavePat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
     R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
@@ -218,6 +244,14 @@
   // ---------- Desenler ----------
   // desenler cihaz çözünürlüğünde üretilir (PD kat); dönüşümde 1/PD ile küçültülür, böylece 3× ekranda bulanıklaşmaz
   const PD = () => Math.max(1, Math.ceil(R.dpr || 1));
+  let wavePat = null;
+  function waveCanvas() {
+    const pd = PD(), c = document.createElement('canvas'); c.width = c.height = 64 * pd;
+    const x = c.getContext('2d'); x.scale(pd, pd);
+    x.strokeStyle = 'rgba(170,205,225,0.55)'; x.lineWidth = 0.8; x.lineCap = 'round';
+    for (const [cx, cy] of [[8, 10], [40, 6], [24, 30], [54, 38], [10, 50], [36, 56]]) { x.beginPath(); x.moveTo(cx, cy); x.quadraticCurveTo(cx + 3, cy - 2.5, cx + 6, cy); x.quadraticCurveTo(cx + 9, cy + 2.5, cx + 12, cy); x.stroke(); }
+    return c;
+  }
   function stripePattern(color) {
     const pd = PD(), c = document.createElement('canvas'); c.width = c.height = 12 * pd;
     const x = c.getContext('2d'); x.scale(pd, pd);
@@ -320,17 +354,27 @@
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  const SHALLOW = [[26, 0.05], [14, 0.08], [7, 0.13], [3, 0.2]], SHALLOW_LQ = [[20, 0.09], [6, 0.2]];
   function drawLayerA(ctx) {
     ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
     // okyanus
     const grd = ctx.createLinearGradient(0, 0, 0, R.h);
-    grd.addColorStop(0, '#16283a'); grd.addColorStop(1, '#10202f');
+    grd.addColorStop(0, '#132639'); grd.addColorStop(1, '#0c1b2a');
     ctx.fillStyle = grd; ctx.fillRect(0, 0, R.w, R.h);
     eachCopy(ctx, (z) => {
+      // yakın zoomda dalga çizgileri (dünya uzayında, cihaz çözünürlüğünde desen)
+      if (z > 2.2 && !R.lowQ) {
+        if (!wavePat) wavePat = ctx.createPattern(waveCanvas(), 'repeat');
+        wavePat.setTransform && wavePat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD())));
+        ctx.globalAlpha = Math.min(0.5, (z - 2.2) * 0.35); ctx.fillStyle = wavePat; ctx.fillRect(-M.W, -M.H, M.W * 3, M.H * 3); ctx.globalAlpha = 1;
+      }
       // deniz bölgeleri
       ctx.strokeStyle = 'rgba(160,190,215,0.10)'; ctx.lineWidth = 1 / z; tStroke(ctx, seaPath);
-      // kıyı ışıması
-      ctx.strokeStyle = 'rgba(120,170,200,0.18)'; ctx.lineWidth = 7 / z; ctx.lineJoin = 'round'; tStroke(ctx, coastPath);
+      // sığ su: kıyıdan açığa koyulaşan katmanlı hâle (ekran pikseline göre sabit genişlik)
+      // (kaydırma sırasında iki katman ve köşeli birleşim: geniş yuvarlak çizgiler pahalı)
+      ctx.lineJoin = R.lowQ ? 'bevel' : 'round'; ctx.lineCap = R.lowQ ? 'butt' : 'round';
+      for (const [w, a] of R.lowQ ? SHALLOW_LQ : SHALLOW) { ctx.strokeStyle = `rgba(96,150,182,${a})`; ctx.lineWidth = w / z; tStroke(ctx, coastPath); }
+      ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
     });
   }
   function drawLayerB(ctx) {
@@ -374,7 +418,10 @@
       }
       // eyalet sınırları
       if (z > 0.55) { ctx.strokeStyle = `rgba(20,24,18,${Math.min(0.45, (z - 0.55) * 0.5)})`; ctx.lineWidth = 0.7 / z; tStroke(ctx, provBorder); }
-      ctx.strokeStyle = 'rgba(12,14,10,0.85)'; ctx.lineWidth = Math.max(1.2, Math.min(2.4, z * 1.1)) / z; tStroke(ctx, countryBorder);
+      const cbw = Math.max(1.2, Math.min(2.4, z * 1.1));
+      // ülke sınırı: açık hâle + koyu çizgi (kaydırmada yalnız çizgi)
+      if (!R.lowQ) { ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(246,240,214,0.22)'; ctx.lineWidth = (cbw + 2.6) / z; tStroke(ctx, countryBorder); }
+      ctx.strokeStyle = 'rgba(10,12,8,0.9)'; ctx.lineWidth = cbw / z; tStroke(ctx, countryBorder); ctx.lineJoin = 'miter';
       if (R.mode === 'air') { ctx.strokeStyle = 'rgba(235,225,190,0.75)'; ctx.lineWidth = 2 / z; ctx.setLineDash([5 / z, 3 / z]); tStroke(ctx, regionBorder); ctx.setLineDash([]); }
       if (R.mode === 'peace') {
         ctx.strokeStyle = 'rgba(20,18,12,0.95)'; ctx.lineWidth = 2.2 / z; tStroke(ctx, regionBorder);
@@ -397,7 +444,7 @@
     eachCopy(ctx, (z) => {
       // arazi rölyefi: siyasi ve ittifak haritasında dağ, tepe, orman, çöl, bataklık dokusu
       if ((R.mode === 'pol' || R.mode === 'fac') && R.relief !== false && !R.lowQ) terrainLayer(ctx, z);
-      ctx.strokeStyle = 'rgba(8,16,24,0.9)'; ctx.lineWidth = 1.1 / z; tStroke(ctx, coastPath);
+      ctx.strokeStyle = 'rgba(6,14,22,0.92)'; ctx.lineWidth = Math.max(1.1, Math.min(1.8, z * 0.7)) / z; ctx.lineJoin = 'round'; tStroke(ctx, coastPath);
       if (R.mode !== 'peace' && R.mode !== 'ind') drawRivers(ctx, z);
     });
     atmosphere(ctx);
@@ -422,8 +469,8 @@
       baseCv = LAY[3].cv; baseCtx = LAY[3].ctx; baseKey = '';
     }
     const camKey = cam.x + '|' + cam.y + '|' + z + '|' + W + '|' + H + '|' + R.mode;
-    const kA = camKey, kC = camKey + '|' + R.relief + '|' + (R.lowQ ? 1 : 0);
-    const kB = camKey + '|' + R.showWeather + '|' + mapVer + '|' + (R.mode === 'peace' ? (G.UI && G.UI.cfSel) : '');
+    const kA = camKey + '|' + (R.lowQ ? 1 : 0), kC = camKey + '|' + R.relief + '|' + (R.lowQ ? 1 : 0);
+    const kB = camKey + '|' + (R.lowQ ? 1 : 0) + '|' + R.showWeather + '|' + mapVer + '|' + (R.mode === 'peace' ? (G.UI && G.UI.cfSel) : '');
     let ch = 0;
     if (LAY[0].key !== kA) { drawLayerA(LAY[0].ctx); LAY[0].key = kA; ch = 1; }
     if (LAY[1].key !== kB) { drawLayerB(LAY[1].ctx); LAY[1].key = kB; ch = 1; }
