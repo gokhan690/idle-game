@@ -16,7 +16,10 @@
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
   // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
-  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const q = UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2); R.quality = R.qAuto != null ? Math.min(q, R.qAuto) : q; const cap = [1.5, 2, 3][R.quality]; if (R.dprCap !== cap) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  // yazı boyutu: paneller, kartlar, pencereler ve bildirimler ölçeklenir (Küçük / Normal / Büyük / Çok büyük)
+  UI.FS = [0.9, 1, 1.12, 1.25];
+  UI.applyMapSettings = () => {
+    document.documentElement.style.setProperty('--uiz', UI.FS[UI.settings.fs ?? 1] || 1); R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const q = UI.settings.q ?? (UI.settings.hires === 0 ? 1 : 2); R.quality = R.qAuto != null ? Math.min(q, R.qAuto) : q; const cap = [1.5, 2, 3][R.quality]; if (R.dprCap !== cap) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
   UI.applyMapSettings();
 
   // ---------- Bildirim ----------
@@ -104,14 +107,43 @@
   g.addEventListener('resize', () => setTimeout(() => UI.placeToasts && UI.placeToasts(), 60));
 
   // ---------- Panel çerçevesi ----------
+  // Android geri tuşu / tarayıcı geri: açık paneli (ya da alt sayfasını) kapatır
+  UI._hist = false; UI._skipPop = false;
+  UI.histPush = () => { if (UI._hist) return; try { history.pushState({ dc: 1 }, ''); UI._hist = true; } catch (e) { /* korumalı çerçevede geçmiş kapalı olabilir */ } };
+  g.addEventListener('popstate', () => {
+    if (UI._skipPop) { UI._skipPop = false; return; }
+    UI._hist = false;
+    if (UI.modalOpen) return;
+    if (UI.sub && UI.panel) { UI.sub = null; UI.render(true); UI.histPush(); }
+    else if (UI.panel) { UI._popping = 1; UI.close(); UI._popping = 0; }
+  });
   UI.open = (p, sub) => {
+    if (!UI.panel) UI.histPush();
     UI.delArm = null;
     if (UI.panel === p && !sub && !UI.sub) { UI.close(); return; }
     UI.panel = p; UI.sub = sub || null;
     $('card').hidden = true;
     UI.render(true);
   };
-  UI.close = () => { UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
+  UI.close = () => {
+    if (UI._hist && !UI._popping) { UI._hist = false; UI._skipPop = true; try { history.back(); } catch (e) { UI._skipPop = false; } }
+    UI.panel = null; UI.sub = null; $('sheet').hidden = true; document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('on')); UI.syncOverlays(); };
+  // panel tutamağı (dikey ekran): başlıktan aşağı sürükle → küçült ya da kapat, yukarı sürükle → büyüt
+  {
+    const sheet = $('sheet'), head = sheet.querySelector('.sheet-head');
+    let y0 = null, dy = 0, pid = null;
+    const can = () => g.matchMedia('(orientation: portrait)').matches && !sheet.classList.contains('full');
+    head.addEventListener('pointerdown', (e) => { if (e.target.closest('button') || !can()) return; y0 = e.clientY; dy = 0; pid = e.pointerId; try { head.setPointerCapture(pid); } catch (er) { /* */ } sheet.style.transition = 'none'; });
+    head.addEventListener('pointermove', (e) => { if (y0 == null || e.pointerId !== pid) return; dy = e.clientY - y0; sheet.style.transform = `translateY(${dy > 0 ? dy : Math.max(-36, dy * 0.35)}px)`; });
+    const end = () => {
+      if (y0 == null) return; y0 = null;
+      sheet.style.transition = 'transform 0.16s ease-out'; sheet.style.transform = '';
+      setTimeout(() => { sheet.style.transition = ''; }, 180);
+      if (dy > 90) { if (UI.tall) UI.act('tall'); else UI.close(); }
+      else if (dy < -45 && !UI.tall) UI.act('tall');
+    };
+    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  }
   UI.render = (reset, auto) => {
     if (!UI.panel) return;
     const sheet = $('sheet'), body = $('sheet-body');

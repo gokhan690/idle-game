@@ -828,3 +828,29 @@ details.hsec > p { padding: 0 11px 10px; }
 :root { --muted: #b4b29a; }
 @media (pointer: coarse) { .btn.sm { min-height: 34px; } .seg.sm button { min-height: 32px; } }
 .btn:active:not([disabled]), .item[data-act]:active, .mcard:active, .seg button:active { transform: translateY(1px); filter: brightness(1.12); }
+
+/* ---------- Arayüz I: panel tutamağı, dokunma alanları, yazı boyutu ---------- */
+/* yazı boyutu ayarı (--uiz): paneller, kartlar, pencereler ve bildirimler */
+#sheet-body, #selbar, #card, #modal .dialog, #toasts { zoom: var(--uiz, 1); }
+/* dikey ekranda panel başlığı tutamaçtır: aşağı sürükle → kapat, yukarı → büyüt */
+@media (orientation: portrait) {
+  .sheet:not(.full) .sheet-head { position: relative; touch-action: none; padding-top: 14px; cursor: grab; }
+  .sheet:not(.full) .sheet-head::before { content: ''; position: absolute; top: 5px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(236,230,210,0.32); }
+}
+/* parmakla kullanım: en az 44 px dokunma alanı */
+@media (pointer: coarse) {
+  .btn { min-height: 42px; }
+  .btn.sm { min-height: 36px; padding: 4px 11px; }
+  .seg button { min-height: 42px; }
+  .toggle, .item[data-act] { min-height: 48px; }
+  .sheet-close, .sheet-back, .sheet-tall { width: 44px; height: 44px; }
+  .alert { min-width: 36px; min-height: 36px; }
+}
+/* basınca görsel tepki */
+.toggle:active, .alert:active, .sheet-close:active, .sheet-back:active, .sheet-tall:active { filter: brightness(1.2); transform: translateY(1px); }
+/* rakamlar hizalı (tablo ve sayaçlarda kaymaz) */
+.chip b, .kv b, .bar-l, .stat b, .ledger td { font-variant-numeric: tabular-nums; }
+/* büyük yazıda dar satırlar alta kayar (filo görevleri, düğme grupları) */
+.item .seg.sm { flex-wrap: wrap; }
+.item .seg.sm button { flex: 1 1 auto; }
+.item .btns { flex-wrap: wrap; }
