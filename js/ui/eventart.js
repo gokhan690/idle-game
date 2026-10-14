@@ -44,7 +44,7 @@
   // ---------- sahneler ----------
   const W = 320, H = 140;
   const scene = (k, A, B, v, y) => {
-    const K = G.art.kit, { put, soldier, tank, truck, gun, plane, ship, smoke, grass, ground, vignette, PAL, shade, terrain, ruin, blast, insignia, OUT } = K;
+    const K = G.art.kit, { put, soldier, tank, truck, gun, plane, ship, smoke, grass, ground, vignette, PAL, shade, terrain, ruin, blast, insignia, OUT, foreground, flagPole } = K;
     const id = 'ev' + K.next(), sol = (tag, x, yy, sc, pose, kk, flip) => put(soldier(tag, y, pose, kk), x, yy, sc, flip);
     const flag = (tag, x, yy, w = 30, h = 20) => (G.flagAt ? G.flagAt(tag, x, yy, w, h) : '');
     const pole = (tag, x, yy, h) => `<path d="M${x} ${yy}v${-h}" stroke="#2a241c" stroke-width="2"/>${flag(tag, x + 1, yy - h, 26, 17)}`;
@@ -60,13 +60,18 @@
         else s += sol(A, 104, gy - 70, 1.1, 'adv', 0) + sol(A, 58, gy - 64, 1.0, 'adv', 1) + sol(A, 14, gy - 58, 0.9, 'kneel', 2);
         if (B) s += `<g transform="translate(${W} 0) scale(-1 1)">${sol(B, 96, gy - 66, 1.05, 'kneel', 0)}${sol(B, 56, gy - 60, 0.95, 'adv', 1)}</g>`;
         else s += smoke(250, 80, 1, '#8a8070', 0.55) + blast(262, 104, 0.6);
-        s += grass(W, H - 12, '#2e2e20', v);
+        s += `<path d="M120 90L200 80M112 104L210 94" stroke="#fff0b0" stroke-width="1.2" opacity="0.85" stroke-dasharray="3 14" stroke-linecap="round"/>`;
+        s += flagPole(16, H * 0.6, A, 0) + (B ? flagPole(W - 16, H * 0.6, B, 1) : '');
+        s += foreground(W, H, v) + grass(W, H - 12, '#2e2e20', v);
+        // gece taarruzu: koyu gökyüzü, işaret fişeği ışığı
+        if (v % 4 === 3) s += `<defs><radialGradient id="${id}fl" cx="0.62" cy="0.12" r="0.7"><stop offset="0" stop-color="#fff2c0" stop-opacity="0.35"/><stop offset="0.3" stop-color="#1a2030" stop-opacity="0.35"/><stop offset="1" stop-color="#0b0e18" stop-opacity="0.62"/></radialGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}fl)"/><circle cx="198" cy="18" r="3" fill="#fff8d8"/><path d="M198 21q-3 10 2 18" stroke="#d8d0bc" stroke-width="0.8" fill="none" opacity="0.6"/>`;
         break;
       }
       case 'navy': {
         s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fa2ab"/><stop offset="1" stop-color="#ded5bd"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
         s += smoke(220, 40, 1.1, '#6f6a62', 0.6) + `<rect y="78" width="${W}" height="${H}" fill="#56717e"/><path d="M0 84q20-3 40 0t40 0t40 0t40 0t40 0t40 0t40 0t40 0M0 100q25-3 50 0t50 0t50 0t50 0t50 0t50 0t50 0" stroke="#a6bcc5" stroke-width="1" fill="none"/>`;
-        s += put(ship(A, v % 2 ? 'cr' : 'bb'), 30, 44, 1.25) + put(ship(A, 'dd'), 220, 62, 0.62) + put(ship(B || A, v % 2 ? 'conv' : 'dd'), 250, 52, 0.45);
+        s += put(ship(A, v % 3 === 2 ? 'cv' : v % 2 ? 'cr' : 'bb'), 30, 44, v % 3 === 2 ? 1.1 : 1.25) + put(ship(A, 'dd'), 220, 62, 0.62) + put(ship(B || A, v % 2 ? 'conv' : 'dd'), 250, 52, 0.45);
+        if (v % 3 === 2) { const f = plane(A, 'fig', 2, y); s += put(f.svg, 60, 8, 0.6) + put(f.svg, 110, 18, 0.5) + `<path d="M232 60q6-16 14-6" stroke="#2e2a24" stroke-width="1" fill="none" opacity="0.5"/>` + blast(240, 70, 0.6); }
         s += `<g fill="#e8eef0" opacity="0.85"><path d="M150 84q4-22 8 0z"/><path d="M196 86q3-14 6 0z"/></g>`;
         const p = plane(B || A, 'cas', 2, y); s += put(p.svg, 210, 14, 0.9) + put(p.svg, 248, 26, 0.7);
         break;
@@ -75,7 +80,12 @@
         s += `<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e93a4"/><stop offset="1" stop-color="#e2d7bb"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}s)"/>`;
         s += `<g fill="#f2eee4" opacity="0.65"><ellipse cx="60" cy="50" rx="60" ry="12"/><ellipse cx="250" cy="34" rx="70" ry="10"/></g>`;
         const bom = plane(A, 'bom', 2, y), fig = plane(A, 'fig', y >= 1944 ? 3 : 2, y);
-        s += put(bom.svg, 40, 30, 1.05) + put(bom.svg, 130, 46, 0.85) + put(bom.svg, 200, 24, 0.7) + put(fig.svg, 230, 70, 0.75) + put(fig.svg, 20, 76, 0.6);
+        if (v % 2 && B) {
+          // it dalaşı: iki tarafın avcıları, iz mermileri, düşen uçağın duman izi
+          const fb = plane(B, 'fig', y >= 1944 ? 3 : 2, y);
+          s += put(fig.svg, 30, 40, 1.2) + put(fb.svg, 290, 18, 1.05, true) + put(fig.svg, 150, 76, 0.7) + `<path d="M120 58L200 40M118 62L196 48" stroke="#fff0b0" stroke-width="1.2" stroke-dasharray="3 10" stroke-linecap="round"/>`;
+          s += `<g transform="rotate(28 230 84)">${put(fb.svg, 200, 70, 0.7, true)}</g><path d="M236 92Q270 60 300 52" stroke="#4a4440" stroke-width="5" fill="none" opacity="0.5" stroke-linecap="round"/>` + blast(232, 92, 0.5);
+        } else s += put(bom.svg, 40, 30, 1.05) + put(bom.svg, 130, 46, 0.85) + put(bom.svg, 200, 24, 0.7) + put(fig.svg, 230, 70, 0.75) + put(fig.svg, 20, 76, 0.6);
         s += `<g fill="#2e2a24" opacity="0.7">${[[110, 20], [180, 70], [70, 90], [260, 50]].map(([x, yy]) => `<circle cx="${x}" cy="${yy}" r="4"/><circle cx="${x + 4}" cy="${yy - 2}" r="3"/>`).join('')}</g>`;
         s += `<path d="M0 120Q80 112 160 118T${W} 114V${H}H0Z" fill="#5a5a40"/>` + smoke(90, 118, 0.9, '#5d564c', 0.65) + smoke(210, 116, 0.7, '#5d564c', 0.55);
         break;
@@ -86,6 +96,7 @@
         const gy = H - 8;
         s += sol(A, 190, gy - 64, 1.0, 'stand', 0) + sol(A, 226, gy - 60, 0.94, 'stand', 1) + sol(A, 262, gy - 56, 0.88, 'stand', 2);
         if (B) s += sol(B, 20, gy - 56, 0.88, 'march', 1) + sol(B, 54, gy - 58, 0.9, 'march', 2);
+        s += foreground(W, H, v + 3);
         break;
       }
       case 'diplomacy': {
@@ -114,7 +125,8 @@
         s += smoke(70, 26, 1.1, '#6e685e', 0.6) + smoke(130, 14, 1.3, '#6e685e', 0.6) + smoke(214, 28, 1, '#6e685e', 0.55);
         s += `<g fill="#5a4e40" stroke="${OUT}" stroke-width="0.6"><rect x="64" y="26" width="12" height="60"/><rect x="124" y="14" width="14" height="70"/><rect x="208" y="28" width="12" height="58"/><path d="M0 ${H}V70l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16v16l40-16V${H}z"/></g>`;
         s += `<g fill="#e9c46a" opacity="0.85">${[20, 60, 100, 140, 180, 220, 260, 300].map((x) => `<rect x="${x}" y="88" width="14" height="10"/>`).join('')}</g>`;
-        const t = tank(A, y >= 1942 ? 3 : 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + put(t.svg, 160, H - 10 - t.h * 0.9, 0.9) + put(truck(A, 0), 30, H - 10 - 42 * 1.05, 1.05);
+        if (v % 2) { const pl = plane(A, 'fig', 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + [[20, 0.9], [120, 0.9], [220, 0.9]].map(([x, sc]) => put(pl.svg, x, H - 16 - pl.h * sc, sc)).join('') + `<path d="M0 ${H - 46}h${W}" stroke="#2e2a24" stroke-width="2"/><g stroke="#2e2a24" stroke-width="0.8">${[60, 160, 260].map((x) => `<path d="M${x} ${H - 46}v10"/>`).join('')}</g>`; }
+        else { const t = tank(A, y >= 1942 ? 3 : 2, y); s += `<rect y="${H - 22}" width="${W}" height="22" fill="#3e372e"/>` + put(t.svg, 160, H - 10 - t.h * 0.9, 0.9) + put(truck(A, 0), 30, H - 10 - 42 * 1.05, 1.05); }
         break;
       }
       case 'science': {
@@ -148,9 +160,9 @@
     if (!G.art || !G.art.kit) return '';
     const id = 'eg' + uid++;
     return `<svg class="ev-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-<defs><radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.7"/></radialGradient>
-<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${v % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.3 0"/></filter></defs>
+<defs><radialGradient id="${id}v" cx="0.5" cy="0.5" r="0.78"><stop offset="0.64" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b140b" stop-opacity="0.38"/></radialGradient>
+<filter id="${id}n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${v % 50}"/><feColorMatrix values="0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.1 0"/></filter></defs>
 ${scene(k, A, B, v, y)}
-<rect width="${W}" height="${H}" fill="#7a5a2a" opacity="0.16"/><rect width="${W}" height="${H}" filter="url(#${id}n)"/><rect width="${W}" height="${H}" fill="url(#${id}v)"/></svg>`;
+<rect width="${W}" height="${H}" fill="#7a5a2a" opacity="0.06"/><rect width="${W}" height="${H}" filter="url(#${id}n)"/><rect width="${W}" height="${H}" fill="url(#${id}v)"/></svg>`;
   };
 })(window);
