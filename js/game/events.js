@@ -319,7 +319,7 @@
     const st = G.st;
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
-      const lf = FOCUS_EV[e.id], pc = st.C[st.player];
+      const lf = FOCUS_EV[e.id], pc = st.C[st.player] || (st.humans && G.isHuman(e.actor) ? st.C[e.actor] : null); // çok oyunculu: yerel oyuncu maskeliyken olayın sahibi
       if (lf && G.isHuman(e.actor) && pc && G.focusById(pc, lf)) {
         st.evHint = st.evHint || {};
         if (!st.evHint[e.id] && e.cond()) {

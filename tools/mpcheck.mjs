@@ -80,6 +80,17 @@ const check = (name, ok, extra = '') => { console.log((ok ? 'TAMAM ' : 'HATA  ')
   check('isHuman / isLocal', A.isHuman('SOV') && A.isHuman('GER') && !A.isHuman('ITA') && A.isLocal('GER') && !A.isLocal('SOV'), JSON.stringify([A.isHuman('SOV'), A.isHuman('GER'), A.isHuman('ITA'), A.isLocal('GER'), A.isLocal('SOV'), A.st.player, A.st.humans]));
 }
 
+// 4) gerçek zamanlı kilitli adım: farklı yerel oyunculu iki cihaz maskeyle günleri birebir aynı işler (savaş, olay, konferans)
+{
+  const mkH = (pl) => { const X = mk(); X.newGame('GER', { hist: 1, seed: 4, humans: { GER: 0, SOV: 1, ENG: 2 } }); X.st.player = pl; X.simMask = ''; return X; };
+  const A = mkH('GER'), B = mkH('SOV');
+  const S0 = A.serialize(); B.deserialize(S0); B.st.player = 'SOV'; A.deserialize(S0); A.st.player = 'GER';
+  let pops = 0; for (const X of [A, B]) { const f = X.onPopup; X.onPopup = () => { pops += X.popupQueue.length; f(); }; }
+  const end = A.dayOf('1941-09-01');
+  while (A.st.day < end) { A.tick(); B.tick(); }
+  const hA = hash(strip(A.serialize())), hB = hash(strip(B.serialize()));
+  check('maskeli kilitli adım 1936→1941 aynı', hA === hB, `gün ${A.st.day}, açılan pencere ${pops}, savaş ${Object.keys(A.st.wars).length}, POL ${A.st.C.POL.alive ? 'ayakta' : 'düştü'}, FRA ${A.st.C.FRA.alive ? 'ayakta' : 'düştü'}`);
+}
 
 console.log(fail ? `${fail} test başarısız` : 'tüm testler geçti');
 process.exit(fail ? 1 : 0);

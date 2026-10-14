@@ -844,6 +844,7 @@
     const st = G.st;
     if (st.over === 1) return;
     if (st.conf) return; // barış konferansı sürüyor
+    if (G.preDay) G.preDay(); // çok oyunculu: bu güne zamanlanmış emirler
     st.day++;
     G.relClear();
     if (G.updateWeather()) G.supDirty = 1;
@@ -904,18 +905,26 @@
       else st.tension = Math.max(0, Math.min(100, st.tension + (st.day >= 365 ? 0.5 : -0.3)));
     }
     if (G.ledgerTick) G.ledgerTick(); // defter istatistikleri (aylık)
+    if (G.dayEnd) G.dayEnd(); // çok oyunculu: gün sonu denetimi
   }
   // yarım kalmış günü tamamla (kayıt, yükleme ve senkron çağrılardan önce)
   G.tickIt = null;
   let inStep = 0;
-  G.finishTick = () => { const it = G.tickIt; if (!it || inStep) return false; G.tickIt = null; while (!it.next().done); return true; };
-  G.tick = () => { G.finishTick(); const it = tickSteps(); while (!it.next().done); };
+  // çok oyunculu: G.simMask tanımlıysa gün işlenirken st.player geçici olarak bu değeri alır ('' = yerel oyuncu yok).
+  // Böylece her cihaz (ve kurucu) günü aynı işler: insan ülkelerinin olayları ve konferansları yerel pencere açmadan çözülür.
+  const step = (it) => {
+    const m = G.simMask; if (m === undefined) return it.next();
+    const st = G.st, p = st.player; st.player = m;
+    try { return it.next(); } finally { st.player = p; }
+  };
+  G.finishTick = () => { const it = G.tickIt; if (!it || inStep) return false; G.tickIt = null; while (!step(it).done); return true; };
+  G.tick = () => { G.finishTick(); const it = tickSteps(); while (!step(it).done); };
   // bütçeli adım: günün bir parçasını çalıştırır; gün bittiyse true döner
   G.tickSlice = (deadline) => {
     const it = G.tickIt || (G.tickIt = tickSteps());
     for (;;) {
       inStep = 1; let r;
-      try { r = it.next(); } finally { inStep = 0; }
+      try { r = step(it); } finally { inStep = 0; }
       if (r.done) { if (G.tickIt === it) G.tickIt = null; return true; }
       if (G.tickIt !== it) return false; // dışarıdan tamamlandı/iptal edildi
       if (performance.now() >= deadline) return false;
