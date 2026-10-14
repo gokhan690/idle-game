@@ -16,7 +16,7 @@
   UI.saveSettings = () => { try { localStorage.setItem('dc_settings', JSON.stringify(UI.settings)); } catch (e) { /* */ } };
   G.newsOn = !!UI.settings.news;
   // harita görünümü: resimli sayaç ve yüksek çözünürlük (render.js okur)
-  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
+  UI.applyMapSettings = () => { R.ctrArt = UI.settings.ctr === 'art'; R.ctrBig = UI.settings.big === 1; const cap = UI.settings.hires === 0 ? 2 : 3; if (R.dprCap !== cap && !R.dprAuto) { R.dprCap = cap; if (R.cv) R.resize(); } R.dirty = 1; };
   UI.applyMapSettings();
 
   // ---------- Bildirim ----------
@@ -155,7 +155,14 @@
         pd = 0; if (nz !== z) UI.ftSetZoom(nz, mx, my);
       };
     }
-    for (const cv of body.querySelectorAll('canvas.nato')) { const x = cv.getContext('2d'); x.fillStyle = cv.dataset.c; x.fillRect(0, 0, cv.width, cv.height); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0'); }
+    // NATO simgesi tuvali cihaz çözünürlüğünde (CSS boyutu sabit kalır; 3× ekranda bulanıklaşmaz)
+    for (const cv of body.querySelectorAll('canvas.nato')) {
+      const d = Math.min(3, Math.max(1, Math.ceil(g.devicePixelRatio || 1)));
+      if (!cv._w) { cv._w = +cv.getAttribute('width') || 44; cv._h = +cv.getAttribute('height') || 30; cv.width = cv._w * d; cv.height = cv._h * d; }
+      const w = cv._w, h = cv._h;
+      const x = cv.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+      x.fillStyle = cv.dataset.c; x.fillRect(0, 0, w, h); R.drawNato(x, cv.dataset.k, 8, 6, 28, 18, R.luminance(cv.dataset.c) > 0.55 ? '#14160f' : '#f4efe0');
+    }
     document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.p === UI.panel));
     UI.syncOverlays();
   };

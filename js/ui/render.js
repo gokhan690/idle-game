@@ -166,7 +166,8 @@
 
   // ---------- Kamera ----------
   R.resize = () => {
-    const cv = R.cv; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
+    const cv = R.cv; const od = R.dpr; R.dpr = Math.min(R.dprCap || 3, g.devicePixelRatio || 1); // yüksek çözünürlük: 3×; yavaş cihazda 2×'e düşer
+    if (od !== R.dpr) { texPat.clear(); stripeCache.clear(); mudPat = null; if (G.art && G.art.spriteClear) G.art.spriteClear(); }
     R.w = cv.clientWidth; R.h = cv.clientHeight;
     cv.width = Math.round(R.w * R.dpr); cv.height = Math.round(R.h * R.dpr);
     R.minZ = Math.max(R.w / M.W / 1.6, R.h / M.H) * 0.98;
@@ -215,9 +216,11 @@
   R.counterAt = (sx, sy) => { for (let k = R.counters.length - 1; k >= 0; k--) { const c = R.counters[k]; if (sx >= c.x && sx <= c.x + c.w && sy >= c.y && sy <= c.y + c.h) return c; } return null; };
 
   // ---------- Desenler ----------
+  // desenler cihaz çözünürlüğünde üretilir (PD kat); dönüşümde 1/PD ile küçültülür, böylece 3× ekranda bulanıklaşmaz
+  const PD = () => Math.max(1, Math.ceil(R.dpr || 1));
   function stripePattern(color) {
-    const c = document.createElement('canvas'); c.width = c.height = 12;
-    const x = c.getContext('2d');
+    const pd = PD(), c = document.createElement('canvas'); c.width = c.height = 12 * pd;
+    const x = c.getContext('2d'); x.scale(pd, pd);
     x.strokeStyle = color; x.lineWidth = 3.2;
     x.beginPath(); x.moveTo(-3, 15); x.lineTo(15, -3); x.moveTo(-3, 3); x.lineTo(3, -3); x.moveTo(9, 15); x.lineTo(15, 9); x.stroke();
     return c;
@@ -244,8 +247,8 @@
       ctx.fillStyle = T.f; tFill(ctx, pa, 'evenodd');
       if (fade <= 0) continue;
       let pat = texPat.get(id);
-      if (!pat) { const cv = document.createElement('canvas'); cv.width = cv.height = 19; T.d(cv.getContext('2d')); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
-      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)));
+      if (!pat) { const pd = PD(), cv = document.createElement('canvas'); cv.width = cv.height = 19 * pd; const x = cv.getContext('2d'); x.scale(pd, pd); T.d(x); pat = ctx.createPattern(cv, 'repeat'); texPat.set(id, pat); }
+      const k = 1 / (z * Math.max(1, Math.min(1.6, z * 0.6)) * PD());
       pat.setTransform && pat.setTransform(new DOMMatrix().scale(k, k));
       ctx.globalAlpha = T.a * fade; ctx.fillStyle = pat; tFill(ctx, pa, 'evenodd'); ctx.globalAlpha = 1;
     }
@@ -268,7 +271,7 @@
       atmCv.width = Math.round(R.w * R.dpr); atmCv.height = Math.round(R.h * R.dpr);
       const x = atmCv.getContext('2d');
       x.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
-      x.globalAlpha = 0.045; x.fillStyle = x.createPattern(noisePat, 'repeat'); x.fillRect(0, 0, R.w, R.h); x.globalAlpha = 1;
+      x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.045; x.fillStyle = x.createPattern(noisePat, 'repeat'); x.fillRect(0, 0, atmCv.width, atmCv.height); x.globalAlpha = 1; x.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
       vig = x.createRadialGradient(R.w / 2, R.h / 2, Math.min(R.w, R.h) * 0.35, R.w / 2, R.h / 2, Math.hypot(R.w, R.h) * 0.62); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.38)');
       x.fillStyle = vig; x.fillRect(0, 0, R.w, R.h);
     }
@@ -358,13 +361,13 @@
       if (R.showWeather && R.mode !== 'ind') {
         if (wxPaths.snow1) { ctx.fillStyle = 'rgba(235,242,250,0.3)'; tFill(ctx, wxPaths.snow1, 'evenodd'); }
         if (wxPaths.snow2) { ctx.fillStyle = 'rgba(244,248,253,0.52)'; tFill(ctx, wxPaths.snow2, 'evenodd'); }
-        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / z, 1 / z)); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; tFill(ctx, wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
+        if (wxPaths.mud) { if (!mudPat) mudPat = ctx.createPattern(stripePattern('#6b4a2a'), 'repeat'); mudPat.setTransform && mudPat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD()))); ctx.globalAlpha = 0.45; ctx.fillStyle = mudPat; tFill(ctx, wxPaths.mud, 'evenodd'); ctx.globalAlpha = 1; }
       }
       // işgal çizgileri
       if (R.mode === 'pol' || R.mode === 'peace') for (const [owner, pa] of occGroups) {
         let pat = stripeCache.get(owner);
         if (!pat) { pat = ctx.createPattern(stripePattern(mix(R.ccolor(owner), '#000000', 0.15)), 'repeat'); stripeCache.set(owner, pat); }
-        pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * 1), 1 / (z * 1)));
+        pat.setTransform && pat.setTransform(new DOMMatrix().scale(1 / (z * PD()), 1 / (z * PD())));
         ctx.globalAlpha = 0.55; ctx.fillStyle = pat;
         tFill(ctx, pa, 'evenodd');
         ctx.globalAlpha = 1;
@@ -564,11 +567,12 @@
         boxes.push(bx);
         ctx.fillStyle = isCap ? '#f2d27a' : '#efe9d8'; ctx.strokeStyle = 'rgba(10,10,8,0.8)'; ctx.lineWidth = 1.2;
         ctx.beginPath(); if (isCap) { starPath(ctx, s.x, s.y - 9, r + 1.5); } else ctx.arc(s.x, s.y - 9, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,10,0.75)'; ctx.strokeText(p.n, s.x, s.y + 3);
+        ctx.lineWidth = 3.6; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(10,12,8,0.88)'; ctx.strokeText(p.n, s.x, s.y + 3);
         ctx.fillStyle = '#efe9d8'; ctx.fillText(p.n, s.x, s.y + 3);
       }
     }
   }
+  const cityShown = (i, z) => { if (z <= 1.4 || i >= NP || P[i].n.startsWith('#')) return false; const minVp = z > 3.4 ? 1 : z > 2.4 ? 2 : z > 1.9 ? 3 : 10; return (P[i].vp || 0) >= minVp; };
   // barış konferansı: bölge başına maliyet ya da talep eden ülke
   function drawConf(ctx) {
     const st = G.st, cf = st.conf; if (!cf) return;
@@ -956,7 +960,7 @@
     return { w, h };
   }
   function drawUnits(ctx, z) {
-    const st = G.st;
+    const st = G.st, cs = R.ctrBig ? 1.25 : 1;
     R.counters = [];
     drawFleets(ctx, z);
     if (!G.unitsAt) return;
@@ -988,7 +992,7 @@
     let draw = items;
     if (merge) {
       // ızgara üzerinde açgözlü kümeleme: aynı anahtarlı ve yakın sayaçlar birleşir
-      const CW = 50, CH = 30, grid = new Map(), out = [];
+      const CW = 50 * cs, CH = 30 * cs, grid = new Map(), out = [];
       items.sort((a, b) => b.gl.length - a.gl.length);
       for (const it of items) {
         const cx = Math.floor(it.x / CW), cy = Math.floor(it.y / CH);
@@ -1009,11 +1013,16 @@
     for (const it of draw) {
       const sk = Math.round(it.x / 8) + ',' + Math.round(it.y / 8);
       const k = stackAt.get(sk) || 0; stackAt.set(sk, k + 1);
-      const x = it.x - 23 + k * 6, y = it.y - 1 + k * 26;
+      // şehir adı görünüyorsa sayaç yazının altına iner (ad ile sayaç çakışmaz)
+      let y0 = it.y - 1;
+      if (cityShown(it.n, z)) { const q = P[it.n].q, c = q ? visible(q[0], q[1], 80) : null; y0 = c ? Math.max(y0, c.y + 11) : it.y + 11; }
+      const x = it.x - 23 * cs + k * 6 * cs, y = y0 + k * 26 * cs;
       const sel = it.gl.some((u) => R.sel.units.has(u.id));
       const ac = it.tag === st.player ? it.gl.find((u) => u.army && armyCol.has(u.army)) : null;
-      const { w, h } = drawCounter(ctx, x, y, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
-      R.counters.push({ x, y, w, h, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
+      ctx.save(); ctx.translate(x, y); if (cs !== 1) ctx.scale(cs, cs);
+      const { w, h } = drawCounter(ctx, 0, 0, it.gl, it.tag, { sel, enemy: it.enemy, armyCol: ac ? armyCol.get(ac.army) : null, merged: it.merged });
+      ctx.restore();
+      R.counters.push({ x, y, w: w * cs, h: h * cs, n: it.n, tag: it.tag, units: it.gl, merged: it.merged });
     }
   }
   const lumCache = new Map();

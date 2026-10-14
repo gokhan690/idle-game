@@ -488,11 +488,20 @@
     else b = put(soldier(tag, y, 'adv', 0), 4, 1, 0.47) + put(soldier(tag, y, 'adv', 1), 24, 1, 0.47);
     return `<svg viewBox="0 0 52 32" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
   };
+  // SVG bir kez yüklenir, sonra sayaçtaki boyutun cihaz pikseli kadar (26×16 × ölçek) bir tuvale çizilir:
+  // haritada 1:1 kopyalandığı için 3× ekranda da keskin kalır
   G.art.sprite = (kind, tag) => {
-    const y = yearNow(), k = kind + '|' + tag + '|' + (y >= 1942 ? 1942 : 1936) + '|' + (kind === 'arm' ? G.art.tankLvl(G.st.C[tag]) : 0);
-    let im = sprites.get(k);
-    if (!im) { im = new Image(); im.onload = () => { if (G.R) G.R.dirty = 1; }; im.src = G.art.url(spriteSvg(kind, tag, y)); sprites.set(k, im); }
-    return im.complete && im.naturalWidth ? im : null;
+    const R = G.R, sc = Math.max(1, Math.ceil((R && R.dpr ? R.dpr : 1) * (R && R.ctrBig ? 1.25 : 1)));
+    const y = yearNow(), k = kind + '|' + tag + '|' + (y >= 1942 ? 1942 : 1936) + '|' + (kind === 'arm' ? G.art.tankLvl(G.st.C[tag]) : 0) + '|' + sc;
+    let e = sprites.get(k);
+    if (!e) {
+      e = { cv: null }; sprites.set(k, e);
+      const im = new Image();
+      im.onload = () => { const cv = document.createElement('canvas'); cv.width = 26 * sc; cv.height = 16 * sc; cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); e.cv = cv; if (R) R.dirty = 1; };
+      im.src = G.art.url(spriteSvg(kind, tag, y));
+    }
+    return e.cv;
   };
+  G.art.spriteClear = () => sprites.clear();
   G.art.clear = () => cache.clear();
 })(window);
