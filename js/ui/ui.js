@@ -35,6 +35,29 @@
     el._t = setTimeout(fade(el), 3200);
   };
 
+  // HOI4 tarzı uyarılar: [panel, alt sayfa, metin, simge, sayı] (üst çubuk ve genel bakışın yapılacaklar listesi)
+  UI.alertsOf = (c) => {
+    const st = G.st, s = c.sum, e = c.econ || {};
+    const al = [];
+    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
+    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
+    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
+    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
+    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
+    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
+    if (c.enemies.length) {
+      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
+      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
+      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
+    }
+    return al;
+  };
   // ---------- Üst şerit ----------
   UI.hud = () => {
     const st = G.st, c = me(); if (!c) return;
@@ -71,24 +94,7 @@
     const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.med(k)}<b>${v}</b></button>`).join('');
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
     // HOI4 tarzı uyarılar: yuvarlak simgeler (dokununca ilgili panel + açıklama)
-    const al = [];
-    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
-    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
-    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
-    const milA = milA0;
-    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
-    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
-    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
-    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
-    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
-    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
-    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
-    if (c.enemies.length) {
-      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
-      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
-      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
-      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
-    }
+    const al = UI.alertsOf(c);
     const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');
     if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
@@ -210,7 +216,7 @@
   // ---------- Paneller ----------
   const PANELS = {};
   // HOI4 menü simgeleri (alt/sol menü ve panel başlığı aynı seti kullanır)
-  const PANEL_ICO = { pol: 'pp', res: 'res', prod: 'mil', con: 'con', trade: 'trade', army: 'div', navy: 'navy', dip: 'hand', air: 'air', menu: 'dec', ledger: 'dec' };
+  const PANEL_ICO = { ov: 'dec', pol: 'pp', res: 'res', prod: 'mil', con: 'con', trade: 'trade', army: 'div', navy: 'navy', dip: 'hand', air: 'air', menu: 'dec', ledger: 'dec' };
   UI.PANEL_ICO = PANEL_ICO;
   if (G.ico) document.querySelectorAll('#nav [data-p]').forEach((b) => { const k = PANEL_ICO[b.dataset.p]; const i = b.querySelector('.ic'); if (k && i) i.outerHTML = G.ico(k, 'navi'); b.setAttribute('aria-label', b.textContent.trim()); });
   const sec = (title, inner, aside = '') => `<section class="sec"><h3 class="sec-h">${title}${aside ? `<span>${aside}</span>` : ''}</h3>${inner}</section>`;
