@@ -865,6 +865,37 @@ details.hsec > p { padding: 0 11px 10px; }
 .item .seg.sm { flex-wrap: wrap; }
 .item .seg.sm button { flex: 1 1 auto; }
 .item .btns { flex-wrap: wrap; }
+
+/* ---------- Arayüz II: ülke genel bakış ---------- */
+.ovhead { display: flex; gap: 12px; align-items: flex-start; }
+.ovhead .artimg.portrait-m { width: 64px; height: 80px; flex: none; }
+.ovname { font-size: 20px; }
+.ovbar { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.ovbar span { font-size: 12px; color: var(--muted); }
+.ovbar b { color: var(--paper); }
+.ovgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ovc { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px; text-align: left; background: var(--field-2); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--bevel, none); min-width: 0; }
+.ovc:active { filter: brightness(1.2); transform: translateY(1px); }
+.ovc.alarm { border-color: var(--bad); box-shadow: inset 3px 0 0 var(--bad); }
+.ovh { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--brass-2); }
+.ovh .tico { width: 16px; height: 16px; margin: 0; }
+.ovbig { font-size: 24px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.ovl { font-size: 12.5px; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+.ovl b { color: var(--paper); }
+.ovflags { display: flex; gap: 3px; flex-wrap: wrap; }
+.ovtodo .tico { width: 20px; height: 20px; margin: 0; }
+
+/* ---------- Arayüz II: tablet ve geniş ekran (panel sağa yaslanır, harita kullanılabilir kalır) ---------- */
+@keyframes sheetSideIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 900px) and (min-height: 561px) {
+  .sheet:not(.full) { left: auto; right: 0; top: var(--hud-b, 96px); bottom: calc(var(--nav-h) + var(--safe-b)); width: 420px; max-height: none; border-top: 0; border-left: 2px solid var(--brass); animation: sheetSideIn 0.2s ease-out; }
+  .sheet.tall:not(.full) { top: var(--hud-b, 96px); }
+  .sheet-tall { display: none !important; }
+  .card, .selbar { left: 12px; right: auto; width: 440px; }
+  body:has(#sheet:not([hidden]):not(.full)) #map-tools { right: 432px; }
+  body:has(#sheet:not([hidden]):not(.full)) #toasts { right: 432px; }
+}
+.item > .grow { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -873,7 +904,7 @@ details.hsec > p { padding: 0 11px 10px; }
   <canvas id="map" aria-label="Dünya haritası"></canvas>
 
   <header id="hud" hidden>
-    <button id="hud-country" class="hud-country" data-act="panel" data-p="pol" aria-label="Siyaset"></button>
+    <button id="hud-country" class="hud-country" data-act="panel" data-p="ov" aria-label="Ülke genel bakışı"></button>
     <div class="hud-res" id="hud-res"></div>
     <div class="hud-clock">
       <button id="btn-pause" class="sp-pause" data-act="pause" aria-label="Duraklat / devam"></button>
@@ -13374,6 +13405,29 @@ window.RIVERS = [
     el._t = setTimeout(fade(el), 3200);
   };
 
+  // HOI4 tarzı uyarılar: [panel, alt sayfa, metin, simge, sayı] (üst çubuk ve genel bakışın yapılacaklar listesi)
+  UI.alertsOf = (c) => {
+    const st = G.st, s = c.sum, e = c.econ || {};
+    const al = [];
+    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
+    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
+    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
+    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
+    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
+    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
+    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
+    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
+    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
+    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
+    if (c.enemies.length) {
+      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
+      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
+      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
+      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
+    }
+    return al;
+  };
   // ---------- Üst şerit ----------
   UI.hud = () => {
     const st = G.st, c = me(); if (!c) return;
@@ -13410,24 +13464,7 @@ window.RIVERS = [
     const hr = res.map(([k, v, cl, n]) => `<button class="res ${cl}" data-act="resinfo" data-k="${k}" title="${n}">${G.med(k)}<b>${v}</b></button>`).join('');
     if ($('hud-res').dataset.h !== hr) { $('hud-res').innerHTML = hr; $('hud-res').dataset.h = hr; }
     // HOI4 tarzı uyarılar: yuvarlak simgeler (dokununca ilgili panel + açıklama)
-    const al = [];
-    if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
-    if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
-    if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
-    const milA = milA0;
-    if (s.mil - milA > 0) al.push(['prod', '', `${s.mil - milA} boşta fabrika`, 'mil', s.mil - milA]);
-    if (!c.constr.length && (e.civFree || 0) > 0) al.push(['con', '', 'İnşaat kuyruğu boş', 'con']);
-    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
-    if (shortR.length) al.push(['trade', '', `Kaynak açığı: ${shortR.map((r) => g.RES[r]).join(', ')}`, 'steel', shortR.length]);
-    if (fuelOf(c).fr < 0.2) al.push(['trade', '', 'Yakıt azalıyor', 'fuel']);
-    const freeAdv = Object.entries(g.ADV_SLOTS).some(([r, n]) => (c.adv[r] || []).length < n);
-    if (freeAdv && c.pp >= 180) al.push(['pol', '', 'Danışman atanabilir', 'adv']);
-    if (c.enemies.length) {
-      const idle = st.units.filter((u) => u.t === c.tag && !u.army && !u.auto && !u.path.length).length;
-      if (idle > 3) al.push(['army', '', `${idle} emirsiz tümen`, 'div', idle]);
-      const enc = st.units.filter((u) => u.t === c.tag && u.enc).length;
-      if (enc) al.push(['enc', '', `${enc} tümen kuşatıldı`, 'war', enc]);
-    }
+    const al = UI.alertsOf(c);
     const ah = al.map(([p, sub, n, ic, cnt]) => `<button class="alert ${['peace', 'focus', 'res'].includes(ic) ? 'a-hi' : ''}" data-act="alert" data-p="${p}" data-s="${sub}" data-n="${esc(n)}" title="${esc(n)}" aria-label="${esc(n)}">${G.ico(ic)}${cnt > 1 ? `<em>${cnt}</em>` : ''}</button>`).join('');
     const box = $('hud-alerts');
     if (box && box.dataset.h !== ah) { box.innerHTML = ah; box.dataset.h = ah; box.hidden = !ah; }
@@ -13549,7 +13586,7 @@ window.RIVERS = [
   // ---------- Paneller ----------
   const PANELS = {};
   // HOI4 menü simgeleri (alt/sol menü ve panel başlığı aynı seti kullanır)
-  const PANEL_ICO = { pol: 'pp', res: 'res', prod: 'mil', con: 'con', trade: 'trade', army: 'div', navy: 'navy', dip: 'hand', air: 'air', menu: 'dec', ledger: 'dec' };
+  const PANEL_ICO = { ov: 'dec', pol: 'pp', res: 'res', prod: 'mil', con: 'con', trade: 'trade', army: 'div', navy: 'navy', dip: 'hand', air: 'air', menu: 'dec', ledger: 'dec' };
   UI.PANEL_ICO = PANEL_ICO;
   if (G.ico) document.querySelectorAll('#nav [data-p]').forEach((b) => { const k = PANEL_ICO[b.dataset.p]; const i = b.querySelector('.ic'); if (k && i) i.outerHTML = G.ico(k, 'navi'); b.setAttribute('aria-label', b.textContent.trim()); });
   const sec = (title, inner, aside = '') => `<section class="sec"><h3 class="sec-h">${title}${aside ? `<span>${aside}</span>` : ''}</h3>${inner}</section>`;
@@ -14867,6 +14904,54 @@ window.RIVERS = [
     if (UI._capDay === st.day) return; // teslimiyet penceresi zaten gösterildi
     G.queuePopup({ art: 'surrender', title: 'Yenilgi', eyebrow: G.fmtDate(st.day), text: `${G.cname(st.player)} artık haritada yok. Hükümet dağıldı, ordular teslim oldu. Tarih kazananlar tarafından yazılacak. Ayakta kalan en güçlü devlet: ${G.cname(G.scoreBoard()[0]?.t || st.player)}.`, opts: [{ n: 'Yeni oyun', fx: () => ACT.newgame() }, { n: 'Kayıt yükle', fx: () => { UI.open('menu'); } }] });
   };
+})(window);
+
+/* js/ui/ui_overview.js */
+// Arayüz: ülke genel bakış ekranı (HOI4 tarzı tek bakışta ülke durumu ve yapılacaklar).
+// Üst çubuktaki bayrağa dokununca açılır; her kart ilgili panele götürür.
+(function (g) {
+  const G = g.G, UI = G.UI;
+  const { esc, me, r1, int, pct, bar, sec } = UI.L;
+  const PANELS = UI.PANELS;
+
+  // kart: başlık, büyük değer, ayrıntı satırları; dokununca panel (ve alt sayfa)
+  const card = (p, sub, ico, title, big, lines, cls = '') => `<button class="ovc ${cls}" data-act="ovgo" data-p="${p}" data-s="${sub || ''}"><span class="ovh">${G.ico ? G.ico(ico, 'tico') : ''}${esc(title)}</span>${big != null ? `<b class="ovbig">${big}</b>` : ''}${lines.filter(Boolean).map((l) => `<span class="ovl">${l}</span>`).join('')}</button>`;
+
+  PANELS.ov = () => {
+    const st = G.st, c = me(), d = G.def(c.tag), id = g.IDEOLOGIES[c.ideo], s = c.sum, e = c.econ || {};
+    const fac = c.fac ? st.factions[c.fac] : null;
+    // başlık: lider portresi, bayrak, ad, ideoloji, istikrar ve savaş desteği
+    const por = G.art && G.art.leader ? G.art.img(G.art.leader(c.tag, c.leader, c.ideo), 'portrait-m') : '';
+    let html = `<div class="ovhead">${por}<div class="grow"><div class="row" style="gap:8px">${G.flag(c.tag, 36, 24)}<b class="ovname">${esc(d.n)}</b></div><div class="muted small">${esc(c.leader)} · <span style="color:${id.c}">${id.n}</span>${fac ? ' · ' + esc(fac.n) : ''}</div>`
+      + `<div class="ovbar"><span>İstikrar <b>${pct(c.stab ?? 0.5)}</b></span>${bar(c.stab ?? 0.5, (c.stab ?? 0.5) < 0.4 ? 'r' : 'g')}</div><div class="ovbar"><span>Savaş desteği <b>${pct(c.ws ?? 0.2)}</b></span>${bar(c.ws ?? 0.2)}</div></div></div>`;
+    // yapılacaklar: üst çubuk uyarılarının açıklamalı listesi
+    const al = UI.alertsOf(c);
+    const todo = al.length
+      ? `<div class="list">${al.map(([p, sub, n, ic, cnt]) => `<button class="item ovtodo" data-act="alert" data-p="${p}" data-s="${sub}" data-n="">${G.ico ? G.ico(ic, 'tico') : ''}<div class="grow"><div class="t">${esc(n)}</div></div>${cnt > 1 ? `<span class="pill">${cnt}</span>` : ''}<span class="muted">›</span></button>`).join('')}</div>`
+      : '<p class="muted small" style="margin:0">Bekleyen iş yok: araştırma, üretim, inşaat ve odak düzenli.</p>';
+    html += sec('Yapılacaklar', todo, al.length ? String(al.length) : '');
+    // kartlar
+    const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);
+    const divs = st.units.filter((u) => u.t === c.tag);
+    const enc = divs.filter((u) => u.enc).length;
+    const avgStr = divs.length ? divs.reduce((a, u) => a + u.str, 0) / divs.length : 0;
+    const cur = c.focus.cur ? G.focusById(c, c.focus.cur) : null;
+    const resNames = c.res.slice(0, 2).map((r) => esc((g.TECH_BY_ID[r.id] || {}).n || r.id));
+    const shortR = g.RES_KEYS.filter((r) => (e.ratio || {})[r] < 0.95);
+    const wars = c.enemies.slice(0, 6);
+    let cards = '';
+    cards += card('prod', '', 'mil', 'Sanayi', `${s.civ + s.mil + s.dock}`, [`Sivil ${s.civ} · Askerî ${s.mil} · Tersane ${s.dock}`, `Hatlarda ${Math.round(milA)}/${s.mil} askerî fabrika`, e.civFree ? `${e.civFree} sivil fabrika inşaatta` : '']);
+    cards += card('army', '', 'div', 'Kara ordusu', `${divs.length}`, [`Ortalama güç ${pct(avgStr)}${c.train.length ? ` · +${c.train.length} eğitimde` : ''}`, `İnsan gücü ${G.fmtMP(c.mpAvail || 0)}`, enc ? `<span class="bad">${enc} tümen kuşatıldı</span>` : (c.pow ? `Esir ${G.fmtMP(c.pow)}` : '')], enc ? 'alarm' : '');
+    cards += card('navy', '', 'navy', 'Deniz ve hava', null, [`Deniz gücü <b>${int(G.navyPower(c))}</b>`, `Hava gücü <b>${int(G.airPower(c))}</b>`, `Konvoy ${int(c.ships.conv || 0)}`]);
+    cards += card('res', '', 'res', 'Araştırma', `${c.res.length}/${c.mods.slots}`, [resNames.length ? resNames.join(', ') : '<span class="warn">Araştırma yok</span>']);
+    cards += card('pol', 'tree', 'focus', 'Ulusal odak', null, [cur ? `<b>${esc(cur.n)}</b>` : '<span class="warn">Odak seçilmedi</span>', cur ? `${Math.ceil(G.focusDays(cur) - c.focus.p)} gün kaldı` : '']);
+    cards += card('pol', '', 'pp', 'Siyaset', int(c.pp), [`Siyasi güç +${r1(c.ppDay || 2)}/gün`, `${id.n} %${Math.round((c.pop[c.ideo] || 0) * 100)}`]);
+    cards += card('dip', '', 'war', wars.length ? 'Savaşlar' : 'Diplomasi', wars.length ? String(c.enemies.length) : null, [wars.length ? `<span class="ovflags">${wars.map((t) => G.flag(t, 24, 16)).join('')}</span>` : 'Barış', fac ? esc(fac.n) : 'İttifak yok'], wars.length ? 'alarm' : '');
+    cards += card('trade', '', 'steel', 'Kaynaklar', null, [shortR.length ? `<span class="bad">Açık: ${shortR.map((r) => g.RES[r]).join(', ')}</span>` : '<span class="good">Kaynaklar yeterli</span>', `Çelik ${int(s.steel)}/${int(e.needSteel || 0)} · Petrol ${int(s.oil)}/${int(e.needOil || 0)}`]);
+    html += sec('Ülke', `<div class="ovgrid">${cards}</div>`);
+    return { title: 'Genel bakış', html };
+  };
+  UI.ACT.ovgo = (dd) => { UI.panel = dd.p; UI.sub = dd.s || null; UI.render(true); };
 })(window);
 
 /* js/ui/ui_act.js */
