@@ -58,7 +58,7 @@
       if (d || c._bopB < 0) G.bopShift(c, d);
       if (c._bopB < 0) { c._bopB = band(c.bop); G.recomputeMods(c); }
       // YZ: serbest modda arada bir tercih ettiği tarafı destekler (tarihî modda ibreyi yalnızca kayma ve olaylar yönetir)
-      if (!st.opts.hist && t !== st.player && B.ai && c.pp >= 150 && (st.day + t.charCodeAt(0)) % 120 === 0 && Math.sign(B.ai) * c.bop < 0.5) { c.pp -= G.BOP_COST; G.bopShift(c, B.ai * G.BOP_STEP); }
+      if (!st.opts.hist && !G.isHuman(t) && B.ai && c.pp >= 150 && (st.day + t.charCodeAt(0)) % 120 === 0 && Math.sign(B.ai) * c.bop < 0.5) { c.pp -= G.BOP_COST; G.bopShift(c, B.ai * G.BOP_STEP); }
     }
   };
   G.bopAct = (dir) => {

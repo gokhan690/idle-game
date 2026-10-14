@@ -6,7 +6,7 @@
   const G = g.G;
   const { P, NP } = G;
   const alive = (t) => G.st.C[t]?.alive;
-  const ai = (t) => t !== G.st.player;
+  const ai = (t) => !G.isHuman(t);
   const rel = (a, b, v) => { const st = G.st; st.rel = st.rel || {}; st.rel[a + '>' + b] = Math.max(-100, Math.min(100, (st.rel[a + '>' + b] || 0) + v)); };
 
   // ---------- Dünya haberleri ----------
@@ -39,7 +39,7 @@
   };
   G.newsFor = (e) => {
     const st = G.st, nw = NEWS[e.id];
-    if (!nw || !G.newsOn || !st.player || e.actor === st.player) return;
+    if (!nw || !G.newsOn || !st.player || G.isHuman(e.actor)) return;
     if (st._newsDay === st.day) return; // aynı gün birden çok haber penceresi açma
     st._newsDay = st.day;
     G.queuePopup({ news: 1, eyebrow: 'Dünya haberleri · ' + G.fmtDate(st.day), title: nw[0], text: nw[1], opts: [{ n: 'İlginç', fx: () => {} }] });

@@ -61,7 +61,7 @@
       st.tension = Math.min(100, st.tension + 3); G.tsrc(a, 3, 'ültimatom');
       G.log(`${G.cname(t)}, ${G.cname(a)}'${G.ek(a)} ültimatomunu reddetti. ${G.cname(a)} artık savaş gerekçesine sahip.`, [a, t], 'major');
     };
-    if (t === st.player) {
+    if (G.isLocal(t)) {
       G.queuePopup({ art: 'diplomacy', title: `${G.cname(a)} Ültimatomu`, text: `${G.cname(a)} hükümeti ${what} talep ediyor. Reddedersek savaş çıkabilir.`, opts: [{ n: 'Kabul et', d: 'Toprak kaybı, savaş yok', fx: accept }, { n: 'Reddet', d: `${G.cname(a)} savaş gerekçesi kazanır`, fx: refuse }] });
       return { ok: true, pending: 1 };
     }
@@ -77,7 +77,7 @@
   G.aiUltimatum = () => {
     const st = G.st; if (st.opts.hist) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player || c.enemies.length || (c.ideo !== 'fas' && c.ideo !== 'com')) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag) || c.enemies.length || (c.ideo !== 'fas' && c.ideo !== 'com')) continue;
       if ((c.lastUlt != null && st.day - c.lastUlt < 365) || G.rand() > 0.12) continue;
       const neigh = new Set(); for (let i = 0; i < NP; i++) if (st.prov[i].c === c.tag) for (const j of P[i].a) neigh.add(st.prov[j].c);
       const my = G.armyPower(c.tag);
@@ -124,7 +124,7 @@
   G.aiLL = () => {
     const st = G.st; if (st.opts.hist) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player || c.enemies.length || G.llOf(c.tag).length >= 2) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag) || c.enemies.length || G.llOf(c.tag).length >= 2) continue;
       if ((c.stock.inf || 0) < 15000) continue;
       const cand = Object.values(st.C).filter((x) => x.alive && x.tag !== c.tag && x.enemies.length && !G.atWar(c.tag, x.tag) && G.llAllowed(c.tag, x.tag, 'inf').ok
         && (c.ideo === 'dem' ? x.enemies.some((e) => ['fas', 'com'].includes(st.C[e]?.ideo)) && x.ideo !== 'fas' : x.ideo === c.ideo || G.sameFaction(c.tag, x.tag)));

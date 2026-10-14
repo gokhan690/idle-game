@@ -146,7 +146,7 @@
     const st = G.st;
     if (st.day < 365) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag)) continue;
       if (!c.intel) { c.pp += G.INTEL_FOUND; G.intelFound(c); continue; } // YZ teşkilatı bedelsiz kurulur
       const I = c.intel;
       if (I.ag + I.tr.length < G.intelMax(c) && c.pp > 40) G.intelRecruit(c);

@@ -153,7 +153,7 @@
       for (const [e, n] of Object.entries(def.eq)) ratio = Math.min(ratio, (c.stock[e] || 0) / n);
       if (ratio < 0.25) { // teçhizat bekleniyor; YZ uzun bekleyen tümeni iptal eder
         t.w = (t.w || 0) + 1;
-        if (c.tag !== st.player && t.w > 60) { c.train.splice(i, 1); i--; }
+        if (!G.isHuman(c.tag) && t.w > 60) { c.train.splice(i, 1); i--; }
         continue;
       }
       const str = Math.min(1, ratio);
@@ -164,7 +164,7 @@
       const u = G.makeUnit(c.tag, t.u, loc, str);
       u.auto = t.auto != null ? t.auto : u.auto;
       // oyuncu: yeni tümenler seçili orduya katılır (HOI4 "konuşlandır")
-      if (c.tag === st.player && c.deployArmy && G.armyById(c, c.deployArmy) && G.armyUnits(c, c.deployArmy).length < G.ARMY_MAX) { u.army = c.deployArmy; u.auto = 0; }
+      if (G.isHuman(c.tag) && c.deployArmy && G.armyById(c, c.deployArmy) && G.armyUnits(c, c.deployArmy).length < G.ARMY_MAX) { u.army = c.deployArmy; u.auto = 0; }
       st.units.push(u);
       (G.unitsAt[loc] || (G.unitsAt[loc] = [])).push(u);
       c.train.splice(i, 1); i--;
@@ -515,7 +515,7 @@
     return 1;
   };
   G.histMul = (x, y, n) => {
-    const st = G.st; if (x === st.player || y === st.player) return 1;
+    const st = G.st; if (G.isHuman(x) || G.isHuman(y)) return 1;
     const kc = st.opts.hist ? keyCity(x, y, n) : 1;
     if (!G._hc || !G._hc.length) return kc;
     // birden çok eğri eşleşirse (ör. Doğu Cephesi ve Almanya'nın asli toprakları) etkiler birleşir
@@ -706,7 +706,7 @@
     if (pr.rail > 0 && pr.o !== nc && (n + st.day) % 3 === 0) pr.rail--;
     G.mapDirty = 1; G.needSummary = 1;
     // Sovyet sanayisinin doğuya taşınması: düşen asli eyaletteki fabrikaların bir kısmı Urallara ve Sibirya'ya kaçırılır
-    if (prev === 'SOV' && pr.core === 'SOV' && (pr.mil + pr.civ) > 0 && st.C.SOV?.alive && st.C.SOV.tag !== st.player) G.relocate('SOV', n, 0.6, 0.4);
+    if (prev === 'SOV' && pr.core === 'SOV' && (pr.mil + pr.civ) > 0 && st.C.SOV?.alive && !G.isHuman(st.C.SOV.tag)) G.relocate('SOV', n, 0.6, 0.4);
     if (P[n].vp >= 10 && (tag === st.player || prev === st.player || pr.o === st.player)) G.log(`${G.pname(n)} ${G.cname(nc)} kontrolüne geçti.`, [nc, prev], prev === st.player ? 'bad' : 'good');
   };
 
@@ -752,7 +752,7 @@
       if (st.conf) return;
       if (!c.alive || !c.enemies.length) continue;
       const lost = 1 - (have[c.tag] || 0) / (c.startW || 1);
-      if (lost >= 0.55 && (divs[c.tag] || 0) + c.train.length <= 2 && c.tag !== st.player) { c.surrender = 1; G.capitulate(c.tag); continue; }
+      if (lost >= 0.55 && (divs[c.tag] || 0) + c.train.length <= 2 && !G.isHuman(c.tag)) { c.surrender = 1; G.capitulate(c.tag); continue; }
       // başkent düştüyse en değerli toprağa taşı
       // (önce asli topraklar; asıl başkent geri alınınca başkent oraya döner)
       if (c.cap0 >= 0 && c.cap !== c.cap0 && st.prov[c.cap0]?.c === c.tag) c.cap = c.cap0;
@@ -808,7 +808,7 @@
     const conf = G.startConference(tag, enemies);
     if (!conf) { G.updateSummaries(); G.rebuildUnitIndex(); if (!c.sum.provs) G.killCountry(tag); return; }
     G.confRun(conf);
-    if (!conf.done && st.player && conf.parts.some((p) => p.t === st.player)) {
+    if (!conf.done && st.player && conf.parts.some((p) => G.isHuman(p.t))) {
       st.conf = conf; // oyuncu sırası: simülasyon konferans bitene dek durur
       if (G.onConference) G.onConference(conf);
       return;
@@ -861,7 +861,7 @@
     const tags = Object.keys(st.C);
     for (let i = 0; i < tags.length; i++) {
       const c = st.C[tags[i]]; if (!c.alive) continue;
-      if (tags[i] === st.player) { G.playerAuto(c, i); yield; continue; }
+      if (G.isHuman(tags[i])) { G.playerAuto(c, i); yield; continue; }
       let did = 0;
       if ((st.day + i) % 2 === 0) { G.aiMilitary(c); did = 1; }
       if ((st.day + i) % 7 === 0) { G.aiEconomy(c); did = 1; }

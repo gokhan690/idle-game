@@ -53,7 +53,7 @@
     G.cwDirty = 1; G.refreshEnemies(); G.rebuildUnitIndex();
     G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1;
     G.log('Compiègne Mütarekesi: Fransa ateşkes imzaladı. Kuzey Fransa Alman işgalinde, güneyde Pétain\'in Vichy hükümeti kuruldu.', ['FRA', 'GER'], 'major');
-    if (st.player !== 'FRA' && st.player !== 'GER') news('Fransa Düştü', 'Compiègne ormanında, 1918\'deki aynı vagonda ateşkes imzalandı. Fransa\'nın kuzeyi Alman işgalinde; Mareşal Pétain Vichy\'de yeni bir hükümet kurdu.');
+    if (!G.isHuman('FRA') && !G.isHuman('GER')) news('Fransa Düştü', 'Compiègne ormanında, 1918\'deki aynı vagonda ateşkes imzalandı. Fransa\'nın kuzeyi Alman işgalinde; Mareşal Pétain Vichy\'de yeni bir hükümet kurdu.');
   };
   const anton = () => {
     const st = G.st;
@@ -91,7 +91,7 @@
     G.cwDirty = 1; c.startW = Math.max(G.coreWeight('FRA', false), 0.3 * G.coreWeight('FRA', true)); c.surrender = 0;
     G.rebuildUnitIndex(); G.mapDirty = 1; G.needSummary = 1; G.supDirty = 1;
     G.log('Paris kurtarıldı! General de Gaulle Hür Fransa hükümetini kurdu; Fransa yeniden Müttefiklerin yanında.', ['FRA'], 'major');
-    if (st.player !== 'FRA') news('Paris\'in Kurtuluşu', 'Müttefik ordular Paris\'e girdi. General de Gaulle Champs-Élysées\'de yürüdü; Hür Fransa yeniden savaşta.');
+    if (!G.isHuman('FRA')) news('Paris\'in Kurtuluşu', 'Müttefik ordular Paris\'e girdi. General de Gaulle Champs-Élysées\'de yürüdü; Hür Fransa yeniden savaşta.');
   };
 
   // ---------- Doğu Cephesi ----------
@@ -110,7 +110,7 @@
     for (let k = 0; k < 14; k++) { const u = G.makeUnit('SOV', 'inf', L[k % L.length], 1); u.xp = 0.5; st.units.push(u); }
     G.rebuildUnitIndex();
     G.log('Sibirya tümenleri Moskova\'ya ulaştı: Uzak Doğu\'dan 14 tecrübeli tümen cepheye sevk edildi.', ['SOV'], 'major');
-    if (st.player !== 'SOV') news('Sibirya Tümenleri', 'Casus Richard Sorge Japonya\'nın Sovyetlere saldırmayacağını bildirdi. Kışa alışkın Sibirya tümenleri trenlerle Moskova önlerine taşınıyor.');
+    if (!G.isHuman('SOV')) news('Sibirya Tümenleri', 'Casus Richard Sorge Japonya\'nın Sovyetlere saldırmayacağını bildirdi. Kışa alışkın Sibirya tümenleri trenlerle Moskova önlerine taşınıyor.');
   };
 
   const EV = [
@@ -125,7 +125,7 @@
       } }, { n: 'Fransa\'yı tamamen fethet', fx: () => {} }] },
     { id: 'anton', date: '1942-11-11', actor: 'GER', title: 'Anton Harekâtı',
       text: 'Müttefikler Kuzey Afrika\'ya çıktı. Vichy bölgesini de işgal edip Akdeniz kıyısını güvenceye alalım.',
-      cond: () => G.st.vichy && !G.st.vichyLib && alive('GER') && alive('FRA') && !G.atWar('GER', 'FRA') && G.st.player !== 'FRA', retryUntil: '1944-12-31',
+      cond: () => G.st.vichy && !G.st.vichyLib && alive('GER') && alive('FRA') && !G.atWar('GER', 'FRA') && !G.isHuman('FRA'), retryUntil: '1944-12-31',
       opts: [{ n: 'Vichy bölgesini işgal et', fx: anton }, { n: 'Vichy\'ye dokunma', fx: () => {} }] },
     { id: 'parislib', date: '1943-01-01', actor: 'FRA', title: 'Paris\'in Kurtuluşu',
       text: 'Müttefik ordular Paris\'e girdi. General de Gaulle Hür Fransa hükümetini kuruyor; Fransa yeniden savaşa dönüyor.',
@@ -147,7 +147,7 @@
   // aylık yedek tümenler kurulur (toplam en çok 70). Tarihte Almanya 1945 baharına kadar direndi.
   G.gerReserves = () => {
     const st = G.st, c = st.C.GER;
-    if (!st.opts.hist || !c || !c.alive || st.player === 'GER' || !c.enemies.length || st.day % 30 !== 15) return;
+    if (!st.opts.hist || !c || !c.alive || G.isHuman('GER') || !c.enemies.length || st.day % 30 !== 15) return;
     if ((st.gerRes || 0) >= 70 || st.day >= G.dayOf('1945-04-01')) return;
     const ahead = G.histAhead ? G.histAhead('*', 'GER') : null;
     const divs = st.units.filter((u) => u.t === 'GER').length;

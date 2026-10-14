@@ -53,7 +53,7 @@
     if (st.day % 7 === 0) {
       for (const k of IDEOS) {
         if (k === c.ideo || c.pop[k] < 0.5) continue;
-        if (c.tag === st.player) {
+        if (G.isLocal(c.tag)) {
           if (c._govPrompt && st.day - c._govPrompt < 120) break;
           c._govPrompt = st.day;
           G.queuePopup({ title: `${g.PARTY_N[k]} yükselişte`, text: `Halkın yarısından fazlası ${g.IDEOLOGIES[k].n.toLowerCase()} bir yönetim istiyor. Hükümeti devredebilir ya da hareketi bastırabilirsin (istikrar -%15, 50 siyasi güç).`, opts: [
@@ -94,7 +94,7 @@
     if (o.war === 2 && !c.enemies.length) return { ok: false, why: 'Yalnızca savaşta' };
     if ((o.ws || 0) > (c.ws ?? 0) + 1e-9) return { ok: false, why: `%${Math.round(o.ws * 100)} savaş desteği gerekir` };
     // gerginlik koşulu (tarihî modda YZ ülkeleri tarihî dengeyi korumak için muaf)
-    if (o.ten && !c.enemies.length && G.st.tension < o.ten && !(G.st.opts.hist && c.tag !== G.st.player)) return { ok: false, why: `Dünya gerginliği en az %${o.ten} olmalı (ya da savaşta)` };
+    if (o.ten && !c.enemies.length && G.st.tension < o.ten && !(G.st.opts.hist && !G.isHuman(c.tag))) return { ok: false, why: `Dünya gerginliği en az %${o.ten} olmalı (ya da savaşta)` };
     if (o.ideo && !o.ideo.includes(c.ideo)) return { ok: false, why: `Yalnızca ${o.ideo.map((x) => g.IDEOLOGIES[x].n.toLowerCase()).join(' ya da ')} hükümetler` };
     return { ok: true };
   };
@@ -139,7 +139,7 @@
   // ittifak içi teknoloji paylaşımı (HOI4): teknolojiyi bilen her müttefik için +%10 (en çok +%30).
   // Tarihî modda yalnızca oyuncuya uygulanır (YZ'nin tarihî araştırma temposu korunur).
   G.techShare = (c, id) => {
-    const st = G.st; if (!c.fac || (st.opts.hist && c.tag !== st.player)) return 0;
+    const st = G.st; if (!c.fac || (st.opts.hist && !G.isHuman(c.tag))) return 0;
     const f = st.factions[c.fac]; if (!f) return 0;
     let n = 0; for (const t of f.members) if (t !== c.tag && st.C[t]?.alive && st.C[t].tech[id]) n++;
     return Math.min(0.3, n * 0.1);
@@ -238,7 +238,7 @@
       if (S && S.rm && S.rm.includes(id)) { c.spirits = c.spirits.filter((x) => x !== s); if (c.tag === st.player) G.log(`Ulusal ruh kalktı: ${S.n}.`, [c.tag], 'info'); }
     }
     // odağa bağlı tarihî olay artık tarihinde ayrıca çıkmaz
-    if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && c.tag === st.player) st.ev[G.EV_OF_FOCUS[id]] = 1;
+    if (G.EV_OF_FOCUS && G.EV_OF_FOCUS[id] && G.isHuman(c.tag)) st.ev[G.EV_OF_FOCUS[id]] = 1;
     // alternatif tarih kökü: bu ülkenin kendi tarihî olayları kapanır
     if (f.alt && !f.pre.length && G.closeHistEvents) { G.closeHistEvents(c); if (G.altRootNews) G.altRootNews(c, f); }
     if (G.altOnFocus) G.altOnFocus(c, id);
@@ -267,7 +267,7 @@
         st.goals[c.tag + '>' + target] = st.day;
         G.log(`${G.cname(target)} talebi reddetti. ${G.cname(c.tag)} savaş gerekçesi kazandı.`, [c.tag, target], 'warn');
       };
-      if (target === st.player) {
+      if (G.isLocal(target)) {
         G.queuePopup({ title: `${G.cname(c.tag)}: ${label}`, text: `${G.cname(c.tag)} ${region ? 'bazı topraklarımızı' : 'ülkemizin tamamını'} talep ediyor. Reddedersek savaş çıkabilir.`, opts: [{ n: 'Kabul et', fx: accept }, { n: 'Reddet', fx: refuse }] });
         return;
       }
@@ -294,7 +294,7 @@
     },
     pact(c, list) {
       for (const t of list) {
-        if (!alive(t) || t === G.st.player) continue;
+        if (!alive(t) || G.isHuman(t)) continue;
         const ok = G.proposePact(c.tag, t);
         if (ok && [c.tag, t].sort().join() === 'GER,SOV') G.st.ev.mrPact = 1; // gizli protokol (Doğu Polonya)
         if (!ok && c.tag === G.st.player) G.log(`${G.cname(t)} pakt önerisini reddetti.`, [c.tag], 'warn');
@@ -446,7 +446,7 @@
       st.ops.splice(k, 1); k--;
       const c = st.C[o.a], x = st.C[o.t];
       if (!c?.alive || !x?.alive) continue;
-      const mine = o.a === st.player || o.t === st.player;
+      const mine = G.isHuman(o.a) || G.isHuman(o.t);
       switch (o.op) {
         case 'propaganda': x.stabX -= 0.08; x.wsX -= 0.08; break;
         case 'support': G.addPop(x, c.ideo, 0.12); break;
@@ -458,7 +458,7 @@
     }
     // YZ: faşist/komünist büyük güçler yılda bir yakın komşularda ideoloji desteği
     if (st.day % 120 === 17) for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player || (c.ideo !== 'fas' && c.ideo !== 'com') || c.pp < 200) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag) || (c.ideo !== 'fas' && c.ideo !== 'com') || c.pp < 200) continue;
       const cands = Object.values(st.C).filter((x) => x.alive && !x.major && x.ideo !== c.ideo && G.dist(x.cap, c.cap) < 500);
       if (cands.length) {
         const x = cands[Math.floor(G.rand() * cands.length)];

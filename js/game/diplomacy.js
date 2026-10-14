@@ -61,11 +61,11 @@
     // Vichy Fransası (mütareke ile Anton/kurtuluş arası): YZ onu Mihver'le savaşa sokmaz
     const axisT = (t) => t === 'GER' || G.sameFaction(t, 'GER');
     const vichyLock = st.vichy && !st.vichyLib;
-    if (vichyLock && a !== st.player && ((a === 'FRA' && axisT(b)) || (b === 'FRA' && axisT(a)))) return false;
+    if (vichyLock && !G.isHuman(a) && ((a === 'FRA' && axisT(b)) || (b === 'FRA' && axisT(a)))) return false;
     if (opts.only) { G.setWar(a, b); delete st.goals[a + '>' + b]; G.log(`${G.cname(a)}, ${G.cname(b)}'${G.ek(b)} savaş ilan etti!`, [a, b], 'major'); if (G.onWar) G.onWar(a, b); return true; }
     const def = new Set(G.sideOf(b));
     const targetAtPeace = !st.C[b].enemies.length;
-    if (targetAtPeace) for (const [gt, list] of Object.entries(st.guar)) if (list.includes(b) && st.C[gt]?.alive && gt !== a && !G.sameFaction(gt, a) && (!st.opts.hist || ((st.C[gt].major && !st.C[gt].capd) || gt === st.player))) { for (const t of G.sideOf(gt)) def.add(t); }
+    if (targetAtPeace) for (const [gt, list] of Object.entries(st.guar)) if (list.includes(b) && st.C[gt]?.alive && gt !== a && !G.sameFaction(gt, a) && (!st.opts.hist || ((st.C[gt].major && !st.C[gt].capd) || G.isHuman(gt)))) { for (const t of G.sideOf(gt)) def.add(t); }
     def.delete(a);
     if (vichyLock && axisT(a) && b !== 'FRA') def.delete('FRA');
     // saldıranın müttefikleri: YZ aynı ideolojideyse çağrıya uyar, oyuncuya sorulur
@@ -210,7 +210,7 @@
   G.requestAccess = (from, to) => {
     const st = G.st;
     if (G.atWar(from, to)) return false;
-    const ok = to === st.player ? false : G.opinion(to, from) > 20 && !st.C[to].enemies.length || G.coBelligerent(from, to);
+    const ok = G.isHuman(to) ? false : G.opinion(to, from) > 20 && !st.C[to].enemies.length || G.coBelligerent(from, to);
     if (ok) { st.access[from + '>' + to] = 1; G.relClear(); }
     return ok;
   };

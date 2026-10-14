@@ -69,7 +69,7 @@
   // YZ: büyük güçler uygun projeleri başlatır; serbest modda (tarihî modda olaylar yönetir) atom bombası kullanır
   G.aiProjects = (c) => {
     const st = G.st;
-    if (!c.major || c.tag === st.player) return;
+    if (!c.major || G.isHuman(c.tag)) return;
     // atom programı yalnızca büyük sanayili güçlere göre (tarihte yalnızca ABD 1945'e yetişti)
     const rich = c.sum.civ + c.sum.mil >= 80;
     if (!(c.proj && c.proj.cur) && c.pp >= 180) for (const id of ['radar', 'crypto', 'penicillin', 'jet', 'atom']) if ((id !== 'atom' || rich) && G.projAvailable(c, id).ok) { G.projStart(c, id); break; }

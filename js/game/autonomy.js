@@ -57,7 +57,7 @@
       c.auto = Math.max(0, Math.min(100, (c.auto ?? 30) + d));
       if (c.auto >= 100) { indep(c, 'özerklik tamamlandı'); continue; }
       // YZ efendi: özerklik çok yükselirse siyasi güçle kontrolü sıkılaştırır
-      if (o.tag !== st.player && c.auto > 70 && G.autoLevel(c) < 3 && o.pp >= 160 && !(c.autoCd > st.day)) { o.pp -= 50; c.auto -= 12; c.autoCd = st.day + 90; }
+      if (!G.isHuman(o.tag) && c.auto > 70 && G.autoLevel(c) < 3 && o.pp >= 160 && !(c.autoCd > st.day)) { o.pp -= 50; c.auto -= 12; c.autoCd = st.day + 90; }
     }
   };
   // oyuncu eylemleri

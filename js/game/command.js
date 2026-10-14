@@ -41,7 +41,7 @@
   G.aiCommand = () => {
     const st = G.st; if (st.opts.hist) return;
     for (const c of Object.values(st.C)) {
-      if (!c.alive || !c.major || c.tag === st.player || !c.enemies.length) continue;
+      if (!c.alive || !c.major || G.isHuman(c.tag) || !c.enemies.length) continue;
       if (c.aiOrd && c.aiOrd.until > st.day - 20) continue;
       c.aiOrd = { k: (c.surrender || 0) > 0.15 ? 'def' : 'atk', until: st.day + 15 };
     }
@@ -52,7 +52,7 @@
   G.honorWin = (us, foe, n) => {
     const st = G.st;
     for (const u of us) {
-      if (st.opts.hist && u.t !== st.player) continue;
+      if (st.opts.hist && !G.isHuman(u.t)) continue;
       if (u.hwd != null && st.day - u.hwd < 7) continue;
       u.hwd = st.day; u.win = (u.win || 0) + 1;
       if (!u.gd && u.win >= G.GUARD_WINS) {
@@ -64,7 +64,7 @@
   // tümen adı: oyuncunun tümenlerine sıra numarası (ilk gösterimde verilir), muhafızlara unvan
   G.divName = (u) => {
     const st = G.st, c = st.C[u.t], t = G.T(u.t, u.u);
-    if (u.no == null && u.t === st.player && c) u.no = c.divNo = (c.divNo || 0) + 1;
+    if (u.no == null && G.isHuman(u.t) && c) u.no = c.divNo = (c.divNo || 0) + 1;
     return `${u.gd ? 'Muhafız ' : ''}${u.no ? u.no + '. ' : ''}${t.n}`;
   };
   // deniz çıkarması hazırlık süresi (gün): deniz piyadesi ve çıkarma doktrinleri kısaltır

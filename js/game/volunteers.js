@@ -56,7 +56,7 @@
     for (const m of G.sideOf(b)) if (ca.eset.has(m)) return no('Alıcının müttefikleriyle savaştasın.');
     if (!opts.force) {
       if (st.tension < 10 && !(st.civil || []).some((p) => p.includes(b))) return no('Dünya gerginliği en az %10 olmalı.');
-      if (b !== st.player && G.opinion(b, a) <= -20) return no('Alıcı hükümet, ideolojik nedenlerle gönüllüleri kabul etmiyor.');
+      if (!G.isHuman(b) && G.opinion(b, a) <= -20) return no('Alıcı hükümet, ideolojik nedenlerle gönüllüleri kabul etmiyor.');
     }
     if (!G.volReach(a, b)) return no('Alıcıya kara ya da deniz yoluyla ulaşılamıyor.');
     const left = G.volLeft(a);
@@ -88,7 +88,7 @@
     pool.sort((x, y) => pref(x) - pref(y) || front(x) - front(y) || y.str - x.str || x.id - y.id);
     const pick = pool.slice(0, n);
     if (!pick.length) return { ok: false, why: 'Gönderilebilecek uygun tümen yok.', n: 0 };
-    const pc = cb.tag === st.player ? cb : null;
+    const pc = G.isHuman(cb.tag) ? cb : null;
     for (const u of pick) {
       u.t = b; u.vol = a; u.vu = opts.until ? G.dayOf(opts.until) : 0;
       u.army = 0; u.path = []; u.prog = 0; u.sr = 0; u.gar = 0; u.ret = 0; u.ent = 0; u.loc = to;
@@ -158,7 +158,7 @@
       if (!okA) { u.vol = 0; u.vu = 0; continue; } // gönderen yok: alıcıda kalır
       if (home < 0) { u.dead = 1; continue; }
       u.t = a; u.vol = 0; u.vu = 0; u.army = 0; u.path = []; u.prog = 0; u.sr = 0; u.gar = 0; u.ret = 0; u.loc = home;
-      u.auto = a === st.player ? 0 : 1;
+      u.auto = G.isHuman(a) ? 0 : 1;
       nu++;
     }
     if (cb && cb.wings) {
@@ -213,7 +213,7 @@
     const st = G.st;
     for (const r of HIST) {
       const last = st.vol[r.k];
-      if (last === 'x' || r.a === st.player) continue;
+      if (last === 'x' || G.isHuman(r.a)) continue;
       const d0 = G.dayOf(r.d0), d1 = r.d1 ? G.dayOf(r.d1) : d0 + 400;
       if (st.day < d0) continue;
       if (st.day > d1) { st.vol[r.k] = 'x'; continue; }
@@ -233,7 +233,7 @@
   function freeSend() {
     const st = G.st;
     for (const ca of Object.values(st.C)) {
-      if (!ca.alive || !ca.major || ca.tag === st.player || ca.capd || ca.enemies.length > 1 || G.rand() > 0.12) continue;
+      if (!ca.alive || !ca.major || G.isHuman(ca.tag) || ca.capd || ca.enemies.length > 1 || G.rand() > 0.12) continue;
       if (ca.ideo === 'neu') continue;
       let best = null, bs = 25;
       for (const cb of Object.values(st.C)) {

@@ -71,7 +71,7 @@
       const [id, , tag, cond, title, text, opts, news] = EV[i];
       if (!alive(tag) || !cond()) continue;
       const c = st.C[tag];
-      if (tag === st.player) {
+      if (G.isLocal(tag)) {
         G.queuePopup({ title, text, opts: opts.map(([n, o]) => ({ n, d: D(o), fx: () => { apply(c, o); G.log(`${title}: ${n}.`, [tag], 'major'); } })) });
       } else {
         if (!st.opts.hist) apply(c, opts[0][1]);

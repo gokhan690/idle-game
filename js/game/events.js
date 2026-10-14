@@ -3,7 +3,7 @@
   const G = g.G;
   const { P, NP } = G;
   const alive = (t) => G.st.C[t]?.alive;
-  const ai = (t) => t !== G.st.player;
+  const ai = (t) => !G.isHuman(t);
   const inPoly = (lon, lat, poly) => { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) ins = !ins; } return ins; };
   const facOf = (t) => G.st.C[t]?.fac;
   const ensureAxis = () => {
@@ -36,12 +36,12 @@
     G.cwDirty = 1; if (st.C.SPR) st.C.SPR.startW = G.coreWeight('SPR', true);
     for (const t of ['GER', 'ITA']) if (alive(t)) G.lend(t, 'SPN', 'inf', 1000);
     if (alive('SOV')) G.lend('SOV', 'SPR', 'inf', 1000);
-    if (switchSide && st.player === 'SPR') { st.player = 'SPN'; for (const u of st.units) u.auto = u.t !== 'SPN' ? 1 : 0; if (G.UI) G.UI.hud(); }
+    if (switchSide && G.isHuman('SPR')) { if (st.humans) { st.humans.SPN = st.humans.SPR; delete st.humans.SPR; } if (st.player === 'SPR') st.player = 'SPN'; for (const u of st.units) if (u.t === 'SPN' || u.t === 'SPR') u.auto = u.t !== 'SPN' ? 1 : 0; if (G.UI) G.UI.hud(); }
     G.log('İspanya İç Savaşı başladı!', ['SPR', 'SPN'], 'major');
   }
   // demand: hedefe toprak talebi. Hedef oyuncuysa karar penceresi, değilse YZ kabul eder.
   function demand(actor, target, title, text, onAccept, onRefuse) {
-    if (target === G.st.player) {
+    if (G.isLocal(target)) {
       G.queuePopup({ title, text, opts: [
         { n: 'Kabul et', fx: onAccept },
         { n: 'Reddet (savaş riski)', fx: onRefuse },
@@ -60,7 +60,7 @@
       opts: [{ n: 'Çin\'e savaş ilan et', fx: () => {
         war('JAP', 'CHI');
         // Mançukuo (Japon kuklası) savaşa katılır; Kwantung Ordusu Mançurya'dan Kuzey Çin'e iner
-        if (alive('MAN') && G.atWar('JAP', 'CHI')) { G.st.access['JAP>MAN'] = 1; G.st.access['MAN>JAP'] = 1; if (G.st.player !== 'MAN') war('MAN', 'CHI'); }
+        if (alive('MAN') && G.atWar('JAP', 'CHI')) { G.st.access['JAP>MAN'] = 1; G.st.access['MAN>JAP'] = 1; if (!G.isHuman('MAN')) war('MAN', 'CHI'); }
       } }, { n: 'Barışı koru', fx: () => {} }] },
     { id: 'scw', date: '1936-07-17', actor: 'SPR', title: 'İspanya İç Savaşı',
       text: 'General Franco liderliğindeki milliyetçi subaylar Fas\'ta ayaklandı. Ülke ikiye bölündü: Cumhuriyetçiler Madrid ve Barselona\'yı, milliyetçiler kuzeybatıyı, Endülüs\'ü ve Fas\'ı tutuyor.',
@@ -160,7 +160,7 @@
       opts: [{ n: 'Yugoslavya\'yı işgal et', fx: () => { war('GER', 'YUG'); if (alive('GRE')) war('GER', 'GRE'); } }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'jsnap', date: '1941-04-13', actor: 'JAP', title: 'Sovyet-Japon Tarafsızlık Paktı',
       text: 'Matsuoka Moskova\'da: Japonya ile Sovyetler Birliği birbirine saldırmama sözü veriyor.',
-      cond: () => alive('JAP') && alive('SOV') && !G.atWar('JAP', 'SOV') && G.st.player !== 'SOV',
+      cond: () => alive('JAP') && alive('SOV') && !G.atWar('JAP', 'SOV') && !G.isHuman('SOV'),
       opts: [{ n: 'Paktı imzala', fx: () => {
         // pakt Japonya'nın kuklası Mançukuo'yu ve Sovyet uydusu Moğolistan'ı da kapsar
         for (const [x, y] of [['JAP', 'SOV'], ['MAN', 'SOV'], ['JAP', 'MON'], ['MAN', 'MON']]) if (alive(x) && alive(y) && !G.atWar(x, y)) G.st.pacts[G.pairKey(x, y)] = 'nap';
@@ -168,11 +168,11 @@
       } }, { n: 'İmzalama', fx: () => {} }] },
     { id: 'indochina', date: '1941-07-24', actor: 'JAP', title: 'Fransız Çinhindi',
       text: 'Japonya, Fransız Çinhindi\'nde askerî üsler talep ediyor.',
-      cond: () => alive('JAP') && alive('FRA') && !G.atWar('JAP', 'FRA') && G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA' && G.st.player !== 'FRA',
+      cond: () => alive('JAP') && alive('FRA') && !G.atWar('JAP', 'FRA') && G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA' && !G.isHuman('FRA'),
       opts: [{ n: 'Üsleri talep et', fx: () => { G.st.access['JAP>FRA'] = 1; G.log('Japon birlikleri Fransız Çinhindi\'ne girdi.', ['JAP', 'FRA'], 'major'); } }, { n: 'Vazgeç', fx: () => {} }] },
     { id: 'barbarossa', date: '1941-06-22', actor: 'GER', title: 'Barbarossa Harekâtı',
       text: 'Tarihin en büyük işgal ordusu Sovyet sınırında. Saldırı emri verilsin mi?',
-      cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.st.player === 'GER' || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
+      cond: () => alive('GER') && alive('SOV') && !G.atWar('GER', 'SOV') && (G.isHuman('GER') || G.st.prov[G.st.C.FRA.cap0]?.c !== 'FRA') && G.st.prov[G.st.C.GER.cap0]?.c === 'GER', retryUntil: '1943-06-01',
       opts: [{ n: 'Sovyetler Birliği\'ne saldır', fx: () => { delete G.st.pacts[G.pairKey('GER', 'SOV')]; war('GER', 'SOV'); for (const t of ['ROM', 'HUN', 'SLO', 'FIN', 'ITA']) if (alive(t) && ai(t) && (G.sameFaction(t, 'GER') || t === 'FIN') && !G.atWar(t, 'SOV')) G.setWar(t, 'SOV'); G.timedSpirit('SOV', 'barb_surprise', 120); G.timedSpirit('GER', 'barb_drive', 160); if (alive('FIN') && ai('FIN') && !G.atWar('FIN', 'SOV')) { joinAxis('FIN'); } } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'pearl', date: '1941-12-07', actor: 'JAP', title: 'Pearl Harbor',
       text: 'ABD petrol ambargosu uyguluyor. Donanma, Pasifik Filosu\'na ani bir baskın planladı.',
@@ -200,7 +200,7 @@
     // işgal eder ve cepheyi İtalya'da tutar (Gustav ve Gotik hatları). Tarihe değil İtalya'nın teslimine bağlıdır.
     { id: 'achse', date: '1939-09-01', actor: 'GER', title: 'Achse Harekâtı',
       text: 'İtalya Müttefiklerle ateşkes imzaladı. Alman birlikleri İtalyan ordusunu silahsızlandırıp yarımadayı savunmaya hazır.',
-      cond: () => G.st.opts.hist && alive('GER') && alive('ITA') && G.st.C.ITA.capd && !G.st.C.ITA.enemies.length && !G.st.conf && G.st.player !== 'ITA' && ['ENG', 'USA'].some((t) => G.atWar('GER', t)), retryUntil: '1946-12-31',
+      cond: () => G.st.opts.hist && alive('GER') && alive('ITA') && G.st.C.ITA.capd && !G.st.C.ITA.enemies.length && !G.st.conf && !G.isHuman('ITA') && ['ENG', 'USA'].some((t) => G.atWar('GER', t)), retryUntil: '1946-12-31',
       opts: [{ n: 'İtalya\'yı işgal et', fx: () => {
         const st = G.st; let n = 0;
         // iller asli İtalyan toprağı olarak kalır (direniş birikir); Almanya teslim olunca İtalya barışta yeniden kurulabilir
@@ -213,7 +213,7 @@
     // Madrid'in düşüşü (28 Mart 1939): Cumhuriyet toprağının önemli bölümünü yitirmişse teslim olur
     { id: 'madrid', date: '1939-03-28', actor: 'SPN', title: 'Madrid\'in Düşüşü',
       text: 'Cumhuriyet cephesi çöktü; Madrid\'de Casado darbesi direnişi sona erdirdi. Milliyetçiler zaferini ilan ediyor.',
-      cond: () => G.st.opts.hist && alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && G.st.player !== 'SPR' && ((G.st.C.SPR.surrender || 0) >= 0.35 || G.st.day >= G.dayOf('1939-04-15')), retryUntil: '1941-12-31',
+      cond: () => G.st.opts.hist && alive('SPN') && alive('SPR') && G.atWar('SPN', 'SPR') && !G.isHuman('SPR') && ((G.st.C.SPR.surrender || 0) >= 0.35 || G.st.day >= G.dayOf('1939-04-15')), retryUntil: '1941-12-31',
       opts: [{ n: 'Zaferi ilan et', fx: () => { if (alive('SPR') && G.atWar('SPN', 'SPR')) G.capitulate('SPR'); } }, { n: 'Savaşa devam', fx: () => {} }] },
     // Volkssturm (Eylül 1944): Alman asli toprakları tehdit altına girince halk milisi kurulur.
     // Tarihe değil duruma bağlıdır; oyuncu tarihi değiştirse de Almanya ilk ciddi kayıpta milis kurar.
@@ -282,7 +282,7 @@
       cond: () => alive('SOV') && alive('JAP') && !G.atWar('SOV', 'JAP') && G.atWar('USA', 'JAP') && G.st.opts.hist && !G.st.C.GER?.enemies.length,
       opts: [{ n: 'Mançurya\'ya gir', fx: () => { for (const k of [G.pairKey('JAP', 'SOV'), G.pairKey('MAN', 'SOV'), G.pairKey('JAP', 'MON'), G.pairKey('MAN', 'MON')]) delete G.st.pacts[k]; war('SOV', 'JAP'); if (alive('MAN') && !G.atWar('SOV', 'MAN')) war('SOV', 'MAN'); } }, { n: 'Bekle', fx: () => {} }] },
     { id: 'jsurrender', date: '1945-08-15', actor: 'USA', title: 'Japonya\'nın Teslimi', text: 'Hiroşima ve Nagazaki\'ye atom bombası atıldı. İmparator teslim olmayı kabul ediyor.',
-      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist && G.st.player !== 'JAP' && !G.st.C.GER?.enemies.length && usaHolds(0.9), retryUntil: '1946-12-31',
+      cond: () => alive('JAP') && alive('USA') && G.atWar('USA', 'JAP') && G.st.opts.hist && !G.isHuman('JAP') && !G.st.C.GER?.enemies.length && usaHolds(0.9), retryUntil: '1946-12-31',
       opts: [{ n: 'Teslimi kabul et', fx: () => { G.log('Hiroşima ve Nagazaki\'ye atom bombası atıldı: Japonya koşulsuz teslim oldu.', ['JAP', 'USA'], 'major'); G.capitulate('JAP'); } }, { n: 'Savaşa devam', fx: () => {} }] },
     { id: 'mansurrender', date: '1945-08-16', actor: 'MAN', title: 'Mançukuo\'nun Çöküşü', text: 'Japonya teslim oldu; Mançukuo ayakta kalamaz.',
       cond: () => alive('MAN') && G.st.C.MAN.enemies.length > 0 && G.st.opts.hist && !(alive('JAP') && G.st.C.JAP.enemies.length) && !G.st.conf, retryUntil: '1946-06-01',
@@ -302,7 +302,7 @@
     SOV: [['FIN', '1939-10-20', 'winter'], ['POL', '1939-09-05', 'sovpol']],
   };
   G.prepTargets = (tag) => {
-    const st = G.st; if (!st.opts.hist || tag === st.player || !PREP[tag]) return [];
+    const st = G.st; if (!st.opts.hist || G.isHuman(tag) || !PREP[tag]) return [];
     return PREP[tag].filter(([t, d, ev]) => !st.ev[ev] && st.day >= G.dayOf(d) && st.C[t]?.alive && !G.atWar(tag, t)).map(([t]) => t);
   };
   EVENTS.forEach((e) => (e.day = G.dayOf(e.date)));
@@ -320,7 +320,7 @@
     for (const e of EVENTS) {
       if (st.ev[e.id] || st.day < e.day) continue;
       const lf = FOCUS_EV[e.id], pc = st.C[st.player];
-      if (lf && e.actor === st.player && pc && G.focusById(pc, lf)) {
+      if (lf && G.isHuman(e.actor) && pc && G.focusById(pc, lf)) {
         st.evHint = st.evHint || {};
         if (!st.evHint[e.id] && e.cond()) {
           st.evHint[e.id] = 1;
@@ -331,9 +331,9 @@
       }
       if (!e.cond()) { if (!(e.retryUntil && st.day < G.dayOf(e.retryUntil))) st.ev[e.id] = 1; continue; }
       st.ev[e.id] = 1; (st.evOk || (st.evOk = {}))[e.id] = 1; // gerçekten yaşanan olaylar (güç dengesi vb.)
-      if (!st.opts.hist && e.actor !== st.player && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
+      if (!st.opts.hist && !G.isHuman(e.actor) && !['axis', 'tripartite', 'hunjoin', 'romjoin', 'buljoin', 'guarpol', 'usajoin'].includes(e.id)) continue;
       if (e.actor === st.player) G.queuePopup({ title: e.title, text: e.text, opts: e.opts, date: st.day });
-      else if (e.targetPrompt === st.player) {
+      else if (G.isLocal(e.targetPrompt)) {
         G.queuePopup({ title: e.title, text: e.text + ' Teklifi kabul ediyor musunuz?', opts: [{ n: 'Kabul et', fx: () => { G.st.pacts[G.pairKey('GER', 'SOV')] = 'nap'; G.st.ev.mrPact = 1; G.log('Molotov-Ribbentrop Paktı imzalandı.', ['GER', 'SOV'], 'major'); } }, { n: 'Reddet', fx: () => {} }] });
       } else { e.opts[0].fx(); if (G.newsFor) G.newsFor(e); }
     }
@@ -429,27 +429,27 @@
       }
     }
     // İspanya İç Savaşı: Milliyetçiler tarihten gerideyse Afrika Ordusu'ndan takviye (Faslı birlikler, Lejyon)
-    if (st.opts.hist && st.day % 30 === 10 && G.atWar('SPN', 'SPR') && st.player !== 'SPN' && (st.spnRes || 0) < 14 && (G.histAhead('SPN', 'SPR') ?? 0) < -0.08) {
+    if (st.opts.hist && st.day % 30 === 10 && G.atWar('SPN', 'SPR') && !G.isHuman('SPN') && (st.spnRes || 0) < 14 && (G.histAhead('SPN', 'SPR') ?? 0) < -0.08) {
       const L = []; for (let i = 0; i < NP; i++) if (st.prov[i].c === 'SPN' && !P[i].a.some((j) => G.atWar('SPN', st.prov[j].c))) L.push(i);
       L.sort((a, b) => P[b].vp - P[a].vp || a - b);
       if (L.length) { for (let k = 0; k < 2; k++) { const u = G.makeUnit('SPN', 'inf', L[k % Math.min(3, L.length)], 0.9); u.xp = 0.3; st.units.push(u); } G.rebuildUnitIndex(); st.spnRes = (st.spnRes || 0) + 2; }
     }
     // İspanya İç Savaşı: aylık dış yardım
     if (st.day % 30 === 0 && G.atWar('SPN', 'SPR')) {
-      for (const t of ['GER', 'ITA']) if (st.C[t]?.alive && t !== st.player) { G.lend(t, 'SPN', 'inf', 450); G.lend(t, 'SPN', 'art', 12); }
-      if (st.C.SOV?.alive && st.player !== 'SOV') { G.lend('SOV', 'SPR', 'inf', 450); G.lend('SOV', 'SPR', 'art', 12); }
+      for (const t of ['GER', 'ITA']) if (st.C[t]?.alive && !G.isHuman(t)) { G.lend(t, 'SPN', 'inf', 450); G.lend(t, 'SPN', 'art', 12); }
+      if (st.C.SOV?.alive && !G.isHuman('SOV')) { G.lend('SOV', 'SPR', 'inf', 450); G.lend('SOV', 'SPR', 'art', 12); }
     } else if (st.C.SPN?.alive && !G.atWar('SPN', 'SPR') && drop('SPN', 'nat_aid')) {}
     // Ödünç Verme-Kiralama: ABD → İngiltere (1941-03), ABD ve İngiltere → SSCB (Barbarossa'dan sonra)
     if (st.day % 30 === 20) {
-      const L = (a, b, inf, mot, tank, art, fig) => { if (!st.C[a]?.alive || !st.C[b]?.alive || st.player === a) return; G.lend(a, b, 'inf', inf); G.lend(a, b, 'mot', mot); G.lend(a, b, 'tank', tank); G.lend(a, b, 'art', art); G.lend(a, b, 'fig', fig); };
+      const L = (a, b, inf, mot, tank, art, fig) => { if (!st.C[a]?.alive || !st.C[b]?.alive || G.isHuman(a)) return; G.lend(a, b, 'inf', inf); G.lend(a, b, 'mot', mot); G.lend(a, b, 'tank', tank); G.lend(a, b, 'art', art); G.lend(a, b, 'fig', fig); };
       if (st.day >= G.dayOf('1941-03-11') && G.atWar('ENG', 'GER')) L('USA', 'ENG', 1500, 200, 40, 20, 30);
       if (G.atWar('GER', 'SOV') && st.day >= G.dayOf('1941-10-01')) { L('USA', 'SOV', 3000, 600, 80, 40, 40); L('ENG', 'SOV', 800, 100, 30, 0, 20); }
     }
     // Çin'e dış yardım: Sovyet yardımı (1937-41), Burma Yolu ve ABD/İngiliz ödünç verme (1939-)
     if (st.day % 30 === 15 && G.atWar('CHI', 'JAP') && st.C.CHI?.alive) {
       const low = (st.C.CHI.stock.inf || 0) < 5000; // stok tükenince yardım artar
-      if (st.C.SOV?.alive && st.player !== 'SOV' && !G.atWar('GER', 'SOV')) { G.lend('SOV', 'CHI', 'inf', low ? 2200 : 1100); G.lend('SOV', 'CHI', 'art', 15); }
-      if (st.day >= G.dayOf('1939-01-01')) for (const t of ['USA', 'ENG']) if (st.C[t]?.alive && st.player !== t) G.lend(t, 'CHI', 'inf', st.day >= G.dayOf('1941-03-11') ? 900 : 500);
+      if (st.C.SOV?.alive && !G.isHuman('SOV') && !G.atWar('GER', 'SOV')) { G.lend('SOV', 'CHI', 'inf', low ? 2200 : 1100); G.lend('SOV', 'CHI', 'art', 15); }
+      if (st.day >= G.dayOf('1939-01-01')) for (const t of ['USA', 'ENG']) if (st.C[t]?.alive && !G.isHuman(t)) G.lend(t, 'CHI', 'inf', st.day >= G.dayOf('1941-03-11') ? 900 : 500);
     }
     // İngiliz Milletler Topluluğu konuşlanmaları (tarihî): sömürge tümenleri ve dominyon seferî kuvvetleri
     if (st.opts.hist) {
@@ -458,7 +458,7 @@
         if (st.dep[k] || st.day < G.dayOf(d)) continue;
         if (st.day > G.dayOf(until || '1942-12-31')) { st.dep[k] = 1; continue; }
         const c = st.C[t]; if (!c?.alive) { st.dep[k] = 1; continue; }
-        if (!spawn && (t === st.player || !(G.atWar(t, 'ITA') || G.atWar(t, 'GER')))) continue;
+        if (!spawn && (G.isHuman(t) || !(G.atWar(t, 'ITA') || G.atWar(t, 'GER')))) continue;
         const sent = G.deploy(t, n, dest, spawn);
         if (sent) { st.dep[k] = 1; G.log(`${G.cname(t)}: ${sent} tümen ${DEPN[k]} bölgesine konuşlandı.`, [t], 'info'); }
       }
