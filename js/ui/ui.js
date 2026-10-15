@@ -40,6 +40,7 @@
     const st = G.st, s = c.sum, e = c.econ || {};
     const al = [];
     if (st.conf) al.push(['peace', '', 'Barış konferansı sürüyor', 'peace']);
+    if (c.enemies.length) { const ha = (c.armies || []).filter((a) => a.ord === 'hold' && G.armyUnits(c, a.id).length).length; if (ha) al.push(['armyall', '', `Savaştasın: ${ha} ordu beklemede. Dokun: en yakın cepheyi tutsunlar`, 'war', ha]); }
     if (!c.focus.cur && G.focusList(c).some((f) => G.focusAvailable(c, f))) al.push(['pol', 'tree', 'Odak seçilmedi', 'focus']);
     if (c.res.length < c.mods.slots) al.push(['res', '', `${c.mods.slots - c.res.length} boş araştırma`, 'res', c.mods.slots - c.res.length]);
     const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);

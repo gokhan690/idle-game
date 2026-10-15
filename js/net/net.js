@@ -214,7 +214,7 @@
   const UI_ONLY = new Set(('alert back battle bcesc boxsel chime clearsel close closecard continue csave cload delsave dipc divinfo divonly exportsave '
     + 'focusclose ftnext ftzoom fullscreen home importsave intelopen intelback ledmetric ledtab load log logf mapmode mapmodeNext mapset newgame '
     + 'opencountry ovgo panel pause pick resinfo save selall selarmy selgroup selmenu selpick selprov setting setmode showc slotpick sopt sound speed '
-    + 'tab tall tutorial unsel wxtoggle autosave dzmod dztier dzlvl paramode linemode armygoaladd armysel fleetsel').split(' '));
+    + 'tab tall tutorial unsel wxtoggle autosave dzmod dztier dzlvl paramode linemode armygoaladd armysel fleetsel ordclose ordfb').split(' '));
   N.capture = (fn, asTag) => {
     if (!N.rtOn()) return fn();
     if (!N.myTag()) { UI.toast('İzleyicisin: emir veremezsin.', 'warn'); return; }

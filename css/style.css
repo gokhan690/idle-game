@@ -907,3 +907,12 @@ body.mp #btn-pause, body.mp .speed { display: none; }
 span.pos { color: var(--good, #8fbf6a); font-weight: 600; }
 span.neg { color: var(--bad, #c0392b); font-weight: 600; }
 .list .item.on { border-color: var(--brass, #b8913a); box-shadow: inset 0 0 0 1px var(--brass, #b8913a); }
+/* HOI4 tarzı eylem menüsü (birlik seçiliyken hedefe dokununca) */
+.ordmenu { position: fixed; z-index: 40; width: min(290px, calc(100vw - 16px)); display: flex; flex-direction: column; background: rgba(18,22,17,0.98); border: 1px solid var(--brass, #b8913a); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); overflow: hidden; animation: tin 0.12s ease-out; }
+.ordmenu .omh { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--rule, #444); background: rgba(0,0,0,0.25); }
+.ordmenu .omi { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 9px 12px; min-height: 44px; border-bottom: 1px solid rgba(255,255,255,0.06); color: inherit; }
+.ordmenu .omi b { font-size: 15px; }
+.ordmenu .omi span { font-size: 12px; color: var(--muted, #a9a58f); line-height: 1.25; }
+.ordmenu .omi:active { background: rgba(184,145,58,0.18); }
+.ordmenu .omi[disabled] { opacity: 0.45; }
+.ordmenu .omx { align-items: center; color: var(--muted, #a9a58f); border-bottom: 0; }

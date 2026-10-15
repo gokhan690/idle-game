@@ -236,8 +236,22 @@
     if (st && G.net && G.net.rtOn() && (R.sel.units.size || R.sel.fleet || UI.airPick || UI.basePick || st.conf || UI.lineMode || UI.paraMode || UI.fbMode || UI.goalMode)) G.net.capture(() => onTap(x, y));
     else onTap(x, y);
   }
+  // taarruz oku (HOI4 savaş planı): ordunun hedefi düşman ya da yabancı bir eyalet
+  function setGoal(a, node) {
+    const st = G.st, pc = st.C[st.player], owner = st.prov[node].c;
+    if (owner === st.player || G.sameFaction(owner, st.player)) return false;
+    a.goal = node; a.goals = []; if (a.ord === 'hold' || a.ord === 'fb') a.ord = 'def';
+    if (!G.atWar(st.player, owner)) a.vs = owner;
+    for (const u of G.armyUnits(pc, a.id)) delete u.man; // ordu emri: elle yönetilen tümenler yeniden orduya bağlanır
+    pc._frontsDirty = 1; G.computeFronts(pc);
+    UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
+    return true;
+  }
+  UI.setArmyGoal = setGoal;
+  UI.orderUnits = (units, target) => order(units, target);
   function onTap(x, y) {
     const sm = document.getElementById('selmenu'); if (sm && !sm.hidden) { sm.hidden = true; return; }
+    if (UI.orderMenuOpen && UI.orderMenuOpen()) { UI.closeOrderMenu(); return; } // açık eylem menüsü: dışarı dokununca kapanır
     const st = G.st; if (!st || !$('start').hidden) return;
     // hava kanadı için bölge seçimi
     if (UI.airPick) { UI.assignWingRegion(R.nodeAt(x, y)); R.mapDirty = 1; return; }
@@ -265,15 +279,6 @@
       UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;
     };
     const armyOfCnt = (k) => { const L = k.units || []; const a = L.length && L[0].army; return a && L.every((u) => u.army === a) && G.armyById(pc, a) ? a : 0; };
-    const setGoal = (a, node) => {
-      const owner = st.prov[node].c;
-      if (owner === st.player || G.sameFaction(owner, st.player)) return false;
-      a.goal = node; a.goals = []; if (a.ord === 'hold' || a.ord === 'fb') a.ord = 'def';
-      if (!G.atWar(st.player, owner)) a.vs = owner;
-      pc._frontsDirty = 1; G.computeFronts(pc);
-      UI.toast(`${a.n} taarruz oku: ${G.pname(node)}. Plan dolunca “Uygula ▶”.`, 'good');
-      return true;
-    };
     // hatta yayma modu
     if (UI.lineMode) { if (n >= 0 && n < NP) UI.lineTo(n); else { UI.lineMode = false; UI.renderSel(); } return; }
     // bölge seçimi modu
@@ -328,10 +333,8 @@
         return;
       }
       if (n < 0 || allHere) { R.sel.units.clear(); R.sel.army = null; UI.renderSel(); R.dirty = 1; return; }
-      // ordu seçiliyken düşman eyaleti: taarruz oku (HOI4 savaş planı)
-      const a = R.sel.army ? G.armyById(pc, R.sel.army) : null;
-      if (a && n < NP && setGoal(a, n)) { UI.renderSel(); R.dirty = 1; return; }
-      order(sel, n); return;
+      // HOI4 gibi: hedefe dokununca eylem menüsü (git, saldır, taarruz oku, cephe ata, savunma hattı…)
+      UI.orderMenu(x, y, n); return;
     }
     if (cnt && cnt.tag === st.player && !cnt.fleet) { const arm = armyOfCnt(cnt); if (arm) UI.selectArmy(arm); else pickCnt(cnt); return; }
     if (n < 0) { R.sel.prov = -1; $('card').hidden = true; R.dirty = 1; return; }
@@ -361,7 +364,7 @@
           else { naval++; if (hostileLanding) { u.inv = { p: 0, n: G.invPrep(c, u), at: landing }; inv++; invN = Math.max(invN, u.inv.n); if (lastSea != null) invSup = Math.min(invSup, G.navalSupremacy(u.t, lastSea)); } }
         }
       }
-      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; ok++; } else fail++;
+      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; if (u.army) u.man = 1; ok++; } else fail++;
     }
     if (target < NP && !G.canEnter(st.player, target)) UI.toast(`${G.cname(st.prov[target].c)} topraklarına giremezsin: savaş ilan et veya geçiş izni al.`, 'warn');
     else if (blocked) UI.toast(blocked, 'warn');

@@ -165,12 +165,11 @@
     if ((st.day + i) % 10 === 0) { if (c.auto.air) G.aiAir(c); else if (!c.wings) G.initWings(c); }
     if ((st.day + i) % 2 === 0) {
       if (st.units.some((u) => u.t === c.tag && u.auto && !u.army)) G.aiMilitary(c, (u) => u.auto && !u.army);
-      // savaş başlayınca beklemedeki ordular cepheyi tutar (HOI4'te ordu cephesiz kalınca oyuncular en çok burada takılır)
+      // savaş başlayınca beklemedeki ordular yerinde kalır (HOI4): oyuncu cephe atar; üst çubukta uyarı çıkar
       const nw = c.enemies.length;
       if (nw && !c._warN) {
-        const idleA = (c.armies || []).filter((a) => a.ord === 'hold' && !G.armyUnits(c, a.id).some((u) => u.path.length));
-        for (const a of idleA) a.ord = 'def';
-        if (idleA.length) { c._frontsDirty = 1; G.log(`Savaş başladı: ${idleA.length} ordu cepheyi tutmaya geçti.`, [c.tag], 'info'); }
+        const idleA = (c.armies || []).filter((a) => a.ord === 'hold');
+        if (idleA.length) G.log(`Savaş başladı: ${idleA.length} ordu beklemede. Cephe ata (ordu → “Cepheyi tut” ya da hedef eyalete dokun).`, [c.tag], 'warn');
       }
       c._warN = nw;
       // ordular: cephe ve taarruz planına göre komutan yönetir
@@ -182,7 +181,7 @@
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
         if (a.ord === 'fb') { G.holdLine(c, a); continue; } // savunma hattına çekil
-        G.aiMilitary(c, (u) => u.army === a.id && !u.sr, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
+        G.aiMilitary(c, (u) => u.army === a.id && !u.sr && !u.man, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
       }
     }
     G.armyTick(c);
