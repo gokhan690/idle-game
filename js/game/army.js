@@ -297,45 +297,50 @@
     }
     return out;
   };
+  // Cephe ataması (HOI4): ordu, birliklerinin bulunduğu yere en yakın cephe parçasını tutar. Yakın cephe başka orduda
+  // olsa bile uzaktaki boş cepheye gönderilmez, paylaşılır (FRONT_KM sınırı). Önceki cephe geçerliyse korunur
+  // (kararlılık): ordu her yeniden hesapta yer değiştirmez.
+  G.FRONT_KM = 800;
   G.computeFronts = (c) => {
     const st = G.st, tag = c.tag;
-    const claimed = new Set();
+    const claimed = new Map(); // eyalet → onu tutan ordu sayısı
+    const own = (i) => { const pr = st.prov[i]; return pr.c === tag || (G.friendly(tag, pr.c) && !G.atWar(tag, pr.c)); };
     for (const a of c.armies || []) {
+      const old = a.front || [];
       a.front = [];
       const vs = a.vs && st.C[a.vs]?.alive ? a.vs : null;
       if (a.ord === 'hold' || a.ord === 'fb' || (!vs && !c.enemies.length)) continue;
       const F = new Set(G.frontier(tag, vs));
       if (!F.size) continue;
-      const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP);
-      if (!us.length) continue;
-      const want = Math.max(2, Math.ceil(us.length / 1.6));
-      const seen = new Set(); const q = [];
-      for (const u of us) if (!seen.has(u.loc)) { seen.add(u.loc); q.push(u.loc); }
-      // önce boştaki cephe parçaları; hepsi alınmışsa paylaş
-      const free = [...F].some((n) => !claimed.has(n));
-      for (let k = 0; k < q.length && a.front.length < want && k < 4000; k++) {
+      const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !u.man);
+      const all = us.length ? us : G.armyUnits(c, a.id).filter((u) => u.loc < NP);
+      if (!all.length) continue;
+      const want = Math.max(2, Math.ceil(all.length / 1.6));
+      // ordunun merkezi: tümenlere toplam uzaklığı en küçük konum
+      const locs = [...new Set(all.map((u) => u.loc))];
+      let ctr = locs[0], cb = Infinity;
+      if (locs.length > 1) for (const l of locs.slice(0, 40)) { let s2 = 0; for (const m of locs) s2 += G.km(l, m); if (s2 < cb) { cb = s2; ctr = l; } }
+      // aday cephe eyaletleri: kara yoluyla ulaşılabilen (dost topraktan BFS), merkeze FRONT_KM içinde
+      const seen = new Set(locs), q = locs.slice(), cand = [];
+      for (let k = 0; k < q.length && k < 6000; k++) {
         const n = q[k];
-        if (F.has(n) && (!free || !claimed.has(n))) { a.front.push(n); claimed.add(n); }
-        for (const j of P[n].a) {
-          if (seen.has(j)) continue;
-          const pr = st.prov[j];
-          if (pr.c !== tag && !(G.friendly(tag, pr.c) && !G.atWar(tag, pr.c))) continue;
-          seen.add(j); q.push(j);
-        }
+        if (F.has(n) && G.km(n, ctr) <= G.FRONT_KM) cand.push(n);
+        for (const j of P[n].a) if (j < NP && !seen.has(j) && own(j)) { seen.add(j); q.push(j); }
       }
-      // kara yoluyla ulaşılamıyorsa (ör. anakaradan kopuk bölge): en yakın cephe parçaları
-      if (!a.front.length) {
-        const u0 = us[Math.floor(us.length / 2)].loc;
-        const near = [...F].filter((n) => !claimed.has(n) || !free).sort((x, y) => G.dist(x, u0) - G.dist(y, u0)).slice(0, want);
-        for (const n of near) { a.front.push(n); claimed.add(n); }
-      }
-      // tek parça kalsın: ilk bulunan cephe eyaletine bağlı olanlar
-      if (a.front.length > 2) {
-        const fs = new Set(a.front), keep = new Set([a.front[0]]), qq = [a.front[0]];
-        for (let k = 0; k < qq.length; k++) for (const j of P[qq[k]].a) if (fs.has(j) && !keep.has(j)) { keep.add(j); qq.push(j); }
-        for (const n of a.front) if (!keep.has(n)) claimed.delete(n);
-        a.front = a.front.filter((n) => keep.has(n));
-      }
+      const oldSet = new Set(old.filter((n) => F.has(n)));
+      // puan: uzaklık; başka ordunun tuttuğu parça biraz pahalı (paylaşılabilir), önceki cephe ucuz (kararlılık)
+      const score = (n) => G.km(n, ctr) + (claimed.get(n) || 0) * 220 - (oldSet.has(n) ? 260 : 0);
+      let pick = cand.sort((x, y) => score(x) - score(y)).slice(0, want);
+      // yakında cephe yoksa (ör. anakaradan kopuk bölge ya da uzaktaki savaş): en yakın cephe parçaları
+      if (!pick.length) pick = [...F].sort((x, y) => G.km(x, ctr) - G.km(y, ctr)).slice(0, want);
+      if (!pick.length) continue;
+      // tek parça kalsın: en iyi parçaya cephe boyunca bağlı olanlar
+      const ps = new Set(pick), keep = new Set([pick[0]]), qq = [pick[0]];
+      for (let k = 0; k < qq.length; k++) for (const j of P[qq[k]].a) if (ps.has(j) && !keep.has(j)) { keep.add(j); qq.push(j); }
+      // bağlı parça azsa: en iyi parçanın cephe komşularıyla tamamla
+      for (let k = 0; k < qq.length && keep.size < want; k++) for (const j of P[qq[k]].a) if (F.has(j) && !keep.has(j) && keep.size < want && G.km(j, ctr) <= G.FRONT_KM * 1.25) { keep.add(j); qq.push(j); }
+      a.front = [...keep];
+      for (const n of a.front) claimed.set(n, (claimed.get(n) || 0) + 1);
     }
   };
   // Savunma hattı (HOI4 geri çekilme hattı): iki eyalet arasında dost topraktan geçen en kısa hat
@@ -356,7 +361,7 @@
     const st = G.st;
     const line = (a.fb || []).filter((i) => st.prov[i].c === c.tag || (G.friendly(c.tag, st.prov[i].c) && !G.atWar(c.tag, st.prov[i].c)));
     if (!line.length) return;
-    const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !(G.inBattle && G.inBattle.has(u)));
+    const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !u.man && !(G.inBattle && G.inBattle.has(u)));
     const quota = Math.max(1, Math.ceil(us.length / line.length)), set = new Set(line), cnt = new Map();
     for (const u of us) { const tgt = u.path.length ? u.path[u.path.length - 1] : u.loc; if (set.has(tgt)) cnt.set(tgt, (cnt.get(tgt) || 0) + 1); }
     for (const u of us) {

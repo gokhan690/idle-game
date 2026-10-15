@@ -67,10 +67,11 @@
       const gen = a0.gen ? G.genById(c0, a0.gen) : null;
       const mx = G.maxPlan(c0, a0);
       html += `<div class="card-h">${gen ? G.art.genImg(gen, c0.tag) : ''}<div class="grow"><h3><span class="adot" style="background:${G.armyColor(a0)}"></span>${esc(a0.n)} <span class="muted small">${sel.length} tümen</span></h3><div class="muted small">${gen ? esc(gen.n) + ` · S${gen.atk} Sv${gen.def} P${gen.plan} L${gen.log}` : 'Komutansız'} · Cephe: ${a0.vs ? esc(G.cname(a0.vs)) : 'tüm düşmanlar'}</div></div><button class="x" data-act="clearsel" aria-label="Seçimi kaldır">✕</button></div>`;
+      { const man = sel.filter((u) => u.man).length; if (man) html += `<div class="tbar"><span class="muted small">${man} tümen elle yönetiliyor</span><button class="btn sm" data-act="unman">Orduya döndür</button></div>`; }
       html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a0.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a0.plan || 0) / mx, a0.ord === 'atk' ? 'r' : 'g')}</div><span class="small muted">Güç ${pct(avgStr)}</span></div>`;
       html += `<div class="seg sm">${Object.entries(ORD_N).filter(([k]) => k !== 'fb' || (a0.fb && a0.fb.length)).map(([k, n]) => `<button class="${a0.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a0.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
       const fbm = UI.fbMode && UI.fbMode.a === a0.id;
-      html += fbm ? `<div class="hint">${UI.fbMode.s == null ? 'Savunma hattının başlangıç eyaletine dokun (kendi toprağın).' : 'Şimdi hattın bitiş eyaletine dokun.'}</div>` : UI.goalMode === a0.id ? `<div class="hint">${UI.goalAppend ? 'Sonraki taarruz aşamasının hedefine dokun.' : 'Taarruz hedefi olacak düşman eyaletine dokun.'}</div>` : `<div class="hint small">Düşman eyaletine dokun: taarruz oku · kendi eyaletine: ordu oraya yürür · sayaca dokun: o yığını seç.${a0.goals && a0.goals.length ? ` · ${a0.goals.length + 1} aşamalı taarruz` : ''}</div>`;
+      html += fbm ? `<div class="hint">${UI.fbMode.s == null ? 'Savunma hattının başlangıç eyaletine dokun (kendi toprağın).' : 'Şimdi hattın bitiş eyaletine dokun.'}</div>` : UI.goalMode === a0.id ? `<div class="hint">${UI.goalAppend ? 'Sonraki taarruz aşamasının hedefine dokun.' : 'Taarruz hedefi olacak düşman eyaletine dokun.'}</div>` : `<div class="hint small">Bir eyalete dokun: seçenekler açılır (git, saldır, taarruz oku, cephe ata, savunma hattı) · sayaca dokun: o yığını seç.${a0.goals && a0.goals.length ? ` · ${a0.goals.length + 1} aşamalı taarruz` : ''}</div>`;
       html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id && !UI.goalAppend ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm ${UI.goalMode === a0.id && UI.goalAppend ? 'pri' : ''}" data-act="armygoaladd" data-v="${a0.id}">+ Aşama</button><button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm ${fbm ? 'pri' : ''}" data-act="armyfb" data-v="${a0.id}">⛉ Savunma hattı</button>${a0.fb && a0.fb.length ? `<button class="btn sm" data-act="armyfbclr" data-v="${a0.id}">Hattı sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
     } else {
       // ---- Tümen seçimi ----
@@ -85,11 +86,12 @@
       const encd = sel.filter((u) => u.enc);
       if (encd.length) html += `<div class="tbar encbar"><span class="pill war">Kuşatıldı · ${encd.length} tümen · ${Math.max(...encd.map((u) => u.enc))} gün</span><button class="btn sm danger" data-act="breakout">Kuşatmadan çık</button></div>`;
       const inArmy = sel[0].army && sel.every((u) => u.army === sel[0].army) ? G.armyById(c0, sel[0].army) : null;
+      if (sel.some((u) => u.man)) html += `<div class="tbar"><span class="muted small">${sel.filter((u) => u.man).length} tümen elle yönetiliyor; ordu onları cepheye çekmez</span><button class="btn sm" data-act="unman">Orduya döndür</button></div>`;
       html += `<div class="tbar"><button class="btn sm" data-act="stop">Dur</button><button class="btn sm" data-act="split">Böl</button><button class="btn sm" data-act="withdraw" title="Cephe gerisindeki güvenli hatta çekil">Geri çekil</button><button class="btn sm" data-act="stratr" title="Stratejik konuşlanma: 4 kat hızlı, moral sıfırlanır">Strat. konuşlan</button><button class="btn sm ${auto ? 'pri' : ''}" data-act="selauto">Oto</button><button class="btn sm" data-act="selall">Bölgedekiler</button>${inArmy ? `<button class="btn sm" data-act="armypick" data-v="${inArmy.id}">${esc(inArmy.n)}</button>` : `<button class="btn sm" data-act="selarmy">Ordu kur</button>`}</div>`;
       if (sel.length >= 2) html += `<div class="tbar"><button class="btn sm ${UI.lineMode ? 'pri' : ''}" data-act="linemode">⟿ Hatta yay</button><span class="muted small">${UI.lineMode ? 'Sınırda bir noktaya dokun' : 'Tümenleri sınır boyunca eşit dağıt'}</span></div>`;
       const paras = sel.filter((u) => G.isPara && G.isPara(u));
       if (paras.length) html += `<div class="tbar"><button class="btn sm ${UI.paraMode ? 'pri' : ''}" data-act="paramode">🪂 Hava indirme (${paras.length})</button>${paras.some((u) => !G.paraCheck(u).ok) ? `<span class="muted small">${esc(G.paraCheck(paras.find((u) => !G.paraCheck(u).ok)).why)}</span>` : ''}</div>`;
-      html += `<div class="hint small">${UI.paraMode ? `İndirme yapılacak eyalete dokun (hava üssünden en fazla ${G.PARA_KM} km).` : auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: hareket ya da saldırı. Tümene dokun: ayrıntı.'}</div>`;
+      html += `<div class="hint small">${UI.paraMode ? `İndirme yapılacak eyalete dokun (hava üssünden en fazla ${G.PARA_KM} km).` : auto ? 'Otomatik kurmayda. Elle yönetmek için Oto’yu kapat.' : 'Hedefe dokun: seçenekler açılır (git, saldır…). Tümene dokun: ayrıntı.'}</div>`;
     }
     const sb = $('selbar');
     if (sb.dataset.h !== html) { sb.innerHTML = html; sb.dataset.h = html; }
@@ -235,6 +237,7 @@
   ACT.resinfo = (d) => { const t = UI._resInfo && UI._resInfo[d.k]; if (t) UI.toast(t, 'info'); };
   ACT.alert = (d) => {
     // kuşatılmış tümenler: hepsini seç ve cebe odaklan
+    if (d.p === 'armyall') { UI.act('armyall'); return; } // savaşta bekleyen ordular: en yakın cepheyi tut
     if (d.p === 'enc') { const L = G.st.units.filter((u) => u.t === G.st.player && u.enc); if (!L.length) return; R.sel.units = new Set(L.map((u) => u.id)); R.sel.army = null; R.focusOn(L[0].loc, 2.5); UI.close(); UI.renderSel(); R.dirty = 1; return; }
     if (d.n) UI.toast(d.n, 'warn'); if (d.p === 'peace') R.setMode('peace'); UI.panel = d.p; UI.sub = d.s || null; $('card').hidden = true; UI.render(true); };
   ACT.close = () => UI.close();
@@ -351,6 +354,7 @@
     const c = me(), a = armyOf(d.k);
     if (d.v === 'fb' && !(a.fb && a.fb.length)) { UI.toast('Önce “⛉ Savunma hattı” ile bir hat çiz.', 'warn'); return; }
     a.ord = d.v; c._frontsDirty = 1;
+    for (const u of G.armyUnits(c, a.id)) delete u.man; // ordu emri: elle yönetilen tümenler orduya döner
     if (d.v === 'fb') { for (const u of G.armyUnits(c, a.id)) u.path = []; G.holdLine(c, a); UI.toast(`${a.n} savunma hattına çekiliyor.`); UI.render(); UI.renderSel(); R.dirty = 1; return; }
     if (d.v === 'hold') for (const u of G.armyUnits(c, a.id)) { u.path = []; }
     if (d.v !== 'hold') G.computeFronts(c);
