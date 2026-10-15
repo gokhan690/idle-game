@@ -20,6 +20,15 @@
     const todo = al.length
       ? `<div class="list">${al.map(([p, sub, n, ic, cnt]) => `<button class="item ovtodo" data-act="alert" data-p="${p}" data-s="${sub}" data-n="">${G.ico ? G.ico(ic, 'tico') : ''}<div class="grow"><div class="t">${esc(n)}</div></div>${cnt > 1 ? `<span class="pill">${cnt}</span>` : ''}<span class="muted">›</span></button>`).join('')}</div>`
       : '<p class="muted small" style="margin:0">Bekleyen iş yok: araştırma, üretim, inşaat ve odak düzenli.</p>';
+    // meydan okuma (seçildiyse): durum ve kalan süre
+    if (st.chal && G.chalById) {
+      const x = G.chalById(st.chal.id);
+      if (x) {
+        const left = G.dayOf(x.by || x.hold) - st.day, ch = st.chal;
+        const durum = ch.s > 0 ? '<span class="pos">Başarıldı</span>' : ch.s < 0 ? '<span class="neg">Kaybedildi</span>' : `Sürüyor · ${Math.max(0, left)} gün kaldı`;
+        html += sec('Meydan okuma', `<div class="sec-card"><div class="t"><b>${esc(x.n)}</b></div><p class="small" style="margin:4px 0">${esc(x.d)}</p><div class="small">${durum}${!ch.s && x.hold ? ' · koşul bozulmadıkça tarih gelince başarılır' : ''}</div></div>`);
+      }
+    }
     html += sec('Yapılacaklar', todo, al.length ? String(al.length) : '');
     // kartlar
     const milA = c.lines.reduce((a, l) => a + (g.EQUIP[l.e].fac === 'mil' ? l.f : 0), 0);

@@ -46,7 +46,7 @@
 
   // yardım: kategorilere ayrılmış, aranabilir, açılır kapanır bölümler
   const HELP_CAT = [
-    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Kuşatma', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Çok oyunculu', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
+    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Kuşatma', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Senaryolar ve meydan okumalar', 'Çok oyunculu', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
     ['Siyaset', ['Siyaset', 'Ulusal ruhlar (buff ve debuff)', 'Odaklar ve tarihî olaylar', 'Yeni tarihî olaylar', 'Odak ağacı dalları', 'Alternatif tarih yolları', 'İç savaş', 'Parti kampanyaları', 'Kararlar', 'Yasalar ve Ar-Ge', 'Seçimler', 'Güç dengesi', 'Değişen tarih', 'Tarihî dönüm noktaları', 'Dünya haberleri ve Türkiye']],
     ['Ekonomi', ['Ekonomi', 'Yakıt', 'İkmal, altyapı ve hava', 'Demiryolları ve ikmal merkezleri', 'Tank ve uçak tasarımcısı', 'Özel projeler ve atom bombası']],
     ['Kara kuvvetleri', ['Ordular, cepheler ve savaş planları', 'Savaş planı: aşamalı taarruz ve savunma hattı', 'Tümen seçimi ve hatta yayma', 'Komuta Gücü ve mareşaller', 'Muharebe', 'Muharebe taktikleri', 'Kara doktrinleri', 'Tümen tasarımcısı', 'Yeni birlik türleri', 'Tümen şerefi ve muhafızlar', 'Nehirler', 'İşgal: direniş ve uyum', 'Hava indirme']],
@@ -125,6 +125,7 @@
   <section class="sec"><h3 class="sec-h">Özel projeler ve atom bombası</h3><p class="small" style="margin:0">Araştırma panelindeki <b>Projeler</b> sekmesinde HOI4'teki gibi uzun soluklu gizli programlar vardır: Radar Ağı, Kriptoloji Bürosu (bütün düşmanlara karşı +%12), Penisilin, Jet Motoru ve Manhattan Projesi. Her biri bir ön koşul teknolojisi ve siyasi güç ister; aynı anda tek proje yürür ve hızı araştırma hızına bağlıdır. Manhattan Projesi bitince 120 günde bir atom bombası üretilir. Bomba savaşta olduğun bir düşmanın büyük şehrine atılır: sanayi ve altyapı yıkılır, oradaki birlikler ezilir, düşmanın savaş desteği ve istikrarı düşer. Tarihî modda yapay zekâ bomba kullanmaz.</p></section>
   <section class="sec"><h3 class="sec-h">Yatay ekran</h3><p class="small" style="margin:0">Telefonu yan çevirdiğinde menü sola, paneller sağa geçer; harita ortada geniş kalır. Menü → Ekran bölümünden tam ekrana geçebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Kayıt ve taşıma</h3><p class="small" style="margin:0">Menü → Kayıt bölümünde üç yuva ve bir otomatik kayıt vardır. Her yuva ülkeyi, oyun tarihini, modu, zorluğu ve kaydın yapıldığı saati gösterir; Sil düğmesine iki kez dokununca yuva boşalır. Otomatik kayıt aralığı (kapalı, aylık, 3 ayda, 6 ayda, yıllık) ayarlardan seçilir ve cihazda hatırlanır. <b>Dosyaya aktar</b> oyunu bir JSON dosyası olarak indirir; bu dosya başka bir telefonda ya da bilgisayarda <b>Dosyadan yükle</b> ile (başlangıç ekranından da) açılır. Bozuk ya da uyumsuz bir dosya seçilirse mevcut oyun korunur. Oyun claude.ai içinde açıldıysa ve oturumun açıksa Menü → Bulut kaydı ile kayıtlar hesabına yazılır (yalnızca sana görünür); başka cihazda aynı hesapla açıp başlangıç ekranındaki "Bulut kayıtları"ndan devam edebilirsin.</p></section>
+  <section class="sec"><h3 class="sec-h">Senaryolar ve meydan okumalar</h3><p class="small" style="margin:0">Başlangıç ekranındaki ayarlardan başlangıç tarihini seçebilirsin: <b>1936</b> (savaştan önceki yıllar), <b>1939 · Savaşın Eşiği</b> (Ağustos 1939: Avusturya ve Çekoslovakya ilhak edilmiş, Molotov-Ribbentrop Paktı imzalanmış) ya da <b>1941 · Barbarossa Arifesi</b> (Haziran 1941: Fransa düşmüş, Britanya direniyor). Senaryolarda yalnızca o tarihte ayakta olan ülkeler seçilebilir ve oyun tarihî kipte başlar; dünya her oyunda farklı sürer. Dosya bölümündeki <b>Meydan okuma</b> listesinden isteğe bağlı bir hedef seçebilirsin (ör. "Yıldırım Harbi: Paris'i 1940 sonundan önce al", "Millî Şef'in Dengesi: 1945'e dek savaşa girme"). Hedefin durumu ve kalan süre Genel bakış ekranında görünür; başarınca ya da kaybedince haber verilir.</p></section>
   <section class="sec"><h3 class="sec-h">Çok oyunculu</h3><p class="small" style="margin:0">Oyun claude.ai içinde açıldıysa başlangıç ekranındaki <b>Çok oyunculu</b> bölümünden <b>Oyun kur</b>: altı harfli bir kod çıkar. Arkadaşların oyunu açıp kodu yazar ve <b>Katıl</b>'a basar (sayfa onlarla Paylaş menüsünden en az "katkıda bulunabilir" izniyle paylaşılmış olmalı). Lobide herkes bir ülke seçer; kurucu mod, zorluk ve tur uzunluğunu (3, 7 ya da 14 gün) belirleyip başlatır. Seçilmeyen ülkeleri yapay zekâ yönetir. Her turda oyun durur: herkes kendi ülkesine emir verir (araştırma, üretim, inşaat, birlik hareketleri, diplomasi) ve alttaki çubuktan <b>Turu bitir</b>'e basar. Herkes hazır olunca tur, kurucunun cihazında herkes için birlikte işlenir ve yeni durum herkese gelir. Kurucu bekleyemiyorsa <b>Beklemeden devam</b> der; emir göndermeyenlerin ülkesi o tur yalnızca var olan emirleriyle sürer. Tur sırasında çıkan olaylarda ilk seçenek uygulanır ve sonraki turun başında bildirilir. İki oyuncu aynı turda aynı şeyi değiştirirse (ör. aynı ülkeye ikisi birden savaş ilan ederse) küçük yuvanın emri önce, diğerininki sonra uygulanır.</p>
     <p class="small" style="margin:8px 0 0"><b>Gerçek zamanlı kip:</b> lobide "Gerçek zamanlı" seçilirse zaman herkes için birlikte akar; hızı ve duraklatmayı kurucu yönetir. Her cihaz aynı dünyayı çalıştırır: verdiğin emir kurucuya gider, bir iki saniye içinde herkeste aynı günün başında devreye girer (o ana dek ekranda eski hâli görünebilir; alttaki çubuk "emir yolda" der). Geride kalan cihaz kendiliğinden hızlanır; kurucu, çok geride kalan çevrimiçi oyuncuyu bekler. Cihazlar her 20 günde bir durumlarını karşılaştırır, fark çıkarsa kurucudan taze görüntü alınır.</p>
     <p class="small" style="margin:8px 0 0"><b>Masa:</b> Alttaki çubuktaki <b>Masa</b> düğmesi oyuncuları (çevrimiçi olanlar yeşil), sohbeti, gelen diplomasi tekliflerini ve bekleyen kararları gösterir. Başka bir oyuncuya pakt, ittifak daveti, geçiş izni, beyaz barış ya da savaşa çağrı Diplomasi panelinden teklif edilir; o kabul edince gerçekleşir. Gerçek zamanlı kipte ülkene gelen seçimli olaylar Masa'da bekler; 15 gün içinde seçmezsen ilk seçenek uygulanır. Lobide <b>Herkese açık</b> seçilen oyunlar başlangıç ekranındaki <b>Açık oyunlar</b> listesinde görünür.</p>
@@ -141,7 +142,7 @@
   const FEATURED = ['TUR', 'GER', 'SOV', 'ENG', 'FRA', 'USA', 'ITA', 'JAP', 'CHI', 'POL'];
   UI.startSel = 'TUR';
   try { UI.tall = localStorage.getItem('dc_tall') === '1'; } catch (e) {}
-  UI.startOpts = { mode: 0, diff: 1 };
+  UI.startOpts = { mode: 0, diff: 1, scen: 0, chal: '' };
   UI.showStart = () => {
     $('start').hidden = false;
     ['hud', 'nav', 'map-tools'].forEach((id) => ($(id).hidden = true));
@@ -150,12 +151,19 @@
   };
   UI.renderStart = () => {
     const defs = g.COUNTRY_DEFS;
-    const tags = Object.keys(defs).filter((t) => !defs[t].hidden && P.some((p) => p.t === t));
+    // başlangıç senaryosu (1939, 1941): yalnızca o tarihte ayakta olan ülkeler, o tarihin sayıları ve liderleri
+    const SC = UI.startOpts.scen && g.SCENARIOS ? g.SCENARIOS[UI.startOpts.scen] : null, scSum = SC ? SC.sum : null;
+    const tags = Object.keys(defs).filter((t) => !defs[t].hidden && (scSum ? scSum[t] : P.some((p) => p.t === t)));
+    if (scSum && !scSum[UI.startSel]) UI.startSel = FEATURED.find((t) => scSum[t]) || tags[0];
+    const feat = FEATURED.filter((t) => !scSum || scSum[t]);
+    const yr0 = SC ? +UI.startOpts.scen : 1936;
+    const eb = document.querySelector('#start .eyebrow'); if (eb) eb.textContent = `${SC ? G.fmtDate(SC.day) : '1 Ocak 1936'} — Büyük Strateji`;
+    const info = (t) => { const d = defs[t], sm = scSum && scSum[t]; return sm ? { l: sm.l, id: sm.id, civ: sm.civ, mil: sm.mil, div: sm.div, w: sm.w } : { l: d.l, id: d.id, civ: d.civ, mil: d.mil, div: Object.values(d.div || {}).reduce((a, b) => a + b, 0), w: 0 }; };
     const card = (t, big) => {
-      const d = defs[t]; const id = g.IDEOLOGIES[d.id];
+      const d = defs[t], f = info(t); const id = g.IDEOLOGIES[f.id] || g.IDEOLOGIES[d.id];
       if (!big) return `<button class="mcard ${UI.startSel === t ? 'on' : ''}" data-act="pick" data-v="${t}">${G.flag(t, 24, 16)}<b>${esc(d.n)}</b></button>`;
       const K = { GER: 'arm', USA: 'mot', POL: 'cav', SOV: 'art', JAP: 'mar' }[t] || 'inf';
-      return `<button class="mcard big ${UI.startSel === t ? 'on' : ''}" data-act="pick" data-v="${t}" style="--art:url('${G.art.url(G.art.unit(K, t, 1936, 1))}')"><div class="row">${G.flag(t, 30, 20)}<b>${esc(d.n)}</b></div><div class="d">${esc(d.l)}</div><div class="d"><span style="color:${id.c}">${id.n}</span> · ${d.civ} sivil · ${d.mil} askerî</div></button>`;
+      return `<button class="mcard big ${UI.startSel === t ? 'on' : ''}" data-act="pick" data-v="${t}" style="--art:url('${G.art.url(G.art.unit(K, t, yr0, 1))}')"><div class="row">${G.flag(t, 30, 20)}<b>${esc(d.n)}</b></div><div class="d">${esc(f.l)}${f.w ? ' · <span class="neg">savaşta</span>' : ''}</div><div class="d"><span style="color:${id.c}">${id.n}</span> · ${f.civ} sivil · ${f.mil} askerî</div></button>`;
     };
     const d = defs[UI.startSel];
     const meta = G.saveMeta('auto');
@@ -166,19 +174,28 @@
     else html += `<div class="sec"><div class="btns">${impBtn()}</div></div>`;
     { const ph = UI.pwaSection ? UI.pwaSection() : ''; if (ph) html += sec('Uygulama', ph); }
     if (UI.mpSection) { const mh = UI.mpSection(); if (mh && G.net.gid && G.net.game && G.net.game.status === 'lobby') { $('start-body').innerHTML = mh; return; } html += mh; }
-    html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${FEATURED.map((t) => card(t, true)).join('')}</div></div>`;
+    html += `<div class="sec"><h3 class="sec-h">Öne çıkan uluslar</h3><div class="majors">${feat.map((t) => card(t, true)).join('')}</div></div>`;
     html += `<div class="sec"><h3 class="sec-h">Tüm ülkeler<span>${tags.length}</span></h3><div class="minors">${tags.filter((t) => !FEATURED.includes(t)).sort((a, b) => defs[a].n.localeCompare(defs[b].n, 'tr')).map((t) => card(t)).join('')}</div></div>`;
     html += `<div class="sec opts"><h3 class="sec-h">Ayarlar</h3>
-      <div class="seg"><button class="${UI.startOpts.mode === 0 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="0">Tarihî</button><button class="${UI.startOpts.mode === 1 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="1">Serbest</button><button class="${UI.startOpts.mode === 2 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="2">Alternatif</button></div>
-      <p class="muted small" style="margin:0 0 8px">${['Yapay zekâ tarihî olayları izler: Anschluss, Barbarossa, Pearl Harbor…', 'Yapay zekâ kendi hedeflerini kovalar; tarihî olaylar yalnızca ittifaklar için gerçekleşir.', 'Serbest dünya + birkaç yapay zekâ ülkesi rastgele alternatif yollara girer (Kayzer Almanyası, Troçki, Osmanlı…). Her oyun farklı.'][UI.startOpts.mode]}</p>
+      ${g.SCENARIOS ? `<div class="seg">${[[0, '1936'], ...Object.keys(g.SCENARIOS).map((k) => [+k, k])].map(([v, n]) => `<button class="${(UI.startOpts.scen || 0) === v ? 'on' : ''}" data-act="sopt" data-k="scen" data-v="${v}">${n}</button>`).join('')}</div>
+      <p class="muted small" style="margin:0 0 8px">${SC ? `<b>${esc(SC.n)}.</b> ${esc(SC.d)} Senaryolar tarihî kipte başlar.` : 'Ocak 1936: savaştan önceki yıllar; sanayini ve ordunu sıfırdan kur.'}</p>` : ''}
+      ${SC ? '' : `<div class="seg"><button class="${UI.startOpts.mode === 0 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="0">Tarihî</button><button class="${UI.startOpts.mode === 1 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="1">Serbest</button><button class="${UI.startOpts.mode === 2 ? 'on' : ''}" data-act="sopt" data-k="mode" data-v="2">Alternatif</button></div>
+      <p class="muted small" style="margin:0 0 8px">${['Yapay zekâ tarihî olayları izler: Anschluss, Barbarossa, Pearl Harbor…', 'Yapay zekâ kendi hedeflerini kovalar; tarihî olaylar yalnızca ittifaklar için gerçekleşir.', 'Serbest dünya + birkaç yapay zekâ ülkesi rastgele alternatif yollara girer (Kayzer Almanyası, Troçki, Osmanlı…). Her oyun farklı.'][UI.startOpts.mode]}</p>`}
       <div class="seg">${G.DIFF.map((x, i) => `<button class="${UI.startOpts.diff === i ? 'on' : ''}" data-act="sopt" data-k="diff" data-v="${i}">${x.n}</button>`).join('')}</div>
       <p class="muted small" style="margin:0">${esc(G.DIFF[UI.startOpts.diff].d)}</p></div>`;
     // seçilen ülkenin dosyası: lider portresi, ideoloji, sanayi ve ordu
-    { const id0 = g.IDEOLOGIES[d.id] || { n: '', c: '#aaa' }, dv = Object.values(d.div || {}).reduce((a, b) => a + b, 0);
-      html += sec(`${esc(d.n)} · dosya`, `<div class="row" style="gap:12px;align-items:flex-start">${G.art.img(G.art.leader(UI.startSel, d.l, d.id), 'portrait-l')}<div class="grow"><div class="t" style="font-size:17px"><b>${esc(d.l)}</b></div><div class="small"><span style="color:${id0.c}">${esc(id0.n)}</span> · başkent ${esc(d.cap || '')}</div>${kv([['Sivil fab.', d.civ], ['Askerî fab.', d.mil], ['Tersane', d.dock || 0], ['Tümen', dv], ['Nüfus', (d.pop || 0) + ' M']])}</div></div>`); }
-    const ssp = ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
+    { const f = info(UI.startSel), id0 = g.IDEOLOGIES[f.id] || { n: '', c: '#aaa' };
+      const rows = SC ? [['Sivil fab.', f.civ], ['Askerî fab.', f.mil], ['Tümen', f.div], ['Durum', f.w ? `${f.w} ülkeyle savaşta` : 'barışta']] : [['Sivil fab.', f.civ], ['Askerî fab.', f.mil], ['Tersane', d.dock || 0], ['Tümen', f.div], ['Nüfus', (d.pop || 0) + ' M']];
+      html += sec(`${esc(d.n)} · dosya`, `<div class="row" style="gap:12px;align-items:flex-start">${G.art.img(G.art.leader(UI.startSel, f.l, f.id), 'portrait-l')}<div class="grow"><div class="t" style="font-size:17px"><b>${esc(f.l)}</b></div><div class="small"><span style="color:${id0.c}">${esc(id0.n)}</span> · başkent ${esc(d.cap || '')}</div>${kv(rows)}</div></div>`); }
+    // meydan okuma (isteğe bağlı): seçilen ülkeye ve başlangıç tarihine uygun hedefler
+    if (G.chalFor) {
+      const L = G.chalFor(UI.startSel, SC ? SC.day : 0);
+      if (UI.startOpts.chal && !L.some((x) => x.id === UI.startOpts.chal)) UI.startOpts.chal = '';
+      html += sec('Meydan okuma', `<p class="muted small" style="margin:0 0 6px">İsteğe bağlı: bir tarihî hedef seç; süresi dolunca başarın ya da yenilgin kaydedilir. Seçmezsen serbest oynarsın.</p><div class="list">${L.map((x) => `<button class="item ${UI.startOpts.chal === x.id ? 'on' : ''}" data-act="chalpick" data-v="${x.id}"><div class="grow"><div class="t">${esc(x.n)}${x.t === '*' ? '' : ' <span class="pill">ülkeye özel</span>'}</div><div class="d">${esc(x.d)}</div></div>${UI.startOpts.chal === x.id ? '<span class="btn sm pri">Seçildi</span>' : ''}</button>`).join('')}</div>`, 'isteğe bağlı');
+    }
+    const ssp = SC ? [] : ((g.POLITICS[UI.startSel] || {}).sp || []).concat((g.START_SPIRITS || {})[UI.startSel] || []).filter((s) => g.SPIRITS[s]);
     if (ssp.length) html += `<div class="sec"><h3 class="sec-h">${esc(d.n)} · ulusal ruhlar<span>${ssp.length}</span></h3><div class="list">${ssp.map((s) => spiritHtml(s, null)).join('')}</div></div>`;
-    html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla</button></div>`;
+    html += `<div class="go"><button class="btn pri" data-act="begin">${G.flag(UI.startSel, 30, 20)} ${esc(d.n)} ile başla${SC ? ` · ${SC.n}` : ''}</button></div>`;
     $('start-body').innerHTML = html;
   };
   // kayıt yuvaları: bayrak, ülke, oyun tarihi, mod, zorluk ve gerçek kayıt zamanı; oyunda kaydet/sil, dosyaya aktar/yükle
@@ -233,12 +250,31 @@
   };
   ACT.pick = (d) => { UI.startSel = d.v; UI.renderStart(); };
   ACT.sopt = (d) => { UI.startOpts[d.k] = +d.v; UI.renderStart(); };
-  ACT.begin = () => {
-    G.newGame(UI.startSel, { hist: UI.startOpts.mode === 0 ? 1 : 0, alt: UI.startOpts.mode === 2 ? 1 : 0, diff: UI.startOpts.diff });
-    G.st.speed = 2; G.st.paused = 1;
+  ACT.begin = async () => {
+    const key = UI.startOpts.scen ? String(UI.startOpts.scen) : '', SC = key && g.SCENARIOS ? g.SCENARIOS[key] : null;
+    if (SC) {
+      if (UI._beginBusy) return; UI._beginBusy = 1;
+      try { G.scenarioLoad(await G.unpackStr({ z: 1, s: SC.z }), key, UI.startSel, { diff: UI.startOpts.diff }); }
+      catch (e) { UI.toast('Senaryo açılamadı: ' + ((e && e.message) || ''), 'bad'); return; } finally { UI._beginBusy = 0; }
+    } else {
+      G.newGame(UI.startSel, { hist: UI.startOpts.mode === 0 ? 1 : 0, alt: UI.startOpts.mode === 2 ? 1 : 0, diff: UI.startOpts.diff });
+      G.st.speed = 2; G.st.paused = 1;
+    }
+    let chalTxt = '';
+    if (UI.startOpts.chal && G.chalStart) { const r = G.chalStart(UI.startOpts.chal); const x = G.chalById(UI.startOpts.chal); if (r.ok) chalTxt = ` Meydan okuman: <b>${esc(x.n)}</b> — ${esc(x.d)}`; else UI.toast(r.why, 'warn'); }
     UI.enterGame();
-    UI.showModal({ art: 'politics', eyebrow: '1 Ocak 1936', title: G.cname(UI.startSel), text: `${G.def(UI.startSel).l} yönetimindeki ${G.cname(UI.startSel)} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.`, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
+    const c = G.st.C[UI.startSel];
+    const text = SC
+      ? `${esc(SC.d)} ${esc(c.leader)} yönetimindeki ${esc(G.cname(UI.startSel))} artık senin. Ordularını, araştırmalarını ve üretimini gözden geçir; hazır olunca zamanı başlat.${chalTxt}`
+      : `${esc(G.def(UI.startSel).l)} yönetimindeki ${esc(G.cname(UI.startSel))} yeni bir çağın eşiğinde. Bir ulusal odak seç, araştırmaları başlat ve üretimi düzenle. Hazır olunca zamanı başlat.${chalTxt}`;
+    UI.showModal({ art: 'politics', eyebrow: SC ? G.fmtDate(G.st.day) : '1 Ocak 1936', title: G.cname(UI.startSel), text, opts: [{ n: 'Göreve başla', fx: () => { if (UI.maybeTutorial) UI.maybeTutorial(); } }] });
     UI.modalWasRunning = false;
+  };
+  ACT.chalpick = (d) => { UI.startOpts.chal = UI.startOpts.chal === d.v ? '' : d.v; UI.renderStart(); };
+  // meydan okuma sonucu: pencere ve cihazdaki kayıt
+  G.onChal = (x, r) => {
+    try { const L = JSON.parse(localStorage.getItem('dc_chal') || '{}'); if (r > 0) L[x.id] = Date.now(); localStorage.setItem('dc_chal', JSON.stringify(L)); } catch (e) { /* */ }
+    G.queuePopup({ art: r > 0 ? 'surrender' : 'war', eyebrow: 'Meydan okuma', title: r > 0 ? `Başarıldı: ${x.n}` : `Kaybedildi: ${x.n}`, text: `${x.d} ${r > 0 ? 'Tarih seni hatırlayacak.' : 'Bu hedef artık ulaşılamaz; oyuna dilediğin gibi devam edebilirsin.'}`, opts: [{ n: 'Tamam', fx: () => {} }] });
   };
   ACT.continue = () => { if (G.loadGame('auto')) UI.enterGame(); else UI.toast('Kayıt yüklenemedi.', 'bad'); };
   UI.enterGame = () => {

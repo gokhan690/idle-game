@@ -45,6 +45,7 @@
   ];
   // oyuncunun bu ayki başarım kontrolü; yeni kazanılanlar G.onAch'a gider (arayüz saklar)
   G.achCheck = () => {
+    if (G.chalCheck) G.chalCheck(); // meydan okuma (seçildiyse)
     const st = G.st, c = st.C[st.player];
     if (!c || !c.alive || !G.onAch) return;
     if (c.enemies.length) (st.achF || (st.achF = {})).war = 1;

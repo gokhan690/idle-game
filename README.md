@@ -7,6 +7,7 @@
 - **Tek dosya:** `dist/demir-cephe.html` dosyasını telefonda veya bilgisayarda bir tarayıcıyla aç. İnternet gerekmez (yalnızca yazı tipleri internetten yüklenir; yoksa yedek yazı tipi kullanılır).
 - **GitHub Pages:** `main`'e her birleştirmede `.github/workflows/pages.yml` oyunu otomatik yayınlar: `https://gokhan690.github.io/idle-game/` (tek dosyalık sürüm: `/tek-dosya.html`). Bir kez depo ayarlarında *Settings → Pages → Build and deployment → Source: **GitHub Actions*** seçilmelidir.
 - **Telefon uygulaması (PWA):** Sitedeyken başlangıç ekranındaki *Uygulamayı yükle* düğmesi (Android/Chrome) ya da Safari'de *Paylaş → Ana Ekrana Ekle* (iPhone) ile ana ekrana eklenir; tam ekran ve internetsiz açılır. Yeni sürüm yayınlanınca *Yeni sürüm hazır · Yenile* düğmesi çıkar.
+- **Senaryolar ve meydan okumalar:** 1936'nın yanında 1939 (Savaşın Eşiği) ve 1941 (Barbarossa Arifesi) başlangıçları; ülkeye özel isteğe bağlı tarihî hedefler. Senaryolar `node tools/mkscenario.mjs` ile yeniden üretilir.
 - **Çok oyunculu ve bulut kaydı:** claude.ai'deki sayfasında çalışır (claude.ai'nin veritabanı ve oda kanalı kullanılır). Dışarıda kayıtlar cihazda tutulur.
 - **Web sitesi / PWA:** Depoyu herhangi bir statik sunucuda yayınla ve `index.html`'i aç. Tarayıcı menüsünden "Ana ekrana ekle" ile uygulama gibi tam ekran ve çevrimdışı çalışır.
 - **Yerelde:** `npm run serve` ve ardından `http://localhost:8080`.
