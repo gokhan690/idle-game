@@ -272,4 +272,23 @@
     for (const c of Object.values(st.C)) if (c.alive) { G.econCalc(c); G.fuelInit(c); } // yakıt deposu varsayılanı
     return st;
   };
+  // başlangıç senaryosu (1939, 1941): tarihî kipte oynatılmış dünya görüntüsü yüklenir, seçilen ülke oyuncuya geçer
+  G.scenarioLoad = (str, key, tag, opts) => {
+    G.deserialize(str);
+    const st = G.st, c = st.C[tag];
+    if (!c || !c.alive) throw new Error('Bu ülke senaryonun tarihinde ayakta değil');
+    st.player = tag; st.scen = key;
+    st.opts = Object.assign({}, st.opts, { hist: 1, alt: 0, diff: (opts && opts.diff) ?? 1 });
+    st.seed = 12345 + Math.floor(Math.random() * 1e6); // her oyun farklı sürsün
+    delete st.humans; delete st.mp; delete st.mpq; delete st.chal; delete st.s0; delete st.ended; delete st.achF;
+    // oyuncu ülkesi: yeni oyundaki gibi ordular beklemede, komuta gücü ve deniz tecrübesi
+    G.autoArmies(c); for (const a of c.armies || []) a.ord = 'hold';
+    for (const u of st.units) if (u.t === tag) u.auto = 0;
+    if (G.cpEnsure) { G.cpEnsure(c); if ((c.nxp || 0) < 30) c.nxp = 30; }
+    G.updateSummaries();
+    if (G.scoreStart) G.scoreStart();
+    st.paused = 1; st.speed = 2;
+    G.log(`${G.fmtDate(st.day)}: ${G.cname(tag)} yönetimini devraldın.`, [tag], 'info');
+    return st;
+  };
 })(window);
