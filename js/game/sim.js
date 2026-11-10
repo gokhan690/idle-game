@@ -93,6 +93,7 @@
     // üretim
     const effCap = Math.min(1, 0.6 + (m.effCap || 0));
     const bomb = c.bombed || 0;
+    if (c.lic) G.licTick(c);
     for (const l of c.lines) {
       const e = g.EQUIP[l.e];
       if (!c.mods.unlockEq[l.e]) continue;
@@ -100,7 +101,7 @@
       if (f <= 0) continue;
       l.eff = Math.min(effCap, l.eff + 0.004 * (effCap - l.eff + 0.05));
       let rr = 1; for (const r of Object.keys(e.res)) rr = Math.min(rr, ratio[r]);
-      const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb);
+      const ic = f * (e.fac === 'mil' ? 4.5 : 2.5) * (e.fac === 'mil' ? l.eff : 1) * Math.max(0.2, 1 + (m.factory || 0) + stabF) * (0.25 + 0.75 * rr) * (1 - bomb) * (l.lic ? G.LIC_EFF : 1);
       if (e.convoy) { c.ships.conv = (c.ships.conv || 0) + ic / e.cost; continue; }
       if (e.ship) {
         // özel gemi tasarımı: maliyet çarpanı ve filo kalitesi (standart tasarım eski hesabı korur)
@@ -396,7 +397,7 @@
     const sr = G.supplyRatio(u); if (sr < 0.4) return;
     {
       const def = G.T(u.t, u.u);
-      let r = Math.min((still ? 0.05 : 0.025) * Math.min(1, sr + 0.2), 1 - u.str);
+      let r = Math.min((still ? 0.05 : 0.025) * Math.min(1, sr + 0.2) * (c.rp ? G.rpMul(u) : 1), 1 - u.str);
       const mpNeed = def.mp * r;
       if ((c.mpAvail || 0) < mpNeed) r = Math.max(0, (c.mpAvail || 0) / def.mp);
       for (const [e, n] of Object.entries(def.eq)) r = Math.min(r, (c.stock[e] || 0) / n);

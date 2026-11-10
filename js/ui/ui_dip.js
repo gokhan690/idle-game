@@ -174,6 +174,11 @@
     const emb = st.embargo[c.tag + '>' + tag];
     th += `<button class="item" data-act="embargo" data-v="${tag}"><div class="grow"><div class="t">${emb ? 'Ambargoyu kaldır' : 'Ambargo uygula'}</div><div class="d">Ambargo uygulanan ülke senden kaynak alamaz.</div></div><span class="muted">›</span></button>`;
     if (!atWar) th += `<div class="item"><div class="grow"><div class="t">Tek seferlik yardım</div><div class="d">Bir defalık teçhizat gönder; ilişkiler iyileşir.</div><div class="btns" style="margin-top:6px">${G.LEND.map(([e2, n, nm]) => `<button class="btn sm" data-act="lend" data-k="${tag}" data-e="${e2}" data-v="${n}" ${((e2 === 'conv' ? c.ships.conv : c.stock[e2]) || 0) >= n ? '' : 'disabled'}>${n} ${nm}</button>`).join('')}</div></div></div>`;
+    // lisanslı üretim: bu ülkenin daha ileri modelleri
+    if (!atWar) {
+      const lic = Object.keys(g.EQUIP).filter((e2) => { const q = g.EQUIP[e2]; return !q.ship && !q.convoy && !(G.DESIGNABLE && G.DESIGNABLE.has(e2)) && (x.mods['eq_' + e2] || 1) > (c.mods['eq_' + e2] || 1) && !(c.lic && c.lic[e2] && c.lic[e2].lv >= (x.mods['eq_' + e2] || 1)); });
+      if (lic.length) th += `<div class="item"><div class="grow"><div class="t">Lisanslı üretim</div><div class="d">Bu ülkenin daha ileri modelini kendi fabrikalarında üret: ${G.LIC_PP} siyasi güç; lisanslı hat %${Math.round((1 - G.LIC_EFF) * 100)} düşük verimle çalışır.</div><div class="btns" style="margin-top:6px">${lic.map((e2) => { const a2 = G.licAllowed(c.tag, tag, e2); return `<button class="btn sm" data-act="licbuy" data-k="${tag}" data-v="${e2}" ${a2.ok ? '' : 'disabled'} title="${esc(a2.ok ? '' : a2.why)}">${g.EQUIP[e2].s} · ${(g.MODEL_N[e2] || [])[x.mods['eq_' + e2] || 1] || 'Sev. ' + (x.mods['eq_' + e2] || 1)}</button>`; }).join('')}</div></div></div>`;
+    }
     // ödünç verme anlaşması: her ay aynı paket
     if (!atWar) {
       const mine = (st.ll || []).filter((x) => x.a === c.tag && x.t === tag);
