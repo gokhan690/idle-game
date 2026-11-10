@@ -2,7 +2,7 @@
 // kurucu devri ve geri dönüş.  node tools/bundle.mjs && node tools/rtbrowser.mjs <çıktı klasörü> [saniye] [düşen ileti oranı]
 import { chromium, devices } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 const S = process.argv[2], SECS = +(process.argv[3] || 8), DROP = process.argv[4] || '0';
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
 await ctx.addInitScript({ path: new URL('./netmock.js', import.meta.url).pathname });
 const errs = [];

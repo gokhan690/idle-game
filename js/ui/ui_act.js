@@ -70,9 +70,10 @@
       { const man = sel.filter((u) => u.man).length; if (man) html += `<div class="tbar"><span class="muted small">${man} tümen elle yönetiliyor</span><button class="btn sm" data-act="unman">Orduya döndür</button></div>`; }
       html += `<div class="row" style="gap:8px;align-items:center"><span class="small">Plan %${Math.round((a0.plan || 0) * 100)}/${Math.round(mx * 100)}</span><div class="grow">${bar((a0.plan || 0) / mx, a0.ord === 'atk' ? 'r' : 'g')}</div><span class="small muted">Güç ${pct(avgStr)}</span></div>`;
       html += `<div class="seg sm">${Object.entries(ORD_N).filter(([k]) => k !== 'fb' || (a0.fb && a0.fb.length)).map(([k, n]) => `<button class="${a0.ord === k ? 'on' : ''}" data-act="armyord" data-k="${a0.id}" data-v="${k}">${n}</button>`).join('')}</div>`;
-      const fbm = UI.fbMode && UI.fbMode.a === a0.id;
-      html += fbm ? `<div class="hint">${UI.fbMode.s == null ? 'Savunma hattının başlangıç eyaletine dokun (kendi toprağın).' : 'Şimdi hattın bitiş eyaletine dokun.'}</div>` : UI.goalMode === a0.id ? `<div class="hint">${UI.goalAppend ? 'Sonraki taarruz aşamasının hedefine dokun.' : 'Taarruz hedefi olacak düşman eyaletine dokun.'}</div>` : `<div class="hint small">Bir eyalete dokun: seçenekler açılır (git, saldır, taarruz oku, cephe ata, savunma hattı) · sayaca dokun: o yığını seç.${a0.goals && a0.goals.length ? ` · ${a0.goals.length + 1} aşamalı taarruz` : ''}</div>`;
-      html += `<div class="tbar"><button class="btn sm ${UI.goalMode === a0.id && !UI.goalAppend ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm ${UI.goalMode === a0.id && UI.goalAppend ? 'pri' : ''}" data-act="armygoaladd" data-v="${a0.id}">+ Aşama</button><button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm ${fbm ? 'pri' : ''}" data-act="armyfb" data-v="${a0.id}">⛉ Savunma hattı</button>${a0.fb && a0.fb.length ? `<button class="btn sm" data-act="armyfbclr" data-v="${a0.id}">Hattı sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
+      const fbm = UI.fbMode && UI.fbMode.a === a0.id, pinm = UI.pinMode && UI.pinMode.a === a0.id;
+      html += `<div class="row" style="gap:6px;align-items:center"><span class="small muted">Plan</span><div class="seg sm grow">${G.AGG_N.map((n, i) => `<button class="${(a0.agg ?? 1) === i ? 'on' : ''}" data-act="armyagg" data-k="${a0.id}" data-v="${i}">${n}</button>`).join('')}</div></div>`;
+      html += pinm ? `<div class="hint">${UI.pinMode.s == null ? 'Cephenin bir ucuna dokun (sınırda bir eyalet).' : 'Şimdi cephenin öbür ucuna dokun.'}</div>` : fbm ? `<div class="hint">${UI.fbMode.s == null ? 'Savunma hattının başlangıç eyaletine dokun (kendi toprağın).' : 'Şimdi hattın bitiş eyaletine dokun.'}</div>` : UI.goalMode === a0.id ? `<div class="hint">${UI.goalAppend ? 'Sonraki taarruz aşamasının hedefine dokun.' : 'Taarruz hedefi olacak düşman eyaletine dokun.'}</div>` : `<div class="hint small">Bir eyalete dokun: seçenekler açılır (git, saldır, taarruz oku, cephe ata, savunma hattı) · sayaca dokun: o yığını seç.${a0.goals && a0.goals.length ? ` · ${a0.goals.length + 1} aşamalı taarruz` : ''}</div>`;
+      html += `<div class="tbar"><button class="btn sm ${pinm ? 'pri' : ''}" data-act="armypin" data-v="${a0.id}">✎ Cephe çiz</button>${a0.frontPin ? `<button class="btn sm" data-act="armypinclr" data-v="${a0.id}">Cepheyi bırak</button>` : ''}<button class="btn sm ${UI.goalMode === a0.id && !UI.goalAppend ? 'pri' : ''}" data-act="armygoal" data-v="${a0.id}">➚ Ok çiz</button>${a0.goal != null ? `<button class="btn sm ${a0.spear ? 'pri' : ''}" data-act="armyspear" data-v="${a0.id}" title="Dar koridordan ilerle">➤ Mızrak ucu</button>` : ''}${a0.goal != null ? `<button class="btn sm ${UI.goalMode === a0.id && UI.goalAppend ? 'pri' : ''}" data-act="armygoaladd" data-v="${a0.id}">+ Aşama</button><button class="btn sm" data-act="armygoalclr" data-v="${a0.id}">Oku sil</button>` : ''}<button class="btn sm ${fbm ? 'pri' : ''}" data-act="armyfb" data-v="${a0.id}">⛉ Savunma hattı</button>${a0.fb && a0.fb.length ? `<button class="btn sm" data-act="armyfbclr" data-v="${a0.id}">Hattı sil</button>` : ''}<button class="btn sm" data-act="armyvs" data-v="${a0.id}">Cephe</button><button class="btn sm" data-act="sub2" data-p="army" data-v="gen:${a0.id}">Komutan</button><button class="btn sm" data-act="armydivs">Tümenler</button></div>`;
     } else {
       // ---- Tümen seçimi ----
       const kinds = {}; for (const u of sel) { const k = R.kindOf(u); kinds[k] = (kinds[k] || 0) + 1; }
@@ -356,6 +357,7 @@
     a.ord = d.v; c._frontsDirty = 1;
     for (const u of G.armyUnits(c, a.id)) delete u.man; // ordu emri: elle yönetilen tümenler orduya döner
     if (d.v === 'fb') { for (const u of G.armyUnits(c, a.id)) u.path = []; G.holdLine(c, a); UI.toast(`${a.n} savunma hattına çekiliyor.`); UI.render(); UI.renderSel(); R.dirty = 1; return; }
+    if (d.v === 'gar') { a.garP = G.garrisonPlan(c, a); a.front = []; G.holdLine(c, a, a.garP); UI.toast(`${a.n} garnizon görevinde: ${a.garP.length} şehir ve liman tutulacak.`, 'good'); UI.render(); UI.renderSel(); R.dirty = 1; return; }
     if (d.v === 'hold') for (const u of G.armyUnits(c, a.id)) { u.path = []; }
     if (d.v !== 'hold') G.computeFronts(c);
     const noFront = d.v !== 'hold' && !(a.front || []).length;
@@ -385,6 +387,49 @@
   // savunma hattı: iki dokunuşla başlangıç ve bitiş
   ACT.armyfb = (d) => { const a = armyOf(d.v); if (!a) return; if (UI.fbMode && UI.fbMode.a === a.id) { UI.fbMode = null; UI.renderSel(); return; } if (!UI.selectArmy(a.id, false)) return; UI.fbMode = { a: a.id, s: null }; UI.goalMode = null; UI.renderSel(); UI.toast('Savunma hattının başlangıç eyaletine dokun.'); };
   ACT.armyfbclr = (d) => { const a = armyOf(d.v); if (!a) return; a.fb = null; if (a.ord === 'fb') { a.ord = 'def'; me()._frontsDirty = 1; } UI.render(); UI.renderSel(); R.dirty = 1; };
+  // elle cephe çizimi (HOI4 cephe hattı): iki uca dokun
+  ACT.armypin = (d) => { const a = armyOf(d.v); if (!a) return; if (UI.pinMode && UI.pinMode.a === a.id) { UI.pinMode = null; R.fbPreview = null; UI.renderSel(); R.dirty = 1; return; } if (!UI.selectArmy(a.id, false)) return; UI.pinMode = { a: a.id, s: null }; UI.fbMode = null; UI.goalMode = null; UI.renderSel(); };
+  ACT.armypinclr = (d) => { const a = armyOf(d.v); if (!a) return; delete a.frontPin; me()._frontsDirty = 1; G.computeFronts(me()); UI.toast(`${a.n}: cephe yeniden en yakın sınıra göre belirlenecek.`); UI.renderSel(); R.dirty = 1; };
+  UI.pinTap = (n) => {
+    const m = UI.pinMode, a = m && armyOf(m.a); if (!a || n < 0 || n >= NP) { UI.pinMode = null; R.fbPreview = null; UI.renderSel(); R.dirty = 1; return; }
+    if (m.s == null) { m.s = n; R.fbPreview = [n]; UI.renderSel(); R.dirty = 1; return; }
+    UI.pinMode = null; R.fbPreview = null;
+    // durum değişikliği: çok oyunculuda emir olarak iletilir
+    UI.act('armypinset', { k: String(a.id), v: m.s + ',' + n });
+  };
+  ACT.armypinset = (d) => {
+    const a = armyOf(d.k), [s, e] = String(d.v).split(',').map(Number); if (!a) return;
+    const r = G.pinFront(me(), a, s, e);
+    UI.toast(r.ok ? `${a.n}: ${r.n} eyaletlik cephe hattı çizildi${a.vs ? ` (${G.cname(a.vs)} sınırı)` : ''}.` : r.why, r.ok ? 'good' : 'warn');
+    UI.render(); UI.renderSel(); R.dirty = 1;
+  };
+  ACT.armyspear = (d) => { const a = armyOf(d.v); if (!a) return; if (a.spear) delete a.spear; else a.spear = 1; UI.toast(a.spear ? `${a.n}: mızrak ucu. Ordu oka doğru dar bir koridordan ilerler.` : `${a.n}: geniş cepheden ilerler.`); UI.renderSel(); R.dirty = 1; };
+  ACT.armyagg = (d) => { const a = armyOf(d.k); if (!a) return; a.agg = +d.v; UI.toast(`${a.n} planı: ${G.AGG_N[a.agg]} (${['yalnız belirgin üstünlükte saldırır', 'dengeli', 'riskli saldırılara da girer'][a.agg]}).`); UI.renderSel(); };
+  // tüm ordular: planı uygula / durdur (HOI4 "Tümünü uygula")
+  ACT.armyexecall = (d) => {
+    const c = me(), on = d.v === '1'; let n = 0;
+    for (const a of c.armies || []) { if (on && a.ord === 'def' && (a.front || []).length) { a.ord = 'atk'; n++; } else if (!on && a.ord === 'atk') { a.ord = 'def'; n++; } }
+    c._frontsDirty = 1;
+    UI.toast(n ? (on ? `${n} ordu planı uyguluyor.` : `${n} ordu durdu, cepheyi tutuyor.`) : on ? 'Uygulanacak plan yok: ordulara cephe ata.' : 'Taarruzda ordu yok.', n ? 'good' : 'info');
+    UI.render(); UI.renderSel(); UI.hud(); R.dirty = 1;
+  };
+  // ordu şeridi (HOI4 alt çubuğu, telefonda sol kenar): her ordu bir çip; dokun = seç, seçiliyken dokun = odaklan
+  UI.armyBar = () => {
+    let el = $('armybar');
+    const c = me(), L = c && c.alive ? (c.armies || []).filter((a) => G.st.units.some((u) => u.t === c.tag && u.army === a.id)) : [];
+    const show = L.length && $('start').hidden && $('sheet').hidden && !(G.st.conf);
+    document.body.classList.toggle('has-armybar', !!show);
+    if (!show) { if (el) el.hidden = true; return; }
+    if (!el) { el = document.createElement('div'); el.id = 'armybar'; el.className = 'armybar'; $('app').appendChild(el); }
+    const ORD_I = { hold: '⏸', def: '▮', atk: '▶', fb: '⛉', gar: '⚑' };
+    const anyAtk = L.some((a) => a.ord === 'atk');
+    let h = c.enemies.length ? `<button class="achip all ${anyAtk ? 'atk' : ''}" data-act="armyexecall" data-v="${anyAtk ? 0 : 1}" title="${anyAtk ? 'Tüm orduları durdur' : 'Tüm planları uygula'}"><b>${anyAtk ? '⏸' : '▶'}</b><i>Tümü</i></button>` : '';
+    const cnt = new Map(); for (const u of G.st.units) if (u.t === c.tag && u.army) cnt.set(u.army, (cnt.get(u.army) || 0) + 1);
+    h += L.map((a, k) => `<button class="achip ${R.sel.army === a.id ? 'on' : ''} ${a.ord === 'atk' ? 'atk' : ''}" data-act="armychip" data-v="${a.id}" style="--ac:${G.armyColor(a)}" title="${esc(a.n)}"><b>${k + 1}</b><i>${ORD_I[a.ord] || ''} ${cnt.get(a.id) || 0}</i><s style="width:${Math.round(100 * (a.plan || 0) / Math.max(0.01, G.maxPlan(c, a)))}%"></s></button>`).join('');
+    if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }
+    el.hidden = false;
+  };
+  ACT.armychip = (d) => { if (R.sel.army === +d.v) { UI.selectArmy(d.v, true); return; } UI.selectArmy(d.v, false); UI.armyBar(); };
   UI.fbTap = (n) => {
     const st = G.st, a = armyOf(UI.fbMode.a); if (!a) { UI.fbMode = null; return; }
     if (n < 0 || n >= NP) { UI.fbMode = null; UI.renderSel(); return; }

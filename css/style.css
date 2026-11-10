@@ -916,3 +916,16 @@ span.neg { color: var(--bad, #c0392b); font-weight: 600; }
 .ordmenu .omi:active { background: rgba(184,145,58,0.18); }
 .ordmenu .omi[disabled] { opacity: 0.45; }
 .ordmenu .omx { align-items: center; color: var(--muted, #a9a58f); border-bottom: 0; }
+/* ordu şeridi (HOI4 ordu çubuğu): sol kenarda dikey çipler */
+.armybar { position: absolute; left: calc(6px + var(--safe-l, 0px)); top: calc(var(--hud-b, calc(var(--safe-t) + 84px)) + 8px); z-index: 14; display: flex; flex-direction: column; gap: 5px; max-height: calc(100vh - var(--hud-b, 120px) - var(--nav-h, 56px) - 40px); overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
+.armybar::-webkit-scrollbar { display: none; }
+.achip { position: relative; width: 44px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 3px 2px 6px; color: #f1ead2; background: linear-gradient(180deg, #2c3227, #1d211a); border: 1px solid #4a4f3f; border-left: 4px solid var(--ac, #b8913a); border-radius: 6px; box-shadow: 0 3px 8px rgba(0,0,0,0.45); overflow: hidden; flex: none; }
+.achip b { font-size: 16px; line-height: 1.1; }
+.achip i { font-style: normal; font-size: 10.5px; color: var(--muted, #a9a58f); white-space: nowrap; }
+.achip s { position: absolute; left: 0; bottom: 0; height: 3px; background: #7fb35a; text-decoration: none; }
+.achip.on { border-color: var(--brass, #b8913a); box-shadow: 0 0 0 2px rgba(184,145,58,0.55), 0 3px 8px rgba(0,0,0,0.45); }
+.achip.atk s { background: #d6483a; }
+.achip.atk i { color: #ff9c8a; }
+.achip.all { border-left-width: 1px; background: linear-gradient(180deg, #4b5a2c, #2f3a1c); }
+.achip.all.atk { background: linear-gradient(180deg, #6a2a22, #3d1814); }
+body.has-armybar #toasts { left: calc(58px + var(--safe-l, 0px)); }

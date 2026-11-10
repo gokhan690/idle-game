@@ -160,6 +160,9 @@
     if (c.gens.length < Math.min(6, 1 + st0().units.filter((u) => u.t === c.tag).length / 20) && c.pp > 300) { c.pp -= 50; G.newGeneral(c); }
   };
 
+  // plan saldırganlığı (HOI4): temkinli / dengeli / saldırgan → saldırı için gereken üstünlük çarpanı
+  G.AGG_MUL = [1.25, 1, 0.78];
+  G.AGG_N = ['Temkinli', 'Dengeli', 'Saldırgan'];
   G.playerAuto = (c, i) => {
     const st = G.st;
     if ((st.day + i) % 10 === 0) { if (c.auto.air) G.aiAir(c); else if (!c.wings) G.initWings(c); }
@@ -181,7 +184,8 @@
       for (const a of c.armies || []) {
         if (a.ord === 'hold') continue;
         if (a.ord === 'fb') { G.holdLine(c, a); continue; } // savunma hattına çekil
-        G.aiMilitary(c, (u) => u.army === a.id && !u.sr && !u.man, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1, army: a, front: new Set(a.front || []), goal: a.goal });
+        if (a.ord === 'gar') { if (!a.garP || !a.garP.length || st.day % 30 === 0) a.garP = G.garrisonPlan(c, a); G.holdLine(c, a, a.garP); continue; } // garnizon
+        G.aiMilitary(c, (u) => u.army === a.id && !u.sr && !u.man, { vs: a.vs, noAttack: a.ord === 'def', aggrMul: (a.ord === 'atk' ? (a.goal != null ? 0.75 : 0.85) : 1) * (G.AGG_MUL[a.agg ?? 1] || 1), spear: a.spear ? 1 : 0, army: a, front: new Set(a.front || []), goal: a.goal });
       }
     }
     G.armyTick(c);
@@ -332,7 +336,7 @@
       const chinaHold = !G.isHuman(tag) && st.opts.hist && (tag === 'JAP' || tag === 'MAN') && (G.histAhead('JAP', 'CHI') ?? -1) > 0.02;
       const goal = opts.goal != null && st.prov[opts.goal].c !== tag ? opts.goal : null;
       const d0 = goal != null ? Math.min(...front.map((f) => G.dist(f.i, goal))) : 0;
-      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + 70).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0, pin: pincer(t.e) })).sort((a, b) => (a.def + a.gd - a.pin * 4 - b.def - b.gd + b.pin * 4) || (b.vp - a.vp));
+      const tlist = [...targets.values()].filter((t) => !opts.noAttack).filter((t) => goal == null || G.dist(t.e, goal) < d0 + (opts.spear ? 26 : 70)).filter((t) => !passive || G.sameFaction(tag, st.prov[t.e].core) || st.prov[t.e].core === tag || (P[t.e].lat < 37 && P[t.e].lon > -20 && P[t.e].lon < 62)).filter((t) => !sitz || st.prov[t.e].c !== 'FRA').filter((t) => !chinaHold || st.prov[t.e].core !== 'CHI').map((t) => ({ ...t, def: provThreat(t.e, tag), vp: P[t.e].vp, gd: goal != null ? G.dist(t.e, goal) * 0.25 : 0, pin: pincer(t.e) })).sort((a, b) => (a.def + a.gd - a.pin * 4 - b.def - b.gd + b.pin * 4) || (b.vp - a.vp));
       // kazanma eşiği: saldıranın moral süresi / savunanın moral süresi (muharebe tahmini)
       const margin = aggr / 1.3;
       for (const t of tlist) {
