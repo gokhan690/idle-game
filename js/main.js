@@ -366,7 +366,7 @@
           else { naval++; if (hostileLanding) { u.inv = { p: 0, n: G.invPrep(c, u), at: landing }; inv++; invN = Math.max(invN, u.inv.n); if (lastSea != null) invSup = Math.min(invSup, G.navalSupremacy(u.t, lastSea)); } }
         }
       }
-      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; if (u.army) u.man = 1; ok++; } else fail++;
+      if (path && path.length) { if (!path.some((x) => x >= NP)) delete u.inv; u.path = path; u.prog = 0; u.auto = 0; delete u.sup; if (u.army) u.man = 1; ok++; } else fail++;
     }
     if (target < NP && !G.canEnter(st.player, target)) UI.toast(`${G.cname(st.prov[target].c)} topraklarına giremezsin: savaş ilan et veya geçiş izni al.`, 'warn');
     else if (blocked) UI.toast(blocked, 'warn');
