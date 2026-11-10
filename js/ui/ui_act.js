@@ -431,6 +431,7 @@
     const anyAtk = L.some((a) => a.ord === 'atk');
     let h = c.enemies.length ? `<button class="achip all ${anyAtk ? 'atk' : ''}" data-act="armyexecall" data-v="${anyAtk ? 0 : 1}" title="${anyAtk ? 'Tüm orduları durdur' : 'Tüm planları uygula'}"><b>${anyAtk ? '⏸' : '▶'}</b><i>Tümü</i></button>` : '';
     const cnt = new Map(); for (const u of G.st.units) if (u.t === c.tag && u.army) cnt.set(u.army, (cnt.get(u.army) || 0) + 1);
+    h += `<button class="achip all" data-act="divlist" title="Tümen listesi"><b>☰</b><i>Tümen</i></button>`;
     h += L.map((a, k) => `<button class="achip ${R.sel.army === a.id ? 'on' : ''} ${a.ord === 'atk' ? 'atk' : ''}" data-act="armychip" data-v="${a.id}" style="--ac:${G.armyColor(a)}" title="${esc(a.n)}"><b>${k + 1}</b><i>${ORD_I[a.ord] || ''} ${cnt.get(a.id) || 0}</i><s style="width:${Math.round(100 * (a.plan || 0) / Math.max(0.01, G.maxPlan(c, a)))}%"></s></button>`).join('');
     if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }
     el.hidden = false;

@@ -224,7 +224,8 @@
     const st = G.st; if (!st) return;
     const n = R.nodeAt(x, y); if (n < 0) return;
     const L = (G.unitsAt[n] || []).filter((u) => u.t === st.player);
-    if (!L.length) return;
+    // kendi birliğin yoksa: eyaletin hızlı bilgi kartı (seçim bozulmaz)
+    if (!L.length) { if (n < NP) { if (UI.closeOrderMenu) UI.closeOrderMenu(); UI.showCard(n); R.dirty = 1; } return; }
     for (const u of L) R.sel.units.add(u.id);
     if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) { /* */ }
     UI.close(); $('card').hidden = true; UI.renderSel(); R.dirty = 1;

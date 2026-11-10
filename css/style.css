@@ -937,3 +937,9 @@ body.has-armybar #toasts { left: calc(58px + var(--safe-l, 0px)); }
 .lgr.h { background: rgba(0,0,0,0.3); color: var(--muted, #a9a58f); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
 .lgr.bad b { color: #ffb09c; }
 .lgr i { font-style: normal; } .lgr i.pos { color: var(--good, #8fbf6a); } .lgr i.neg { color: #ff9c8a; }
+/* bildirim yığını (tamamlanan işler): sağ kenarda, harita araçlarının altında */
+.notebar { position: absolute; right: calc(10px + var(--safe-r, 0px)); bottom: calc(var(--nav-h, 56px) + var(--safe-b, 0px) + 64px); z-index: 14; display: flex; flex-direction: column-reverse; gap: 6px; }
+.note { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #f1ead2; background: radial-gradient(circle at 35% 30%, #4a5a2f, #232b18); border: 2px solid var(--brass, #b8913a); box-shadow: 0 3px 8px rgba(0,0,0,0.5); animation: tin 0.2s ease-out; }
+.note svg, .note .ico { width: 20px; height: 20px; }
+.note { position: relative; }
+.note em { position: absolute; right: -4px; top: -4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background: var(--bad, #c0392b); color: #fff; font-style: normal; font-size: 11px; line-height: 16px; text-align: center; }
