@@ -242,7 +242,7 @@
     if (myTurn) html += '<div class="btns"><button class="btn" data-act="cfpass">Pas geç</button><button class="btn danger" data-act="cfquit">Konferanstan çekil</button></div>';
     else if (cf.done) html += '<div class="btns"><button class="btn pri" data-act="cfend">Antlaşmayı imzala</button></div>';
     if (myTurn) {
-      const pc = G.confPuppetCost(cf), canP = !cf.puppet && G.confRemainFrac(cf) >= 0.05;
+      const pc = G.confPuppetCost(cf, me0), canP = !cf.puppet && G.confRemainFrac(cf) >= 0.05;
       let ah = '';
       if (canP) ah += `<div class="item"><div class="grow"><div class="t">Kukla devlet kur</div><div class="d">Talep edilmemiş tüm topraklarda ${esc(G.cname(cf.L))} sana bağlı kukla olur.</div></div><button class="btn sm ${pc <= p.pts ? 'pri' : ''}" data-act="cfpuppet" ${pc <= p.pts ? '' : 'disabled'}>${pc}</button></div>`;
       for (const r of G.confReleasable(cf)) { const rc = G.confReleaseCost(cf, me0, r.provs); ah += `<div class="item">${G.flag(r.t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(r.t))} ulusunu serbest bırak</div><div class="d">${r.provs.length} asli eyaleti · sana bağlı kukla olur</div></div><button class="btn sm ${rc <= p.pts ? 'pri' : ''}" data-act="cfrelease" data-v="${r.t}" ${rc <= p.pts ? '' : 'disabled'}>${rc}</button></div>`; }

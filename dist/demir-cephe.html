@@ -6145,6 +6145,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
 
   // ---------- Günlük siyaset ----------
   G.polTick = (c) => {
+    if (c.dipAct) G.dipActTick(c); // sürekli diplomatik eylemler (yalnız varsa)
     const st = G.st, m = c.mods;
     const atWar = c.enemies.length > 0;
     // savaşın etkileri
@@ -7750,12 +7751,12 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
       if (pr.oc === w) m *= 0.5;
       c += G.provCost(n) * m;
     }
-    return Math.round(c);
+    return Math.round(c * (G.goalMul ? G.goalMul(conf, w, 'take') : 1)); // savaş hedefi türü
   };
   G.confStateCost = (conf, w, s) => G.confCost(conf, w, free(conf, s));
-  G.confPuppetCost = (conf) => {
+  G.confPuppetCost = (conf, w) => {
     let c = 0; for (const s of conf.states) for (const n of free(conf, s)) c += G.provCost(n);
-    return Math.round(c * 0.45);
+    return Math.round(c * 0.45 * (w && G.goalMul ? G.goalMul(conf, w, 'puppet') : 1));
   };
   // Serbest bırakılabilir uluslar: yok olmuş, asli toprakları L'nin elinde
   G.confReleasable = (conf) => {
@@ -7791,7 +7792,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
       conf.log.push({ t: w, m: `${s.n} bölgesini talep etti (${cost})` });
     } else if (a.k === 'puppet') {
       if (conf.puppet) return { ok: false };
-      const cost = G.confPuppetCost(conf);
+      const cost = G.confPuppetCost(conf, w);
       if (cost > p.pts) return { ok: false, why: `${cost} puan gerekli.` };
       if (remainFrac(conf) < 0.05) return { ok: false, why: 'Geriye kukla kuracak toprak kalmadı.' };
       p.pts -= cost; conf.puppet = w;
@@ -7817,7 +7818,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     const p = part(conf, w);
     if (p.pass === 2) return false;
     for (const s of conf.states) { const fl = free(conf, s); if (fl.length && G.confCost(conf, w, fl) <= p.pts) return true; }
-    if (!conf.puppet && remainFrac(conf) >= 0.05 && G.confPuppetCost(conf) <= p.pts) return true;
+    if (!conf.puppet && remainFrac(conf) >= 0.05 && G.confPuppetCost(conf, w) <= p.pts) return true;
     return G.confReleasable(conf).some((r) => G.confReleaseCost(conf, w, r.provs) <= p.pts);
   }
   function nextTurn(conf) {
@@ -7873,7 +7874,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     }
     // büyük gücün kalan toprağında kukla devlet (savaş bittiyse)
     const otherWars = c.enemies.filter((e) => e !== L).length;
-    if (top && Lc.major && !otherWars && !conf.puppet && remainFrac(conf) >= 0.25 && G.confPuppetCost(conf) <= p.pts) return G.confAct(conf, w, { k: 'puppet' });
+    if (top && Lc.major && !otherWars && !conf.puppet && remainFrac(conf) >= 0.25 && G.confPuppetCost(conf, w) <= p.pts) return G.confAct(conf, w, { k: 'puppet' });
     return G.confAct(conf, w, { k: 'quit' });
   };
 
@@ -11011,6 +11012,90 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
       }
     }
   }
+})(window);
+
+/* js/game/diplo3.js */
+// Diplomasi derinliği (HOI4): savaş hedefi türleri, sürekli diplomatik eylemler ve görüş dökümü.
+// Yeni durum alanları (st.goalK, c.dipAct) yalnız oyuncu kullanınca oluşur; yokken simülasyon değişmez.
+(function (g) {
+  const G = g.G;
+  // savaş hedefi türleri: gerekçe maliyeti/süresi ve barış konferansındaki puan çarpanları
+  G.GOAL_K = {
+    annex: { n: 'İlhak', d: 'Standart gerekçe: konferansta olağan maliyet.', cost: 1, days: 1, take: 1, puppet: 1 },
+    border: { n: 'Sınır toprağı', d: 'Ucuz ve hızlı gerekçe; konferansta toprak almak %20 ucuz, kuklalaştırma %25 pahalı.', cost: 0.6, days: 0.7, take: 0.8, puppet: 1.25 },
+    puppet: { n: 'Kuklalaştırma', d: 'Konferansta kukla kurmak %40 ucuz, toprak almak %15 pahalı.', cost: 0.8, days: 0.85, take: 1.15, puppet: 0.6 },
+  };
+  G.goalKind = (a, b) => (G.st.goalK && G.st.goalK[a + '>' + b]) || 'annex';
+  G.justifyCostK = (c, k) => Math.round(G.justifyCost(c) * (G.GOAL_K[k] || G.GOAL_K.annex).cost);
+  G.justifyDaysK = (c, k) => Math.round(G.justifyDays(c) * (G.GOAL_K[k] || G.GOAL_K.annex).days);
+  G.startJustifyK = (a, b, k) => {
+    const st = G.st, c = st.C[a], K = G.GOAL_K[k]; if (!K) return { ok: false, why: 'Geçersiz hedef' };
+    const r = G.canJustify(a, b);
+    // canJustify tam maliyete bakar: daha ucuz hedefte yalnız siyasi güç yetmiyorsa yeniden değerlendir
+    if (!r.ok && !(c.pp >= G.justifyCostK(c, k) && /siyasi güç gerekli/.test(r.why || ''))) return r;
+    c.pp -= G.justifyCostK(c, k);
+    c.just = { t: b, d: G.justifyDaysK(c, k) };
+    (st.goalK || (st.goalK = {}))[a + '>' + b] = k;
+    st.tension = Math.min(100, st.tension + (k === 'border' ? 2 : 3)); G.tsrc(a, k === 'border' ? 2 : 3, 'savaş gerekçesi');
+    return { ok: true };
+  };
+  // konferans çarpanı: kazananın yenilene karşı savaş hedefi
+  G.goalMul = (conf, w, what) => { const st = G.st; if (!st.goalK) return 1; const K = G.GOAL_K[st.goalK[w + '>' + conf.L]]; return K ? K[what] : 1; };
+
+  // sürekli diplomatik eylemler: günlük siyasi güç karşılığı
+  G.DIPACT = {
+    rel: { n: 'İlişkileri geliştir', d: 'Günde 0,2 siyasi güç; ülkenin sana görüşü her gün artar (en çok +60).', pp: 0.2 },
+    ideo: { n: 'İdeolojini yay', d: 'Günde 0,3 siyasi güç; ülkede senin ideolojinin desteği yavaşça artar.', pp: 0.3 },
+  };
+  G.DIPACT_MAX = 3;
+  G.dipActOn = (c, k, t) => !!(c.dipAct && c.dipAct.some((x) => x.k === k && x.t === t));
+  G.dipActToggle = (a, k, t) => {
+    const st = G.st, c = st.C[a], x = st.C[t];
+    if (!G.DIPACT[k] || !x || !x.alive || a === t) return { ok: false, why: 'Geçersiz' };
+    if (G.dipActOn(c, k, t)) { c.dipAct = c.dipAct.filter((y) => !(y.k === k && y.t === t)); if (!c.dipAct.length) delete c.dipAct; return { ok: true, on: false }; }
+    if (G.atWar(a, t)) return { ok: false, why: 'Savaştasınız' };
+    if (k === 'ideo' && (c.ideo === 'neu' || x.ideo === c.ideo)) return { ok: false, why: c.ideo === 'neu' ? 'Bağlantısız yönetimin yayacağı bir ideoloji yok' : 'Bu ülke zaten aynı ideolojide' };
+    if ((c.dipAct || []).length >= G.DIPACT_MAX) return { ok: false, why: `Aynı anda en çok ${G.DIPACT_MAX} diplomatik eylem yürütülür` };
+    (c.dipAct || (c.dipAct = [])).push({ k, t });
+    return { ok: true, on: true };
+  };
+  G.dipActTick = (c) => {
+    const st = G.st;
+    for (const a of c.dipAct.slice()) {
+      const x = st.C[a.t], D = G.DIPACT[a.k];
+      const stop = (why) => { c.dipAct = c.dipAct.filter((y) => y !== a); if (G.isHuman(c.tag)) G.log(`${D.n} (${G.cname(a.t)}) sona erdi: ${why}.`, [c.tag, a.t], 'info'); };
+      if (!x || !x.alive || G.atWar(c.tag, a.t)) { stop('ülke artık uygun değil'); continue; }
+      if ((c.pp || 0) < D.pp) { stop('siyasi güç tükendi'); continue; }
+      c.pp -= D.pp;
+      if (a.k === 'rel') {
+        st.rel = st.rel || {}; const key = a.t + '>' + c.tag, cur = st.rel[key] || 0;
+        if (cur >= 60) { stop('ilişkiler en üst düzeyde'); continue; }
+        st.rel[key] = Math.min(60, cur + 0.25); if (st.day % 10 === 0 && G.relClear) G.relClear();
+      } else if (a.k === 'ideo') {
+        if (x.ideo === c.ideo) { stop('ülke artık aynı ideolojide'); continue; }
+        const add = 0.0006, tot = Object.keys(x.pop).reduce((s, k) => s + (k === c.ideo ? 0 : x.pop[k]), 0);
+        if (tot > 0.05) { for (const k of Object.keys(x.pop)) if (k !== c.ideo) x.pop[k] -= add * x.pop[k] / tot; x.pop[c.ideo] = (x.pop[c.ideo] || 0) + add; }
+      }
+    }
+    if (!c.dipAct.length) delete c.dipAct;
+  };
+
+  // görüş dökümü: G.opinion'ın kalemleri (toplamı G.opinion ile aynıdır)
+  G.opinionParts = (ai, other) => {
+    const st = G.st, a = st.C[ai], o = st.C[other], out = [];
+    const add = (n, v) => { if (v) out.push([n, v]); };
+    if (a.ideo === o.ideo) add('Aynı ideoloji', a.ideo === 'neu' ? 10 : 35);
+    else if ((a.ideo === 'dem' && o.ideo !== 'neu') || (o.ideo === 'dem' && a.ideo !== 'neu') || (a.ideo === 'fas' && o.ideo === 'com') || (a.ideo === 'com' && o.ideo === 'fas')) add('Karşıt ideoloji', -30);
+    if (G.sameFaction(ai, other)) add('Aynı ittifak', 50);
+    if (st.goals[other + '>' + ai] || o.just?.t === ai) add('Bize karşı savaş gerekçesi', -60);
+    let n1 = 0; for (const e of a.enemies) if (G.atWar(other, e)) n1++;
+    add(`Ortak düşman${n1 > 1 ? ' (' + n1 + ')' : ''}`, 40 * n1);
+    let n2 = 0; for (const e of o.enemies) if (G.sameFaction(ai, e)) n2++;
+    add('Müttefikleriyle savaşta', -80 * n2);
+    add('İlişkiler (yardım, ticaret, olaylar)', Math.round(((st.rel && st.rel[ai + '>' + other]) || 0) * 10) / 10);
+    if (a.overlord === other) add('Efendi devlet', 100);
+    return out;
+  };
 })(window);
 
 /* js/game/logi2.js */
@@ -14467,7 +14552,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     if (myTurn) html += '<div class="btns"><button class="btn" data-act="cfpass">Pas geç</button><button class="btn danger" data-act="cfquit">Konferanstan çekil</button></div>';
     else if (cf.done) html += '<div class="btns"><button class="btn pri" data-act="cfend">Antlaşmayı imzala</button></div>';
     if (myTurn) {
-      const pc = G.confPuppetCost(cf), canP = !cf.puppet && G.confRemainFrac(cf) >= 0.05;
+      const pc = G.confPuppetCost(cf, me0), canP = !cf.puppet && G.confRemainFrac(cf) >= 0.05;
       let ah = '';
       if (canP) ah += `<div class="item"><div class="grow"><div class="t">Kukla devlet kur</div><div class="d">Talep edilmemiş tüm topraklarda ${esc(G.cname(cf.L))} sana bağlı kukla olur.</div></div><button class="btn sm ${pc <= p.pts ? 'pri' : ''}" data-act="cfpuppet" ${pc <= p.pts ? '' : 'disabled'}>${pc}</button></div>`;
       for (const r of G.confReleasable(cf)) { const rc = G.confReleaseCost(cf, me0, r.provs); ah += `<div class="item">${G.flag(r.t, 26, 17)}<div class="grow"><div class="t">${esc(G.cname(r.t))} ulusunu serbest bırak</div><div class="d">${r.provs.length} asli eyaleti · sana bağlı kukla olur</div></div><button class="btn sm ${rc <= p.pts ? 'pri' : ''}" data-act="cfrelease" data-v="${r.t}" ${rc <= p.pts ? '' : 'disabled'}>${rc}</button></div>`; }
@@ -14918,7 +15003,8 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     const atWar = G.atWar(c.tag, tag);
     if (!atWar) {
       const j = G.canJustify(c.tag, tag);
-      if (st.goals[c.tag + '>' + tag] == null) acts.push(['justify', `Savaş gerekçesi üret (${G.justifyCost(c)} SG, ${G.justifyDays(c)} gün)`, j.ok, j.why]);
+      if (st.goals[c.tag + '>' + tag] == null) for (const [gk, K] of Object.entries(G.GOAL_K)) { const cst = G.justifyCostK(c, gk), okk = j.ok || (c.pp >= cst && /siyasi güç gerekli/.test(j.why || '')); acts.push([gk === 'annex' ? 'justify' : 'just_' + gk, `Savaş gerekçesi: ${K.n} (${cst} SG, ${G.justifyDaysK(c, gk)} gün)`, okk, okk ? K.d : j.why, K.d]); }
+      else acts.push(['', `Savaş hedefin: ${G.GOAL_K[G.goalKind(c.tag, tag)].n}`, false, G.GOAL_K[G.goalKind(c.tag, tag)].d]);
       acts.push(['declare', 'Savaş ilan et', G.canDeclare(c.tag, tag), 'Önce savaş gerekçesi gerekir (müttefikinin düşmanına doğrudan ilan edebilirsin).']);
       const myFac = c.fac ? st.factions[c.fac] : null;
       if (myFac && !G.sameFaction(c.tag, tag)) acts.push(['invite', `${myFac.n} ittifakına davet et`, true]);
@@ -14931,9 +15017,14 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
       if (G.bcAllowed) { const bc = G.bcAllowed(c.tag, tag); if (bc.why !== 'Ortak kara sınırı yok') acts.push(['bc', `Sınır çatışması başlat (${G.BC_COST} SG, ${G.BC_DAYS} gün)`, bc.ok, bc.why]); }
     } else acts.push(['peace', 'Beyaz barış teklif et', true]);
     let ah = '<div class="list">';
-    for (const [k, n, ok, why] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ''}</div><span class="muted">›</span></button>`;
+    for (const [k, n, ok, why, desc] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ok && desc ? `<div class="d">${esc(desc)}</div>` : ''}</div><span class="muted">›</span></button>`;
     ah += `<button class="item" data-act="showc" data-v="${tag}"><div class="grow"><div class="t">Haritada göster</div></div><span class="muted">›</span></button></div>`;
     html += sec('Eylemler', ah);
+    // görüş dökümü ve sürekli diplomatik eylemler
+    { const parts = G.opinionParts(tag, c.tag), tot = Math.round(G.opinion(tag, c.tag));
+      let oh = `<div class="list">${parts.map(([n, v]) => `<div class="item"><div class="grow"><div class="d">${esc(n)}</div></div><b class="${v > 0 ? 'pos' : 'neg'}">${v > 0 ? '+' : ''}${Math.round(v)}</b></div>`).join('') || '<p class="muted small" style="margin:0">Etkileyen bir şey yok.</p>'}</div>`;
+      if (!atWar) oh += `<div class="list" style="margin-top:6px">${Object.entries(G.DIPACT).map(([k, D]) => { const on = G.dipActOn(c, k, tag); return `<button class="item ${on ? 'on' : ''}" data-act="dipact" data-k="${k}" data-v="${tag}"><div class="grow"><div class="t">${D.n}</div><div class="d">${D.d}</div></div><span class="btn sm ${on ? 'pri' : ''}">${on ? 'Sürüyor · durdur' : 'Başlat'}</span></button>`; }).join('')}</div>`;
+      html += sec('Bize görüşü', oh, `${tot > 0 ? '+' : ''}${tot}`); }
     html += volunteerSection(c, tag, x);
     // ticaret ve yardım
     let th = '<div class="list">';
@@ -15019,7 +15110,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
 
   // yardım: kategorilere ayrılmış, aranabilir, açılır kapanır bölümler
   const HELP_CAT = [
-    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Kuşatma', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Lojistik ve lisanslı üretim', 'Senaryolar ve meydan okumalar', 'Çok oyunculu', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
+    ['Başlarken', ['Üst çubuk ve uyarılar', 'Harita', 'Kuşatma', 'Birlikler', 'Harita, şehirler ve boğazlar', 'Harita modları', 'Yatay ekran', 'Görseller ve harita görünümü', 'Kayıt ve taşıma', 'Lojistik ve lisanslı üretim', 'Savaş hedefleri ve diplomatik eylemler', 'Senaryolar ve meydan okumalar', 'Çok oyunculu', 'Ses', 'Defter', 'Oyun modları ve zorluk', 'Puan, başarımlar ve oyunun sonu', 'İpucu']],
     ['Siyaset', ['Siyaset', 'Ulusal ruhlar (buff ve debuff)', 'Odaklar ve tarihî olaylar', 'Yeni tarihî olaylar', 'Odak ağacı dalları', 'Alternatif tarih yolları', 'İç savaş', 'Parti kampanyaları', 'Kararlar', 'Yasalar ve Ar-Ge', 'Seçimler', 'Güç dengesi', 'Değişen tarih', 'Tarihî dönüm noktaları', 'Dünya haberleri ve Türkiye']],
     ['Ekonomi', ['Ekonomi', 'Yakıt', 'İkmal, altyapı ve hava', 'Demiryolları ve ikmal merkezleri', 'Tank ve uçak tasarımcısı', 'Özel projeler ve atom bombası']],
     ['Kara kuvvetleri', ['Ordular, cepheler ve savaş planları', 'Savaş planı: aşamalı taarruz ve savunma hattı', 'Tümen seçimi ve hatta yayma', 'Komuta Gücü ve mareşaller', 'Muharebe', 'Muharebe taktikleri', 'Kara doktrinleri', 'Tümen tasarımcısı', 'Yeni birlik türleri', 'Tümen şerefi ve muhafızlar', 'Nehirler', 'İşgal: direniş ve uyum', 'Hava indirme']],
@@ -15100,6 +15191,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
   <section class="sec"><h3 class="sec-h">Kayıt ve taşıma</h3><p class="small" style="margin:0">Menü → Kayıt bölümünde üç yuva ve bir otomatik kayıt vardır. Her yuva ülkeyi, oyun tarihini, modu, zorluğu ve kaydın yapıldığı saati gösterir; Sil düğmesine iki kez dokununca yuva boşalır. Otomatik kayıt aralığı (kapalı, aylık, 3 ayda, 6 ayda, yıllık) ayarlardan seçilir ve cihazda hatırlanır. <b>Dosyaya aktar</b> oyunu bir JSON dosyası olarak indirir; bu dosya başka bir telefonda ya da bilgisayarda <b>Dosyadan yükle</b> ile (başlangıç ekranından da) açılır. Bozuk ya da uyumsuz bir dosya seçilirse mevcut oyun korunur. Oyun claude.ai içinde açıldıysa ve oturumun açıksa Menü → Bulut kaydı ile kayıtlar hesabına yazılır (yalnızca sana görünür); başka cihazda aynı hesapla açıp başlangıç ekranındaki "Bulut kayıtları"ndan devam edebilirsin.</p></section>
   <section class="sec"><h3 class="sec-h">Senaryolar ve meydan okumalar</h3><p class="small" style="margin:0">Başlangıç ekranındaki ayarlardan başlangıç tarihini seçebilirsin: <b>1936</b> (savaştan önceki yıllar), <b>1939 · Savaşın Eşiği</b> (Ağustos 1939: Avusturya ve Çekoslovakya ilhak edilmiş, Molotov-Ribbentrop Paktı imzalanmış) ya da <b>1941 · Barbarossa Arifesi</b> (Haziran 1941: Fransa düşmüş, Britanya direniyor). Senaryolarda yalnızca o tarihte ayakta olan ülkeler seçilebilir ve oyun tarihî kipte başlar; dünya her oyunda farklı sürer. Dosya bölümündeki <b>Meydan okuma</b> listesinden isteğe bağlı bir hedef seçebilirsin (ör. "Yıldırım Harbi: Paris'i 1940 sonundan önce al", "Millî Şef'in Dengesi: 1945'e dek savaşa girme"). Hedefin durumu ve kalan süre Genel bakış ekranında görünür; başarınca ya da kaybedince haber verilir.</p></section>
   <section class="sec"><h3 class="sec-h">Lojistik ve lisanslı üretim</h3><p class="small" style="margin:0">Üretim panelindeki <b>Lojistik</b> tablosu her teçhizat için stoğu, tümenleri tam güce çıkarmak için gereken ihtiyacı, günlük üretimi ve açığın kaç günde kapanacağını gösterir. <b>Takviye önceliği</b> ile şablon başına Düşük / Normal / Yüksek seçersin: teçhizat kıtken yüksek öncelikli tümenler önce dolar. Bir ülkenin modeli seninkinden ileriyse Diplomasi'de ülke sayfasından <b>Lisanslı üretim</b> alabilirsin (siyasi güç karşılığı, iyi ilişki ya da aynı ittifak gerekir; tank ve uçak hariç): hattı “Lisanslı modele geç” ile güncellersin, lisanslı hat %20 düşük verimle çalışır, lisans sahibiyle savaşırsan düşer. İnşaatta eyalet listesinin üstündeki <b>Adet</b> (1 · 3 · 5) ile tek dokunuşta birden çok bina kuyruğa eklenir.</p></section>
+  <section class="sec"><h3 class="sec-h">Savaş hedefleri ve diplomatik eylemler</h3><p class="small" style="margin:0">Savaş gerekçesi üretirken <b>hedef türünü</b> seçersin: <b>İlhak</b> (olağan), <b>Sınır toprağı</b> (gerekçe %40 ucuz ve daha hızlı; barış konferansında toprak almak %20 ucuz, kuklalaştırma pahalı) ya da <b>Kuklalaştırma</b> (konferansta kukla kurmak %40 ucuz, toprak almak %15 pahalı). Ülke sayfasındaki <b>Bize görüşü</b> bölümü görüşü kalem kalem gösterir (ideoloji, ittifak, ortak düşman, savaş gerekçesi, ilişkiler). Aynı bölümden <b>sürekli eylem</b> başlatabilirsin: <b>İlişkileri geliştir</b> (günde 0,2 siyasi güç, görüş her gün artar) ve <b>İdeolojini yay</b> (günde 0,3 siyasi güç, o ülkede senin ideolojinin desteği artar). Aynı anda en çok üç eylem yürür; siyasi güç biterse ya da savaş çıkarsa durur.</p></section>
   <section class="sec"><h3 class="sec-h">Çok oyunculu</h3><p class="small" style="margin:0">Oyun claude.ai içinde açıldıysa başlangıç ekranındaki <b>Çok oyunculu</b> bölümünden <b>Oyun kur</b>: altı harfli bir kod çıkar. Arkadaşların oyunu açıp kodu yazar ve <b>Katıl</b>'a basar (sayfa onlarla Paylaş menüsünden en az "katkıda bulunabilir" izniyle paylaşılmış olmalı). Lobide herkes bir ülke seçer; kurucu mod, zorluk ve tur uzunluğunu (3, 7 ya da 14 gün) belirleyip başlatır. Seçilmeyen ülkeleri yapay zekâ yönetir. Her turda oyun durur: herkes kendi ülkesine emir verir (araştırma, üretim, inşaat, birlik hareketleri, diplomasi) ve alttaki çubuktan <b>Turu bitir</b>'e basar. Herkes hazır olunca tur, kurucunun cihazında herkes için birlikte işlenir ve yeni durum herkese gelir. Kurucu bekleyemiyorsa <b>Beklemeden devam</b> der; emir göndermeyenlerin ülkesi o tur yalnızca var olan emirleriyle sürer. Tur sırasında çıkan olaylarda ilk seçenek uygulanır ve sonraki turun başında bildirilir. İki oyuncu aynı turda aynı şeyi değiştirirse (ör. aynı ülkeye ikisi birden savaş ilan ederse) küçük yuvanın emri önce, diğerininki sonra uygulanır.</p>
     <p class="small" style="margin:8px 0 0"><b>Gerçek zamanlı kip:</b> lobide "Gerçek zamanlı" seçilirse zaman herkes için birlikte akar; hızı ve duraklatmayı kurucu yönetir. Her cihaz aynı dünyayı çalıştırır: verdiğin emir kurucuya gider, bir iki saniye içinde herkeste aynı günün başında devreye girer (o ana dek ekranda eski hâli görünebilir; alttaki çubuk "emir yolda" der). Geride kalan cihaz kendiliğinden hızlanır; kurucu, çok geride kalan çevrimiçi oyuncuyu bekler. Cihazlar her 20 günde bir durumlarını karşılaştırır, fark çıkarsa kurucudan taze görüntü alınır.</p>
     <p class="small" style="margin:8px 0 0"><b>Masa:</b> Alttaki çubuktaki <b>Masa</b> düğmesi oyuncuları (çevrimiçi olanlar yeşil), sohbeti, gelen diplomasi tekliflerini ve bekleyen kararları gösterir. Başka bir oyuncuya pakt, ittifak daveti, geçiş izni, beyaz barış ya da savaşa çağrı Diplomasi panelinden teklif edilir; o kabul edince gerçekleşir. Gerçek zamanlı kipte ülkene gelen seçimli olaylar Masa'da bekler; 15 gün içinde seçmezsen ilk seçenek uygulanır. Lobide <b>Herkese açık</b> seçilen oyunlar başlangıç ekranındaki <b>Açık oyunlar</b> listesinde görünür.</p>
@@ -15904,6 +15996,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     const st = G.st, c = me(), t = d.v;
     let ok;
     switch (d.k) {
+      case 'just_border': case 'just_puppet': { const gk = d.k.slice(5), r = G.startJustifyK(c.tag, t, gk); UI.toast(r.ok ? `${G.cname(t)} için savaş gerekçesi hazırlanıyor (${G.GOAL_K[gk].n}).` : r.why, r.ok ? 'good' : 'warn'); break; }
       case 'justify': { const r = G.startJustify(c.tag, t); UI.toast(r.ok ? `${G.cname(t)} için savaş gerekçesi hazırlanıyor.` : r.why, r.ok ? 'good' : 'warn'); break; }
       case 'declare': ok = G.declareWar(c.tag, t); if (ok) UI.toast(`${G.cname(t)} ile savaştayız!`, 'bad'); break;
       case 'invite': ok = G.inviteToFaction(c.tag, t); UI.toast(ok ? `${G.cname(t)} ittifaka katıldı.` : `${G.cname(t)} daveti reddetti.`, ok ? 'good' : 'warn'); break;
@@ -15918,6 +16011,7 @@ window.SCENARIOS = {"1939":{"n":"Savaşın Eşiği","d":"Ağustos 1939: Avustury
     }
     G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud();
   };
+  ACT.dipact = (d) => { const r = G.dipActToggle(me().tag, d.k, d.v); UI.toast(!r.ok ? r.why : r.on ? `${G.DIPACT[d.k].n}: ${G.cname(d.v)}.` : 'Eylem durduruldu.', r.ok ? 'good' : 'warn'); UI.render(); };
   ACT.embargo = (d) => { const st = G.st, k = me().tag + '>' + d.v; if (st.embargo[k]) delete st.embargo[k]; else { st.embargo[k] = 1; st.deals = st.deals.filter((x) => !(x.e === me().tag && x.i === d.v)); } G.refreshTradeCache(); UI.render(); };
   ACT.volsend = (d) => { const r = G.sendVolunteers(me().tag, d.k, +d.v); UI.toast(r.ok ? `${r.n} gönüllü tümen ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud(); };
   ACT.volair = (d) => { const r = G.sendAirVolunteers(me().tag, d.k, d.e, +d.v); UI.toast(r.ok ? `${Math.round(r.n)} uçaklık hava gönüllüsü ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); R.dirty = 1; UI.render(); UI.hud(); };
