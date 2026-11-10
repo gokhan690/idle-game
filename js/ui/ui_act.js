@@ -295,7 +295,7 @@
     if (v > 0) l.eff = Math.max(0.1, l.eff * 0.95);
     UI.render();
   };
-  ACT.lineup = (d) => { const c = me(); const l = c.lines[+d.v]; l.lv = G.bestLevel(c, l.e); l.eff = Math.max(0.1, l.eff * 0.6); UI.toast(`${g.EQUIP[l.e].n} hattı yeni modele geçti (verim düştü).`, 'good'); UI.render(); };
+  ACT.lineup = (d) => { const c = me(); const l = c.lines[+d.v]; delete l.lic; l.lv = G.bestLevel(c, l.e); l.eff = Math.max(0.1, l.eff * 0.6); UI.toast(`${g.EQUIP[l.e].n} hattı yeni modele geçti (verim düştü).`, 'good'); UI.render(); };
   // tasarımcı eylemleri
   ACT.dznew = (d) => { UI.dz = null; UI.dzLine = d.k != null ? +d.k : null; UI.sub = 'design:' + d.v; UI.render(true); };
   ACT.dztier = (d) => { UI.dz.t = +d.v; UI.render(); };
@@ -335,7 +335,11 @@
   ACT.addline = (d) => { const c = me(); c.lines.push({ e: d.v, f: 0, eff: 0.3, acc: 0, lv: G.bestLevel(c, d.v), d: G.DESIGNABLE.has(d.v) ? 'std' + Math.floor(G.bestLevel(c, d.v)) : undefined }); UI.toast(`${g.EQUIP[d.v].n} hattı eklendi; + ile fabrika ata.`, 'good'); UI.render(); };
   ACT.cup = (d) => { const c = me(); const i = +d.v; [c.constr[i - 1], c.constr[i]] = [c.constr[i], c.constr[i - 1]]; UI.render(); };
   ACT.cdel = (d) => { const c = me(); c.constr.splice(+d.v, 1); UI.render(); };
-  ACT.build = (d) => { const c = me(); c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };
+  ACT.build = (d) => { const c = me(), k = Math.max(1, +d.n || 1); for (let i = 0; i < k; i++) c.constr.push({ b: d.b, p: +d.v, prog: 0 }); UI.toast(`${k > 1 ? k + ' × ' : ''}${g.BUILDINGS[d.b].n} kuyruğa eklendi: ${G.pname(+d.v)}`, 'good'); UI.render(); };
+  ACT.buildn = (d) => { UI.buildN = +d.v; UI.render(); };
+  ACT.rpset = (d) => { const c = me(); (c.rp || (c.rp = {}))[d.k] = +d.v; UI.render(); };
+  ACT.linelic = (d) => { const c = me(), l = c.lines[+d.v], L = c.lic && c.lic[l.e]; if (!L) return; l.lic = 1; l.lv = L.lv; l.eff = Math.max(0.1, l.eff * 0.6); UI.toast(`${g.EQUIP[l.e].n} hattı ${G.cname(L.from)} lisanslı modele geçti (verim düştü).`, 'good'); UI.render(); };
+  ACT.licbuy = (d) => { const r = G.licBuy(me().tag, d.k, d.v); UI.toast(r.ok ? `${g.EQUIP[d.v].n} lisansı alındı. Üretim panelinde hattı “Lisanslı modele geç” ile güncelle.` : r.why, r.ok ? 'good' : 'warn'); UI.render(); UI.hud(); };
   ACT.quickbuild = (d) => { UI.panel = 'con'; UI.sub = null; UI.render(true); };
   ACT.train = (d) => { const c = me(); const t = G.T(c.tag, d.v); for (let k = 0; k < +d.n; k++) { if (G.manpower(c, true).avail < t.mp) break; c.train.push({ u: d.v, d: t.days, auto: 0 }); } UI.render(); UI.hud(); };
   // ordular
