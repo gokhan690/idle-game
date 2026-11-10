@@ -74,13 +74,18 @@
     atk: { n: 'Taarruz Emri', d: '15 gün saldırı ve atılım +%10', cost: 30, days: 15 },
     def: { n: 'Savunma Emri', d: '15 gün savunma +%15', cost: 25, days: 15 },
     blitz: { n: 'Yıldırım Harekâtı', d: '10 gün zırhlı ve motorlu tümenlerin hızı ve saldırısı +%15', cost: 40, days: 10 },
+    stand: { n: 'Son Adama Kadar', d: '10 gün savunma +%10; tümenler morali bitse de geri çekilmez (kayıp artar)', cost: 35, days: 10 },
+    march: { n: 'Cebrî Yürüyüş', d: '7 gün bütün tümenlerin hızı +%25', cost: 20, days: 7 },
+    staff: { n: 'Kurmay Planı', d: 'Planlama hemen en üst düzeye çıkar', cost: 45, instant: 1 },
   };
   const spend = (c, n) => { G.cpEnsure(c); if (c.cp < n) return false; c.cp -= n; return true; };
   G.armyOrder = (c, armyId, k) => {
     const O = G.ORDERS[k], a = G.armyById(c, armyId);
     if (!O || !a) return { ok: false, why: 'Geçersiz' };
     if (a.boost && a.boost.until > G.st.day) return { ok: false, why: 'Bu orduya verilmiş bir emir sürüyor' };
+    if (O.instant && (a.plan || 0) >= G.maxPlan(c, a) - 0.01) return { ok: false, why: 'Plan zaten en üst düzeyde' };
     if (!spend(c, O.cost)) return { ok: false, why: `${O.cost} komuta gücü gerekli` };
+    if (O.instant) { a.plan = G.maxPlan(c, a); return { ok: true }; } // kurmay planı
     a.boost = { k, until: G.st.day + O.days };
     for (const u of G.armyUnits(c, armyId)) u._sd = -1; // istatistik önbelleğini yenile
     return { ok: true };
@@ -94,10 +99,14 @@
       if (a.boost.k === 'atk') atk *= 1.1;
       else if (a.boost.k === 'def') def *= 1.15;
       else if (a.boost.k === 'blitz' && t.mob) { atk *= 1.15; spd *= 1.15; }
+      else if (a.boost.k === 'stand') def *= 1.1;
+      else if (a.boost.k === 'march') spd *= 1.25;
     }
     if (a.grp) { const fm = G.genById(c, a.grp); if (fm && fm.fm) { atk *= 1 + 0.02 * fm.atk; def *= 1 + 0.02 * fm.def; } }
     return atk === 1 && def === 1 && spd === 1 ? null : { atk, def, spd };
   };
+  // "Son Adama Kadar" emri altındaki tümen (muharebede geri çekilmez)
+  G.lastStand = (u) => { if (!u.army) return false; const c = G.st.C[u.t], a = c && G.armyById(c, u.army); return !!(a && a.boost && a.boost.k === 'stand' && a.boost.until > G.st.day); };
   // mareşal terfisi ve komutan eğitimi
   G.promoteFM = (c, genId) => {
     const gen = G.genById(c, genId); if (!gen || gen.fm) return { ok: false, why: 'Zaten mareşal' };

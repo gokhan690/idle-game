@@ -257,6 +257,8 @@
           continue;
         }
       }
+      // destek saldırısı (HOI4): muharebeye katılır ama eyalet boşalınca ilerlemez, yerinde kalır
+      if (u.sup && n < NP && u.loc < NP && G.atWar(u.t, st.prov[n].c)) { u.path = []; u.prog = 0; delete u.sup; continue; }
       // deniz çıkarması hazırlığı (HOI4): limanda planlama süresi dolmadan denize açılmaz
       if (u.inv) { if (u.loc >= NP) delete u.inv; else if (n >= NP && u.inv.p < u.inv.n) { u.inv.p++; continue; } }
       // hareket
@@ -619,7 +621,12 @@
     for (const u of defs) {
       if (u.str <= 0.03) { u.dead = 1; lost++; continue; }
       // uzun kuşatılmış tümen bozulunca geri çekilmez, teslim olur
-      if (u.org <= 0.5) { if (u.enc >= 20) { G.surrender(u); surr++; } else if (!retreat(u, n, atts)) { u.dead = 1; lost++; } }
+      if (u.org <= 0.5) {
+        if (u.enc >= 20) { G.surrender(u); surr++; }
+        // Son Adama Kadar: tümen yerinde kalır, toparlanır ama ağır kayıp verir
+        else if (G.lastStand && G.lastStand(u) && u.str > 0.12) { u.org = u._s.org * 0.18; u.str -= 0.05; st.C[u.vol || u.t].dead += 0.05 * u._s.t.mp; }
+        else if (!retreat(u, n, atts)) { u.dead = 1; lost++; }
+      }
     }
     if (surr) G.encLog(defs[0].t, surr);
     for (const u of atts) {

@@ -25,7 +25,11 @@
       if (a) items.push(['ordfb', 'Buradan savunma hattı çiz', 'sonra hattın bitiş eyaletine dokun']);
       if (sel.length >= 2) items.push(['ordline', 'Bu sınır boyunca yay', 'tümenler sınır eyaletlerine eşit dağılır']);
     } else if (G.atWar(pl, owner)) {
-      items.push(['ordatk', 'Saldır', `${n0} ${nm} eyaletine yürür`]);
+      // muharebe tahmini: seçili tümenlerin gücü ile eyaletteki düşmanın gücü (arazi ve siper hariç kaba oran)
+      const foe = (G.unitsAt[n] || []).filter((u) => G.atWar(pl, u.t)), fp = foe.reduce((s, u) => s + G.unitPower(u) * (1 + 0.25 * (u.ent || 0)), 0), mp = sel.reduce((s, u) => s + G.unitPower(u), 0);
+      const odds = !foe.length ? 'savunan yok' : mp > fp * 1.8 ? `<span class="pos">üstünsün</span> · ${foe.length} düşman tümeni` : mp > fp * 1.1 ? `dengeli · ${foe.length} düşman tümeni` : `<span class="neg">zayıfsın</span> · ${foe.length} düşman tümeni`;
+      items.push(['ordatk', 'Saldır', `${n0} ${nm} eyaletine yürür · ${odds}`, '', 1]);
+      if (foe.length && sel.some((u) => u.loc < NP && G.P[u.loc].a.includes(n))) items.push(['ordsup', 'Destek saldırısı', 'muharebeye katılır, kazanınca ilerlemez; cephedeki yerini korur']);
       if (a) {
         items.push(['ordgoal', 'Taarruz oku çiz', 'ordu cephede plan toplar, dolunca “Uygula ▶”']);
         if (a.goal != null) items.push(['ordstage', '+ Sonraki aşama', 'okun ucu alınınca buraya devam eder']);
@@ -42,7 +46,7 @@
     const fl = land && owner ? G.flag(owner, 24, 16) : '';
     const sub = land ? (owner === pl ? 'kendi toprağın' : G.atWar(pl, owner) ? `<span class="neg">düşman</span> · ${esc(G.cname(owner))}` : esc(G.cname(owner))) : 'deniz bölgesi';
     const html = `<div class="omh">${fl}<div class="grow"><b>${esc(nm)}</b><div class="muted small">${sub}</div></div></div>`
-      + items.map(([act, t, d, ex]) => `<button class="omi" data-act="${act}" data-v="${n}"${ex || ''}><b>${esc(t)}</b><span>${esc(d)}</span></button>`).join('')
+      + items.map(([act, t, d, ex, raw]) => `<button class="omi" data-act="${act}" data-v="${n}"${ex || ''}><b>${esc(t)}</b><span>${raw ? d : esc(d)}</span></button>`).join('')
       + `<button class="omi omx" data-act="ordclose"><b>İptal</b></button>`;
     if (!box) { box = document.createElement('div'); box.id = 'ordmenu'; box.className = 'ordmenu'; $('app').appendChild(box); }
     box.innerHTML = html; box.hidden = false;
@@ -60,6 +64,12 @@
   // git / saldır: el emri (ordudaki tümenler u.man ile işaretlenir, ordu yapay zekâsı onları geri çekmez)
   ACT.ordgo = (d) => { UI.closeOrderMenu(); UI.orderUnits(selUnits(), +d.v); after(); };
   ACT.ordatk = ACT.ordgo;
+  // destek saldırısı: yalnız hedefe komşu tümenler, tek adım; eyalet boşalınca ilerlemezler
+  ACT.ordsup = (d) => {
+    UI.closeOrderMenu(); const n = +d.v; let k = 0;
+    for (const u of selUnits()) if (u.loc < NP && G.P[u.loc].a.includes(n)) { u.path = [n]; u.prog = 0; u.auto = 0; u.sup = 1; if (u.army) u.man = 1; delete u.inv; k++; }
+    UI.toast(k ? `${k} tümen ${G.pname(n)} muharebesini destekliyor; yerlerinden ayrılmayacaklar.` : 'Hedefe komşu tümen yok.', k ? 'good' : 'warn'); after();
+  };
   ACT.ordgoal = (d) => { UI.closeOrderMenu(); const a = armySel(); if (a && !UI.setArmyGoal(a, +d.v)) UI.toast('Ok, düşman ya da yabancı bir eyalete çizilmeli.', 'warn'); after(); };
   ACT.ordstage = (d) => {
     UI.closeOrderMenu(); const a = armySel(); if (!a || a.goal == null) return;
