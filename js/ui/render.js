@@ -949,7 +949,7 @@
       if (a.goal == null) continue;
       const from = R.armyAnchor(a); if (from < 0) continue;
       const col = a.ord === 'atk' ? '#d6483a' : G.armyColor(a);
-      const wdt = Math.max(5, Math.min(12, 4 + z * 2));
+      const wdt = Math.max(5, Math.min(12, 4 + z * 2)) * (a.spear ? 0.62 : 1); // mızrak ucu: ince ok
       const chain = [from, a.goal, ...(a.goals || [])];
       for (let k = 0; k < chain.length - 1; k++) {
         const s0 = R.toScreen(G.nodeX[chain[k]], G.nodeY[chain[k]]), s1 = R.toScreen(G.nodeX[chain[k + 1]], G.nodeY[chain[k + 1]]);
@@ -980,6 +980,11 @@
   function drawFallbacks(ctx) {
     for (const a of playerArmies()) if (a.fb && a.fb.length) fbLine(ctx, a.fb, G.armyColor(a), R.sel.army === a.id || a.ord === 'fb');
     if (R.fbPreview) fbLine(ctx, R.fbPreview, '#f2d27a', true);
+    // garnizon noktaları: ordunun tuttuğu şehir ve limanlar
+    for (const a of playerArmies()) if (a.ord === 'gar' && a.garP) {
+      const col = G.armyColor(a), sel = R.sel.army === a.id;
+      for (const n of a.garP) { const s = R.toScreen(G.nodeX[n], G.nodeY[n]); if (s.x < -20 || s.y < -20 || s.x > R.w + 20 || s.y > R.h + 20) continue; ctx.strokeStyle = 'rgba(10,10,8,0.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, sel ? 11 : 8, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
+    }
   }
   // Ordu etiketi: komutan, emir ve planlama çubuğu (dokununca ordu seçilir)
   function drawArmyTags(ctx, z) {

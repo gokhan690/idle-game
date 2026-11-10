@@ -287,6 +287,8 @@
     if (UI.paraMode) { if (n >= 0 && n < NP) UI.paraTo(n); else { UI.paraMode = false; UI.renderSel(); } return; }
     // savunma hattı çizimi
     if (UI.fbMode) { UI.fbTap(n); return; }
+    // elle cephe çizimi
+    if (UI.pinMode) { UI.pinTap(n); return; }
     // taarruz oku modu (+ Aşama: okun ucundan sonraki hedef)
     if (UI.goalMode) {
       const a = G.armyById(pc, UI.goalMode), app = UI.goalAppend; UI.goalMode = null; UI.goalAppend = 0;

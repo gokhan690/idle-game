@@ -2,7 +2,7 @@
 //   node tools/bundle.mjs && node tools/masabrowser.mjs <çıktı klasörü>
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 const S = process.argv[2];
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ viewport: { width: 420, height: 860 } });
 await ctx.addInitScript({ path: new URL('./netmock.js', import.meta.url).pathname });
 const errs = [];

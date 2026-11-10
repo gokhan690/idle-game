@@ -309,9 +309,20 @@
       const old = a.front || [];
       a.front = [];
       const vs = a.vs && st.C[a.vs]?.alive ? a.vs : null;
-      if (a.ord === 'hold' || a.ord === 'fb' || (!vs && !c.enemies.length)) continue;
+      if (a.ord === 'hold' || a.ord === 'fb' || a.ord === 'gar' || (!vs && !c.enemies.length)) continue;
       const F = new Set(G.frontier(tag, vs));
       if (!F.size) continue;
+      // elle çizilmiş cephe (HOI4 cephe hattı): cephe ilerledikçe hat en yakın sınır eyaletlerine taşınır, uzunluğu korunur
+      if (a.frontPin && a.frontPin.length) {
+        const out = new Set(), FL = [...F];
+        for (const p of a.frontPin) {
+          if (F.has(p)) { out.add(p); continue; }
+          let b = -1, bd = 500; for (const n of FL) { const d = G.km(n, p); if (d < bd) { bd = d; b = n; } }
+          if (b >= 0) out.add(b);
+        }
+        if (out.size) { a.front = [...out]; a.frontPin = a.front.slice(); for (const n of a.front) claimed.set(n, (claimed.get(n) || 0) + 1); continue; }
+        delete a.frontPin;
+      }
       const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !u.man);
       const all = us.length ? us : G.armyUnits(c, a.id).filter((u) => u.loc < NP);
       if (!all.length) continue;
@@ -357,9 +368,9 @@
     return out.length > 40 ? null : out;
   };
   // ordu savunma hattına yerleşir: eyalet başına eşit kota, en yakın tümen en yakın boşluğa
-  G.holdLine = (c, a) => {
+  G.holdLine = (c, a, list) => {
     const st = G.st;
-    const line = (a.fb || []).filter((i) => st.prov[i].c === c.tag || (G.friendly(c.tag, st.prov[i].c) && !G.atWar(c.tag, st.prov[i].c)));
+    const line = (list || a.fb || []).filter((i) => st.prov[i].c === c.tag || (G.friendly(c.tag, st.prov[i].c) && !G.atWar(c.tag, st.prov[i].c)));
     if (!line.length) return;
     const us = G.armyUnits(c, a.id).filter((u) => u.loc < NP && !u.man && !(G.inBattle && G.inBattle.has(u)));
     const quota = Math.max(1, Math.ceil(us.length / line.length)), set = new Set(line), cnt = new Map();
@@ -377,6 +388,43 @@
       cnt.set(best, (cnt.get(best) || 0) + 1);
       u.path = p; u.prog = 0;
     }
+  };
+  // elle cephe çizimi: iki uç arasındaki sınır eyaletleri (uçlar en yakın sınır eyaletine oturur)
+  G.pinFront = (c, a, n1, n2) => {
+    const st = G.st, tag = c.tag;
+    const ownerOf = (n) => { const o = st.prov[n].c; if (o !== tag && !G.friendly(tag, o)) return o; for (const j of P[n].a) if (j < NP) { const e = st.prov[j].c; if (e !== tag && (G.atWar(tag, e) || !G.friendly(tag, e))) return e; } return null; };
+    const ev = ownerOf(n1) || ownerOf(n2);
+    const peace = ev && !G.atWar(tag, ev) ? ev : null; // savaşta olunmayan komşu: sınırına dizil
+    const F = G.frontier(tag, peace);
+    if (!F.length) return { ok: false, why: 'Burada cephe kurulacak bir sınır yok.' };
+    const snap = (n) => F.reduce((b, f) => (G.km(f, n) < G.km(b, n) ? f : b), F[0]);
+    const s = snap(n1), e = snap(n2), L = G.km(s, e);
+    if (G.km(s, n1) > 400 || G.km(e, n2) > 400) return { ok: false, why: 'Uçlar sınıra çok uzak: sınıra yakın iki noktaya dokun.' };
+    const pin = F.filter((f) => G.km(f, s) + G.km(f, e) <= L * 1.45 + 110);
+    a.frontPin = pin; a.vs = peace;
+    if (a.ord === 'hold' || a.ord === 'fb' || a.ord === 'gar') a.ord = 'def';
+    for (const u of G.armyUnits(c, a.id)) delete u.man;
+    c._frontsDirty = 1; G.computeFronts(c);
+    return { ok: true, n: (a.front || []).length };
+  };
+  // garnizon emri (HOI4 bölge savunması): ordunun çevresindeki şehir, liman ve zafer puanlı eyaletlere dağıl
+  G.garrisonPlan = (c, a) => {
+    const st = G.st, us = G.armyUnits(c, a.id).filter((u) => u.loc < NP);
+    if (!us.length) return [];
+    const locs = us.map((u) => u.loc); let ctr = locs[0], cb = Infinity;
+    for (const l of [...new Set(locs)].slice(0, 30)) { let s2 = 0; for (const m of locs) s2 += G.km(l, m); if (s2 < cb) { cb = s2; ctr = l; } }
+    // yalnız kara yoluyla ulaşılabilen eyaletler (ör. Doğu Prusya'daki ordu anakaraya atanmaz)
+    const own = (i) => st.prov[i].c === c.tag || (G.friendly(c.tag, st.prov[i].c) && !G.atWar(c.tag, st.prov[i].c));
+    const reach = new Set([ctr]), q = [ctr];
+    for (let k = 0; k < q.length && k < 5000; k++) for (const j of P[q[k]].a) if (j < NP && !reach.has(j) && own(j)) { reach.add(j); q.push(j); }
+    const cand = [];
+    for (const i of reach) {
+      if (st.prov[i].c !== c.tag) continue;
+      const d = G.km(i, ctr); if (d > 600) continue;
+      const coast = P[i].a.some((j) => j >= NP), val = (P[i].vp || 0) * 3 + (coast && P[i].vp ? 2 : 0) + (coast ? 0.6 : 0) + (i === c.cap ? 6 : 0);
+      if (val > 0) cand.push([i, val - d / 200]);
+    }
+    return cand.sort((x, y) => y[1] - x[1]).slice(0, Math.max(1, us.length)).map((x) => x[0]);
   };
   // Günlük ordu güncellemesi: planlama dolar ya da harcanır, hedefe ulaşılınca taarruz biter
   G.armyTick = (c) => {

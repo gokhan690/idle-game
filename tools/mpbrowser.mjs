@@ -2,7 +2,7 @@
 //   python3 -m http.server 8765 &  node tools/bundle.mjs && node tools/mpbrowser.mjs <çıktı klasörü> [tur sayısı]
 import { chromium, devices } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 const S = process.argv[2], TURNS = +(process.argv[3] || 3);
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 await ctx.addInitScript({ path: new URL('./netmock.js', import.meta.url).pathname });
 const errs = [];
