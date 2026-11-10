@@ -524,6 +524,7 @@
     const st = G.st, c = me(), t = d.v;
     let ok;
     switch (d.k) {
+      case 'just_border': case 'just_puppet': { const gk = d.k.slice(5), r = G.startJustifyK(c.tag, t, gk); UI.toast(r.ok ? `${G.cname(t)} için savaş gerekçesi hazırlanıyor (${G.GOAL_K[gk].n}).` : r.why, r.ok ? 'good' : 'warn'); break; }
       case 'justify': { const r = G.startJustify(c.tag, t); UI.toast(r.ok ? `${G.cname(t)} için savaş gerekçesi hazırlanıyor.` : r.why, r.ok ? 'good' : 'warn'); break; }
       case 'declare': ok = G.declareWar(c.tag, t); if (ok) UI.toast(`${G.cname(t)} ile savaştayız!`, 'bad'); break;
       case 'invite': ok = G.inviteToFaction(c.tag, t); UI.toast(ok ? `${G.cname(t)} ittifaka katıldı.` : `${G.cname(t)} daveti reddetti.`, ok ? 'good' : 'warn'); break;
@@ -538,6 +539,7 @@
     }
     G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud();
   };
+  ACT.dipact = (d) => { const r = G.dipActToggle(me().tag, d.k, d.v); UI.toast(!r.ok ? r.why : r.on ? `${G.DIPACT[d.k].n}: ${G.cname(d.v)}.` : 'Eylem durduruldu.', r.ok ? 'good' : 'warn'); UI.render(); };
   ACT.embargo = (d) => { const st = G.st, k = me().tag + '>' + d.v; if (st.embargo[k]) delete st.embargo[k]; else { st.embargo[k] = 1; st.deals = st.deals.filter((x) => !(x.e === me().tag && x.i === d.v)); } G.refreshTradeCache(); UI.render(); };
   ACT.volsend = (d) => { const r = G.sendVolunteers(me().tag, d.k, +d.v); UI.toast(r.ok ? `${r.n} gönüllü tümen ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); G.mapDirty = 1; R.dirty = 1; UI.render(); UI.hud(); };
   ACT.volair = (d) => { const r = G.sendAirVolunteers(me().tag, d.k, d.e, +d.v); UI.toast(r.ok ? `${Math.round(r.n)} uçaklık hava gönüllüsü ${G.cname(d.k)} cephesine gönderildi.` : r.why, r.ok ? 'good' : 'warn'); R.dirty = 1; UI.render(); UI.hud(); };

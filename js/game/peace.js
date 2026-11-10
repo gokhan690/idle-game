@@ -108,12 +108,12 @@
       if (pr.oc === w) m *= 0.5;
       c += G.provCost(n) * m;
     }
-    return Math.round(c);
+    return Math.round(c * (G.goalMul ? G.goalMul(conf, w, 'take') : 1)); // savaş hedefi türü
   };
   G.confStateCost = (conf, w, s) => G.confCost(conf, w, free(conf, s));
-  G.confPuppetCost = (conf) => {
+  G.confPuppetCost = (conf, w) => {
     let c = 0; for (const s of conf.states) for (const n of free(conf, s)) c += G.provCost(n);
-    return Math.round(c * 0.45);
+    return Math.round(c * 0.45 * (w && G.goalMul ? G.goalMul(conf, w, 'puppet') : 1));
   };
   // Serbest bırakılabilir uluslar: yok olmuş, asli toprakları L'nin elinde
   G.confReleasable = (conf) => {
@@ -149,7 +149,7 @@
       conf.log.push({ t: w, m: `${s.n} bölgesini talep etti (${cost})` });
     } else if (a.k === 'puppet') {
       if (conf.puppet) return { ok: false };
-      const cost = G.confPuppetCost(conf);
+      const cost = G.confPuppetCost(conf, w);
       if (cost > p.pts) return { ok: false, why: `${cost} puan gerekli.` };
       if (remainFrac(conf) < 0.05) return { ok: false, why: 'Geriye kukla kuracak toprak kalmadı.' };
       p.pts -= cost; conf.puppet = w;
@@ -175,7 +175,7 @@
     const p = part(conf, w);
     if (p.pass === 2) return false;
     for (const s of conf.states) { const fl = free(conf, s); if (fl.length && G.confCost(conf, w, fl) <= p.pts) return true; }
-    if (!conf.puppet && remainFrac(conf) >= 0.05 && G.confPuppetCost(conf) <= p.pts) return true;
+    if (!conf.puppet && remainFrac(conf) >= 0.05 && G.confPuppetCost(conf, w) <= p.pts) return true;
     return G.confReleasable(conf).some((r) => G.confReleaseCost(conf, w, r.provs) <= p.pts);
   }
   function nextTurn(conf) {
@@ -231,7 +231,7 @@
     }
     // büyük gücün kalan toprağında kukla devlet (savaş bittiyse)
     const otherWars = c.enemies.filter((e) => e !== L).length;
-    if (top && Lc.major && !otherWars && !conf.puppet && remainFrac(conf) >= 0.25 && G.confPuppetCost(conf) <= p.pts) return G.confAct(conf, w, { k: 'puppet' });
+    if (top && Lc.major && !otherWars && !conf.puppet && remainFrac(conf) >= 0.25 && G.confPuppetCost(conf, w) <= p.pts) return G.confAct(conf, w, { k: 'puppet' });
     return G.confAct(conf, w, { k: 'quit' });
   };
 

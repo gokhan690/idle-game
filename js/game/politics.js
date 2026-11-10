@@ -27,6 +27,7 @@
 
   // ---------- Günlük siyaset ----------
   G.polTick = (c) => {
+    if (c.dipAct) G.dipActTick(c); // sürekli diplomatik eylemler (yalnız varsa)
     const st = G.st, m = c.mods;
     const atWar = c.enemies.length > 0;
     // savaşın etkileri

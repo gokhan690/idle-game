@@ -152,7 +152,8 @@
     const atWar = G.atWar(c.tag, tag);
     if (!atWar) {
       const j = G.canJustify(c.tag, tag);
-      if (st.goals[c.tag + '>' + tag] == null) acts.push(['justify', `Savaş gerekçesi üret (${G.justifyCost(c)} SG, ${G.justifyDays(c)} gün)`, j.ok, j.why]);
+      if (st.goals[c.tag + '>' + tag] == null) for (const [gk, K] of Object.entries(G.GOAL_K)) { const cst = G.justifyCostK(c, gk), okk = j.ok || (c.pp >= cst && /siyasi güç gerekli/.test(j.why || '')); acts.push([gk === 'annex' ? 'justify' : 'just_' + gk, `Savaş gerekçesi: ${K.n} (${cst} SG, ${G.justifyDaysK(c, gk)} gün)`, okk, okk ? K.d : j.why, K.d]); }
+      else acts.push(['', `Savaş hedefin: ${G.GOAL_K[G.goalKind(c.tag, tag)].n}`, false, G.GOAL_K[G.goalKind(c.tag, tag)].d]);
       acts.push(['declare', 'Savaş ilan et', G.canDeclare(c.tag, tag), 'Önce savaş gerekçesi gerekir (müttefikinin düşmanına doğrudan ilan edebilirsin).']);
       const myFac = c.fac ? st.factions[c.fac] : null;
       if (myFac && !G.sameFaction(c.tag, tag)) acts.push(['invite', `${myFac.n} ittifakına davet et`, true]);
@@ -165,9 +166,14 @@
       if (G.bcAllowed) { const bc = G.bcAllowed(c.tag, tag); if (bc.why !== 'Ortak kara sınırı yok') acts.push(['bc', `Sınır çatışması başlat (${G.BC_COST} SG, ${G.BC_DAYS} gün)`, bc.ok, bc.why]); }
     } else acts.push(['peace', 'Beyaz barış teklif et', true]);
     let ah = '<div class="list">';
-    for (const [k, n, ok, why] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ''}</div><span class="muted">›</span></button>`;
+    for (const [k, n, ok, why, desc] of acts) ah += `<button class="item" data-act="dip" data-k="${k}" data-v="${tag}" ${ok ? '' : 'disabled'} style="${ok ? '' : 'opacity:.5'}"><div class="grow"><div class="t">${n}</div>${!ok && why ? `<div class="d warn">${esc(why)}</div>` : ok && desc ? `<div class="d">${esc(desc)}</div>` : ''}</div><span class="muted">›</span></button>`;
     ah += `<button class="item" data-act="showc" data-v="${tag}"><div class="grow"><div class="t">Haritada göster</div></div><span class="muted">›</span></button></div>`;
     html += sec('Eylemler', ah);
+    // görüş dökümü ve sürekli diplomatik eylemler
+    { const parts = G.opinionParts(tag, c.tag), tot = Math.round(G.opinion(tag, c.tag));
+      let oh = `<div class="list">${parts.map(([n, v]) => `<div class="item"><div class="grow"><div class="d">${esc(n)}</div></div><b class="${v > 0 ? 'pos' : 'neg'}">${v > 0 ? '+' : ''}${Math.round(v)}</b></div>`).join('') || '<p class="muted small" style="margin:0">Etkileyen bir şey yok.</p>'}</div>`;
+      if (!atWar) oh += `<div class="list" style="margin-top:6px">${Object.entries(G.DIPACT).map(([k, D]) => { const on = G.dipActOn(c, k, tag); return `<button class="item ${on ? 'on' : ''}" data-act="dipact" data-k="${k}" data-v="${tag}"><div class="grow"><div class="t">${D.n}</div><div class="d">${D.d}</div></div><span class="btn sm ${on ? 'pri' : ''}">${on ? 'Sürüyor · durdur' : 'Başlat'}</span></button>`; }).join('')}</div>`;
+      html += sec('Bize görüşü', oh, `${tot > 0 ? '+' : ''}${tot}`); }
     html += volunteerSection(c, tag, x);
     // ticaret ve yardım
     let th = '<div class="list">';
